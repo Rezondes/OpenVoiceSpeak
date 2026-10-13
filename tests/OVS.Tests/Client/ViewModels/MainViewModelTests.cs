@@ -1343,12 +1343,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
     public async Task SelfTest_MutesAndDeafens_RestoresPreviousState()
     {
         await ConnectAsync(saveBookmark: false);
-        async Task<(bool Muted, bool Deafened)> SeenByServer(bool deafened)
+        async Task<SelfStateSeen> SeenByServer(bool deafened)
         {
             await OnUiUntil(() => viewModel.Server!.Self!.IsDeafened, value => value == deafened);
-            return await OnUi(() => (viewModel.Server!.Self!.StatusText.Length > 0, viewModel.Server.Self.IsDeafened));
+            return await OnUi(() => new SelfStateSeen(viewModel.Server!.Self!.StatusText.Length > 0, viewModel.Server.Self.IsDeafened));
         }
-        Assert.Equal((false, false), await SeenByServer(false));
+        Assert.Equal(new SelfStateSeen(false, false), await SeenByServer(false));
 
         // closing the settings ends it (the rules and the page's button are in SelfTestTests and SelfTestWiringTests); a slider moved meanwhile goes back on "Verwerfen"
         await ui.InvokeAsync<object?>(async () =>
@@ -1359,13 +1359,13 @@ public sealed class MainViewModelTests : IAsyncLifetime
             return null;
         });
         Assert.Equal(0.5f, await OnUi(() => viewModel.Audio.Mixer.Volume));
-        Assert.Equal((true, true), await SeenByServer(true));
+        Assert.Equal(new SelfStateSeen(true, true), await SeenByServer(true));
         await OnUi(() =>
         {
             viewModel.PageFlow.SettingsPage!.CancelCommand.Execute(null);
             return 0;
         });
-        Assert.Equal((false, false), await SeenByServer(false));
+        Assert.Equal(new SelfStateSeen(false, false), await SeenByServer(false));
         Assert.False(await OnUi(() => viewModel.Audio.SelfTest));
         Assert.Equal(1f, await OnUi(() => viewModel.Audio.Mixer.Volume));
     }
@@ -1481,7 +1481,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     const int MuteKey = 0x78, DeafenKey = 0x79, TalkKey = 0x7A; // F9, F10, F11
 
     /// <summary>Package 125: push-to-mute, a deafen and a talk key bound; the fake server collects the requests, the list the tones.</summary>
-    async Task<(List<Request> Sent, List<SoundEvent> Heard)> WithPushToMute()
+    async Task<PushToMuteRun> WithPushToMute()
     {
         var sent = new List<Request>();
         var heard = new List<SoundEvent>();
@@ -1499,7 +1499,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             viewModel.Server!.SoundRequested += heard.Add;
             return 0;
         });
-        return (sent, heard);
+        return new PushToMuteRun(sent, heard);
     }
 
     /// <summary>The mute states sent, without the request ids.</summary>
@@ -1726,48 +1726,48 @@ public sealed class MainViewModelTests : IAsyncLifetime
             return null;
         });
         // The counts once they match (at most 10 s): the devices open and close off the UI thread.
-        async Task<(int, int, int, int, bool)> Settled((int, int, int, int, bool) expected)
+        async Task<DeviceCounts> Settled(DeviceCounts expected)
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
             while (true)
             {
                 var (mics, micsOpen, speakers, speakersOpen) = hardware.Counts;
-                var now = (mics, micsOpen, speakers, speakersOpen, main.Audio.PlaybackRunning);
+                var now = new DeviceCounts(mics, micsOpen, speakers, speakersOpen, main.Audio.PlaybackRunning);
                 if (now == expected || watch.ElapsedMilliseconds > 10_000) return now;
                 await Task.Delay(20);
             }
         }
         try
         {
-            Assert.Equal((0, 0, 0, 0, false), await Settled((0, 0, 0, 0, false)));
+            Assert.Equal(new DeviceCounts(0, 0, 0, 0, false), await Settled(new DeviceCounts(0, 0, 0, 0, false)));
 
             await Do(() =>
             {
                 main.PageFlow.OpenSettings();
                 return Task.CompletedTask;
             });
-            Assert.Equal((1, 1, 0, 0, false), await Settled((1, 1, 0, 0, false))); // the level meter
+            Assert.Equal(new DeviceCounts(1, 1, 0, 0, false), await Settled(new DeviceCounts(1, 1, 0, 0, false))); // the level meter
             await Do(() =>
             {
                 main.PageFlow.ClosePage();
                 return Task.CompletedTask;
             });
-            Assert.Equal((1, 0, 0, 0, false), await Settled((1, 0, 0, 0, false)));
+            Assert.Equal(new DeviceCounts(1, 0, 0, 0, false), await Settled(new DeviceCounts(1, 0, 0, 0, false)));
 
             await Do(() => main.SelfTest.SetAsync(true));
-            Assert.Equal((2, 1, 1, 1, true), await Settled((2, 1, 1, 1, true)));
+            Assert.Equal(new DeviceCounts(2, 1, 1, 1, true), await Settled(new DeviceCounts(2, 1, 1, 1, true)));
             await Do(() => main.SelfTest.SetAsync(false));
-            Assert.Equal((2, 0, 1, 0, false), await Settled((2, 0, 1, 0, false)));
+            Assert.Equal(new DeviceCounts(2, 0, 1, 0, false), await Settled(new DeviceCounts(2, 0, 1, 0, false)));
 
             await Do(() => main.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
             Assert.True(await OnUi(() => main.IsConnected));
-            Assert.Equal((3, 1, 2, 1, true), await Settled((3, 1, 2, 1, true)));
+            Assert.Equal(new DeviceCounts(3, 1, 2, 1, true), await Settled(new DeviceCounts(3, 1, 2, 1, true)));
             await Do(() => main.ApplySettingsAsync(new ClientSettings { InputDeviceId = "mic-2" }));
-            Assert.Equal((4, 1, 3, 1, true), await Settled((4, 1, 3, 1, true)));
+            Assert.Equal(new DeviceCounts(4, 1, 3, 1, true), await Settled(new DeviceCounts(4, 1, 3, 1, true)));
             Assert.Equal("mic-2", hardware.LastMicId);
 
             await Do(main.Connection.DisconnectAsync);
-            Assert.Equal((4, 0, 3, 0, false), await Settled((4, 0, 3, 0, false)));
+            Assert.Equal(new DeviceCounts(4, 0, 3, 0, false), await Settled(new DeviceCounts(4, 0, 3, 0, false)));
         }
         finally
         {

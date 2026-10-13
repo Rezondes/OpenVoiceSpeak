@@ -903,12 +903,12 @@ public class SendPathTests
         using var client = new VoiceClient((IPEndPoint)server.Client.LocalEndPoint!, 5, key, clock);
         client.Start();
 
-        async Task<(VoiceHeader Header, byte[] Plain, IPEndPoint From)> Receive()
+        async Task<ReceivedPacket> Receive()
         {
             using var cancelSource = new CancellationTokenSource(10_000);
             var got = await server.ReceiveAsync(cancelSource.Token);
             Assert.True(serverCrypto.TryOpen(PacketDirection.ClientToServer, got.Buffer, out var header, out var plain));
-            return (header, plain, got.RemoteEndPoint);
+            return new ReceivedPacket(header, plain, got.RemoteEndPoint);
         }
         var from = (await Receive()).From; // the Hello
         async Task Report(LossReport uplink)

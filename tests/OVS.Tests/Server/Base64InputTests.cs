@@ -14,11 +14,11 @@ public class Base64InputTests
 {
     static int Padding(string base64) => base64.Length - base64.TrimEnd('=').Length;
 
-    static async Task<(TestServer Server, TestClient Admin)> StartWithAdminAsync()
+    static async Task<AdminRig> StartWithAdminAsync()
     {
         var admin = ClientIdentity.Create();
         var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        return (server, await TestClient.ConnectAsync(server, "chef", admin));
+        return new AdminRig(server, await TestClient.ConnectAsync(server, "chef", admin));
     }
 
     [Fact]

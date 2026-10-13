@@ -217,7 +217,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     }
 
     /// <summary>A view model with its own parts connected to a fresh test server, its certificate trusted.</summary>
-    async Task<(TestServer Server, TestDispatcher Ui, MainViewModel Vm)> ConnectAsync()
+    async Task<ClientRig> ConnectAsync()
     {
         var server = await TestServer.StartAsync();
         var ui = new TestDispatcher();
@@ -228,7 +228,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
             await viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, SaveBookmark: false));
             return null;
         });
-        return (server, ui, viewModel);
+        return new ClientRig(server, ui, viewModel);
     }
 
     static async Task CloseAsync(TestServer server, TestDispatcher ui, MainViewModel viewModel)

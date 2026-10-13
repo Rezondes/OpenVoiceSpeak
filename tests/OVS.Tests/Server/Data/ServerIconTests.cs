@@ -24,13 +24,13 @@ public sealed class ServerIconTests
         return png;
     }
 
-    static async Task<(TestServer Server, TestClient Admin, TestClient Guest)> StartAsync()
+    static async Task<ServerIconRig> StartAsync()
     {
         var adminId = ClientIdentity.Create();
         var server = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"));
         var admin = await TestClient.ConnectAsync(server, "chef", adminId);
         var guest = await TestClient.ConnectAsync(server, "gast");
-        return (server, admin, guest);
+        return new ServerIconRig(server, admin, guest);
     }
 
     [Fact]

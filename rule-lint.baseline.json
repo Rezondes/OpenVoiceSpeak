@@ -820,10 +820,6 @@
     "Count": 1
   },
   {
-    "Key": "RL211|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Sender_AddsCopyOnlyOnLoss.Receive",
-    "Count": 1
-  },
-  {
     "Key": "RL211|tests/OVS.Tests/Client/Behaviors/ReorderDragTests.cs|ReorderDragTests.Transforms",
     "Count": 1
   },
@@ -841,10 +837,6 @@
   },
   {
     "Key": "RL211|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Vertical",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|tests/OVS.Tests/Client/Logging/ClientLogTests.cs|ClientLogTests.StartAsync",
     "Count": 1
   },
   {
@@ -873,22 +865,6 @@
   },
   {
     "Key": "RL211|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.Create",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|tests/OVS.Tests/Client/ViewModels/MainViewModelCompositionTests.cs|MainViewModelCompositionTests.ConnectAsync",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Devices_WhileNeeded_OpenAndCloseAgain.Settled",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.SelfTest_MutesAndDeafens_RestoresPreviousState.SeenByServer",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.WithPushToMute",
     "Count": 1
   },
   {
@@ -924,19 +900,7 @@
     "Count": 1
   },
   {
-    "Key": "RL211|tests/OVS.Tests/Server/Base64InputTests.cs|Base64InputTests.StartWithAdminAsync",
-    "Count": 1
-  },
-  {
     "Key": "RL211|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.StartHostAsync",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|tests/OVS.Tests/Server/Data/BackupTests.cs|BackupTests.StartWithAdminAsync",
-    "Count": 1
-  },
-  {
-    "Key": "RL211|tests/OVS.Tests/Server/Data/ServerIconTests.cs|ServerIconTests.StartAsync",
     "Count": 1
   },
   {

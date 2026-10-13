@@ -40,11 +40,11 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
 
     static ServerData DataOf(byte[] json) => JsonSerializer.Deserialize<ServerData>(json, ProtocolJson.Options)!;
 
-    static async Task<(TestServer Server, TestClient Admin)> StartWithAdminAsync(TimeProvider? time = null, Action<ServerData>? seed = null)
+    static async Task<AdminRig> StartWithAdminAsync(TimeProvider? time = null, Action<ServerData>? seed = null)
     {
         var admin = ClientIdentity.Create();
         var server = await TestServer.StartAsync(serverData => { TestServer.Grant(admin, "Admin")(serverData); seed?.Invoke(serverData); }, time: time);
-        return (server, await TestClient.ConnectAsync(server, "chef", admin));
+        return new AdminRig(server, await TestClient.ConnectAsync(server, "chef", admin));
     }
 
     [Fact]
