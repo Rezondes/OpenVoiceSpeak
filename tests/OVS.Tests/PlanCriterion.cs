@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace OVS.Tests;
@@ -20,14 +21,14 @@ sealed record PlanCriterion(int Package, int Number, int Line, bool IsManual)
         for (var index = 0; index < lines.Length; index++)
         {
             var line = lines[index].TrimEnd('\r');
-            if (line.StartsWith("## "))
+            if (line.StartsWith("## ", StringComparison.Ordinal))
             {
                 var heading = PackageHeading.Match(line);
-                package = heading.Success ? int.Parse(heading.Groups[1].Value) : null;
+                package = heading.Success ? int.Parse(heading.Groups[1].Value, CultureInfo.InvariantCulture) : null;
                 continue;
             }
             if (package is null || Checked.Match(line) is not { Success: true } criterion) continue;
-            criteria.Add(new(package.Value, int.Parse(criterion.Groups[1].Value), index + 1, criterion.Groups["manual"].Success));
+            criteria.Add(new(package.Value, int.Parse(criterion.Groups[1].Value, CultureInfo.InvariantCulture), index + 1, criterion.Groups["manual"].Success));
         }
         return criteria;
     }

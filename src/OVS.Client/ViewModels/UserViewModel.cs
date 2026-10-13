@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -65,9 +66,9 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     /// <summary>The volume is 0: muted for the own user only.</summary>
     public bool IsLocallyMuted => VolumePercent == 0;
     /// <summary>The volume as shown.</summary>
-    public string VolumeText => IsLocallyMuted ? Strings.Ui_LocallyMuted : string.Format(Strings.Ui_UserVolumeFmt, VolumePercent);
+    public string VolumeText => IsLocallyMuted ? Strings.Ui_LocallyMuted : string.Format(CultureInfo.CurrentCulture, Strings.Ui_UserVolumeFmt, VolumePercent);
     /// <summary>The volume slider's label.</summary>
-    public string VolumeLabel => string.Format(Strings.Ui_UserVolumeOfFmt, Nickname);
+    public string VolumeLabel => string.Format(CultureInfo.CurrentCulture, Strings.Ui_UserVolumeOfFmt, Nickname);
 
     /// <summary>Shows the stored volume without reporting it as a change.</summary>
     internal void ShowVolume(float volume)
@@ -184,7 +185,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     [RelayCommand]
     Task KickAsync() =>
         ServerViewModel.AskAsync<string>(owner.Dialogs.AskText is { } ask
-            ? submit => ask(string.Format(Strings.Dialog_Kick, Nickname), Strings.Dialog_KickReason, submit) : null, reason => owner.Kick(SessionId, reason));
+            ? submit => ask(string.Format(CultureInfo.CurrentCulture, Strings.Dialog_Kick, Nickname), Strings.Dialog_KickReason, submit) : null, reason => owner.Kick(SessionId, reason));
 
     [RelayCommand]
     Task BanAsync() =>

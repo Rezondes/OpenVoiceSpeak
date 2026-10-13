@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Shared.Protocol;
 
 namespace OVS.Client.Localization;
@@ -19,7 +20,7 @@ public static class ErrorTexts
     /// <summary>The text of an error code in the UI language, with the server's detail where it helps.</summary>
     public static string For(string code, string? detail = null)
     {
-        var text = Text(code) ?? string.Format(Strings.Error_Unknown, code);
+        var text = Text(code) ?? string.Format(CultureInfo.CurrentCulture, Strings.Error_Unknown, code);
         return string.IsNullOrWhiteSpace(detail) || !DetailShown.Contains(code) ? text : $"{text} ({detail})";
     }
 }

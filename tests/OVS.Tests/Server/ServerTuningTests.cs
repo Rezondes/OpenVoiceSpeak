@@ -80,8 +80,8 @@ public sealed class ServerTuningTests
         }
         Assert.True(closed || await client.WaitClosedAsync());
         // The goodbye can reach the client a moment before the server writes its log line.
-        await AsyncWait.UntilAsync(() => server.Log.Any(line => line.Contains("flut disconnected (too many requests)")));
-        Assert.Contains(server.Log, line => line.Contains("flut disconnected (too many requests)"));
+        await AsyncWait.UntilAsync(() => server.Log.Any(line => line.Contains("flut disconnected (too many requests)", StringComparison.Ordinal)));
+        Assert.Contains(server.Log, line => line.Contains("flut disconnected (too many requests)", StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -314,7 +314,7 @@ public sealed class ServerTuningTests
             await client.SendAsync(new RedeemAdminToken("falsch") { RequestId = $"t{index}" });
             Assert.Equal(ReasonCodes.InvalidToken, (await client.ErrorAsync($"t{index}")).Code);
         }
-        Assert.Equal(ServerTuning.AdminTokenFailures, server.Log.Count(line => line.Contains("Wrong admin token from rater")));
+        Assert.Equal(ServerTuning.AdminTokenFailures, server.Log.Count(line => line.Contains("Wrong admin token from rater", StringComparison.Ordinal)));
 
         // Same IP, other session: blocked too, even with the right token.
         await testClient.SendAsync(new RedeemAdminToken(token) { RequestId = "richtig" });
@@ -342,7 +342,7 @@ public sealed class ServerTuningTests
 
         var first = await testClient.WaitForAsync<UserUpdated>();
         Assert.True(first.User.SelfMuted);
-        Assert.DoesNotContain(server.Log.Skip(logLines), line => line.Contains("ruhig"));
+        Assert.DoesNotContain(server.Log.Skip(logLines), line => line.Contains("ruhig", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -399,7 +399,7 @@ public sealed class ServerTuningTests
         await AsyncWait.UntilAsync(() => server.State.SessionCount == 0 && server.State.ConnectionsFrom(IPAddress.Loopback) == 0, TimeSpan.FromSeconds(30));
         Assert.Equal(0, server.State.SessionCount);
         Assert.Equal(0, server.State.ConnectionsFrom(IPAddress.Loopback));
-        Assert.Contains(server.Log, line => line.Contains("taub disconnected (send buffer full)") || line.Contains("taub disconnected (writing too slow)"));
+        Assert.Contains(server.Log, line => line.Contains("taub disconnected (send buffer full)", StringComparison.Ordinal) || line.Contains("taub disconnected (writing too slow)", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -410,7 +410,7 @@ public sealed class ServerTuningTests
         for (int index = 0; index < 5; index++) open.Add(await TestClient.OpenAsync(server.Port));
 
         await Assert.ThrowsAnyAsync<Exception>(() => TestClient.OpenAsync(server.Port));
-        Assert.Contains(server.Log, line => line.Contains("refused: TooManyConnections"));
+        Assert.Contains(server.Log, line => line.Contains("refused: TooManyConnections", StringComparison.Ordinal));
         foreach (var client in open) await client.DisposeAsync();
     }
 

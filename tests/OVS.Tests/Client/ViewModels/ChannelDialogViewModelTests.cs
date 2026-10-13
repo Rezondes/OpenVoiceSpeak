@@ -35,7 +35,7 @@ public class ChannelDialogViewModelTests
     {
         var channelDialog = new ChannelDialogViewModel(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault);
         Assert.False(channelDialog.CanLimitUsers);
-        Assert.Contains("Standard-Channel", channelDialog.SlotsHint);
+        Assert.Contains("Standard-Channel", channelDialog.SlotsHint, StringComparison.Ordinal);
         channelDialog.MaxUsers = 5; // cannot happen through the locked field, but never sent either
         Assert.Equal(0, channelDialog.Result()!.MaxUsers);
     }
@@ -135,7 +135,7 @@ public class ChannelDialogViewModelTests
     {
         var channelDialog = new ChannelDialogViewModel(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault, Groups);
         Assert.False(channelDialog.CanLockGroups);
-        Assert.Contains("Standard-Channel", channelDialog.GroupLockHint);
+        Assert.Contains("Standard-Channel", channelDialog.GroupLockHint, StringComparison.Ordinal);
         channelDialog.Groups[1].IsChecked = true; // cannot happen through the disabled list, but never sent either
         Assert.Null(channelDialog.Result()!.AllowedGroupIds);
     }

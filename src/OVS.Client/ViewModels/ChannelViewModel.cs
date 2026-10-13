@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
@@ -76,7 +77,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
         get
         {
             if (IsSeparator) return null;
-            var text = IsLinked ? $"{Description}{(char)10}{string.Format(Strings.Tooltip_LinkedWith, LinkedNames)}".Trim() : Description.Trim();
+            var text = IsLinked ? $"{Description}{(char)10}{string.Format(CultureInfo.CurrentCulture, Strings.Tooltip_LinkedWith, LinkedNames)}".Trim() : Description.Trim();
             return text.Length > 0 ? text : null;
         }
     }
@@ -111,7 +112,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
         {
             null => null,
             [] => Strings.Ui_LockedAdmins,
-            var ids => string.Format(Strings.Ui_LockedGroupsFmt,
+            var ids => string.Format(CultureInfo.CurrentCulture, Strings.Ui_LockedGroupsFmt,
                 string.Join(", ", groups.Where(groupInfo => ids.Contains(groupInfo.Id)).Select(groupInfo => groupInfo.Name))), // in the server's group order
         };
         LockText = string.Join("\n", new[] { groupText, info.HasPassword ? Strings.Ui_LockedPassword : null }.OfType<string>());
@@ -164,7 +165,7 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [RelayCommand]
     async Task DeleteAsync()
     {
-        var question = IsSeparator ? Strings.Confirm_DeleteSeparator : string.Format(Strings.Confirm_DeleteChannel, Name);
+        var question = IsSeparator ? Strings.Confirm_DeleteSeparator : string.Format(CultureInfo.CurrentCulture, Strings.Confirm_DeleteChannel, Name);
         if (owner.Dialogs.Confirm is { } confirm && await confirm(question))
             owner.DeleteChannel(Id);
     }
@@ -172,10 +173,10 @@ public sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) : O
     [RelayCommand]
     Task LinkAsync() =>
         ServerViewModel.AskAsync<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
-            ? submit => pick(string.Format(Strings.Dialog_LinkWith, Name), owner.Tree.LinkCandidates(this), submit) : null, other => owner.Link(Id, other.Id));
+            ? submit => pick(string.Format(CultureInfo.CurrentCulture, Strings.Dialog_LinkWith, Name), owner.Tree.LinkCandidates(this), submit) : null, other => owner.Link(Id, other.Id));
 
     [RelayCommand]
     Task UnlinkAsync() =>
         ServerViewModel.AskAsync<ChannelViewModel>(owner.Dialogs.PickChannel is { } pick
-            ? submit => pick(string.Format(Strings.Dialog_Unlink, Name), owner.Tree.LinkedChannelVms(this), submit) : null, other => owner.Unlink(Id, other.Id));
+            ? submit => pick(string.Format(CultureInfo.CurrentCulture, Strings.Dialog_Unlink, Name), owner.Tree.LinkedChannelVms(this), submit) : null, other => owner.Unlink(Id, other.Id));
 }

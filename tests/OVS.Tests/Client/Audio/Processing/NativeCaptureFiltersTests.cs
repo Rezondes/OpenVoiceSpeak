@@ -67,8 +67,8 @@ public sealed class NativeCaptureFiltersTests
         Assert.Null(second.Suppressor);
         Assert.Null(second.Canceller);
         Assert.Equal(2, log.Count);
-        Assert.StartsWith($"Noise suppression off: {NoNoiseLibrary} cannot be loaded (", log[0]);
-        Assert.StartsWith($"Echo cancellation off: {NoEchoLibrary} cannot be loaded (", log[1]);
+        Assert.StartsWith($"Noise suppression off: {NoNoiseLibrary} cannot be loaded (", log[0], StringComparison.Ordinal);
+        Assert.StartsWith($"Echo cancellation off: {NoEchoLibrary} cannot be loaded (", log[1], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public sealed class NativeCaptureFiltersTests
 
         Assert.Null(second.Suppressor);
         Assert.NotNull(second.Canceller);
-        Assert.Contains(NoNoiseLibrary, Assert.Single(log));
+        Assert.Contains(NoNoiseLibrary, Assert.Single(log), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -98,6 +98,6 @@ public sealed class NativeCaptureFiltersTests
 
         Assert.True(second.Suppressor is not null, "the noise suppressor turned off with the echo canceller");
         Assert.Null(second.Canceller);
-        Assert.Contains(NoEchoLibrary, Assert.Single(log));
+        Assert.Contains(NoEchoLibrary, Assert.Single(log), StringComparison.Ordinal);
     }
 }

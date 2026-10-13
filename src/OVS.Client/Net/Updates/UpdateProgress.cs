@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Localization;
 
 namespace OVS.Client.Net.Updates;
@@ -12,14 +13,14 @@ public sealed record UpdateProgress(string Version, UpdatePhase Phase, long Byte
     /// <summary>How much is loaded, 0 to 100.</summary>
     public double Percent => Total is > 0 and var total ? Math.Min(100, 100.0 * Bytes / total) : 0;
     /// <summary>The card's title.</summary>
-    public string Title => string.Format(Strings.Update_Title, Version);
+    public string Title => string.Format(CultureInfo.CurrentCulture, Strings.Update_Title, Version);
 
     /// <summary>The card's detail line.</summary>
     public string Detail => Phase switch
     {
         UpdatePhase.Verifying => Strings.Update_Verifying,
         UpdatePhase.Starting => Strings.Update_Starting,
-        _ when Total is > 0 and var total => string.Format(Strings.Update_Size, Percent, Bytes / MB, total / MB),
-        _ => string.Format(Strings.Update_SizeUnknown, Bytes / MB),
+        _ when Total is > 0 and var total => string.Format(CultureInfo.CurrentCulture, Strings.Update_Size, Percent, Bytes / MB, total / MB),
+        _ => string.Format(CultureInfo.CurrentCulture, Strings.Update_SizeUnknown, Bytes / MB),
     };
 }

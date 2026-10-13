@@ -73,7 +73,7 @@ public sealed class ServerConfigTests : IDisposable
     public void Load_InvalidValue_ThrowsNamingVariable(string key, string value)
     {
         var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env((key, value))));
-        Assert.Contains(key, exception.Message);
+        Assert.Contains(key, exception.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -82,7 +82,7 @@ public sealed class ServerConfigTests : IDisposable
     public void Load_InvalidLogDays_Throws(string value)
     {
         var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env(("OVS_LOG_DAYS", value))));
-        Assert.Contains("OVS_LOG_DAYS", exception.Message);
+        Assert.Contains("OVS_LOG_DAYS", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public sealed class ServerConfigTests : IDisposable
     public void Load_InvalidRestartOrRotation_Throws(string key, string value)
     {
         var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env((key, value))));
-        Assert.Contains(key, exception.Message);
+        Assert.Contains(key, exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public sealed class ServerConfigTests : IDisposable
         WriteFile("""{"port":7100}""");
         using var locked = new FileStream(Path.Combine(dir, ServerConfig.FileName), FileMode.Open, FileAccess.Read, FileShare.None);
         var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
-        Assert.Contains(ServerConfig.FileName, exception.Message);
+        Assert.Contains(ServerConfig.FileName, exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public sealed class ServerConfigTests : IDisposable
         try
         {
             var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
-            Assert.Contains("OVS_DATA_DIR", exception.Message);
+            Assert.Contains("OVS_DATA_DIR", exception.Message, StringComparison.Ordinal);
         }
         finally
         {
@@ -162,7 +162,7 @@ public sealed class ServerConfigTests : IDisposable
     {
         WriteFile("{ kaputt");
         var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
-        Assert.Contains(ServerConfig.FileName, exception.Message);
+        Assert.Contains(ServerConfig.FileName, exception.Message, StringComparison.Ordinal);
     }
 
     /// <summary>Package 69: after the first start the values live in server-data.json; a differing variable is only noted.</summary>
@@ -173,14 +173,14 @@ public sealed class ServerConfigTests : IDisposable
         var logs = new ServerLogWriter(dir, 0, TimeProvider.System, lines.Add);
         var first = ServerConfig.Load(Env(("OVS_MAX_USERS", "20"), ("OVS_LOG_DAYS", "7")));
         _ = new ServerState(first, TimeProvider.System, logs, ServerStores.Open(first, TimeProvider.System));
-        Assert.DoesNotContain(lines, line => line.Contains("OVS_"));
+        Assert.DoesNotContain(lines, line => line.Contains("OVS_", StringComparison.Ordinal));
 
         WriteFile("""{"autoRestart":true}""");
         var config = ServerConfig.Load(Env(("OVS_MAX_USERS", "99"), ("OVS_LOG_DAYS", "7")));
         _ = new ServerState(config, TimeProvider.System, logs, ServerStores.Open(config, TimeProvider.System));
-        Assert.Contains(lines, line => line.Contains("OVS_MAX_USERS") && line.Contains("99") && line.Contains("20"));
-        Assert.Contains(lines, line => line.Contains("OVS_AUTO_RESTART"));
-        Assert.DoesNotContain(lines, line => line.Contains("OVS_LOG_DAYS")); // same as stored
-        Assert.DoesNotContain(lines, line => line.Contains("OVS_LOG_ROTATE_DAILY")); // not set at all
+        Assert.Contains(lines, line => line.Contains("OVS_MAX_USERS", StringComparison.Ordinal) && line.Contains("99", StringComparison.Ordinal) && line.Contains("20", StringComparison.Ordinal));
+        Assert.Contains(lines, line => line.Contains("OVS_AUTO_RESTART", StringComparison.Ordinal));
+        Assert.DoesNotContain(lines, line => line.Contains("OVS_LOG_DAYS", StringComparison.Ordinal)); // same as stored
+        Assert.DoesNotContain(lines, line => line.Contains("OVS_LOG_ROTATE_DAILY", StringComparison.Ordinal)); // not set at all
     }
 }

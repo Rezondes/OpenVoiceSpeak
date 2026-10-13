@@ -10,7 +10,7 @@ public static class ModerationRule
     /// (Package 83: the text rules). Empty is fine.
     /// </summary>
     public static Refusal? CheckReason(string? reason) =>
-        reason is null || TextRules.NormalizeText(reason, ProtocolLimits.MaxReasonLength) is { } text && !text.Contains('\n')
+        reason is null || TextRules.NormalizeText(reason, ProtocolLimits.MaxReasonLength) is { } text && !text.Contains('\n', StringComparison.Ordinal)
             ? null
             : new(ReasonCodes.InvalidValue, $"A reason has at most {ProtocolLimits.MaxReasonLength} characters and no line breaks or control characters.");
 

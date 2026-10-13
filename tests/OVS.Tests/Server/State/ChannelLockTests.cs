@@ -247,9 +247,9 @@ public sealed class ChannelLockTests : IAsyncLifetime
         var secret = await CreateWithPasswordAsync("Geheim", "geheim1");
         Assert.True(secret.HasPassword);
         Assert.True((await guest.WaitForAsync<ChannelAdded>()).Channel.HasPassword);
-        Assert.DoesNotContain("geheim1", DataFile);
+        Assert.DoesNotContain("geheim1", DataFile, StringComparison.Ordinal);
         var hash = Stored(DataFile).Channels.Single(channel => channel.Id == secret.Id).StoredPassword?.Text;
-        Assert.StartsWith("pbkdf2$", hash);
+        Assert.StartsWith("pbkdf2$", hash, StringComparison.Ordinal);
 
         var edit = new EditChannel(secret.Id, "Geheim", "", secret.Order);
         await admin.SendAsync(edit);
@@ -269,7 +269,7 @@ public sealed class ChannelLockTests : IAsyncLifetime
         Assert.False((await admin.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.Id == secret.Id)).Channel.HasPassword);
         Assert.Null(Stored(DataFile).Channels.Single(channel => channel.Id == secret.Id).StoredPassword?.Text);
         Assert.False((await CreateWithPasswordAsync("Offen", "")).HasPassword);
-        Assert.DoesNotContain(server.Log, line => line.Contains("geheim1") || line.Contains("neu2"));
+        Assert.DoesNotContain(server.Log, line => line.Contains("geheim1", StringComparison.Ordinal) || line.Contains("neu2", StringComparison.Ordinal));
     }
 
     static ServerData Stored(string json) =>
@@ -341,14 +341,14 @@ public sealed class ChannelLockTests : IAsyncLifetime
         time.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(1));
         await JoinAsync(guest, secret.Id, "geheim1");
 
-        Assert.Contains(server.Log, line => line.Contains("Wrong channel password") && line.Contains("gast"));
-        Assert.DoesNotContain(server.Log, line => line.Contains("falsch0") || line.Contains("geheim1") || line.Contains("anders1"));
+        Assert.Contains(server.Log, line => line.Contains("Wrong channel password", StringComparison.Ordinal) && line.Contains("gast", StringComparison.Ordinal));
+        Assert.DoesNotContain(server.Log, line => line.Contains("falsch0", StringComparison.Ordinal) || line.Contains("geheim1", StringComparison.Ordinal) || line.Contains("anders1", StringComparison.Ordinal));
         foreach (var file in Directory.GetFiles(Path.Combine(server.DataDir, "logs"), "*", SearchOption.AllDirectories))
         {
             using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var text = await new StreamReader(stream).ReadToEndAsync();
-            Assert.DoesNotContain("falsch0", text);
-            Assert.DoesNotContain("geheim1", text);
+            Assert.DoesNotContain("falsch0", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("geheim1", text, StringComparison.Ordinal);
         }
     }
 

@@ -162,9 +162,9 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         rig.Section.Apply(new BackupList("r", [Newer, Older]));
 
         Assert.Equal([Newer.FileName, Older.FileName], rig.Section.Backups.Select(backup => backup.Info.FileName));
-        Assert.Contains($"{2.4:0.0} MB", rig.Section.Backups[1].Details);
-        Assert.Contains("010126.abcd", rig.Section.Backups[1].Details);
-        Assert.Contains("1 KB", rig.Section.Backups[0].Details);
+        Assert.Contains($"{2.4:0.0} MB", rig.Section.Backups[1].Details, StringComparison.Ordinal);
+        Assert.Contains("010126.abcd", rig.Section.Backups[1].Details, StringComparison.Ordinal);
+        Assert.Contains("1 KB", rig.Section.Backups[0].Details, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -205,7 +205,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
 
         Assert.Empty(sent); // said no
         Assert.Equal(2, asked.Count);
-        Assert.All(asked, question => Assert.Contains(rig.Section.Backups[1].Title, question));
+        Assert.All(asked, question => Assert.Contains(rig.Section.Backups[1].Title, question, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -359,7 +359,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         Assert.Single(sent.OfType<UploadBackupChunk>());
         Assert.Equal(answer ? [new RestoreBackup(Uploaded.FileName)] : [], sent.OfType<RestoreBackup>().Select(request => request with { RequestId = null }));
         Assert.Single(asked);
-        Assert.All(asked, question => Assert.Contains(new BackupViewModel(Uploaded, _ => Task.CompletedTask, _ => Task.CompletedTask).Title, question));
+        Assert.All(asked, question => Assert.Contains(new BackupViewModel(Uploaded, _ => Task.CompletedTask, _ => Task.CompletedTask).Title, question, StringComparison.Ordinal));
     }
 
     [Fact]

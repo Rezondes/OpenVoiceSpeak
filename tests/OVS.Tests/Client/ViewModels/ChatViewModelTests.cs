@@ -153,7 +153,7 @@ public class ChatViewModelTests
         var fixture = Create(P.Speak | P.ChatChannel);
         fixture.Chat.Draft = "hallo";
         Assert.False(fixture.Chat.CanWrite);
-        Assert.Contains("serverweit", fixture.Chat.NoRightHint);
+        Assert.Contains("serverweit", fixture.Chat.NoRightHint, StringComparison.Ordinal);
         Assert.False(fixture.Chat.SendCommand.CanExecute(null));
 
         fixture.Chat.Selected = fixture.Chat.ChannelTab;
@@ -163,7 +163,7 @@ public class ChatViewModelTests
 
         fixture.Server.Apply(new UserUpdated(User(1, "ich", Lobby, P.Speak))); // right taken away while the tab is open
         Assert.False(fixture.Chat.CanWrite);
-        Assert.Contains("im Channel", fixture.Chat.NoRightHint);
+        Assert.Contains("im Channel", fixture.Chat.NoRightHint, StringComparison.Ordinal);
         Assert.False(fixture.Chat.SendCommand.CanExecute(null));
     }
 
@@ -173,13 +173,13 @@ public class ChatViewModelTests
         var fixture = Create();
         var joined = Assert.Single(fixture.Chat.ChannelTab.Entries);
         Assert.True(joined.IsMarker);
-        Assert.Contains("\"Lobby\" betreten", joined.Text);
+        Assert.Contains("\"Lobby\" betreten", joined.Text, StringComparison.Ordinal);
 
         fixture.Receive(ChatTarget.Channel, 2, "hallo Lobby", Lobby);
         Assert.Equal(2, fixture.Chat.ChannelTab.Entries.Count);
 
         fixture.Server.Apply(new UserUpdated(User(1, "ich", Bravo, Guest)));
-        Assert.Contains("\"Bravo\" betreten", Assert.Single(fixture.Chat.ChannelTab.Entries).Text);
+        Assert.Contains("\"Bravo\" betreten", Assert.Single(fixture.Chat.ChannelTab.Entries).Text, StringComparison.Ordinal);
         Assert.Equal(0, fixture.Chat.ChannelTab.Unread);
         fixture.Receive(ChatTarget.Channel, 2, "zu spät", Lobby); // still on the way from the old channel
         Assert.Single(fixture.Chat.ChannelTab.Entries);

@@ -24,8 +24,8 @@ public sealed class PersistedFixtureTests() : TempDirectoryTest("ovs-fixture-", 
     {
         var path = PersistedFixtures.CopyTo(version, DataStore.FileName, dir);
         var text = File.ReadAllText(path);
-        Assert.Contains("\"limits\": {", text); // computed keys the file carries and the loader must ignore
-        Assert.Contains("\"hasLegacyHash\": true", text);
+        Assert.Contains("\"limits\": {", text, StringComparison.Ordinal); // computed keys the file carries and the loader must ignore
+        Assert.Contains("\"hasLegacyHash\": true", text, StringComparison.Ordinal);
 
         var data = new DataStore(path).LoadOrCreate(() => throw new InvalidOperationException("the fixture is missing"));
 

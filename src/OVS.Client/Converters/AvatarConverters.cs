@@ -32,7 +32,9 @@ public static class AvatarConverters
     static uint StableHash(string text)
     {
         uint hash = 2166136261;
+#pragma warning disable CA1308 // the colour of every avatar is defined by the hash of the lower-case name; upper case would change them all
         foreach (var character in text.ToLowerInvariant()) hash = (hash ^ character) * 16777619;
+#pragma warning restore CA1308
         return hash;
     }
 }

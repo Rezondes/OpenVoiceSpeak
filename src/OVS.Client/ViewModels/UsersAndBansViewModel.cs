@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
@@ -266,7 +267,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
         };
         var shown = visible.ToList();
         CollectionSync.Sync(Users, shown, server.Leave);
-        UserCountText = string.Format(Strings.Ui_UserCount, shown.Count, all.Count);
+        UserCountText = string.Format(CultureInfo.CurrentCulture, Strings.Ui_UserCount, shown.Count, all.Count);
         OnPropertyChanged(nameof(HasNoUsersShown));
     }
 
@@ -311,7 +312,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
         };
         var shown = visible.ToList();
         CollectionSync.Sync(Bans, shown, server.Leave);
-        BanCountText = string.Format(Strings.Ui_BanCount, shown.Count, all.Count);
+        BanCountText = string.Format(CultureInfo.CurrentCulture, Strings.Ui_BanCount, shown.Count, all.Count);
         OnPropertyChanged(nameof(HasNoBans));
         OnPropertyChanged(nameof(HasNoBanMatches));
     }

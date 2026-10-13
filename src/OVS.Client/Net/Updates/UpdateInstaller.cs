@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Localization;
 using System.Security.Cryptography;
 using OVS.Shared.IO;
@@ -22,13 +23,13 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
     {
         try
         {
-            var expected = (await http.GetStringAsync(offer.HashUrl, cancel)).Split(' ', '\t', '\r', '\n')[0].Trim().ToLowerInvariant();
+            var expected = (await http.GetStringAsync(offer.HashUrl, cancel)).Split(' ', '\t', '\r', '\n')[0].Trim();
             await DownloadAsync(offer, progress, cancel);
             progress?.Invoke(new UpdateProgress(offer.Version, UpdatePhase.Verifying));
             string actual;
             await using (var file = File.OpenRead(NewPath))
                 actual = Convert.ToHexStringLower(await SHA256.HashDataAsync(file, cancel));
-            if (actual != expected)
+            if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
             {
                 File.Delete(NewPath);
                 return Strings.Update_Damaged;
@@ -42,7 +43,7 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
         {
             if (File.Exists(NewPath)) SafeFile.DeleteQuietly(NewPath);
             if (!File.Exists(exePath) && File.Exists(OldPath)) File.Move(OldPath, exePath); // swap half done: undo it
-            return string.Format(Strings.Update_InstallFailed, exception.Message);
+            return string.Format(CultureInfo.CurrentCulture, Strings.Update_InstallFailed, exception.Message);
         }
         try
         {
@@ -50,7 +51,7 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
         }
         catch (Exception exception) // Package 63: whatever it is, the window stays open and says so instead of vanishing
         {
-            return string.Format(Strings.Update_RestartFailed, exception.Message);
+            return string.Format(CultureInfo.CurrentCulture, Strings.Update_RestartFailed, exception.Message);
         }
         return null;
     }

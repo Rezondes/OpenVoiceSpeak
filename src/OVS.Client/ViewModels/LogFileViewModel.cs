@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OVS.Client.Collections;
 using OVS.Client.Localization;
@@ -24,7 +25,7 @@ public sealed partial class LogFileViewModel(LogFileInfo info, bool canSelect = 
     /// <summary>A server log.</summary>
     public bool IsServer => Info.Kind == LogKind.Server;
     /// <summary>The start, local time.</summary>
-    public string StartText => Info.Start.ToLocalTime().ToString("g");
+    public string StartText => Info.Start.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
     /// <summary>Start and size.</summary>
     public string Details => $"{StartText}, {Formats.Size(Info.Size)}";
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Audio;
 using OVS.Client.Dialogs;
 using OVS.Client.Input;
@@ -35,7 +36,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
             text = LogText();
             return expected.All(text.Contains);
         }, TimeSpan.FromSeconds(15));
-        foreach (var value in expected) Assert.Contains(value, text);
+        foreach (var value in expected) Assert.Contains(value, text, StringComparison.Ordinal);
         return text;
     }
 
@@ -130,9 +131,9 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
             await RunAsync(ui, () => viewModel.Server!.SendAsync(new UpdateServerSettings("Testserver", "", "Neues-Passwort-42")));
 
             var log = await EventuallyAsync(null, "with password", "Redeem admin token", "set password", "Server settings changed");
-            Assert.DoesNotContain("Serverpasswort-4711", log);
-            Assert.DoesNotContain("Token-0815-geheim", log);
-            Assert.DoesNotContain("Neues-Passwort-42", log);
+            Assert.DoesNotContain("Serverpasswort-4711", log, StringComparison.Ordinal);
+            Assert.DoesNotContain("Token-0815-geheim", log, StringComparison.Ordinal);
+            Assert.DoesNotContain("Neues-Passwort-42", log, StringComparison.Ordinal);
         }
         finally
         {
@@ -164,15 +165,15 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         var log = new ClientLog(dir, time);
         log.Write("zweiter Start");
         log.Flush();
-        Assert.Contains("erster Start", File.ReadAllText(first));
-        Assert.DoesNotContain("zweiter Start", File.ReadAllText(first));
-        Assert.Contains("zweiter Start", File.ReadAllText(second));
+        Assert.Contains("erster Start", File.ReadAllText(first), StringComparison.Ordinal);
+        Assert.DoesNotContain("zweiter Start", File.ReadAllText(first), StringComparison.Ordinal);
+        Assert.Contains("zweiter Start", File.ReadAllText(second), StringComparison.Ordinal);
 
         time.Advance(TimeSpan.FromDays(2)); // still running two days later: new file, and cleanup at the day change
         log.Write("übermorgen");
         log.Flush();
-        Assert.DoesNotContain("übermorgen", File.ReadAllText(second));
-        Assert.Contains("übermorgen", File.ReadAllText(Path.Combine(logs, Name())));
+        Assert.DoesNotContain("übermorgen", File.ReadAllText(second), StringComparison.Ordinal);
+        Assert.Contains("übermorgen", File.ReadAllText(Path.Combine(logs, Name())), StringComparison.Ordinal);
         Assert.False(File.Exists(recent));
     }
 
@@ -202,8 +203,8 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
             await EventuallyAsync(null, "Audio debug: PTT up");
         }
         var log = LogText();
-        Assert.Contains("Audio debug: PTT down", log);
-        Assert.Contains("Audio debug: PTT up", log);
+        Assert.Contains("Audio debug: PTT down", log, StringComparison.Ordinal);
+        Assert.Contains("Audio debug: PTT up", log, StringComparison.Ordinal);
         // one full second of PTT at 20 ms per frame
         Assert.Contains(Rates(log), value => value is >= 45 and <= 55);
         Assert.Empty(Directory.GetFiles(dir, "audio-debug.log", SearchOption.AllDirectories));
@@ -211,5 +212,5 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
 
     /// <summary>Only complete numbers count: the log may be read while a line is being written.</summary>
     static List<int> Rates(string log) =>
-        System.Text.RegularExpressions.Regex.Matches(log, @"frames sent: (\d+)/s").Select(match => int.Parse(match.Groups[1].Value)).ToList();
+        System.Text.RegularExpressions.Regex.Matches(log, @"frames sent: (\d+)/s").Select(match => int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture)).ToList();
 }

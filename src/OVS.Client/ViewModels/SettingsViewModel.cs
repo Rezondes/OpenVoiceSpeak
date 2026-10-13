@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -141,7 +142,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     public string AppVersion => $"OpenVoiceSpeak {BuildInfo.Current.Version}";
     /// <summary>The build's commit and date, or that it is a local build.</summary>
     public string BuildDetails => BuildInfo.Current is { IsCi: true } build
-        ? string.Format(Strings.About_Build, build.ShortCommit, build.BuildTime.ToLocalTime())
+        ? string.Format(CultureInfo.CurrentCulture, Strings.About_Build, build.ShortCommit, build.BuildTime.ToLocalTime())
         : Strings.About_LocalBuild;
 
     /// <summary>The colour themes to choose from.</summary>
@@ -283,8 +284,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
     string? KeyConflict =>
         KeyBindings.GroupBy(keyBinding => keyBinding.Binding.Chord).Where(grouping => grouping.Count() > 1).Select(grouping => grouping.Select(keyBinding => keyBinding.Binding.Action).Distinct().ToList())
             .Select(actions => actions.Count > 1
-                ? string.Format(Strings.Keys_Conflict, KeyActionLabels.Localize(actions[0]), KeyActionLabels.Localize(actions[1]))
-                : string.Format(Strings.Keys_Duplicate, KeyActionLabels.Localize(actions[0])))
+                ? string.Format(CultureInfo.CurrentCulture, Strings.Keys_Conflict, KeyActionLabels.Localize(actions[0]), KeyActionLabels.Localize(actions[1]))
+                : string.Format(CultureInfo.CurrentCulture, Strings.Keys_Duplicate, KeyActionLabels.Localize(actions[0])))
             .FirstOrDefault();
 
     /// <summary>Two bindings use the same chord.</summary>

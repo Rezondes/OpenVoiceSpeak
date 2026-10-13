@@ -24,7 +24,7 @@ public sealed class DialogShapeTests
         {
             if (type.IsPublic || !(type.IsAbstract && type.IsSealed)) problems.Add($"{type.Name}: not an internal static class");
             var methods = type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
-                .Where(methodInfo => !methodInfo.IsSpecialName && !methodInfo.Name.Contains('<')).ToList();
+                .Where(methodInfo => !methodInfo.IsSpecialName && !methodInfo.Name.Contains('<', StringComparison.Ordinal)).ToList();
             if (methods.Count != 1 || methods[0].Name != "ShowAsync") problems.Add($"{type.Name}: methods {string.Join(", ", methods.Select(methodInfo => methodInfo.Name))}");
             else
             {

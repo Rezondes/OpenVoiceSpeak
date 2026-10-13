@@ -90,7 +90,7 @@ public sealed partial class RepositoryIndex
 
     void RememberFolders(string path)
     {
-        for (var slash = path.IndexOf('/'); slash >= 0; slash = path.IndexOf('/', slash + 1))
+        for (var slash = path.IndexOf('/', StringComparison.Ordinal); slash >= 0; slash = path.IndexOf('/', slash + 1))
         {
             var folder = path[..slash];
             if (!firstFileUnderFolder.TryGetValue(folder, out var first) || string.CompareOrdinal(path, first) < 0)

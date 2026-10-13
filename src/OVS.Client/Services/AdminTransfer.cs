@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OVS.Client.Localization;
 using OVS.Shared.Protocol;
@@ -76,7 +77,7 @@ internal sealed partial class AdminTransfer(Func<Request, Action<Message>, Task>
     void ShowProgress(string format, long done, long total)
     {
         Percent = total <= 0 ? 100 : done * 100d / total;
-        ProgressText = string.Format(format, (int)Math.Round(Percent));
+        ProgressText = string.Format(CultureInfo.CurrentCulture, format, (int)Math.Round(Percent));
     }
 
     /// <summary>

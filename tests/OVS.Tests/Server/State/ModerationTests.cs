@@ -67,8 +67,8 @@ public sealed class ModerationTests : IAsyncLifetime
 
         var rejected = Assert.IsType<Rejected>(await ReconnectGuestAsync());
         Assert.Equal(ReasonCodes.Banned, rejected.Code);
-        Assert.Contains("Beleidigung", rejected.Detail);
-        Assert.Contains("bis", rejected.Detail);
+        Assert.Contains("Beleidigung", rejected.Detail, StringComparison.Ordinal);
+        Assert.Contains("bis", rejected.Detail, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public sealed class ModerationTests : IAsyncLifetime
         await guest.WaitForAsync<Disconnected>();
         var rejected = Assert.IsType<Rejected>(await ReconnectGuestAsync(ClientIdentity.Create()));
         Assert.Equal(ReasonCodes.Banned, rejected.Code);
-        Assert.Contains("dauerhaft", rejected.Detail);
+        Assert.Contains("dauerhaft", rejected.Detail, StringComparison.Ordinal);
     }
 
     /// <summary>Package 88: an IPv6 ban is stored with the exact address and matches the whole /64.</summary>
@@ -263,7 +263,7 @@ public sealed class ModerationTests : IAsyncLifetime
         await moderator.ErrorAsync("done");
         Assert.False((await UsersAsync(admin)).Single(knownUser => knownUser.Fingerprint == guestId.Fingerprint).ServerMuted);
         Assert.False(StoredUser(guestId.Fingerprint).ServerMuted);
-        Assert.Contains(server.Log, line => line.Contains("gast server-unmuted by mod (offline)"));
+        Assert.Contains(server.Log, line => line.Contains("gast server-unmuted by mod (offline)", StringComparison.Ordinal));
         await using var back = await TestClient.ConnectAsync(server, "gast", guestId);
         Assert.False(back.Welcome.Snapshot.Users.Single(user => user.SessionId == back.Id).ServerMuted);
 
@@ -337,7 +337,7 @@ public sealed class ModerationTests : IAsyncLifetime
 
         var rejected = Assert.IsType<Rejected>(await ReconnectGuestAsync());
         Assert.Equal(ReasonCodes.Banned, rejected.Code);
-        Assert.Contains(server.Log, line => line.Contains("gast was banned by mod permanently (offline): weg"));
+        Assert.Contains(server.Log, line => line.Contains("gast was banned by mod permanently (offline): weg", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -397,8 +397,8 @@ public sealed class ModerationTests : IAsyncLifetime
         await admin.SendAsync(new DeleteKnownUser(guestId.Fingerprint));
         Assert.DoesNotContain(await UsersAsync(admin), knownUser => knownUser.Fingerprint == guestId.Fingerprint);
         Assert.Empty(await BansAsync(admin));
-        Assert.DoesNotContain(guestId.Fingerprint, await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")));
-        Assert.Contains(server.Log, line => line.Contains("User data of gast deleted by admin"));
+        Assert.DoesNotContain(guestId.Fingerprint, await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")), StringComparison.Ordinal);
+        Assert.Contains(server.Log, line => line.Contains("User data of gast deleted by admin", StringComparison.Ordinal));
 
         time.Advance(TimeSpan.FromMinutes(5));
         guest = await TestClient.ConnectAsync(server, "gast", guestId);

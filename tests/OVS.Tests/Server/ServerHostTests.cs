@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using OVS.Server;
@@ -33,7 +34,7 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
         for (int attempt = 0; ; attempt++)
         {
             port = Random.Shared.Next(20_000, 45_000);
-            var env = new Dictionary<string, string> { ["OVS_DATA_DIR"] = dir, ["OVS_PORT"] = port.ToString() };
+            var env = new Dictionary<string, string> { ["OVS_DATA_DIR"] = dir, ["OVS_PORT"] = port.ToString(CultureInfo.InvariantCulture) };
             host = ServerHost.RunAsync(env.GetValueOrDefault, IPAddress.Loopback, TimeProvider.System, output.Enqueue, output.Enqueue, stop.Token);
             var anna = await ConnectWhenUpAsync(port, "anna", host);
             if (anna is not null)
@@ -47,7 +48,7 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
 
         await stop.CancelAsync();
         Assert.Equal(0, await host.WaitAsync(TimeSpan.FromSeconds(30)));
-        Assert.Contains(output, line => line.Contains($"Listening on 127.0.0.1:{port}"));
+        Assert.Contains(output, line => line.Contains($"Listening on 127.0.0.1:{port}", StringComparison.Ordinal));
         Assert.Contains(output, line => System.Text.RegularExpressions.Regex.IsMatch(line, "Certificate fingerprint: [0-9a-f]{64}$"));
     }
 
@@ -92,10 +93,10 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
             var env = new Dictionary<string, string>
             {
                 ["OVS_DATA_DIR"] = dir,
-                ["OVS_PORT"] = port.ToString(),
+                ["OVS_PORT"] = port.ToString(CultureInfo.InvariantCulture),
                 ["OVS_AUTO_RESTART"] = "an",
                 // Far enough ahead that anna is surely connected before it on a slow runner.
-                ["OVS_AUTO_RESTART_TIME"] = DateTime.Now.AddSeconds(10).ToString("HH:mm:ss"),
+                ["OVS_AUTO_RESTART_TIME"] = DateTime.Now.AddSeconds(10).ToString("HH:mm:ss", CultureInfo.InvariantCulture),
             };
             host = ServerHost.RunAsync(env.GetValueOrDefault, IPAddress.Loopback, TimeProvider.System, output.Enqueue, output.Enqueue, stop.Token);
             anna = await ConnectWhenUpAsync(port, "anna", host);
@@ -119,12 +120,12 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
 
         var files = Directory.GetFiles(Path.Combine(dir, "logs", "server")).Order().Select(File.ReadAllText).ToList();
         Assert.Equal(2, files.Count);
-        Assert.Contains("Automatic restart daily at", files[0]);
-        Assert.Contains("Server restarting, 1 users disconnected", files[0]);
-        Assert.Contains("Server stopped, restarting", files[0]);
-        Assert.Contains("OpenVoiceSpeak server starting (automatic restart)", files[1]);
-        Assert.Contains("bert connected", files[1]);
-        Assert.DoesNotContain("anna", files[1]);
-        Assert.Contains("Server stopped", files[1]);
+        Assert.Contains("Automatic restart daily at", files[0], StringComparison.Ordinal);
+        Assert.Contains("Server restarting, 1 users disconnected", files[0], StringComparison.Ordinal);
+        Assert.Contains("Server stopped, restarting", files[0], StringComparison.Ordinal);
+        Assert.Contains("OpenVoiceSpeak server starting (automatic restart)", files[1], StringComparison.Ordinal);
+        Assert.Contains("bert connected", files[1], StringComparison.Ordinal);
+        Assert.DoesNotContain("anna", files[1], StringComparison.Ordinal);
+        Assert.Contains("Server stopped", files[1], StringComparison.Ordinal);
     }
 }

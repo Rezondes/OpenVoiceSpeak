@@ -25,7 +25,7 @@ public sealed class AsyncWaitTests
         var error = await Assert.ThrowsAsync<FalseException>(() =>
             AsyncWait.AssertStaysFalseAsync(() => Volatile.Read(ref happened), TimeSpan.FromSeconds(10), "it must not happen"));
 
-        Assert.Contains("it must not happen", error.Message);
+        Assert.Contains("it must not happen", error.Message, StringComparison.Ordinal);
         Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), "it fails when the condition turns true, not at the end");
     }
 

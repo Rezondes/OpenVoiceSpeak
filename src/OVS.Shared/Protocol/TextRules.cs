@@ -29,7 +29,7 @@ public static class TextRules
     /// </summary>
     public static string? NormalizeText(string? text, int max)
     {
-        var value = text?.Replace("\r\n", "\n");
+        var value = text?.Replace("\r\n", "\n", StringComparison.Ordinal);
         return value is not null && value.Length <= max && Clean(value, rune => rune.Value != '\n' && (Rune.IsControl(rune) || IsBidiControl(rune)
             || Rune.GetUnicodeCategory(rune) is UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator)) ? value : null;
     }

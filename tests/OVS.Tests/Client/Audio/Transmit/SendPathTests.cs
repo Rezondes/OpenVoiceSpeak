@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -938,7 +939,7 @@ public class SendPathTests
         rig.Hardware.RaiseFailed(AudioDirection.Input); // the third failure in a row: given up
         rig.Time.Advance(DeviceLifecycle.SettleTime);
         Assert.Equal(new DeviceCounts(3, 1, 2, 1), rig.Hardware.Counts);
-        Assert.Equal([string.Format(Strings.Audio_MicFailed, "device invalidated")], rig.Notices);
+        Assert.Equal([string.Format(CultureInfo.InvariantCulture, Strings.Audio_MicFailed, "device invalidated")], rig.Notices);
     }
 
     /// <summary>
@@ -973,7 +974,7 @@ public class SendPathTests
         await AsyncWait.UntilAsync(() => rig.Notices.Count == 2);
 
         Assert.Equal(new DeviceCounts(0, 0, 0, 0), rig.Hardware.Counts);
-        Assert.Equivalent(new[] { string.Format(Strings.Audio_MicFailed, "no microphone"), string.Format(Strings.Audio_SpeakerFailed, "no speaker") },
+        Assert.Equivalent(new[] { string.Format(CultureInfo.InvariantCulture, Strings.Audio_MicFailed, "no microphone"), string.Format(CultureInfo.InvariantCulture, Strings.Audio_SpeakerFailed, "no speaker") },
             rig.Notices, strict: true);
         Assert.Null(rig.Engine.DeviceLifecycle.CaptureSource.Capture);
     }

@@ -66,7 +66,7 @@ public sealed class WebsiteShotsTests() : TempDirectoryTest("ovs-shots-test-", q
         var german = LocalizationTests.GermanOnly();
         var left = seen.Where(german.Contains).Distinct().ToList();
         Assert.True(left.Count == 0, "Noch deutsch: " + string.Join(" | ", left));
-        Assert.DoesNotContain(seen, text => text.Contains("Strategie") || text.Contains("Donnerstag"));
+        Assert.DoesNotContain(seen, text => text.Contains("Strategie", StringComparison.Ordinal) || text.Contains("Donnerstag", StringComparison.Ordinal));
     }
 
     /// <summary>Package 117: the images show a made-up server only: no profile or debug title, example addresses, invented people.</summary>
@@ -75,12 +75,12 @@ public sealed class WebsiteShotsTests() : TempDirectoryTest("ovs-shots-test-", q
     {
         using var scene = new WebsiteScene("de", "light");
         var showcase = scene.Connect();
-        Assert.DoesNotContain("[", scene.Window.Title);
-        Assert.DoesNotContain("Debug", scene.Window.Title);
+        Assert.DoesNotContain("[", scene.Window.Title, StringComparison.Ordinal);
+        Assert.DoesNotContain("Debug", scene.Window.Title, StringComparison.Ordinal);
         Assert.All(showcase.Server.Mirror.Users.Values, user => Assert.Matches("^fp[0-9]{2}$", user.Fingerprint));
         showcase.AnswerAdministration();
         var bans = (OVS.Shared.Protocol.Messages.Moderation.BanList)showcase.Reply!(new OVS.Shared.Protocol.Messages.Moderation.ListBans { RequestId = "b" })!;
         // documentation addresses only (RFC 5737)
-        Assert.All(bans.Bans.Select(ban => ban.Ip).Concat(bans.Bans.Select(ban => ban.LastAttemptIp)).OfType<string>(), ip => Assert.StartsWith("203.0.113.", ip));
+        Assert.All(bans.Bans.Select(ban => ban.Ip).Concat(bans.Bans.Select(ban => ban.LastAttemptIp)).OfType<string>(), ip => Assert.StartsWith("203.0.113.", ip, StringComparison.Ordinal));
     }
 }

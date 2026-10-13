@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.Sockets;
@@ -41,7 +42,7 @@ public sealed class DebugApiTests : IAsyncLifetime
             .Cast<JsonElement?>().FirstOrDefault(jsonElement => jsonElement!.Value.GetProperty("sessionId").GetUInt32() == id);
 
     static long FramesFrom(JsonElement state, uint speaker) =>
-        state.GetProperty("audio").GetProperty("framesReceived").TryGetProperty(speaker.ToString(), out var element) ? element.GetInt64() : 0;
+        state.GetProperty("audio").GetProperty("framesReceived").TryGetProperty(speaker.ToString(CultureInfo.InvariantCulture), out var element) ? element.GetInt64() : 0;
 
     static uint SelfId(JsonElement state) => state.GetProperty("server").GetProperty("selfId").GetUInt32();
 
@@ -88,7 +89,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         var response = await anna.Http.PostAsJsonAsync("gibtsnicht", new { });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("Unknown endpoint POST /gibtsnicht", await response.Content.ReadAsStringAsync());
+        Assert.Contains("Unknown endpoint POST /gibtsnicht", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -97,7 +98,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         var response = await anna.Http.PostAsJsonAsync("gibtsnicht", new { });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("Not connected", await response.Content.ReadAsStringAsync());
+        Assert.Contains("Not connected", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -106,7 +107,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         var response = await anna.Http.GetAsync("join");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("Unknown endpoint GET /join", await response.Content.ReadAsStringAsync());
+        Assert.Contains("Unknown endpoint GET /join", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -115,7 +116,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         var response = await anna.Http.PostAsJsonAsync("mute", new { value = true });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("Not connected", await response.Content.ReadAsStringAsync());
+        Assert.Contains("Not connected", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -143,7 +144,7 @@ public sealed class DebugApiTests : IAsyncLifetime
 
         var state = await anna.UntilAsync(reported => reported.GetProperty("pingText").GetString()!.Length > 0);
 
-        Assert.StartsWith("Ping ", state.GetProperty("pingText").GetString());
+        Assert.StartsWith("Ping ", state.GetProperty("pingText").GetString(), StringComparison.Ordinal);
     }
 
     /// <summary>Package 110: a name two channels carry is refused, naming both ids; the id still works.</summary>
@@ -161,7 +162,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         var text = await response.Content.ReadAsStringAsync();
         var ids = Channels(state).Where(element => string.Equals(element.GetProperty("name").GetString(), "raid", StringComparison.OrdinalIgnoreCase))
             .Select(element => element.GetProperty("id").GetString()!).ToList();
-        Assert.All(ids, id => Assert.Contains(id, text));
+        Assert.All(ids, id => Assert.Contains(id, text, StringComparison.Ordinal));
         await anna.PostAsync("join", new { channel = ids[0] });
         Assert.All(Channels(state), element => Assert.False(element.GetProperty("isSeparator").GetBoolean()));
 
@@ -208,7 +209,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         // ... but link PTT reaches Raid, marked as link transmission
         await anna.PostAsync("linkptt", new { down = true });
         var bertView = await bert.UntilAsync(otherElement => FramesFrom(otherElement, annaId) > 10 && User(otherElement, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
-        Assert.Contains("Links", (await anna.StateAsync()).GetProperty("transmitText").GetString());
+        Assert.Contains("Links", (await anna.StateAsync()).GetProperty("transmitText").GetString(), StringComparison.Ordinal);
         // The indicator must stay on while anna keeps talking (it used to go dark for good after 300 ms).
         // Polled, because a starved test machine may drop it for a moment; gone for good still fails. The 700 ms are the
         // point of the check (real time: the indicator used to die after 300 ms), not a wait for something to happen.
@@ -221,7 +222,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         await bert.PostAsync("tone", new { hz = 330 });
         await bert.PostAsync("linkptt", new { down = true });
         var bertState = await bert.UntilAsync(otherElement => otherElement.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
-        Assert.Contains("Kein Recht", bertState.GetProperty("voiceHint").GetString());
+        Assert.Contains("Kein Recht", bertState.GetProperty("voiceHint").GetString(), StringComparison.Ordinal);
         await AsyncWait.AssertStaysFalseAsync(async () => FramesFrom(await anna.StateAsync(), bertId) > 0, TimeSpan.FromMilliseconds(300), "without the right nothing goes over the link");
         Assert.Equal(0, FramesFrom(await anna.StateAsync(), bertId));
         await bert.PostAsync("linkptt", new { down = false });
@@ -314,7 +315,7 @@ public sealed class DebugApiTests : IAsyncLifetime
             .Any(otherElement => otherElement.GetProperty("isSelf").GetBoolean() && otherElement.GetProperty("serverMuted").GetBoolean()));
         await anna.PostAsync("kick", new { user = "bert", reason = "Test" });
         var kicked = await bert.UntilAsync(element => !element.GetProperty("connected").GetBoolean());
-        Assert.Contains("gekickt", kicked.GetProperty("status").GetString());
+        Assert.Contains("gekickt", kicked.GetProperty("status").GetString(), StringComparison.Ordinal);
     }
     [Fact]
     public async Task Chat_ThroughApi_RoundTrips()

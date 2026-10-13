@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
@@ -275,7 +276,7 @@ public class AdminViewModelTests
         new(Guid.NewGuid(), fp ?? "fp" + nick, nick, ip, reason, by, expires, created, created is null ? null : "fpMod", minutes,
             liftedAt, liftedBy, attempts, lastAttempt, lastIp);
 
-    static string Local(DateTimeOffset time) => time.ToLocalTime().ToString("g");
+    static string Local(DateTimeOffset time) => time.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
 
     static void ShowAllBans(AdminViewModel admin) => admin.UsersAndBans.SelectedBanStatusFilter = admin.UsersAndBans.BanStatusFilters.Single(choice => choice.Value == BanStatusFilter.All);
 
@@ -444,8 +445,8 @@ public class AdminViewModelTests
         var knownUser = admin.UsersAndBans.Users.Single(knownUserViewModel => knownUserViewModel.Nickname == "Xaver");
         Assert.True(knownUser.IsOnline);
         Assert.Equal(["Gast", "Moderator"], knownUser.Toggles.Where(groupAssignment => groupAssignment.IsChecked).Select(groupAssignment => groupAssignment.Name));
-        Assert.Equal(T0.AddDays(-30).ToLocalTime().ToString("g"), knownUser.FirstSeenText);
-        Assert.Equal(T0.ToLocalTime().ToString("g"), knownUser.LastLoginText);
+        Assert.Equal(T0.AddDays(-30).ToLocalTime().ToString("g", CultureInfo.CurrentCulture), knownUser.FirstSeenText);
+        Assert.Equal(T0.ToLocalTime().ToString("g", CultureInfo.CurrentCulture), knownUser.LastLoginText);
         Assert.Equal("3", knownUser.LoginCountText);
         Assert.Equal("1 h 30 min", knownUser.OnlineTimeText);
         Assert.Equal("1 min 15 s", knownUser.SpeechTimeText);
@@ -455,8 +456,8 @@ public class AdminViewModelTests
         Assert.Equal("fpX0123456789abc", knownUser.ShortFingerprint);
         Assert.Equal("fpX0123456789abcdef", knownUser.Fingerprint);
         Assert.True(knownUser.IsBanned);
-        Assert.Contains("Spam", knownUser.BanText);
-        Assert.Contains(T0.AddDays(2).ToLocalTime().ToString("dd.MM.yyyy HH:mm"), knownUser.BanText);
+        Assert.Contains("Spam", knownUser.BanText, StringComparison.Ordinal);
+        Assert.Contains(T0.AddDays(2).ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.CurrentCulture), knownUser.BanText, StringComparison.Ordinal);
 
         var otto = admin.UsersAndBans.Users.Single(knownUserViewModel => knownUserViewModel.Nickname == "Otto");
         Assert.False(otto.IsOnline);

@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Localization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -163,7 +164,7 @@ public sealed class ClientSettings : IJsonOnDeserializing
         catch (JsonException)
         {
             File.Copy(path, path + ".bak", overwrite: true);
-            warning = string.Format(Strings.Settings_Damaged, path);
+            warning = string.Format(CultureInfo.CurrentCulture, Strings.Settings_Damaged, path);
             return new ClientSettings();
         }
     }

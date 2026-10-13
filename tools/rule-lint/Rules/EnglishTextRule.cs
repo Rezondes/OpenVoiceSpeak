@@ -17,7 +17,7 @@ public sealed class EnglishTextRule : IRule
         {
             if (!creation.Ancestors().Any(ancestor => ancestor is ThrowStatementSyntax or ThrowExpressionSyntax)) continue;
             var text = string.Concat(creation.ArgumentList?.Arguments.SelectMany(argument => argument.DescendantTokens()).Select(token => token.ValueText) ?? []);
-            if (!text.Any(letter => "äöüÄÖÜß".Contains(letter))) continue;
+            if (!text.Any(letter => "äöüÄÖÜß".Contains(letter, StringComparison.Ordinal))) continue;
             yield return Finding.CreateAt(file, creation, "RL161", Severity.Warning,
                 "This exception message looks German; exception messages and log lines are English (rule 16).", MemberNames.ReadEnclosing(creation));
         }

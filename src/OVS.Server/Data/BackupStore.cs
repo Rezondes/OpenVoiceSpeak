@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Server.Data.Records;
 using OVS.Server.Exceptions;
 using OVS.Shared;
@@ -62,7 +63,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     BackupFile NewName(string prefix, DateTimeOffset now)
     {
         Directory.CreateDirectory(Folder);
-        var stamp = prefix + TimeZoneInfo.ConvertTime(now, time.LocalTimeZone).ToString(LogFileWriter.NameFormat);
+        var stamp = prefix + TimeZoneInfo.ConvertTime(now, time.LocalTimeZone).ToString(LogFileWriter.NameFormat, CultureInfo.InvariantCulture);
         var name = stamp + Extension;
         for (int index = 2; File.Exists(Path.Combine(Folder, name)); index++) name = $"{stamp}_{index}{Extension}";
         return new BackupFile(name, Path.Combine(Folder, name));

@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Server;
 using OVS.Server.Data;
 using OVS.Server.Data.Records;
@@ -321,7 +322,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
             var parts = hash.Text.Split('$');
             Assert.Equal(4, parts.Length);
             Assert.Equal("pbkdf2", parts[0]);
-            Assert.True(int.Parse(parts[1]) >= 100_000);
+            Assert.True(int.Parse(parts[1], CultureInfo.InvariantCulture) >= 100_000);
             Assert.Equal(16, Convert.FromBase64String(parts[2]).Length);
             Assert.Equal(32, Convert.FromBase64String(parts[3]).Length);
             var settings = new ServerSettings { StoredPassword = hash };

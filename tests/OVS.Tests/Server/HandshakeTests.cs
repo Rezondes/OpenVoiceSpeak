@@ -190,7 +190,7 @@ public class HandshakeTests
     public async Task Startup_NoAdmin_LogsAdminToken()
     {
         await using var server = await TestServer.StartAsync();
-        Assert.Contains(server.Log, line => line.Contains("Admin token: " + server.State.PendingAdminToken));
+        Assert.Contains(server.Log, line => line.Contains("Admin token: " + server.State.PendingAdminToken, StringComparison.Ordinal));
     }
 
     /// <summary>Package 88: one IPv6 host owns a whole /64, so its addresses share the 5 connections of one IP.</summary>
@@ -224,7 +224,7 @@ public class HandshakeTests
         await using (var right = await TestClient.OpenAsync(server.Port))
             Assert.IsType<Welcome>(await right.HandshakeAsync("anna", "alt"));
         var upgraded = OnDisk(server).Settings; // saved at once, not only with the next debounced save
-        Assert.StartsWith("pbkdf2$", upgraded.StoredPassword?.Text);
+        Assert.StartsWith("pbkdf2$", upgraded.StoredPassword?.Text, StringComparison.Ordinal);
         Assert.True(upgraded.CheckPassword("alt"));
 
         await using var again = await TestClient.OpenAsync(server.Port);

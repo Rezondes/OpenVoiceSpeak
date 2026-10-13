@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace OVS.Tests;
@@ -42,16 +43,16 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
         for (var index = 0; index < lines.Length; index++)
         {
             var line = lines[index].TrimEnd('\r');
-            if (line.StartsWith("## "))
+            if (line.StartsWith("## ", StringComparison.Ordinal))
             {
                 var heading = PackageHeading.Match(line);
-                package = heading.Success ? int.Parse(heading.Groups[1].Value) : null;
+                package = heading.Success ? int.Parse(heading.Groups[1].Value, CultureInfo.InvariantCulture) : null;
                 inTests = false;
                 continue;
             }
-            if (line.StartsWith("### "))
+            if (line.StartsWith("### ", StringComparison.Ordinal))
             {
-                inTests = package is not null && line.StartsWith("### Tests");
+                inTests = package is not null && line.StartsWith("### Tests", StringComparison.Ordinal);
                 context = null;
                 continue;
             }
@@ -60,10 +61,10 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
             foreach (Match span in Span.Matches(line))
             {
                 var text = span.Groups[1].Value;
-                if (line[..span.Index].EndsWith("ersetzt ") || line[..span.Index].EndsWith("replaces ")) continue;
+                if (line[..span.Index].EndsWith("ersetzt ", StringComparison.Ordinal) || line[..span.Index].EndsWith("replaces ", StringComparison.Ordinal)) continue;
                 if (Read(text, ref lineContext) is not { } target)
                 {
-                    if (LooksLikeTest.IsMatch(text) && !text.StartsWith("dotnet ")) ignored.Add((index + 1, text));
+                    if (LooksLikeTest.IsMatch(text) && !text.StartsWith("dotnet ", StringComparison.Ordinal)) ignored.Add((index + 1, text));
                     continue;
                 }
                 references.Add(new(package!.Value, index + 1, target.Class, target.Method, target.File, target.Text,
@@ -93,7 +94,7 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
         var result = new List<int>();
         foreach (Match part in CriteriaPart.Matches(list.Value))
         {
-            var number = int.Parse(part.Groups[2].Value);
+            var number = int.Parse(part.Groups[2].Value, CultureInfo.InvariantCulture);
             if (part.Groups[1].Value is "bis" or "to" && result.Count > 0)
                 for (var count = result[^1] + 1; count < number; count++) result.Add(count);
             result.Add(number);

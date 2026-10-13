@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
@@ -955,9 +956,9 @@ public class ServerViewModelTests
         fixture.Vm.Apply(new ChannelUpdated(new ChannelInfo(Bravo, "Bravo", "Nur Raid", 1)));
         Assert.Equal("Nur Raid", fixture.Channel(Bravo).Tooltip);
         fixture.Vm.Apply(new ChannelsLinked(Lobby, Alpha));
-        Assert.Equal(string.Format(OVS.Client.Localization.Strings.Tooltip_LinkedWith, "Lobby"), fixture.Channel(Alpha).Tooltip);
+        Assert.Equal(string.Format(CultureInfo.InvariantCulture, OVS.Client.Localization.Strings.Tooltip_LinkedWith, "Lobby"), fixture.Channel(Alpha).Tooltip);
         fixture.Vm.Apply(new ChannelsLinked(Bravo, Alpha));
-        Assert.Equal("Nur Raid" + (char)10 + string.Format(OVS.Client.Localization.Strings.Tooltip_LinkedWith, "alpha"), fixture.Channel(Bravo).Tooltip);
+        Assert.Equal("Nur Raid" + (char)10 + string.Format(CultureInfo.InvariantCulture, OVS.Client.Localization.Strings.Tooltip_LinkedWith, "alpha"), fixture.Channel(Bravo).Tooltip);
     }
 
     // ---- Package 119 (A128): groups from the user's context menu ----

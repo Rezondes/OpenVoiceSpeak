@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Dialogs;
 using OVS.Client.Net;
@@ -170,7 +171,7 @@ public sealed class ShowcaseServer
 
     IReadOnlyList<string> LogLines(string file)
     {
-        string At(int minute) => Evening.AddMinutes(minute - 30).ToString("yyyy-MM-dd HH:mm:ss");
+        string At(int minute) => Evening.AddMinutes(minute - 30).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
         return file == RaidLog
             ?
             [

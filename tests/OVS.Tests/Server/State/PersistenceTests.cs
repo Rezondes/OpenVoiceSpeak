@@ -45,6 +45,6 @@ public sealed class PersistenceTests
         var backups = new BackupStore(harness.DataDir, harness.Time);
         using var archive = ZipFile.OpenRead(backups.Find(Assert.Single(backups.List()).FileName)!);
         using var data = new StreamReader(archive.GetEntry(DataStore.FileName)!.Open());
-        Assert.Contains(newcomer.Fingerprint, data.ReadToEnd());
+        Assert.Contains(newcomer.Fingerprint, data.ReadToEnd(), StringComparison.Ordinal);
     }
 }

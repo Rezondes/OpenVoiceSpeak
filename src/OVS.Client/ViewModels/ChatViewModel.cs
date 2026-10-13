@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -73,12 +74,12 @@ public sealed partial class ChatViewModel : ObservableObject
     {
         ChatTabKind.General => Strings.Chat_NoRightServer,
         ChatTabKind.Channel => Strings.Chat_NoRightChannel,
-        _ when !Selected.IsOnline => string.Format(Strings.Chat_NotOnline, Selected.Title),
+        _ when !Selected.IsOnline => string.Format(CultureInfo.CurrentCulture, Strings.Chat_NotOnline, Selected.Title),
         _ => Strings.Chat_NoRightPrivate,
     };
 
     /// <summary>The input's placeholder.</summary>
-    public string Placeholder => CanWrite ? string.Format(Strings.Chat_MessageTo, Selected.Title) : "";
+    public string Placeholder => CanWrite ? string.Format(CultureInfo.CurrentCulture, Strings.Chat_MessageTo, Selected.Title) : "";
     /// <summary>The draft is long enough to show the counter.</summary>
     public bool ShowCounter => Draft.Length >= CounterFrom;
     /// <summary>The draft is over the longest message.</summary>
@@ -153,7 +154,7 @@ public sealed partial class ChatViewModel : ObservableObject
         bool online = user is not null;
         if (online == tab.IsOnline) return;
         tab.IsOnline = online;
-        tab.Add(new ChatEntry(LocalNow(), online ? string.Format(Strings.Chat_BackOnline, tab.Title) : string.Format(Strings.Chat_Offline, tab.Title)), countUnread: false);
+        tab.Add(new ChatEntry(LocalNow(), online ? string.Format(CultureInfo.CurrentCulture, Strings.Chat_BackOnline, tab.Title) : string.Format(CultureInfo.CurrentCulture, Strings.Chat_Offline, tab.Title)), countUnread: false);
     }
 
     /// <summary>
@@ -171,7 +172,7 @@ public sealed partial class ChatViewModel : ObservableObject
             channelId = channel?.Id;
             ChannelTab.Entries.Clear();
             ChannelTab.Unread = 0;
-            if (channel is not null) Add(ChannelTab, new ChatEntry(LocalNow(), string.Format(Strings.Chat_Entered, channel.Name)), countUnread: false);
+            if (channel is not null) Add(ChannelTab, new ChatEntry(LocalNow(), string.Format(CultureInfo.CurrentCulture, Strings.Chat_Entered, channel.Name)), countUnread: false);
         }
         ChannelTab.Title = channel?.Name ?? "";
         OnPropertyChanged(nameof(CanWrite));

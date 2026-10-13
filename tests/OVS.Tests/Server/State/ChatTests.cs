@@ -153,17 +153,17 @@ public sealed class ChatTests
         while (seen.Count < 3)
             seen.Add((await weit.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text is "Ankündigung" or "im Raid" or "geheimer Inhalt")).Text);
 
-        Assert.Contains(server.Log, line => line.Contains("Chat from chef: Ankündigung"));
-        Assert.Contains(server.Log, line => line.Contains("gast writes privately to weit"));
-        Assert.DoesNotContain(server.Log, line => line.Contains("geheimer Inhalt"));
+        Assert.Contains(server.Log, line => line.Contains("Chat from chef: Ankündigung", StringComparison.Ordinal));
+        Assert.Contains(server.Log, line => line.Contains("gast writes privately to weit", StringComparison.Ordinal));
+        Assert.DoesNotContain(server.Log, line => line.Contains("geheimer Inhalt", StringComparison.Ordinal));
         var files = Directory.GetFiles(Path.Combine(server.DataDir, "logs"), "*.log", SearchOption.AllDirectories)
             .Select(path =>
             {
                 using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
                 return (Path: path, Text: new StreamReader(stream).ReadToEnd());
             }).ToList();
-        Assert.Contains(files, value => value.Path.Contains(raid.ToString()) && value.Text.Contains("[Raid] weit: im Raid"));
-        Assert.DoesNotContain(files, value => value.Text.Contains("geheimer Inhalt"));
+        Assert.Contains(files, value => value.Path.Contains(raid.ToString(), StringComparison.Ordinal) && value.Text.Contains("[Raid] weit: im Raid", StringComparison.Ordinal));
+        Assert.DoesNotContain(files, value => value.Text.Contains("geheimer Inhalt", StringComparison.Ordinal));
     }
 
     sealed record ChatServerRig(TestServer Server, TestClient Chef, TestClient Gast, TestClient Weit, Guid Raid);

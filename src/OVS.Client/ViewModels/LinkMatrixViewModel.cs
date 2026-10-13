@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Net;
 using OVS.Client.Collections;
 using OVS.Client.Localization;
@@ -47,7 +48,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
     {
         0 => Strings.Links_NoPending,
         1 => Strings.Links_OnePending,
-        var count => string.Format(Strings.Links_Pending, count),
+        var count => string.Format(CultureInfo.CurrentCulture, Strings.Links_Pending, count),
     };
 
     bool OnServer(ChannelPair key) => server.Mirror.Links.Contains(key);
@@ -78,7 +79,7 @@ public sealed partial class LinkMatrixViewModel : ObservableObject
 
         var selected = Rows.Live().Where(linkRow => linkRow.IsSelected).Select(linkRow => linkRow.Id).ToHashSet();
         var rows = channels.Select((row, index) => new LinkRowViewModel(index + 1, row.Id, row.Name, selected.Contains(row.Id),
-            channels.Select(col => new LinkCellViewModel(this, row.Id, col.Id, string.Format(Strings.Links_Pair, row.Name, col.Name))).ToList())).ToList();
+            channels.Select(col => new LinkCellViewModel(this, row.Id, col.Id, string.Format(CultureInfo.CurrentCulture, Strings.Links_Pair, row.Name, col.Name))).ToList())).ToList();
         CollectionSync.Sync(Rows, rows); // rows and columns go together: a folding row would leave its column standing
         PendingCount = desired.Count;
     }

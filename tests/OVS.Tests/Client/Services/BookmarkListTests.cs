@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
@@ -281,7 +282,7 @@ public sealed class BookmarkListTests
         await HangGuard.BoundAsync(list.EditAsync(original));
 
         Assert.Null(bookmarks[0].ProtectedPassword);
-        Assert.EndsWith("password not stored", Assert.Single(lines));
+        Assert.EndsWith("password not stored", Assert.Single(lines), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -429,7 +430,7 @@ public sealed class BookmarkListTests
 
         await HangGuard.BoundAsync(list.EditAsync(bookmarks[1]));
 
-        Assert.Equal(string.Format(Strings.Confirm_ReplaceBookmark, "Club", "a:1"), asked);
+        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Confirm_ReplaceBookmark, "Club", "a:1"), asked);
     }
 
     [Fact]
@@ -560,7 +561,7 @@ public sealed class BookmarkListTests
 
         await HangGuard.BoundAsync(list.DeleteAsync(gilde));
 
-        Assert.Contains("Gilde", asked);
+        Assert.Contains("Gilde", asked, StringComparison.Ordinal);
         Assert.Equal(["Club"], bookmarks.Select(bookmark => bookmark.Name));
         Assert.Equal(["Club"], list.Items.Select(tile => tile.Name));
         Assert.Equal(1, saves);

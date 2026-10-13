@@ -81,7 +81,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         }));
         Assert.Equal(TofuResult.Mismatch, seen!.Result);
         Assert.Equal(0, server.State.SessionCount);
-        Assert.DoesNotContain(server.Log, line => line.Contains("verbunden"));
+        Assert.DoesNotContain(server.Log, line => line.Contains("verbunden", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     public void ReadVoiceKey_ThirtyTwoBytes_ReturnsThemWhole()
     {
         var text = Base64Of(VoiceCrypto.KeySize);
-        Assert.EndsWith("=", text); // padded: the decode buffer is larger than the key
+        Assert.EndsWith("=", text, StringComparison.Ordinal); // padded: the decode buffer is larger than the key
 
         Assert.Equal(Convert.FromBase64String(text), ClientConnection.ReadVoiceKey(HandshakeStub.WelcomeWith(text)));
     }

@@ -45,8 +45,8 @@ public class ConnectionStatsViewModelTests
         Assert.Equal(0, stats.Bars);
         stats.Unreachable = false;
         Sample(stats, 600, new LossReport(250, 25));
-        Assert.Contains("10", stats.UplinkText);
-        Assert.Contains("25/250", stats.UplinkText);
+        Assert.Contains("10", stats.UplinkText, StringComparison.Ordinal);
+        Assert.Contains("25/250", stats.UplinkText, StringComparison.Ordinal);
 
         stats.Reset();
         Assert.Equal((SignalRating.Unknown, 0, (double?)null), (stats.Rating, stats.Bars, stats.BaselineMs));
@@ -61,9 +61,9 @@ public class ConnectionStatsViewModelTests
         stats.Reset();
         stats.Update(null, default, default, new ReceiveStats(150, 12, 5, 9, 3.25, 40), 32);
         Assert.Equal("-", stats.RoundTripText);
-        Assert.Contains("2", stats.ConcealedText);
-        Assert.Contains("1", stats.ConcealedText);
-        Assert.DoesNotContain("9", stats.ConcealedText);
+        Assert.Contains("2", stats.ConcealedText, StringComparison.Ordinal);
+        Assert.Contains("1", stats.ConcealedText, StringComparison.Ordinal);
+        Assert.DoesNotContain("9", stats.ConcealedText, StringComparison.Ordinal);
         Assert.Equal("40 ms", stats.DelayText);
         Assert.Equal("32 kbps", stats.BitrateText);
     }
@@ -102,9 +102,9 @@ public class ConnectionStatsViewModelTests
 
         stats.Refresh();
 
-        Assert.Contains("40 ms", stats.RoundTripText);
-        Assert.Contains("25/250", stats.UplinkText);
-        Assert.Contains("5/100", stats.DownlinkText);
+        Assert.Contains("40 ms", stats.RoundTripText, StringComparison.Ordinal);
+        Assert.Contains("25/250", stats.UplinkText, StringComparison.Ordinal);
+        Assert.Contains("5/100", stats.DownlinkText, StringComparison.Ordinal);
         Assert.Equal("3.5 ms", stats.JitterText);
         Assert.Equal("60 ms", stats.DelayText);
         Assert.Equal("64 kbps", stats.BitrateText);
@@ -240,7 +240,7 @@ public class ConnectionStatsViewModelTests
         mixerCounts = new ReceiveStats(0, 0, 0, Concealed: 9, JitterMs: 0, DelayMs: 0);
         stats.Refresh();
 
-        Assert.Contains("2", stats.ConcealedText);
-        Assert.DoesNotContain("9", stats.ConcealedText);
+        Assert.Contains("2", stats.ConcealedText, StringComparison.Ordinal);
+        Assert.DoesNotContain("9", stats.ConcealedText, StringComparison.Ordinal);
     }
 }

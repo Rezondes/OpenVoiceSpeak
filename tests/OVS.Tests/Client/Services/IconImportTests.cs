@@ -19,15 +19,15 @@ public sealed class IconImportTests() : TempDirectoryTest("ovs-icon-", quiet: fa
         var bytes = new byte[IconImport.MaxFileBytes + 1];
         TestImages.Encode(64, 64).CopyTo(bytes, 0);
         File.WriteAllBytes(big, bytes);
-        Assert.Contains("3 MB", IconImport.Prepare(big).Error);
+        Assert.Contains("3 MB", IconImport.Prepare(big).Error, StringComparison.Ordinal);
 
         var gif = Path.Combine(dir, "bild.gif");
         File.WriteAllBytes(gif, "GIF89a..."u8.ToArray());
-        Assert.Contains("PNG- und JPG", IconImport.Prepare(gif).Error);
+        Assert.Contains("PNG- und JPG", IconImport.Prepare(gif).Error, StringComparison.Ordinal);
 
-        Assert.Contains("quadratisch", IconImport.Prepare(TestImages.Write(dir, "breit.png", 300, 200)).Error);
-        Assert.Contains("mindestens 64", IconImport.Prepare(TestImages.Write(dir, "klein.png", 32, 32)).Error);
-        Assert.Contains("gibt es nicht", IconImport.Prepare(Path.Combine(dir, "fehlt.png")).Error);
+        Assert.Contains("quadratisch", IconImport.Prepare(TestImages.Write(dir, "breit.png", 300, 200)).Error, StringComparison.Ordinal);
+        Assert.Contains("mindestens 64", IconImport.Prepare(TestImages.Write(dir, "klein.png", 32, 32)).Error, StringComparison.Ordinal);
+        Assert.Contains("gibt es nicht", IconImport.Prepare(Path.Combine(dir, "fehlt.png")).Error, StringComparison.Ordinal);
     }
 
     [AvaloniaFact]

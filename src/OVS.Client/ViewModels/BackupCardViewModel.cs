@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Localization;
@@ -103,7 +104,7 @@ internal sealed partial class BackupCardViewModel : ObservableObject
 
     async Task DeleteBackupAsync(BackupViewModel backup)
     {
-        if (dialogs.Confirm is not { } confirm || !await confirm(string.Format(Strings.Backup_ConfirmDelete, backup.Title))) return;
+        if (dialogs.Confirm is not { } confirm || !await confirm(string.Format(CultureInfo.CurrentCulture, Strings.Backup_ConfirmDelete, backup.Title))) return;
         await SendRoutedAsync(new DeleteBackup(backup.Info.FileName)); // answered with the new list
     }
 

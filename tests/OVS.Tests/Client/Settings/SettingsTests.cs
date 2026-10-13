@@ -42,7 +42,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var clientSettings = new ClientSettings();
         clientSettings.Bookmarks.Add(new Bookmark("Gilde", "voice.example.org", 7000, "ich", PasswordProtector.Protect("streng-geheim")));
         clientSettings.Save(dir);
-        Assert.DoesNotContain("streng-geheim", File.ReadAllText(Path.Combine(dir, ClientSettings.FileName)));
+        Assert.DoesNotContain("streng-geheim", File.ReadAllText(Path.Combine(dir, ClientSettings.FileName)), StringComparison.Ordinal);
 
         var loaded = ClientSettings.Load(dir, out _).Bookmarks.Single();
         Assert.Equal("streng-geheim", loaded.SavedPassword());
@@ -133,7 +133,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         clientSettings.UserVolumes["fpC"] = 7f; // e.g. edited by hand
         clientSettings.Clamp().Save(dir);
         var json = File.ReadAllText(Path.Combine(dir, ClientSettings.FileName));
-        Assert.DoesNotContain("fpB", json);
+        Assert.DoesNotContain("fpB", json, StringComparison.Ordinal);
 
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal(1.5f, loaded.VolumeFor("fpA"));
@@ -290,7 +290,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
         clientSettings.Save(dir);
         var json = File.ReadAllText(Path.Combine(dir, ClientSettings.FileName));
-        Assert.DoesNotContain("pttKey", json); // the old fields are read once, never written again
+        Assert.DoesNotContain("pttKey", json, StringComparison.Ordinal); // the old fields are read once, never written again
         Assert.Equal(2, ClientSettings.Load(dir, out _).KeyBindings.Count);
     }
 
@@ -341,7 +341,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         await settings.AddKeyBindingCommand.ExecuteAsync(null);
         await settings.AddKeyBindingCommand.ExecuteAsync(null);
         Assert.False(settings.CanSave);
-        Assert.Contains("liegen auf derselben Taste", settings.Error);
+        Assert.Contains("liegen auf derselben Taste", settings.Error, StringComparison.Ordinal);
         bool? closed = null;
         settings.CloseRequested += ok => closed = ok;
         settings.SaveAndCloseCommand.Execute(null);
@@ -350,7 +350,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         settings.KeyBindings[1].RemoveCommand.Execute(null);
         Assert.True(settings.CanSave);
         await settings.AddKeyBindingCommand.ExecuteAsync(null); // the very same line twice
-        Assert.Contains("doppelt", settings.Error);
+        Assert.Contains("doppelt", settings.Error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -493,7 +493,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         File.WriteAllText(path, """{ "theme": "dark", "autoGain": false }""");
         var old = ClientSettings.Load(dir, out _);
         Assert.Equal((true, ClientSettings.CurrentVersion), (old.AutoGain, old.SettingsVersion));
-        Assert.Contains("\"settingsVersion\"", File.ReadAllText(path)); // saved with the new version
+        Assert.Contains("\"settingsVersion\"", File.ReadAllText(path), StringComparison.Ordinal); // saved with the new version
 
         old.AutoGain = false; // the user turns it off again
         old.Save(dir);

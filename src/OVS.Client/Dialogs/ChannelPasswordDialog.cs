@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using OVS.Client.Controls;
@@ -14,7 +15,7 @@ internal static class ChannelPasswordDialog
         var password = new TextBox { PasswordChar = '•' };
         AutomationProperties.SetName(password, Strings.Dlg_ChannelPassword);
         var body = CreateStack(CreateText(Strings.Dlg_ChannelPasswordNeeded, "muted"), CreateField(Strings.Dlg_ChannelPassword, password));
-        return DialogFrame.ShowAsync(overlay, string.Format(Strings.Dlg_ChannelPasswordFor, channelName), "LockClosed", body,
+        return DialogFrame.ShowAsync(overlay, string.Format(CultureInfo.CurrentCulture, Strings.Dlg_ChannelPasswordFor, channelName), "LockClosed", body,
             () => string.IsNullOrEmpty(password.Text) ? null : password.Text, new(Strings.Ui_Join));
     }
 }

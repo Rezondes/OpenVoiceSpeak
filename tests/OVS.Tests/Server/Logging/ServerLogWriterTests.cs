@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Server.Logging;
 using OVS.Shared.Identity;
 using OVS.Shared.Permissions;
@@ -17,7 +18,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
 {
     /// <summary>File name of a run started at the provider's current time (plus an offset).</summary>
     static string Start(TimeProvider time, int offsetDays = 0) =>
-        time.GetLocalNow().AddDays(offsetDays).ToString("yyyy-MM-dd_HH-mm-ss");
+        time.GetLocalNow().AddDays(offsetDays).ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture);
 
     static string Read(string folder) =>
         Directory.Exists(folder)
@@ -45,7 +46,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
             logs.WriteServerLine("drei");
             clock.Advance(TimeSpan.FromMilliseconds(20)); // still locked: the lines wait
         }
-        Assert.DoesNotContain("zwei", File.ReadAllText(path));
+        Assert.DoesNotContain("zwei", File.ReadAllText(path), StringComparison.Ordinal);
 
         clock.Advance(TimeSpan.FromMilliseconds(20));
         var text = File.ReadAllText(path);
@@ -85,7 +86,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         }
         text = read();
         if (expected.All(text.Contains)) return;
-        Assert.Fail($"Erwartet {string.Join(" | ", expected.Where(value => !text.Contains(value)))} in:\n{text}");
+        Assert.Fail($"Erwartet {string.Join(" | ", expected.Where(value => !text.Contains(value, StringComparison.Ordinal)))} in:\n{text}");
     }
 
     // ---- ServerLogWriter itself ----
@@ -100,7 +101,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         time.Advance(TimeSpan.FromMinutes(5));
         logs.WriteServerLine("Hallo Welt");
 
-        Assert.Contains(console, line => line.EndsWith("Hallo Welt"));
+        Assert.Contains(console, line => line.EndsWith("Hallo Welt", StringComparison.Ordinal));
         var file = Path.Combine(dir, "logs", "server", start + ".log");
         Assert.Matches(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} Hallo Welt", File.ReadAllText(file));
     }
@@ -124,8 +125,8 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         foreach (var folder in new[] { Path.Combine(dir, "logs", "server"), Path.Combine(dir, "logs", "channels", channel.ToString()) })
         {
             Assert.Equal([first + ".log", second + ".log"], Directory.GetFiles(folder).Select(Path.GetFileName).Order());
-            Assert.DoesNotContain("zwei", File.ReadAllText(Path.Combine(folder, first + ".log")));
-            Assert.DoesNotContain("eins", File.ReadAllText(Path.Combine(folder, second + ".log")));
+            Assert.DoesNotContain("zwei", File.ReadAllText(Path.Combine(folder, first + ".log")), StringComparison.Ordinal);
+            Assert.DoesNotContain("eins", File.ReadAllText(Path.Combine(folder, second + ".log")), StringComparison.Ordinal);
         }
     }
 
@@ -139,8 +140,8 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         time.Advance(TimeSpan.FromDays(1));
         logs.WriteServerLine("zwei");
 
-        Assert.Contains("eins", File.ReadAllText(Path.Combine(dir, "logs", "server", first + ".log")));
-        Assert.Contains("zwei", File.ReadAllText(Path.Combine(dir, "logs", "server", Start(time) + ".log")));
+        Assert.Contains("eins", File.ReadAllText(Path.Combine(dir, "logs", "server", first + ".log")), StringComparison.Ordinal);
+        Assert.Contains("zwei", File.ReadAllText(Path.Combine(dir, "logs", "server", Start(time) + ".log")), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -153,7 +154,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         logs.WriteChannelLine(id, "Raid", "anna hat den Channel betreten");
 
         Assert.Empty(console);
-        Assert.Contains("[Raid] anna hat den Channel betreten", File.ReadAllText(Path.Combine(dir, "logs", "channels", id.ToString(), Start(time) + ".log")));
+        Assert.Contains("[Raid] anna hat den Channel betreten", File.ReadAllText(Path.Combine(dir, "logs", "channels", id.ToString(), Start(time) + ".log")), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -169,8 +170,8 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var lines = File.ReadAllText(Path.Combine(dir, "logs", "channels", id.ToString(), Start(time) + ".log"))
             .Split(Environment.NewLine);
         Assert.Equal(3, lines.Length); // two entries and the empty rest after the last newline
-        Assert.EndsWith(@"[Raid] hi\r\n2026-01-01 00:00:00.000 [Raid] chef gebannt\u0085a\u2028b\u2029c\td\u0000e\u001B[31m", lines[0]);
-        Assert.EndsWith(@"[Raid] Pfad C:\neu äöü", lines[1]); // text without control characters is unchanged
+        Assert.EndsWith(@"[Raid] hi\r\n2026-01-01 00:00:00.000 [Raid] chef gebannt\u0085a\u2028b\u2029c\td\u0000e\u001B[31m", lines[0], StringComparison.Ordinal);
+        Assert.EndsWith(@"[Raid] Pfad C:\neu äöü", lines[1], StringComparison.Ordinal); // text without control characters is unchanged
         Assert.Equal("", lines[2]);
     }
 
@@ -184,7 +185,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         logs.WriteServerLine("a\rb\nc\u2028d\u2029e\u001b[31mrot\u009b2J\u0007");
 
         var line = Assert.Single(console);
-        Assert.EndsWith(@" a\rb\nc\u2028d\u2029e\u001B[31mrot\u009B2J\u0007", line);
+        Assert.EndsWith(@" a\rb\nc\u2028d\u2029e\u001B[31mrot\u009B2J\u0007", line, StringComparison.Ordinal);
         Assert.DoesNotContain(line, character => char.IsControl(character) || character is '\u2028' or '\u2029');
         var file = File.ReadAllText(Path.Combine(dir, "logs", "server", Start(time) + ".log"));
         Assert.Equal(line + Environment.NewLine, file);
@@ -200,10 +201,10 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await anna.SendAsync(new SendChat(ChatTarget.Server, null, "hallo\n2026-09-30 12:00:00.000 Admin-Token: gefaelscht"));
         await EventuallyAsync(() => ServerLog(server), "gefaelscht");
 
-        var console = Assert.Single(server.Log, line => line.Contains("gefaelscht"));
+        var console = Assert.Single(server.Log, line => line.Contains("gefaelscht", StringComparison.Ordinal));
         Assert.DoesNotContain(console, char.IsControl);
-        Assert.EndsWith(@"Chat from anna: hallo\n2026-09-30 12:00:00.000 Admin-Token: gefaelscht", console);
-        var file = Assert.Single(ServerLog(server).Split('\n'), line => line.Contains("gefaelscht"));
+        Assert.EndsWith(@"Chat from anna: hallo\n2026-09-30 12:00:00.000 Admin-Token: gefaelscht", console, StringComparison.Ordinal);
+        var file = Assert.Single(ServerLog(server).Split('\n'), line => line.Contains("gefaelscht", StringComparison.Ordinal));
         Assert.Equal(console, file.TrimEnd('\r'));
     }
 
@@ -250,8 +251,8 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
 
         Assert.Equal([start + ".log"], Directory.GetFiles(server).Select(Path.GetFileName));
         var text = File.ReadAllText(Path.Combine(server, start + ".log"));
-        Assert.Contains("eins", text);
-        Assert.Contains("drei", text);
+        Assert.Contains("eins", text, StringComparison.Ordinal);
+        Assert.Contains("drei", text, StringComparison.Ordinal);
     }
 
     /// <summary>Package 69: retention and daily files change while the server runs.</summary>
@@ -271,7 +272,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         logs.WriteServerLine("zwei");
 
         Assert.Equal([start + ".log"], Directory.GetFiles(server).Select(Path.GetFileName)); // old file gone, no new day file
-        Assert.Contains("zwei", File.ReadAllText(Path.Combine(server, start + ".log")));
+        Assert.Contains("zwei", File.ReadAllText(Path.Combine(server, start + ".log")), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -293,8 +294,8 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         logs.WriteServerLine("eins");
         logs.WriteChannelLine(Guid.NewGuid(), "Raid", "zwei");
         logs.WriteServerLine("drei");
-        Assert.Single(console, line => line.Contains("Log could not be written"));
-        Assert.Contains(console, line => line.EndsWith("drei")); // the console keeps working
+        Assert.Single(console, line => line.Contains("Log could not be written", StringComparison.Ordinal));
+        Assert.Contains(console, line => line.EndsWith("drei", StringComparison.Ordinal)); // the console keeps working
     }
 
     // ---- what the server logs ----
@@ -377,7 +378,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
             "[Raid] gast joined the channel (coming from Lobby)",
             "[Raid] gast was moved by chef to Lobby");
         await EventuallyAsync(() => ServerLog(server), "Channel 'Raid' created by chef");
-        Assert.DoesNotContain("joined", ServerLog(server)); // channel matters stay in channel logs
+        Assert.DoesNotContain("joined", ServerLog(server), StringComparison.Ordinal); // channel matters stay in channel logs
     }
 
     [Fact]
@@ -419,9 +420,9 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
 
         await EventuallyAsync(() => ServerLog(server), "Admin token created", "anna redeemed the admin token", "password set");
         var all = string.Join("\n", Directory.GetFiles(Path.Combine(server.DataDir, "logs"), "*.log", SearchOption.AllDirectories).Select(ReadShared));
-        Assert.DoesNotContain(token, all);
-        Assert.DoesNotContain("geheim-123", all);
-        Assert.Contains(server.Log, line => line.Contains(token)); // the console still shows it
+        Assert.DoesNotContain(token, all, StringComparison.Ordinal);
+        Assert.DoesNotContain("geheim-123", all, StringComparison.Ordinal);
+        Assert.Contains(server.Log, line => line.Contains(token, StringComparison.Ordinal)); // the console still shows it
     }
 
     [Fact]

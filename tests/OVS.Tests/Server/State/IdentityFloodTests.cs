@@ -36,7 +36,7 @@ public sealed class IdentityFloodTests
             Assert.Null(state.Admit(Fp(index), $"neu{index}", ip, null).Rejection);
         // the rest of the same /64 is refused, another /64 is not
         Assert.Equal(ReasonCodes.RateLimited, state.Admit(Fp(100), "zuviel", IPAddress.Parse("2001:db8:1:2::99"), null).Rejection?.Code);
-        Assert.Contains(server.Log, line => line.Contains("too many new identities") && line.Contains("2001:db8:1:2::99"));
+        Assert.Contains(server.Log, line => line.Contains("too many new identities", StringComparison.Ordinal) && line.Contains("2001:db8:1:2::99", StringComparison.Ordinal));
         Assert.Null(state.Admit(Fp(101), "anderes", IPAddress.Parse("2001:db8:1:3::10"), null).Rejection);
         // known fingerprints are never throttled
         Assert.Null(state.Admit(Fp(999), "bekannt", ip, null).Rejection);
@@ -97,7 +97,7 @@ public sealed class IdentityFloodTests
         }, time: time);
 
         Assert.Equal([Fp(3), Fp(4), Fp(5)], OnDisk(server).Users.Select(user => user.Fingerprint));
-        Assert.Contains(server.Log, line => line.Contains("2 unused guest records removed"));
+        Assert.Contains(server.Log, line => line.Contains("2 unused guest records removed", StringComparison.Ordinal));
 
         // later on, while running: once a day
         time.Advance(TimeSpan.FromDays(81));
@@ -118,19 +118,19 @@ public sealed class IdentityFloodTests
         var (session, _) = server.State.Admit(Fp(1), "neu", IPAddress.Loopback, null);
         time.Advance(ServerTuning.SaveDelay); // on the timer thread an escaping exception would end the server
         time.Advance(ServerTuning.SaveDelay); // still locked: retried, but logged only once
-        Assert.Single(server.Log, line => line.Contains("not saved") && line.Contains("Datei gesperrt"));
+        Assert.Single(server.Log, line => line.Contains("not saved", StringComparison.Ordinal) && line.Contains("Datei gesperrt", StringComparison.Ordinal));
         Assert.DoesNotContain(OnDisk(server).Users, user => user.Fingerprint == Fp(1));
 
         failing = false;
         time.Advance(ServerTuning.SaveDelay);
         Assert.Contains(OnDisk(server).Users, user => user.Fingerprint == Fp(1));
-        Assert.Single(server.Log, line => line.Contains("being saved again"));
+        Assert.Single(server.Log, line => line.Contains("being saved again", StringComparison.Ordinal));
 
         // the final save on shutdown logs a failure instead of throwing
         failing = true;
         server.State.Remove(session!);
         await server.Control.StopAsync();
-        Assert.Contains(server.Log, line => line.Contains("not saved on shutdown"));
+        Assert.Contains(server.Log, line => line.Contains("not saved on shutdown", StringComparison.Ordinal));
     }
 
     [Fact]

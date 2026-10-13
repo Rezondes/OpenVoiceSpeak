@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Avalonia;
@@ -201,18 +202,18 @@ public sealed class MotionCoverageTests
         var viewModel = walk.Vm;
         var main = walk.Main;
         var text = new StringBuilder();
-        text.AppendLine($"page={viewModel.PageFlow.Page} connected={viewModel.IsConnected} connecting={viewModel.Connection.IsConnecting} status={viewModel.Status}");
+        text.AppendLine(CultureInfo.InvariantCulture, $"page={viewModel.PageFlow.Page} connected={viewModel.IsConnected} connecting={viewModel.Connection.IsConnecting} status={viewModel.Status}");
         var card = (Border)main.Overlay.Children[1];
-        text.AppendLine($"dialog={main.Overlay.IsOpen}/{main.Overlay.IsVisible} card={card.Opacity:F2}/{card.RenderTransform?.Value.M11 ?? 1:F2} drawer={main.Classes.Contains("drawer")}");
-        text.AppendLine($"bookmarks={string.Join(",", viewModel.Bookmarks.Items.Select(tile => tile.Name))}");
+        text.AppendLine(CultureInfo.InvariantCulture, $"dialog={main.Overlay.IsOpen}/{main.Overlay.IsVisible} card={card.Opacity:F2}/{card.RenderTransform?.Value.M11 ?? 1:F2} drawer={main.Classes.Contains("drawer")}");
+        text.AppendLine(CultureInfo.InvariantCulture, $"bookmarks={string.Join(",", viewModel.Bookmarks.Items.Select(tile => tile.Name))}");
         if (viewModel.Server is { } server)
         {
             foreach (var channel in server.Tree.Channels)
                 text.AppendLine($"{channel.Name}{(channel.IsLinked ? " linked" : "")}{(channel.IsCurrent ? " current" : "")} {channel.SlotText}: "
                     + string.Join(",", channel.Users.Select(user => user.Nickname + (user.ServerMuted ? " muted" : ""))));
-            text.AppendLine($"self muted={server.SelfState.SelfMuted} deafened={server.SelfState.SelfDeafened}");
+            text.AppendLine(CultureInfo.InvariantCulture, $"self muted={server.SelfState.SelfMuted} deafened={server.SelfState.SelfDeafened}");
         }
-        if (viewModel.Chat is { } chat) text.AppendLine($"chat tab={chat.Tabs.IndexOf(chat.Selected)} lines={chat.Selected.Entries.Count}");
+        if (viewModel.Chat is { } chat) text.AppendLine(CultureInfo.InvariantCulture, $"chat tab={chat.Tabs.IndexOf(chat.Selected)} lines={chat.Selected.Entries.Count}");
         if (viewModel.PageFlow.SettingsPage is { } page)
         {
             var settings = page.ToSettings(viewModel.Settings);
@@ -221,15 +222,15 @@ public sealed class MotionCoverageTests
         }
         if (viewModel.PageFlow.AdminPage is { } admin)
         {
-            text.AppendLine($"admin tab={AdminTabs(walk).SelectedIndex} groups={string.Join(",", admin.GroupList.Groups.Select(groupEdit => $"{groupEdit.Name} {(int)groupEdit.Permissions}"))} selected={admin.GroupList.SelectedGroup?.Name} "
+            text.AppendLine(CultureInfo.InvariantCulture, $"admin tab={AdminTabs(walk).SelectedIndex} groups={string.Join(",", admin.GroupList.Groups.Select(groupEdit => $"{groupEdit.Name} {(int)groupEdit.Permissions}"))} selected={admin.GroupList.SelectedGroup?.Name} "
                 + $"users={string.Join(",", admin.UsersAndBans.Users.Select(user => user.Nickname + (user.IsServerMuted ? " muted" : "")))} bans={admin.UsersAndBans.Bans.Count} backups={admin.BackupCard.Backups.Count} logo={admin.ServerIcon.HasIcon}");
-            text.AppendLine($"links pending={admin.Links.PendingText} selected={string.Join(",", admin.Links.Rows.Where(linkRow => linkRow.IsSelected).Select(linkRow => linkRow.Name))} "
+            text.AppendLine(CultureInfo.InvariantCulture, $"links pending={admin.Links.PendingText} selected={string.Join(",", admin.Links.Rows.Where(linkRow => linkRow.IsSelected).Select(linkRow => linkRow.Name))} "
                 + $"server settings={admin.ServerSettings.RemovePassword}/{admin.ServerSettings.LogRotateDaily}/{admin.ServerSettings.AutoRestart}");
-            text.AppendLine($"logs hits={admin.Logs.ShowHits}/{admin.Logs.Hits.Count} open={admin.Logs.IsFileOpen} page={admin.Logs.Page} lines={admin.Logs.Lines.Count}");
+            text.AppendLine(CultureInfo.InvariantCulture, $"logs hits={admin.Logs.ShowHits}/{admin.Logs.Hits.Count} open={admin.Logs.IsFileOpen} page={admin.Logs.Page} lines={admin.Logs.Lines.Count}");
         }
         // nothing of a movement is left: no picture, ghost or popup in the overlay, every list entry whole
         var rows = Rows(walk);
-        text.AppendLine($"overlay={OverlayLayer.GetOverlayLayer(main)?.Children.Count} pictures={main.FindControl<Border>("PageGhost")!.IsVisible}/{main.FindControl<Border>("TreeGhost")!.IsVisible} "
+        text.AppendLine(CultureInfo.InvariantCulture, $"overlay={OverlayLayer.GetOverlayLayer(main)?.Children.Count} pictures={main.FindControl<Border>("PageGhost")!.IsVisible}/{main.FindControl<Border>("TreeGhost")!.IsVisible} "
             + $"rows={rows.Count} unsettled={rows.Count(control => control.Opacity < 1 || control.Classes.Contains("entering") || control.Classes.Contains("leaving"))}");
         return text.ToString();
     }

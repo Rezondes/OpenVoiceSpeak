@@ -62,7 +62,7 @@ public sealed class LogFileWriter
     }
 
     /// <summary>The time stamp of a line written now, in local time.</summary>
-    public string FormatNow() => time.GetLocalNow().ToString("yyyy-MM-dd HH:mm:ss.fff");
+    public string FormatNow() => time.GetLocalNow().ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
     void StartFile(DateTimeOffset now)
     {

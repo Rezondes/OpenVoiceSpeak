@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Localization;
 using OVS.Client.Models;
@@ -72,24 +73,24 @@ public sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline
 
     /// <summary>The longest running ban.</summary>
     public string BanText => Bans.OrderBy(banInfo => banInfo.ExpiresAt ?? DateTimeOffset.MaxValue).LastOrDefault() is not { } ban ? ""
-        : string.Format(Strings.Ui_BanDetail, ban.ExpiresAt is { } until ? string.Format(Strings.Ban_Until, until.ToLocalTime()) : Strings.Ban_Forever)
-          + (ban.Reason.Length > 0 ? ". " + string.Format(Strings.Ui_BanReason, ban.Reason) : "");
+        : string.Format(CultureInfo.CurrentCulture, Strings.Ui_BanDetail, ban.ExpiresAt is { } until ? string.Format(CultureInfo.CurrentCulture, Strings.Ban_Until, until.ToLocalTime()) : Strings.Ban_Forever)
+          + (ban.Reason.Length > 0 ? ". " + string.Format(CultureInfo.CurrentCulture, Strings.Ui_BanReason, ban.Reason) : "");
 
     /// <summary>Users saved before Package 70 have no statistics yet (LoginCount 0): shown as unknown.</summary>
     bool HasStats => Info.LoginCount > 0;
     static string Unknown => Strings.Ui_Unknown;
     /// <summary>The first login, local time.</summary>
-    public string FirstSeenText => Info.FirstSeen == default ? Unknown : Info.FirstSeen.ToLocalTime().ToString("g");
+    public string FirstSeenText => Info.FirstSeen == default ? Unknown : Info.FirstSeen.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
     /// <summary>The last login, local time.</summary>
-    public string LastLoginText => Info.LastLogin is { } at ? at.ToLocalTime().ToString("g") : Unknown;
+    public string LastLoginText => Info.LastLogin is { } at ? at.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) : Unknown;
     /// <summary>How often the user logged in.</summary>
-    public string LoginCountText => HasStats ? Info.LoginCount.ToString() : Unknown;
+    public string LoginCountText => HasStats ? Info.LoginCount.ToString(CultureInfo.CurrentCulture) : Unknown;
     /// <summary>The time connected.</summary>
     public string OnlineTimeText => HasStats ? Formats.Duration(Info.OnlineTime) : Unknown;
     /// <summary>The time talked.</summary>
     public string SpeechTimeText => HasStats ? Formats.Duration(Info.SpeechTime) : Unknown;
     /// <summary>The chat messages written.</summary>
-    public string ChatMessagesText => HasStats ? Info.ChatMessages.ToString() : Unknown;
+    public string ChatMessagesText => HasStats ? Info.ChatMessages.ToString(CultureInfo.CurrentCulture) : Unknown;
     /// <summary>The last address.</summary>
     public string LastIpText => Info.LastIp ?? Unknown;
     /// <summary>The earlier nicknames.</summary>

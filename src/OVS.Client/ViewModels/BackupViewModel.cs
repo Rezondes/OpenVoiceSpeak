@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -23,10 +24,10 @@ public sealed partial class BackupViewModel(BackupInfo info, Func<BackupViewMode
     /// <summary>The creation time as the card's title.</summary>
     public string Title => TitleOf(Info);
     /// <summary>A backup's creation time in local time, as its title.</summary>
-    public static string TitleOf(BackupInfo info) => info.CreatedAt.ToLocalTime().ToString("G") +
+    public static string TitleOf(BackupInfo info) => info.CreatedAt.ToLocalTime().ToString("G", CultureInfo.CurrentCulture) +
                                                      (info.FileName.StartsWith(SafetyPrefix, StringComparison.Ordinal) ? " " + Strings.Backup_Safety : "");
     /// <summary>Size and server version.</summary>
-    public string Details => string.Format(Strings.Backup_Details, Formats.Size(Info.Size), Info.ServerVersion);
+    public string Details => string.Format(CultureInfo.CurrentCulture, Strings.Backup_Details, Formats.Size(Info.Size), Info.ServerVersion);
 
     /// <summary>The prefix the server gives the backup it takes before a restore.</summary>
     const string SafetyPrefix = "vor-wiederherstellung_";

@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Localization;
 using Avalonia;
 using Avalonia.Media.Imaging;
@@ -43,8 +44,8 @@ public static class IconImport
         using (image)
         {
             var (width, height) = (image.PixelSize.Width, image.PixelSize.Height);
-            if (width != height) return new IconImportResult(null, string.Format(Strings.Icon_NotSquare, width, height));
-            if (width < ServerIconFormat.MinSize) return new IconImportResult(null, string.Format(Strings.Icon_TooSmall, ServerIconFormat.MinSize));
+            if (width != height) return new IconImportResult(null, string.Format(CultureInfo.CurrentCulture, Strings.Icon_NotSquare, width, height));
+            if (width < ServerIconFormat.MinSize) return new IconImportResult(null, string.Format(CultureInfo.CurrentCulture, Strings.Icon_TooSmall, ServerIconFormat.MinSize));
 
             using var output = new MemoryStream();
             if (width > TargetSize)

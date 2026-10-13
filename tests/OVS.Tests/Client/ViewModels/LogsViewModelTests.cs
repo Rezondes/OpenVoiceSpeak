@@ -67,7 +67,7 @@ public class LogsViewModelTests
         var (logs, _) = Create();
         Assert.Equal([ServerFile.Id, RaidFile.Id, OldServerFile.Id, OldFile.Id], logs.Files.Select(logFile => logFile.Info.Id));
         Assert.Equal(["Server", "Raid", "Server", "Alt"], logs.Files.Select(logFile => logFile.Title));
-        Assert.Contains("MB", logs.Files[2].Details);
+        Assert.Contains("MB", logs.Files[2].Details, StringComparison.Ordinal);
         // all, server, then every channel of the listing by name
         Assert.Equal(["Alle Logs", "Server", "Alt", "Raid"], logs.Sources.Select(choice => choice.Label));
 
@@ -147,7 +147,7 @@ public class LogsViewModelTests
         // the filter stays when paging
         logs.LineFilter = "FEHLER";
         logs.OlderCommand.Execute(null);
-        Assert.All(logs.Lines, logLine => Assert.Contains("FEHLER", logLine.Text));
+        Assert.All(logs.Lines, logLine => Assert.Contains("FEHLER", logLine.Text, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -168,7 +168,7 @@ public class LogsViewModelTests
         Assert.Equal(2, logs.Hits.Count);
         Assert.Equal(("Server", 1500), (logs.Hits[0].Title, logs.Hits[0].Line));
         Assert.Equal("Raid", logs.Hits[1].Title);
-        Assert.Contains("500", logs.HitsText); // more than the shown ones
+        Assert.Contains("500", logs.HitsText, StringComparison.Ordinal); // more than the shown ones
 
         logs.OpenHitCommand.Execute(logs.Hits[0]);
         Assert.Equal(new ReadLog(ServerFile.Id, 2), ((ReadLog)sent[^1]) with { RequestId = null });

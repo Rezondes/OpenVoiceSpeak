@@ -143,7 +143,7 @@ public sealed class BackupArchiveTests() : TempDirectoryTest("ovs-archive-", qui
     {
         var path = ArchiveWith(entry, bytes);
 
-        Assert.StartsWith(reason, Assert.Throws<InvalidDataException>(() => BackupArchive.Read(path)).Message);
+        Assert.StartsWith(reason, Assert.Throws<InvalidDataException>(() => BackupArchive.Read(path)).Message, StringComparison.Ordinal);
     }
 
     [Fact]

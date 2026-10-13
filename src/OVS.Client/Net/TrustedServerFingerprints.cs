@@ -46,5 +46,7 @@ public sealed class TrustedServerFingerprints(string profileDir)
         return pins;
     }
 
+#pragma warning disable CA1308 // the keys of known_servers.json are lower case; upper case would forget every trusted server
     static string Key(string host, int port) => $"{host.Trim().ToLowerInvariant()}:{port}";
+#pragma warning restore CA1308
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -42,7 +43,7 @@ public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool c
     /// <summary>The status as shown.</summary>
     public string StatusText => Status switch
     {
-        BanStatus.Lifted => string.Format(Strings.Ui_BanLifted, Ban.LiftedBy, Local(Ban.LiftedAt)),
+        BanStatus.Lifted => string.Format(CultureInfo.CurrentCulture, Strings.Ui_BanLifted, Ban.LiftedBy, Local(Ban.LiftedAt)),
         BanStatus.Expired => Strings.Ui_BanExpired,
         _ => Strings.Ui_BanActive,
     };
@@ -51,7 +52,7 @@ public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool c
 
     // Bans saved before Package 80 have no creation time, creator fingerprint or duration: shown as unknown
     static string Unknown => Strings.Ui_Unknown;
-    static string Local(DateTimeOffset? at) => at?.ToLocalTime().ToString("g") ?? Unknown;
+    static string Local(DateTimeOffset? at) => at?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? Unknown;
     /// <summary>When the ban was made, local time.</summary>
     public string CreatedAtText => Local(Ban.CreatedAt);
     /// <summary>The moderator's fingerprint, or unknown.</summary>
@@ -67,7 +68,7 @@ public sealed partial class BanViewModel(BanInfo ban, DateTimeOffset now, bool c
     public string RemainingText => HasRemaining ? Formats.Duration(Ban.ExpiresAt!.Value - now) : "";
     /// <summary>How often the ban turned someone away, and the last time.</summary>
     public string AttemptsText => Ban.BlockedAttempts == 0 ? Strings.Ui_None
-        : string.Format(Strings.Ui_BanAttemptsFmt, Ban.BlockedAttempts, Local(Ban.LastAttempt), Ban.LastAttemptIp ?? Unknown);
+        : string.Format(CultureInfo.CurrentCulture, Strings.Ui_BanAttemptsFmt, Ban.BlockedAttempts, Local(Ban.LastAttempt), Ban.LastAttemptIp ?? Unknown);
 
     /// <summary>Case-insensitive, in nickname, fingerprint, IP, reason, creator and lifter.</summary>
     public bool Matches(string search) =>

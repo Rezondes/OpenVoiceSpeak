@@ -92,7 +92,7 @@ public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider t
     /// <summary>A channel name as one folder name on every system: no separators or reserved characters, no leading or trailing dots.</summary>
     static string SafeName(string? name)
     {
-        var safe = new string((name ?? "").Select(character => char.IsControl(character) || "\\/:*?\"<>|".Contains(character) ? '_' : character).ToArray()).Trim(' ', '.');
+        var safe = new string((name ?? "").Select(character => char.IsControl(character) || "\\/:*?\"<>|".Contains(character, StringComparison.Ordinal) ? '_' : character).ToArray()).Trim(' ', '.');
         return safe.Length == 0 ? "channel" : safe;
     }
 

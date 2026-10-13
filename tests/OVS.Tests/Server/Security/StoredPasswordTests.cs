@@ -113,7 +113,7 @@ public class StoredPasswordTests
         var settings = JsonSerializer.Deserialize<ServerSettings>(SettingsJson(JsonSerializer.Serialize(text)), ProtocolJson.Options)!;
 
         Assert.Equal(text, settings.StoredPassword!.Text);
-        Assert.Contains($"\"passwordHash\":{JsonSerializer.Serialize(text)}", JsonSerializer.Serialize(settings, ProtocolJson.Options));
+        Assert.Contains($"\"passwordHash\":{JsonSerializer.Serialize(text)}", JsonSerializer.Serialize(settings, ProtocolJson.Options), StringComparison.Ordinal);
     }
 
     /// <summary>Both persisted options write the stored text as the plain string "passwordHash" and read it back equal.</summary>
@@ -135,7 +135,7 @@ public class StoredPasswordTests
     [Fact]
     public void Json_NoPassword_NullUnderOldKey()
     {
-        Assert.Contains("\"passwordHash\":null", JsonSerializer.Serialize(new ChannelRecord(), ProtocolJson.Options));
+        Assert.Contains("\"passwordHash\":null", JsonSerializer.Serialize(new ChannelRecord(), ProtocolJson.Options), StringComparison.Ordinal);
         Assert.Null(JsonSerializer.Deserialize<ChannelRecord>("""{"passwordHash":null}""", ProtocolJson.Options)!.StoredPassword);
     }
 
@@ -144,7 +144,7 @@ public class StoredPasswordTests
     public void ToString_StoredHash_HidesTheText()
     {
         var text = $"{StoredPassword.FromStored(Stored)}";
-        Assert.DoesNotContain("pbkdf2", text);
+        Assert.DoesNotContain("pbkdf2", text, StringComparison.Ordinal);
         Assert.Equal("StoredPassword(...)", text);
     }
 

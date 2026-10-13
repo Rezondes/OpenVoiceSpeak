@@ -85,10 +85,10 @@ static class SourceLayout
 
             if (topLevel.Count > 1) Problem("one type per file", string.Join(", ", topLevel));
 
-            if (name.Contains('.'))
+            if (name.Contains('.', StringComparison.Ordinal))
             {
                 // Type.Part.cs only for the parts of ServerState in State/.
-                var part = name[..name.IndexOf('.')] == "ServerState" && folder == "src/OVS.Server/State"
+                var part = name[..name.IndexOf('.', StringComparison.Ordinal)] == "ServerState" && folder == "src/OVS.Server/State"
                     && topLevel.Count > 0 && topLevel.All(text => text == "ServerState");
                 if (!part) Problem("file name = type name", $"{file} declares {(topLevel.Count == 0 ? "no type" : string.Join(", ", topLevel))}");
             }

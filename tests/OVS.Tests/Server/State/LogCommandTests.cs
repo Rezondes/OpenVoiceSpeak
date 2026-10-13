@@ -148,7 +148,7 @@ public sealed class LogCommandTests
         Assert.Equal([3, 1], channelOnly.Hits.Select(logHit => logHit.Line));
         Assert.False(channelOnly.Truncated);
         var serverOnly = await SearchAsync(admin, new SearchLogs("gesucht", LogKind.Server));
-        Assert.DoesNotContain(serverOnly.Hits, logHit => logHit.FileId.StartsWith("channels/"));
+        Assert.DoesNotContain(serverOnly.Hits, logHit => logHit.FileId.StartsWith("channels/", StringComparison.Ordinal));
         var january = await SearchAsync(admin, new SearchLogs("gesucht", null, null,
             new DateTimeOffset(2024, 12, 31, 0, 0, 0, TimeSpan.Zero), new DateTimeOffset(2025, 1, 15, 0, 0, 0, TimeSpan.Zero)));
         Assert.Equal(("server/2025-01-01_00-00-00.log", 1), (Assert.Single(january.Hits).FileId, january.Hits[0].Line));
@@ -179,7 +179,7 @@ public sealed class LogCommandTests
         }
 
         var files = await ListAsync(admin);
-        Assert.DoesNotContain(files, logFile => logFile.Id.EndsWith(".txt") || logFile.Id.Contains("wurzel"));
+        Assert.DoesNotContain(files, logFile => logFile.Id.EndsWith(".txt", StringComparison.Ordinal) || logFile.Id.Contains("wurzel", StringComparison.Ordinal));
         var escapes = new[]
         {
             "server/notiz.txt", "wurzel.log", "../server-data.json", "server/../../server-data.json", "server/../server-data.json",
@@ -206,18 +206,18 @@ public sealed class LogCommandTests
 
         var page = await ReadAsync(admin, "server/2025-01-01_00-00-00.log");
         Assert.Equal("kurz", page.Lines[0]);
-        Assert.StartsWith(longLine[..ServerTuning.MaxLogLineLength], page.Lines[1]);
-        Assert.EndsWith(" [...]", page.Lines[1]);
+        Assert.StartsWith(longLine[..ServerTuning.MaxLogLineLength], page.Lines[1], StringComparison.Ordinal);
+        Assert.EndsWith(" [...]", page.Lines[1], StringComparison.Ordinal);
         Assert.True(page.Lines[1].Length < ServerTuning.MaxLogLineLength + 10);
         var hit = Assert.Single((await SearchAsync(admin, new SearchLogs("gesucht"))).Hits);
-        Assert.StartsWith("Anfang ", hit.Text);
+        Assert.StartsWith("Anfang ", hit.Text, StringComparison.Ordinal);
         Assert.True(hit.Text.Length < ServerTuning.MaxLogLineLength + 10);
 
         // a full page of long lines with umlauts (6 bytes each in JSON) still fits one message; lines are cut further
         WriteLines(Path.Combine(dir, "2025-01-02_00-00-00.log"), Enumerable.Range(1, 1000).Select(index => $"{index} " + new string('ä', 3000)));
         var wide = await ReadAsync(admin, "server/2025-01-02_00-00-00.log");
         Assert.Equal(1000, wide.Lines.Count);
-        Assert.All(wide.Lines, line => Assert.EndsWith(" [...]", line));
+        Assert.All(wide.Lines, line => Assert.EndsWith(" [...]", line, StringComparison.Ordinal));
         Assert.True(JsonSerializer.SerializeToUtf8Bytes<Message>(wide, ProtocolJson.Options).Length < FrameReader.MaxFrameSize);
         var many = await SearchAsync(admin, new SearchLogs("ä"));
         Assert.Equal(500, many.Hits.Count);
@@ -274,7 +274,7 @@ public sealed class LogCommandTests
         release.Set();
         for (int index = 0; index <= 3; index++) await admin.WaitForAsync<LogSearchResult>(logSearchResult => logSearchResult.RequestId == $"s{index}", 30_000);
 
-        Assert.Equal(4, server.Log.Count(line => line.Contains("Logs searched by chef")));
+        Assert.Equal(4, server.Log.Count(line => line.Contains("Logs searched by chef", StringComparison.Ordinal)));
     }
 
     // ---- Package 82: download ----
@@ -329,7 +329,7 @@ public sealed class LogCommandTests
         Assert.Equal(before, bytes);
         Assert.True(ReadShared(path).Length > before.Length);
         Assert.Empty(Directory.GetFiles(ExportDir(server))); // deleted once the last chunk went out
-        Assert.Contains(server.Log, line => line.Contains($"Logs downloaded by chef: {Path.GetFileName(path)}"));
+        Assert.Contains(server.Log, line => line.Contains($"Logs downloaded by chef: {Path.GetFileName(path)}", StringComparison.Ordinal));
     }
 
     [Fact]

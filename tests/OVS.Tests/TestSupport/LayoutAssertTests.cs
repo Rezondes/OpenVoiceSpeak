@@ -17,12 +17,12 @@ public sealed class LayoutAssertTests
         window.Show();
         Dispatcher.UIThread.RunJobs();
         var error = Assert.ThrowsAny<Exception>(() => LayoutAssert.FitsHorizontally(window));
-        Assert.Contains("Button", error.Message);
-        Assert.Contains("Datei wählen", error.Message);
+        Assert.Contains("Button", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Datei wählen", error.Message, StringComparison.Ordinal);
 
         button.Width = 50; // inside now, but its text is cut off
         Dispatcher.UIThread.RunJobs();
-        Assert.Contains("needs", Assert.ThrowsAny<Exception>(() => LayoutAssert.FitsHorizontally(window)).Message);
+        Assert.Contains("needs", Assert.ThrowsAny<Exception>(() => LayoutAssert.FitsHorizontally(window)).Message, StringComparison.Ordinal);
 
         button.Content = "OK";
         Dispatcher.UIThread.RunJobs();

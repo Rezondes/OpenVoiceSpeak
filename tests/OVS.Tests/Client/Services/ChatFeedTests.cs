@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Services;
 using OVS.Shared.Protocol.Messages.Chat;
@@ -44,9 +45,9 @@ public sealed class ChatFeedTests
     [Fact]
     public void Receive_201Messages_KeepsTheLast200InOrder()
     {
-        for (var number = 0; number < 201; number++) feed.Receive(Message(ChatTarget.Server, Anna, number.ToString()), Me);
+        for (var number = 0; number < 201; number++) feed.Receive(Message(ChatTarget.Server, Anna, number.ToString(CultureInfo.InvariantCulture)), Me);
 
-        Assert.Equal(Enumerable.Range(1, 200).Select(number => number.ToString()), feed.Recent.Select(chat => chat.Text));
+        Assert.Equal(Enumerable.Range(1, 200).Select(number => number.ToString(CultureInfo.InvariantCulture)), feed.Recent.Select(chat => chat.Text));
     }
 
     [Fact]

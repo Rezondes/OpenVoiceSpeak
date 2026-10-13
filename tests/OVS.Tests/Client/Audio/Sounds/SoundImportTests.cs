@@ -45,14 +45,14 @@ public sealed class SoundImportTests() : TempDirectoryTest("ovs-sounds-", quiet:
     [Fact]
     public void Import_TooLongNotAudioWrongTypeOrMissing_Rejected()
     {
-        Assert.Contains("5 Sekunden", SoundImport.Prepare(Wav("lang.wav", 6), Profile, SoundEvent.MicOn).Error);
+        Assert.Contains("5 Sekunden", SoundImport.Prepare(Wav("lang.wav", 6), Profile, SoundEvent.MicOn).Error, StringComparison.Ordinal);
         var fake = Path.Combine(dir, "kaputt.wav");
         File.WriteAllText(fake, "kein Audio");
-        Assert.Contains("WAV oder MP3", SoundImport.Prepare(fake, Profile, SoundEvent.MicOn).Error);
+        Assert.Contains("WAV oder MP3", SoundImport.Prepare(fake, Profile, SoundEvent.MicOn).Error, StringComparison.Ordinal);
         var ogg = Path.Combine(dir, "ton.ogg");
         File.Copy(Wav("x.wav", 0.5), ogg);
-        Assert.Contains("WAV oder MP3", SoundImport.Prepare(ogg, Profile, SoundEvent.MicOn).Error);
-        Assert.Contains("gibt es nicht", SoundImport.Prepare(Path.Combine(dir, "fehlt.wav"), Profile, SoundEvent.MicOn).Error);
+        Assert.Contains("WAV oder MP3", SoundImport.Prepare(ogg, Profile, SoundEvent.MicOn).Error, StringComparison.Ordinal);
+        Assert.Contains("gibt es nicht", SoundImport.Prepare(Path.Combine(dir, "fehlt.wav"), Profile, SoundEvent.MicOn).Error, StringComparison.Ordinal);
         Assert.False(Directory.Exists(Path.Combine(Profile, SoundLibrary.Folder)) && Directory.GetFiles(Path.Combine(Profile, SoundLibrary.Folder)).Length > 0);
     }
 
@@ -65,7 +65,7 @@ public sealed class SoundImportTests() : TempDirectoryTest("ovs-sounds-", quiet:
         Assert.Same(SoundSynth.Render(SoundEvent.UserJoined), library.Samples(SoundEvent.UserJoined, setting));
         library.Samples(SoundEvent.UserJoined, setting);
         Assert.Single(logged);
-        Assert.Contains("default tone", logged[0]);
+        Assert.Contains("default tone", logged[0], StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Controls;
 using OVS.Client.Controls;
 using OVS.Client.Localization;
@@ -13,7 +14,7 @@ internal static class ServerPasswordDialog
         var password = new TextBox { PasswordChar = '•' };
         var save = CreateSavePasswordBox(password, false);
         var body = CreateStack(CreateText(Strings.Dlg_PasswordNeeded, "muted"), CreateField(Strings.Dlg_ServerPassword, password), save);
-        return DialogFrame.ShowAsync(overlay, string.Format(Strings.Dlg_PasswordFor, serverName), "LockClosed", body,
+        return DialogFrame.ShowAsync(overlay, string.Format(CultureInfo.CurrentCulture, Strings.Dlg_PasswordFor, serverName), "LockClosed", body,
             () => string.IsNullOrEmpty(password.Text) ? null : new PasswordAnswer(password.Text, save.IsChecked == true), new(Strings.Dlg_Connect));
     }
 }

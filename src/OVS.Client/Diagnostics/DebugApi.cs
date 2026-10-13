@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Audio;
 using System.Net;
 using OVS.Client.Audio.Devices;
@@ -392,7 +393,7 @@ public sealed class DebugApi : IDisposable
 
     static UserViewModel User(ServerViewModel server, string key) =>
         server.Tree.Channels.Live().SelectMany(channel => channel.Users.Live())
-            .FirstOrDefault(user => user.SessionId.ToString() == key || string.Equals(user.Nickname, key, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(user => user.SessionId.ToString(CultureInfo.CurrentCulture) == key || string.Equals(user.Nickname, key, StringComparison.OrdinalIgnoreCase))
         ?? throw new DebugApiException($"User '{key}' not found");
 
     /// <summary>Stops the listener.</summary>

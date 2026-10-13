@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Authentication;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Dialogs;
@@ -36,7 +37,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
 
     static ConnectChoice ChoiceFor(TestServer server) => new("127.0.0.1", server.Port, "anna", null, SaveBookmark: false);
 
-    static string ConnectingStatus(ConnectChoice choice) => string.Format(Strings.Status_Connecting, choice.Host, choice.Port);
+    static string ConnectingStatus(ConnectChoice choice) => string.Format(CultureInfo.InvariantCulture, Strings.Status_Connecting, choice.Host, choice.Port);
 
     Task<List<string>> LogAsync() => rig.ReadAsync(() => rig.LogLines.ToList());
 
@@ -85,7 +86,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
 
         await rig.ConnectAsync(Offline);
 
-        var expected = string.Format(Strings.Status_Failed, refused.Message);
+        var expected = string.Format(CultureInfo.InvariantCulture, Strings.Status_Failed, refused.Message);
         Assert.Equal(expected, await StatusAsync());
         Assert.Contains(expected, await LogAsync());
         Assert.False(await IsConnectingAsync());
@@ -102,7 +103,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
 
         await rig.ConnectAsync(Offline);
 
-        Assert.Equal(string.Format(Strings.Status_Failed, "Testmeldung"), await StatusAsync());
+        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Status_Failed, "Testmeldung"), await StatusAsync());
         Assert.False(await IsConnectingAsync());
     }
 
@@ -113,7 +114,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
 
         await rig.ConnectAsync(Offline);
 
-        Assert.Equal(string.Format(Strings.Status_Failed, "Sofort"), await StatusAsync());
+        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Status_Failed, "Sofort"), await StatusAsync());
         Assert.False(await IsConnectingAsync());
     }
 
@@ -145,7 +146,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         await rig.ConnectAsync(Offline);
 
         Assert.Contains($"Refused by the server: {ReasonCodes.WrongPassword}{loggedDetail}", await LogAsync());
-        Assert.Equal(string.Format(Strings.Status_Refused, ErrorTexts.For(ReasonCodes.WrongPassword, detail)), await StatusAsync());
+        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Status_Refused, ErrorTexts.For(ReasonCodes.WrongPassword, detail)), await StatusAsync());
         Assert.False(await IsConnectingAsync());
     }
 
@@ -193,7 +194,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
 
         var log = await LogAsync();
         Assert.Contains($"Connecting to 127.0.0.1:1 as anna{loggedPassword}", log);
-        Assert.DoesNotContain(log, line => line.Contains("geheim"));
+        Assert.DoesNotContain(log, line => line.Contains("geheim", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -278,7 +279,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         await ConnectBookmarkAsync(BookmarkWithSavedPassword("veraltet"));
 
         Assert.Single(rig.Seam.Attempts);
-        Assert.Equal(string.Format(Strings.Status_Refused, ErrorTexts.For(ReasonCodes.WrongPassword)), await StatusAsync());
+        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.Status_Refused, ErrorTexts.For(ReasonCodes.WrongPassword)), await StatusAsync());
     }
 
     [Fact]
@@ -299,7 +300,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
 
         Assert.Equal(["Gilde"], asked);
         Assert.Single(rig.Seam.Attempts);
-        Assert.StartsWith("Abgelehnt", await StatusAsync());
+        Assert.StartsWith("Abgelehnt", await StatusAsync(), StringComparison.Ordinal);
         Assert.Null(await rig.ReadAsync(() => rig.Shown));
     }
 
@@ -415,7 +416,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
 
     // ---- The server logo tracking ends with the session ----
 
-    Task<int> LogoRequestsAsync() => rig.ReadAsync(() => rig.LogLines.Count(line => line.Contains("Request server logo")));
+    Task<int> LogoRequestsAsync() => rig.ReadAsync(() => rig.LogLines.Count(line => line.Contains("Request server logo", StringComparison.Ordinal)));
 
     Task ApplyAsync(ServerViewModel server, Message message) => rig.InvokeAsync(() => server.Apply(message));
 
@@ -449,7 +450,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
 
         await HangGuard.BoundAsync(rig.ConnectAsync(ChoiceFor(stub)));
 
-        var expected = string.Format(Strings.Status_Failed, "Server sent a malformed challenge");
+        var expected = string.Format(CultureInfo.InvariantCulture, Strings.Status_Failed, "Server sent a malformed challenge");
         Assert.Equal(expected, await StatusAsync());
         Assert.Contains(expected, await LogAsync());
         Assert.False(await IsConnectingAsync());
@@ -462,7 +463,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
 
         await HangGuard.BoundAsync(rig.ConnectAsync(ChoiceFor(stub)));
 
-        var expected = string.Format(Strings.Status_Failed, "Server sent a malformed voice key");
+        var expected = string.Format(CultureInfo.InvariantCulture, Strings.Status_Failed, "Server sent a malformed voice key");
         Assert.Equal(expected, await StatusAsync());
         Assert.Contains(expected, await LogAsync());
         Assert.False(await IsConnectingAsync());
@@ -500,7 +501,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         rig.Time.Advance(TimeSpan.FromSeconds(1));
         await HangGuard.BoundAsync(rig.Seam.WaitForAttemptAsync(2));
 
-        Assert.True(await rig.ReadUntilAsync(() => rig.LogLines.Any(line => line.StartsWith("Reconnect failed: ")), logged => logged));
+        Assert.True(await rig.ReadUntilAsync(() => rig.LogLines.Any(line => line.StartsWith("Reconnect failed: ", StringComparison.Ordinal)), logged => logged));
         await HangGuard.BoundAsync(stub.ClientClosed);
         Assert.True(await rig.ReadAsync(() => rig.Connection.IsReconnecting));
 
@@ -654,7 +655,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
             return rig.Connection.PingText;
         }, text => text.Length > 0);
 
-        Assert.EndsWith(Strings.Ping_UdpUnreachable, ping);
+        Assert.EndsWith(Strings.Ping_UdpUnreachable, ping, StringComparison.Ordinal);
     }
 
     /// <summary>The ping text names voice over TCP while it is in use, and drops it once UDP answers again.</summary>
@@ -673,10 +674,10 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         var overTcp = Strings.Ping_VoiceOverTcp;
 
         for (int halfSecond = 0; halfSecond < 10; halfSecond++) rig.Time.Advance(TimeSpan.FromMilliseconds(500)); // 5 s without an answer
-        Assert.EndsWith(overTcp, await rig.ReadUntilAsync(Ping, text => text.Length > 0));
+        Assert.EndsWith(overTcp, await rig.ReadUntilAsync(Ping, text => text.Length > 0), StringComparison.Ordinal);
         relay.DropAll = false;
         for (int halfSecond = 0; halfSecond < 4; halfSecond++) rig.Time.Advance(TimeSpan.FromMilliseconds(500)); // the next Hello
-        var ping = await rig.ReadUntilAsync(Ping, text => text.Length > 0 && !text.EndsWith(overTcp));
-        Assert.DoesNotContain(Strings.Ping_UdpUnreachable, ping);
+        var ping = await rig.ReadUntilAsync(Ping, text => text.Length > 0 && !text.EndsWith(overTcp, StringComparison.Ordinal));
+        Assert.DoesNotContain(Strings.Ping_UdpUnreachable, ping, StringComparison.Ordinal);
     }
 }

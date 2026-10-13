@@ -23,7 +23,7 @@ public static class SoundImport
         var info = new FileInfo(source);
         if (!info.Exists) return new SoundImportResult(null, Strings.SoundImport_Missing);
         if (info.Length > MaxFileBytes) return new SoundImportResult(null, Strings.SoundImport_TooBig);
-        if (info.Extension.ToLowerInvariant() is not (".wav" or ".mp3")) return new SoundImportResult(null, Strings.SoundImport_Unreadable);
+        if (!string.Equals(info.Extension, ".wav", StringComparison.OrdinalIgnoreCase) && !string.Equals(info.Extension, ".mp3", StringComparison.OrdinalIgnoreCase)) return new SoundImportResult(null, Strings.SoundImport_Unreadable);
 
         float[] samples;
         try

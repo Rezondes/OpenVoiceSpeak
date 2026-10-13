@@ -35,7 +35,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         var offer = (await CheckAsync(Release("deploy-bbbbbbb", Built.AddHours(1)))).Offer;
         Assert.NotNull(offer);
         Assert.Equal(("280926.0b2c", "deploy-bbbbbbb", "https://example.org/OVS.Client.exe"), (offer.Version, offer.Tag, offer.ExeUrl.ToString()));
-        Assert.Contains("Neue Funktion", offer.Notes);
+        Assert.Contains("Neue Funktion", offer.Notes, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     {
         var limited = await new UpdateChecker(new HttpClient(new FakeHttp(_ => new HttpResponseMessage(HttpStatusCode.Forbidden))), Running).CheckAsync();
         Assert.Null(limited.Offer);
-        Assert.Contains("403", limited.Error);
+        Assert.Contains("403", limited.Error, StringComparison.Ordinal);
         var offline = await new UpdateChecker(new HttpClient(new FakeHttp(_ => throw new HttpRequestException("kein Netz"))), Running).CheckAsync();
         Assert.Equal("kein Netz", offline.Error);
     }
@@ -75,7 +75,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         var exe = Path.Combine(dir, "OVS.Client.exe");
         File.WriteAllText(exe, "alt");
         var restarted = new List<string>();
-        var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256")
+        var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256", StringComparison.Ordinal)
             ? FakeHttp.Bytes(Encoding.ASCII.GetBytes($"{hash}  OVS.Client.exe\n"))
             : exeFails ? new HttpResponseMessage(HttpStatusCode.InternalServerError) : FakeHttp.Bytes(served));
         return new(new UpdateInstaller(new HttpClient(http), exe, restarted.Add), exe, restarted);
@@ -102,7 +102,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     public async Task Install_HashMismatch_NothingReplaced()
     {
         var (installer, exe, restarted) = Installer(Encoding.ASCII.GetBytes("manipuliert"), Sha(Encoding.ASCII.GetBytes("neu")));
-        Assert.Contains("Prüfsumme", await installer.InstallAsync(Offer));
+        Assert.Contains("Prüfsumme", await installer.InstallAsync(Offer), StringComparison.Ordinal);
         Assert.Equal("alt", await File.ReadAllTextAsync(exe));
         Assert.Equal([Path.GetFileName(exe)], Directory.GetFiles(dir).Select(Path.GetFileName));
         Assert.Empty(restarted);
@@ -112,7 +112,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     public async Task Install_DownloadFails_ExeUnchanged()
     {
         var (installer, exe, restarted) = Installer([], "", exeFails: true);
-        Assert.Contains("nicht installiert", await installer.InstallAsync(Offer));
+        Assert.Contains("nicht installiert", await installer.InstallAsync(Offer), StringComparison.Ordinal);
         Assert.Equal("alt", await File.ReadAllTextAsync(exe));
         Assert.Empty(restarted);
     }
@@ -144,7 +144,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         var neu = Encoding.ASCII.GetBytes("neu ohne Laenge");
         var exe = Path.Combine(dir, "OVS.Client.exe");
         await File.WriteAllTextAsync(exe, "alt");
-        var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256")
+        var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256", StringComparison.Ordinal)
             ? FakeHttp.Bytes(Encoding.ASCII.GetBytes(Sha(neu)))
             : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new Unseekable(neu)) });
         var reports = new List<UpdateProgress>();
@@ -167,12 +167,12 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         var neu = Encoding.ASCII.GetBytes("neu");
         var exe = Path.Combine(dir, "OVS.Client.exe");
         await File.WriteAllTextAsync(exe, "alt");
-        var http = new FakeHttp(httpRequestMessage => FakeHttp.Bytes(httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256") ? Encoding.ASCII.GetBytes(Sha(neu)) : neu));
+        var http = new FakeHttp(httpRequestMessage => FakeHttp.Bytes(httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256", StringComparison.Ordinal) ? Encoding.ASCII.GetBytes(Sha(neu)) : neu));
         var installer = new UpdateInstaller(new HttpClient(http), exe, _ => throw new FileNotFoundException("System.Diagnostics.Process fehlt"));
 
         var result = await installer.InstallAsync(Offer);
         Assert.NotNull(result);
-        Assert.Contains("System.Diagnostics.Process fehlt", result);
+        Assert.Contains("System.Diagnostics.Process fehlt", result, StringComparison.Ordinal);
         Assert.Equal("neu", await File.ReadAllTextAsync(exe)); // installed; the next start by hand uses it
     }
 
@@ -230,7 +230,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         var clock = System.Diagnostics.Stopwatch.StartNew();
 
         var result = await UpdateInstaller.CleanupOldAsync(exe, TimeProvider.System, attempts: 3, pause: TimeSpan.FromMilliseconds(100));
-        Assert.StartsWith("Old version could not be removed", result);
+        Assert.StartsWith("Old version could not be removed", result, StringComparison.Ordinal);
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5), clock.Elapsed.ToString()); // gives up instead of hanging (with room for a slow runner)
         Assert.True(File.Exists(exe + ".old"));
     }

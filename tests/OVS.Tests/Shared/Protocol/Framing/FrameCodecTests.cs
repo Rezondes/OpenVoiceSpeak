@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Globalization;
 using System.Text;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Protocol;
@@ -123,7 +124,7 @@ public class FrameCodecTests
     {
         var milliseconds = new MemoryStream();
         var writer = new FrameWriter(milliseconds);
-        await Task.WhenAll(Enumerable.Range(0, 100).Select(index => Task.Run(() => writer.WriteAsync(new Error(index.ToString(), "c")))));
+        await Task.WhenAll(Enumerable.Range(0, 100).Select(index => Task.Run(() => writer.WriteAsync(new Error(index.ToString(CultureInfo.InvariantCulture), "c")))));
 
         milliseconds.Position = 0;
         var reader = new FrameReader(milliseconds);

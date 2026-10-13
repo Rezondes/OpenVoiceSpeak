@@ -51,7 +51,7 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
 
         await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
 
-        Assert.Contains("Self test started", MainViewModelSetup.ReadLogText(mainViewModel, dir));
+        Assert.Contains("Self test started", MainViewModelSetup.ReadLogText(mainViewModel, dir), StringComparison.Ordinal);
     }
 
     [Fact]

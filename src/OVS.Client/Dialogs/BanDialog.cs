@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using OVS.Client.Controls;
@@ -22,7 +23,7 @@ internal static class BanDialog
         var includeIp = new CheckBox { Content = Strings.Dlg_BanIp, IsEnabled = ipKnown };
         var body = CreateStack(CreateField(Strings.Dlg_Reason, reason), CreateField(Strings.Dlg_Duration, duration), includeIp);
         if (!ipKnown) body.Children.Add(CreateText(Strings.Dlg_BanIpUnknown, "caption"));
-        return DialogFrame.ShowAsync(overlay, string.Format(Strings.Dlg_BanTitle, nickname), "Prohibited", body,
+        return DialogFrame.ShowAsync(overlay, string.Format(CultureInfo.CurrentCulture, Strings.Dlg_BanTitle, nickname), "Prohibited", body,
             () => new BanChoice(reason.Text ?? "", durations[Math.Max(0, duration.SelectedIndex)].Value, includeIp.IsChecked == true),
             new(Strings.Dlg_Ban, Kind: DialogKind.Danger, Submit: submit));
     }

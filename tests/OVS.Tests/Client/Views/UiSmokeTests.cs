@@ -138,9 +138,9 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Equal(2, MotionStylesIndex(app)); // FluentTheme, Controls, Motion
         const string controls = "<StyleInclude Source=\"/Styles/Controls.axaml\" />";
         const string motion = "<StyleInclude Source=\"/Styles/Motion.axaml\" />";
-        Assert.Contains(controls, app);
-        Assert.Contains(motion, app);
-        var reordered = app.Replace(controls, "@").Replace(motion, controls).Replace("@", motion);
+        Assert.Contains(controls, app, StringComparison.Ordinal);
+        Assert.Contains(motion, app, StringComparison.Ordinal);
+        var reordered = app.Replace(controls, "@", StringComparison.Ordinal).Replace(motion, controls, StringComparison.Ordinal).Replace("@", motion, StringComparison.Ordinal);
         Assert.Equal(1, MotionStylesIndex(reordered));
     }
 
@@ -161,7 +161,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var styles = Application.Current!.Styles;
         var motion = (Avalonia.Styling.Styles)styles[MotionStylesIndex(await File.ReadAllTextAsync(AppXamlPath()))];
         // A115: every part of every selector list starts with the class on the window
-        Assert.All(AllStyles(motion).SelectMany(style => style.Selector!.ToString()!.Split(',')), part => Assert.StartsWith("Window.animated", part.Trim()));
+        Assert.All(AllStyles(motion).SelectMany(style => style.Selector!.ToString()!.Split(',')), part => Assert.StartsWith("Window.animated", part.Trim(), StringComparison.Ordinal));
 
         void LooksLikeBefore(string page)
         {
@@ -327,7 +327,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         var connecting = ConnectDialog.ShowAsync(main.Overlay, viewModel.Bookmarks.Saved, viewModel.Settings.Bookmarks[0]);
         Dispatcher.UIThread.RunJobs();
         var boxes = main.Overlay.GetVisualDescendants().OfType<CheckBox>().ToList();
-        var savePassword = boxes.Single(checkBox => checkBox.Content is string text && text.StartsWith("Passwort speichern"));
+        var savePassword = boxes.Single(checkBox => checkBox.Content is string text && text.StartsWith("Passwort speichern", StringComparison.Ordinal));
         var saveBookmark = boxes.Single(checkBox => checkBox.Content is "Als Lesezeichen speichern");
         Assert.Equal((true, true), (savePassword.IsEnabled, savePassword.IsChecked == true));
         Assert.Equal("pw", main.Overlay.GetVisualDescendants().OfType<TextBox>().Single(textBox => textBox.PasswordChar == '•').Text);
@@ -345,7 +345,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         _ = DeleteUserDialog.ShowAsync(main.Overlay, "anna");
         Dispatcher.UIThread.RunJobs();
         foreach (var text in new[] { "Endgültig löschen", "Nutzerdatensatz", "Gruppen", "Statistiken", "Bans" })
-            Assert.Contains(main.Overlay.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text?.Contains(text) == true);
+            Assert.Contains(main.Overlay.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text?.Contains(text, StringComparison.Ordinal) == true);
         main.Overlay.Close();
         Dispatcher.UIThread.RunJobs();
         Dialog(overlayHost => UpdateOfferDialog.ShowAsync(overlayHost, new UpdateOffer("280926.0b2c", "deploy-bbbbbbb", "- Neu", DateTimeOffset.UtcNow,
@@ -487,8 +487,8 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Equal(grid.Bounds.Size, layer.Bounds.Size);
         var bar = main.FindControl<ProgressBar>("UpdateBar")!;
         Assert.Equal((40d, false), (bar.Value, bar.IsIndeterminate));
-        Assert.Contains(Texts(layer), text => text?.Contains("290926.0lh6") == true);
-        Assert.Contains("40", main.FindControl<TextBlock>("UpdateDetail")!.Text);
+        Assert.Contains(Texts(layer), text => text?.Contains("290926.0lh6", StringComparison.Ordinal) == true);
+        Assert.Contains("40", main.FindControl<TextBlock>("UpdateDetail")!.Text, StringComparison.Ordinal);
         var chat = main.GetVisualDescendants().OfType<ChatView>().Single();
         Assert.False(chat.IsEffectivelyEnabled); // no clicks, no keys
         var card = layer.Children.OfType<Border>().Single();
@@ -823,7 +823,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         Button SelfTest() => main.GetVisualDescendants().OfType<Button>().Single(button => AutomationProperties.GetName(button) is "Selbsttest starten" or "Selbsttest beenden");
-        Assert.Contains(Texts(main), text => text?.Contains("Kopfhörer") == true);
+        Assert.Contains(Texts(main), text => text?.Contains("Kopfhörer", StringComparison.Ordinal) == true);
         Assert.Equal("Selbsttest starten", AutomationProperties.GetName(SelfTest()));
         SelfTest().Command!.Execute(null);
         Dispatcher.UIThread.RunJobs();
@@ -1006,7 +1006,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             var visible = main.GetVisualDescendants().OfType<TextBlock>().Where(textBlock => textBlock.IsEffectivelyVisible).Select(textBlock => textBlock.Text).ToList();
             Assert.Contains(expected, visible);
             Assert.DoesNotContain(expected + " ...", visible);
-            Assert.EndsWith(" ...", OVS.Client.Localization.Strings.Ui_RedeemTokenMenu); // it opens a dialog
+            Assert.EndsWith(" ...", OVS.Client.Localization.Strings.Ui_RedeemTokenMenu, StringComparison.Ordinal); // it opens a dialog
             main.Close();
         }
         finally

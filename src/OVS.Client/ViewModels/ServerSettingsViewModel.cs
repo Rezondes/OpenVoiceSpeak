@@ -64,7 +64,7 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
 
     /// <summary>The server's normal form: a trimmed name, "\r\n" as "\n" (TextRules), so a saved edit is no change.</summary>
     static string NormName(string? text) => text?.Trim() ?? "";
-    static string NormText(string? text) => (text ?? "").Replace("\r\n", "\n");
+    static string NormText(string? text) => (text ?? "").Replace("\r\n", "\n", StringComparison.Ordinal);
 
     ServerLimits EditedLimits(ServerLimits loaded) =>
         new((int)(MaxUsers ?? loaded.MaxUsers), (int)(LogDays ?? loaded.LogDays), LogRotateDaily, AutoRestart,

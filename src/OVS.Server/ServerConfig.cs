@@ -102,10 +102,10 @@ public sealed record ServerConfig(
     static bool Bool(string name, string? env, bool? fileValue, bool fallback)
     {
         if (env is null) return fileValue ?? fallback;
-        return env.Trim().ToLowerInvariant() switch
+        return env.Trim().ToUpperInvariant() switch
         {
-            "true" or "1" or "on" or "an" => true,
-            "false" or "0" or "off" or "aus" => false,
+            "TRUE" or "1" or "ON" or "AN" => true,
+            "FALSE" or "0" or "OFF" or "AUS" => false,
             _ => throw new ConfigException($"{name} must be true or false (also 1/0, an/aus), but is '{env}'."),
         };
     }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -141,7 +142,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Reconnecting_At360_StatusAndCancelFit(string culture) => TestCulture.With(culture, () =>
     {
         var main = Open(360, null, out var viewModel);
-        viewModel.Status = string.Format(Strings.Status_Reconnecting, 16);
+        viewModel.Status = string.Format(CultureInfo.InvariantCulture, Strings.Status_Reconnecting, 16);
         viewModel.Connection.IsReconnecting = true;
         Dispatcher.UIThread.RunJobs();
         var status = main.FindControl<TextBlock>("StatusText")!;
@@ -462,7 +463,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
             new("2026-09-28_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-2), 900, "dev.0000"),
         ]));
         // Package 81: log files of the server and of channels with long names, one opened on a page with long lines
-        var channel = server.Mirror.Channels.Values.First(channelInfo => channelInfo.Name.StartsWith("Raid")).Id;
+        var channel = server.Mirror.Channels.Values.First(channelInfo => channelInfo.Name.StartsWith("Raid", StringComparison.Ordinal)).Id;
         admin.Logs.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogList("r", Enumerable.Range(0, 12).Select(index => new OVS.Shared.Protocol.Messages.LogAccess.LogFileInfo(
             index % 3 == 0 ? $"server/2026-09-{30 - index:00}_12-00-00.log" : $"channels/{channel}/2026-09-{30 - index:00}_12-00-00.log",
             index % 3 == 0 ? OVS.Shared.Protocol.Messages.LogAccess.LogKind.Server : OVS.Shared.Protocol.Messages.LogAccess.LogKind.Channel, index % 3 == 0 ? null : channel,
@@ -510,7 +511,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         // Package 75: a transfer in progress, so its progress line is checked with the rest of the Server tab
         admin.Transfer.IsRunning = true;
         admin.Transfer.Percent = 42;
-        admin.Transfer.ProgressText = string.Format(Strings.Backup_Uploading, 42);
+        admin.Transfer.ProgressText = string.Format(CultureInfo.InvariantCulture, Strings.Backup_Uploading, 42);
         // Package 97: the waiting states, checked with the rest: a refresh, a first load, a failed refresh, busy buttons
         admin.UsersAndBans.UsersLoad.IsBusy = true;
         admin.UsersAndBans.BansLoad.HasSucceeded = false;
@@ -753,7 +754,9 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         var settings = new ClientSettings();
         foreach (var name in new[] { "Gilde", "Raidgruppe am Donnerstagabend", "Freunde" })
-            settings.Bookmarks.Add(new Bookmark(name, $"{name.ToLowerInvariant().Replace(' ', '-')}.example.org", 7000, "ich"));
+    #pragma warning disable CA1308 // test data: host names in lower case, as people type them
+        settings.Bookmarks.Add(new Bookmark(name, $"{name.ToLowerInvariant().Replace(' ', '-')}.example.org", 7000, "ich"));
+#pragma warning restore CA1308
         settings.Save(dir);
     }
 

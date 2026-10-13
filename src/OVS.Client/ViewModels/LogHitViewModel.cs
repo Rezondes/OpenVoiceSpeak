@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Localization;
 using OVS.Shared.Protocol.Messages.LogAccess;
 
@@ -15,5 +16,5 @@ public sealed class LogHitViewModel(LogHit hit, string title)
     /// <summary>The file's source as shown.</summary>
     public string Title { get; } = title;
     /// <summary>The line number as shown.</summary>
-    public string LineText => string.Format(Strings.Ui_LogLine, Line);
+    public string LineText => string.Format(CultureInfo.CurrentCulture, Strings.Ui_LogLine, Line);
 }

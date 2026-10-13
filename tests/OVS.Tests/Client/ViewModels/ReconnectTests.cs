@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Audio;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Dialogs;
@@ -28,7 +29,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     ConnectSeam seam = null!;
     MainViewModel viewModel = null!;
 
-    static string Retrying(int seconds) => string.Format(Strings.Status_Reconnecting, seconds);
+    static string Retrying(int seconds) => string.Format(CultureInfo.InvariantCulture, Strings.Status_Reconnecting, seconds);
 
     const string Reconnected = "Verbindung wiederhergestellt";
     const string OutdatedAttemptLine = "outdated attempt dropped";
@@ -125,7 +126,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         Assert.Equal("Verbunden mit Testserver", status);
         Assert.Equal(1, asked); // the password from before, no dialog
         Assert.Equal([Reconnected], await NoticesSinceAsync(before.Count));
-        Assert.DoesNotContain("pw", ClientLogText());
+        Assert.DoesNotContain("pw", ClientLogText(), StringComparison.Ordinal);
     }
 
     Task OnUiDoAsync(Func<Task> action) => ui.RunAsync(action);
@@ -164,7 +165,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     [InlineData("muted, deafened")]
     public async Task Reconnect_MutedWithOrWithoutDeafen_StaysMutedWhenUndeafening(string state)
     {
-        bool deafen = state.Contains("deafened");
+        bool deafen = state.Contains("deafened", StringComparison.Ordinal);
         await ConnectToAsync(server);
         await OnUiDoAsync(() => viewModel.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
         if (deafen) await OnUiDoAsync(() => viewModel.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null));
@@ -246,7 +247,7 @@ public sealed class ReconnectTests : IAsyncLifetime
             return viewModel.Stats.ConcealedText;
         });
 
-        Assert.Equal(string.Format(Strings.ConnDetails_ConcealedValue, 0, 0, 0), shown);
+        Assert.Equal(string.Format(CultureInfo.InvariantCulture, Strings.ConnDetails_ConcealedValue, 0, 0, 0), shown);
     }
 
     /// <summary>Re-review: muted by choice (and deafened), push-to-mute held through the reconnect and then let go: still muted.</summary>
@@ -307,10 +308,10 @@ public sealed class ReconnectTests : IAsyncLifetime
         Assert.True(await OnUiUntilAsync(() => viewModel.Connection.IsReconnecting, value => value));
         await using var back = await TestServer.StartAsync(port: port);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        Assert.Equal(Retrying(2), await TickStatusUntilAsync(status => status.EndsWith(" 2 s")));
+        Assert.Equal(Retrying(2), await TickStatusUntilAsync(status => status.EndsWith(" 2 s", StringComparison.Ordinal)));
         reconnectTime.Advance(TimeSpan.FromSeconds(2));
         Assert.True(await OnUiUntilAsync(() => viewModel.IsConnected && !viewModel.Connection.IsReconnecting, ok => ok));
-        Assert.Contains("Testfehler", ClientLogText());
+        Assert.Contains("Testfehler", ClientLogText(), StringComparison.Ordinal);
     }
 
     /// <summary>None of these start a series; the session ends as before.</summary>
@@ -332,7 +333,7 @@ public sealed class ReconnectTests : IAsyncLifetime
             await locked.DisposeAsync();
             Assert.True(await OnUiUntilAsync(() => viewModel.Connection.IsReconnecting, value => value)); // ServerShutdown retries
             reconnectTime.Advance(TimeSpan.FromSeconds(1));
-            Assert.StartsWith("Abgelehnt", await OnUiUntilAsync(() => viewModel.Status, text => text.StartsWith("Abgelehnt")));
+            Assert.StartsWith("Abgelehnt", await OnUiUntilAsync(() => viewModel.Status, text => text.StartsWith("Abgelehnt", StringComparison.Ordinal)), StringComparison.Ordinal);
             Assert.Contains(SoundEvent.Disconnected, await OnUiAsync(() => viewModel.Audio.Sounds.Recent)); // review: the series ended, so the tone
         }
         else
@@ -366,7 +367,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         await DropAsync(server);
         await CancelReconnectAsync();
         Assert.False(await OnUiAsync(() => viewModel.Connection.IsReconnecting));
-        Assert.StartsWith("Getrennt", await TickStatusAsync());
+        Assert.StartsWith("Getrennt", await TickStatusAsync(), StringComparison.Ordinal);
         int attemptsBefore = seam.Attempts.Count;
         reconnectTime.Advance(TimeSpan.FromSeconds(60));
         await OnUiAsync(() => 0); // what the clock posted has run
@@ -389,7 +390,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         await ConnectToAsync(server); // meanwhile the user connects elsewhere
         Assert.False(await OnUiAsync(() => viewModel.Connection.IsReconnecting));
         oldAttempt.Release(); // the old attempt ends late
-        Assert.Contains(OutdatedAttemptLine, await OnUiUntilAsync(ClientLogText, log => log.Contains(OutdatedAttemptLine)));
+        Assert.Contains(OutdatedAttemptLine, await OnUiUntilAsync(ClientLogText, log => log.Contains(OutdatedAttemptLine, StringComparison.Ordinal)), StringComparison.Ordinal);
         Assert.Equal(0, await OnUiUntilAsync(() => back.State.SessionCount, count => count == 0));
         var (name, connected) = await OnUiAsync(() => (viewModel.Server?.ServerName, viewModel.IsConnected));
         Assert.True(connected);
@@ -424,7 +425,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         {
             reconnectTime.Advance(TimeSpan.FromMilliseconds(600));
             Assert.Equal(Retrying(next),
-                await TickStatusUntilAsync(status => status.EndsWith($" {next} s")));
+                await TickStatusUntilAsync(status => status.EndsWith($" {next} s", StringComparison.Ordinal)));
             reconnectTime.Advance(TimeSpan.FromSeconds(next) - TimeSpan.FromMilliseconds(600));
             Assert.Equal(Retrying(1), await TickStatusAsync());
         }
@@ -451,7 +452,7 @@ public sealed class ReconnectTests : IAsyncLifetime
 
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
 
-        Assert.Equal(Retrying(2), await TickStatusUntilAsync(status => status.EndsWith(" 2 s")));
+        Assert.Equal(Retrying(2), await TickStatusUntilAsync(status => status.EndsWith(" 2 s", StringComparison.Ordinal)));
         Assert.True(await OnUiAsync(() => viewModel.Connection.IsReconnecting));
     }
 
@@ -469,7 +470,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         Assert.Equal(Strings.Status_TofuRejected, await OnUiUntilAsync(() => viewModel.Status, status => status == Strings.Status_TofuRejected));
         Assert.False(await OnUiAsync(() => viewModel.Connection.IsReconnecting));
         var notices = await NoticesSinceAsync(noticesBefore);
-        Assert.StartsWith("Getrennt", Assert.Single(notices));
+        Assert.StartsWith("Getrennt", Assert.Single(notices), StringComparison.Ordinal);
         Assert.Contains(SoundEvent.Disconnected, await OnUiAsync(() => viewModel.Audio.Sounds.Recent));
     }
 
@@ -487,7 +488,7 @@ public sealed class ReconnectTests : IAsyncLifetime
 
         oldAttempt.Release();
 
-        Assert.Contains(OutdatedAttemptLine, await OnUiUntilAsync(ClientLogText, log => log.Contains(OutdatedAttemptLine)));
+        Assert.Contains(OutdatedAttemptLine, await OnUiUntilAsync(ClientLogText, log => log.Contains(OutdatedAttemptLine, StringComparison.Ordinal)), StringComparison.Ordinal);
         Assert.Equal(0, await OnUiUntilAsync(() => server.State.SessionCount, count => count == 0));
         Assert.False(await OnUiAsync(() => viewModel.IsConnected));
     }
@@ -507,7 +508,7 @@ public sealed class ReconnectTests : IAsyncLifetime
 
         oldAttempt.Release();
 
-        Assert.Contains(OutdatedAttemptLine + " (", await OnUiUntilAsync(ClientLogText, log => log.Contains(OutdatedAttemptLine + " (")));
+        Assert.Contains(OutdatedAttemptLine + " (", await OnUiUntilAsync(ClientLogText, log => log.Contains(OutdatedAttemptLine + " (", StringComparison.Ordinal)), StringComparison.Ordinal);
         Assert.Equal(statusAfterCancel, await OnUiAsync(() => viewModel.Status));
         Assert.Empty(await NoticesSinceAsync(noticesAfterCancel));
         Assert.DoesNotContain(SoundEvent.Disconnected, await OnUiAsync(() => viewModel.Audio.Sounds.Recent));

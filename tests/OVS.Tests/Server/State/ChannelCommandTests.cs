@@ -79,7 +79,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         await admin.SendAsync(new CreateChannel("  Raid  ", "Beschreibung"));
         var added = await guest.WaitForAsync<ChannelAdded>();
         Assert.Equal("Raid", added.Channel.Name);
-        Assert.Contains("Raid", await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")));
+        Assert.Contains("Raid", await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -140,7 +140,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
             Assert.Equal(96, late.Welcome.Snapshot.Channels.Single(channel => channel.Id == music.Id).Bitrate);
         var log = Directory.GetFiles(Path.Combine(server.DataDir, "logs", "channels", music.Id.ToString())).Single();
         using (var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
-            Assert.Contains("quality 96 kbps", await new StreamReader(stream).ReadToEndAsync());
+            Assert.Contains("quality 96 kbps", await new StreamReader(stream).ReadToEndAsync(), StringComparison.Ordinal);
 
         await admin.SendAsync(new CreateChannel("Zu leise", "", Bitrate: 15) { RequestId = "c" });
         Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("c")).Code);
@@ -202,10 +202,10 @@ public sealed class ChannelCommandTests : IAsyncLifetime
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
         Assert.True(late.Welcome.Snapshot.Channels.Single(channel => channel.Id == raid.Id).IsMuted);
-        Assert.Contains("\"isMuted\": true", await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")));
+        Assert.Contains("\"isMuted\": true", await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")), StringComparison.Ordinal);
         var log = Directory.GetFiles(Path.Combine(server.DataDir, "logs", "channels", raid.Id.ToString())).Single();
         using var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        Assert.Contains("muted", await new StreamReader(stream).ReadToEndAsync());
+        Assert.Contains("muted", await new StreamReader(stream).ReadToEndAsync(), StringComparison.Ordinal);
     }
 
     // ---- Package 35: slot limit ----
@@ -259,7 +259,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     public async Task Edit_DefaultChannelLimit_Invalid()
     {
         await admin.SendAsync(new EditChannel(Lobby, "Lobby", "", 0, MaxUsers: 5) { RequestId = "e" });
-        Assert.Contains("default channel", (await admin.ErrorAsync("e")).Detail);
+        Assert.Contains("default channel", (await admin.ErrorAsync("e")).Detail, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -291,7 +291,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
         Assert.Equal([afk.Id, Lobby, raid.Id], late.Welcome.Snapshot.Channels.OrderBy(channel => channel.Order).Select(channel => channel.Id));
-        Assert.Contains(server.Log, line => line.Contains("Channels reordered by admin"));
+        Assert.Contains(server.Log, line => line.Contains("Channels reordered by admin", StringComparison.Ordinal));
     }
 
     [Fact]

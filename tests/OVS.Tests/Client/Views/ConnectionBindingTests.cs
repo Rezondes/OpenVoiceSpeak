@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
@@ -108,7 +109,7 @@ public sealed class ConnectionBindingTests() : TempDirectoryTest("ovs-connbind-"
         mainViewModel.Bookmarks.Refresh();
         Dispatcher.UIThread.RunJobs();
         return main.GetVisualDescendants().OfType<Button>()
-            .Single(button => AutomationProperties.GetName(button) == string.Format(Strings.Ui_ConnectToFmt, BookmarkName));
+            .Single(button => AutomationProperties.GetName(button) == string.Format(CultureInfo.InvariantCulture, Strings.Ui_ConnectToFmt, BookmarkName));
     }
 
     [AvaloniaFact]

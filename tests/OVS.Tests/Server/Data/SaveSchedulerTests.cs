@@ -203,7 +203,7 @@ public sealed class SaveSchedulerTests
         failing = true;
         time.Advance(ServerTuning.SaveDelay);
 
-        Assert.Equal(2, log.Count(line => line.StartsWith("Server data not saved")));
+        Assert.Equal(2, log.Count(line => line.StartsWith("Server data not saved", StringComparison.Ordinal)));
     }
 
     [Fact]

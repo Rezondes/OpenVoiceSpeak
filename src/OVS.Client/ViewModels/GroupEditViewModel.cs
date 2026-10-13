@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -87,5 +88,5 @@ public sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
         foreach (var permissionToggle in Toggles) permissionToggle.IsChecked = serverPermissions.Has(permissionToggle.Permission);
     }
     /// <summary>The name, marked when the group is not saved yet.</summary>
-    public string DisplayName => Id is null ? string.Format(Strings.Group_Unsaved, Name) : Name;
+    public string DisplayName => Id is null ? string.Format(CultureInfo.CurrentCulture, Strings.Group_Unsaved, Name) : Name;
 }

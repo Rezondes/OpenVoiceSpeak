@@ -181,7 +181,7 @@ public class AdminCommandTests
         await using var again = await TestClient.OpenAsync(server.Port, id);
         var welcome = Assert.IsType<Welcome>(await again.HandshakeAsync("anna", "geheim"));
         Assert.Equal(Permission.All, welcome.Snapshot.Users.Single(user => user.SessionId == welcome.SessionId).Permissions);
-        Assert.DoesNotContain("geheim", await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")));
+        Assert.DoesNotContain("geheim", await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -460,7 +460,7 @@ public class AdminCommandTests
         await admin.SendAsync(new ReorderGroups(ids));
         var changed = await guest.WaitForAsync<GroupsChanged>();
         Assert.Equal(ids, changed.Groups.Select(groupInfo => groupInfo.Id));
-        Assert.Contains(server.Log, line => line.Contains("Groups reordered by admin"));
+        Assert.Contains(server.Log, line => line.Contains("Groups reordered by admin", StringComparison.Ordinal));
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
         Assert.Equal(ids, late.Welcome.Snapshot.Groups.Select(groupInfo => groupInfo.Id));

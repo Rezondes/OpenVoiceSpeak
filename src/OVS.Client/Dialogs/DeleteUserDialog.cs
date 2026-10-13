@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using OVS.Client.Controls;
@@ -15,7 +16,7 @@ internal static class DeleteUserDialog
         var list = new StackPanel { Spacing = 2, Margin = new Thickness(8, 0, 0, 0) };
         list.Children.AddRange(items.Select(item => CreateText("\u2022 " + item)));
         var body = CreateStack(CreateText(Strings.Dlg_DeleteUserIntro), list, CreateText(Strings.Dlg_DeleteUserHint, "muted"));
-        return await DialogFrame.ShowAsync(overlay, string.Format(Strings.Dlg_DeleteUserTitle, nickname), "PersonDelete", body, () => "ok",
+        return await DialogFrame.ShowAsync(overlay, string.Format(CultureInfo.CurrentCulture, Strings.Dlg_DeleteUserTitle, nickname), "PersonDelete", body, () => "ok",
             new(Strings.Dlg_DeleteForever, OkIsDefault: false, Kind: DialogKind.Danger)) is not null;
     }
 }

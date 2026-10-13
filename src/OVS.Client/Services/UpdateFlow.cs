@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Logging;
 using OVS.Client.Localization;
@@ -65,7 +66,7 @@ internal sealed partial class UpdateFlow : ObservableObject
         if (result.Error is { } error)
         {
             log.UpdateCheckFailed(error);
-            return string.Format(Strings.Update_CheckFailed, error);
+            return string.Format(CultureInfo.CurrentCulture, Strings.Update_CheckFailed, error);
         }
         if (result.Offer is not { } offer)
         {
@@ -73,9 +74,9 @@ internal sealed partial class UpdateFlow : ObservableObject
             return Strings.Update_Latest;
         }
         log.UpdateAvailable(offer.Version, offer.Tag);
-        if (Install is not { } install || !await ask(offer)) return string.Format(Strings.Update_Available, offer.Version);
+        if (Install is not { } install || !await ask(offer)) return string.Format(CultureInfo.CurrentCulture, Strings.Update_Available, offer.Version);
 
-        setStatus(string.Format(Strings.Update_Downloading, offer.Version));
+        setStatus(string.Format(CultureInfo.CurrentCulture, Strings.Update_Downloading, offer.Version));
         log.UpdateInstalling(offer.Version);
         Progress = new UpdateProgress(offer.Version, UpdatePhase.Downloading);
         string? failure;

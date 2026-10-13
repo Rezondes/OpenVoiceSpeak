@@ -241,7 +241,7 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     /// </summary>
     static bool Resolves(PlanReference reference, Dictionary<string, HashSet<string>> testMethods, string root) => reference switch
     {
-        { File: { } file } => File.Exists(Path.Combine(root, file)) && File.ReadAllText(Path.Combine(root, file)).Contains(reference.Text!),
+        { File: { } file } => File.Exists(Path.Combine(root, file)) && File.ReadAllText(Path.Combine(root, file)).Contains(reference.Text!, StringComparison.Ordinal),
         { Class: null } => testMethods.Values.Any(methods => methods.Contains(reference.Method!)),
         { Method: null } => testMethods.ContainsKey(reference.Class),
         _ => testMethods.TryGetValue(reference.Class, out var methods) && methods.Contains(reference.Method),

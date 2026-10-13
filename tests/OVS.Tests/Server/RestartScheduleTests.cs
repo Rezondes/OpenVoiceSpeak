@@ -42,8 +42,8 @@ public sealed class RestartScheduleTests
         // time.Advance after it hits the new timer instead of racing the loop on a slow runner.
         async Task LoggedAsync(string text, int count)
         {
-            await AsyncWait.UntilAsync(() => lines.Count(line => line.Contains(text)) >= count);
-            Assert.Equal(count, lines.Count(line => line.Contains(text)));
+            await AsyncWait.UntilAsync(() => lines.Count(line => line.Contains(text, StringComparison.Ordinal)) >= count);
+            Assert.Equal(count, lines.Count(line => line.Contains(text, StringComparison.Ordinal)));
         }
         const string Scheduled = "Automatic restart daily at";
 

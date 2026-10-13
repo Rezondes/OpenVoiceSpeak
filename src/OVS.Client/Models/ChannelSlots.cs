@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Shared.Permissions;
 
 namespace OVS.Client.Models;
@@ -12,5 +13,5 @@ public readonly record struct ChannelSlots(int UserCount, int MaxUsers)
     public bool IsFull => ChannelCapacity.IsFull(MaxUsers, UserCount);
 
     /// <summary>"3/10" is 3 of at most 10, "3" is 3 without a limit.</summary>
-    public override string ToString() => MaxUsers > 0 ? $"{UserCount}/{MaxUsers}" : UserCount.ToString();
+    public override string ToString() => MaxUsers > 0 ? $"{UserCount}/{MaxUsers}" : UserCount.ToString(CultureInfo.CurrentCulture);
 }

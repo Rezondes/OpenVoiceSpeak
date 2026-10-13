@@ -400,8 +400,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.False(ClientSettings.Load(dir, out _).Bookmarks.Single().HasSavedPassword);
 
         var log = ClientLogText();
-        Assert.DoesNotContain("geheim", log);
-        Assert.Contains("password stored encrypted", log);
+        Assert.DoesNotContain("geheim", log, StringComparison.Ordinal);
+        Assert.Contains("password stored encrypted", log, StringComparison.Ordinal);
     }
 
     // ---- Package 40: bookmarks in the sidebar ----
@@ -567,7 +567,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             },
         };
         var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.Host == "api.github.com" ? FakeHttp.Json(release)
-            : httpRequestMessage.RequestUri.AbsolutePath.EndsWith(".sha256") ? FakeHttp.Bytes(System.Text.Encoding.ASCII.GetBytes(new string('0', 64)))
+            : httpRequestMessage.RequestUri.AbsolutePath.EndsWith(".sha256", StringComparison.Ordinal) ? FakeHttp.Bytes(System.Text.Encoding.ASCII.GetBytes(new string('0', 64)))
             : FakeHttp.Bytes(new byte[200_000]));
         var running = new OVS.Shared.BuildInfo(DateTimeOffset.UtcNow.AddDays(-1), "aaaaaaa", IsCi: true);
         var seen = new List<OVS.Client.Net.Updates.UpdateProgress?>();
@@ -622,7 +622,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             viewModel.PageFlow.OpenSettings();
             return 0;
         });
-        Assert.DoesNotContain(missingLine, ClientLogText());
+        Assert.DoesNotContain(missingLine, ClientLogText(), StringComparison.Ordinal);
 
         await OnUiAsync(() =>
         {
@@ -630,7 +630,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             return 0;
         });
 
-        Assert.Contains(missingLine, ClientLogText()); // the engine's sound library looked the row's own file up
+        Assert.Contains(missingLine, ClientLogText(), StringComparison.Ordinal); // the engine's sound library looked the row's own file up
     }
 
     [Fact]
@@ -752,7 +752,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(png, (await OnUiAsync(() => viewModel.Bookmarks.Items)).Single().Icon);
 
         var log = ClientLogText();
-        Assert.Equal(1, log.Split(Environment.NewLine).Count(line => line.Contains("Request server logo")));
+        Assert.Equal(1, log.Split(Environment.NewLine).Count(line => line.Contains("Request server logo", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -771,7 +771,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             viewModel.Tick();
             return viewModel.Connection.PingText;
         }, path => path.Length > 0);
-        Assert.StartsWith("Ping ", ping);
+        Assert.StartsWith("Ping ", ping, StringComparison.Ordinal);
     }
 
     /// <summary>Package 126: an outage after UDP worked is logged once when lost and once when back.</summary>
@@ -786,18 +786,18 @@ public sealed class MainViewModelTests : IAsyncLifetime
             viewModel.Tick();
             return ClientLogText();
         }
-        Assert.Contains("UDP now reachable", await OnUiUntilAsync(Logged, line => line.Contains("UDP now reachable")));
+        Assert.Contains("UDP now reachable", await OnUiUntilAsync(Logged, line => line.Contains("UDP now reachable", StringComparison.Ordinal)), StringComparison.Ordinal);
 
         relay.DropAll = true;
         for (int index = 0; index < 40; index++) time.Advance(TimeSpan.FromMilliseconds(500)); // 20 s
-        Assert.Contains("UDP not reachable", await OnUiAsync(Logged));
+        Assert.Contains("UDP not reachable", await OnUiAsync(Logged), StringComparison.Ordinal);
         relay.DropAll = false;
         for (int index = 0; index < 10; index++) time.Advance(TimeSpan.FromMilliseconds(500));
-        await OnUiUntilAsync(Logged, line => line.Contains("UDP reachable again"));
+        await OnUiUntilAsync(Logged, line => line.Contains("UDP reachable again", StringComparison.Ordinal));
 
         var log = await OnUiAsync(Logged); // one more tick adds nothing
         foreach (var line in new[] { "UDP now reachable", "UDP not reachable", "UDP reachable again" })
-            Assert.Single(log.Split(Environment.NewLine), text => text.Contains(line));
+            Assert.Single(log.Split(Environment.NewLine), text => text.Contains(line, StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -836,7 +836,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         }, value => value == 4));
         var stats = await OnUiAsync(() => viewModel.Stats);
         Assert.Equal((SignalRating.Good, false), (stats.Rating, stats.Unreachable));
-        Assert.Contains("0 ms", stats.RoundTripText);
+        Assert.Contains("0 ms", stats.RoundTripText, StringComparison.Ordinal);
         Assert.Equal("64 kbps", stats.BitrateText);
         foreach (var text in new[] { stats.UplinkText, stats.DownlinkText, stats.JitterText, stats.DelayText, stats.ConcealedText })
             Assert.False(string.IsNullOrEmpty(text));
@@ -1070,7 +1070,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.True(await OnUiUntilAsync(() => viewModel.Connection.IsReconnecting, value => value));
         await CancelReconnectAsync();
         var bye = await OnUiUntilAsync(() => viewModel.Notices.FirstOrDefault(notice => notice.Kind == NoticeKind.Warning), notice => notice is not null);
-        Assert.StartsWith("Getrennt: ", bye?.Text);
+        Assert.StartsWith("Getrennt: ", bye?.Text, StringComparison.Ordinal);
         Assert.Matches(@"^\d{2}:\d{2}:\d{2}  Getrennt: ", bye!.ToString()); // the debug API keeps its "time  text" form
     }
 
@@ -1418,7 +1418,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             return 0;
         });
         Assert.Equal(1f, await OnUiAsync(() => viewModel.Audio.Mixer.SpeakerGain(9)));
-        Assert.DoesNotContain("fp2", await File.ReadAllTextAsync(Path.Combine(dir, ClientSettings.FileName)));
+        Assert.DoesNotContain("fp2", await File.ReadAllTextAsync(Path.Combine(dir, ClientSettings.FileName)), StringComparison.Ordinal);
     }
 
     [Fact]

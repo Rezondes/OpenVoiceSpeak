@@ -190,7 +190,7 @@ public sealed class LogExporterTests : TempDirectoryTest
         var (export, _) = exporter.Export(DownloadId, [GoneLog, ServerLog], new Dictionary<Guid, string>());
 
         Assert.Equal([GoneLog, ServerLog], hooked);
-        Assert.All(Entries(export!.Path), value => Assert.EndsWith("added by the hook\n", value.Text));
+        Assert.All(Entries(export!.Path), value => Assert.EndsWith("added by the hook\n", value.Text, StringComparison.Ordinal));
     }
 
     [Fact]

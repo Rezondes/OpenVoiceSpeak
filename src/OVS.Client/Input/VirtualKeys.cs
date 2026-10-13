@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Localization;
 
 namespace OVS.Client.Input;
@@ -40,6 +41,6 @@ public static class VirtualKeys
         RControl => Strings.Key_RightCtrl,
         0xA4 => Strings.Key_LeftAlt,
         0xA5 => Strings.Key_RightAlt,
-        _ => string.Format(Strings.Key_Unknown, vk),
+        _ => string.Format(CultureInfo.CurrentCulture, Strings.Key_Unknown, vk),
     };
 }

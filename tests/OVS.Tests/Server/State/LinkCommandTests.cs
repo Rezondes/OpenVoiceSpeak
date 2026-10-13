@@ -187,7 +187,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
         Assert.Equal(new HashSet<OrderedPair> { Norm(channelX, channelY), Norm(channelY, lobby) }, linked.Select(channelsLinked => Norm(channelsLinked.A, channelsLinked.B)).ToHashSet());
         var unlinked = await guest.WaitForAsync<ChannelsUnlinked>();
         Assert.Equal(Norm(lobby, channelX), Norm(unlinked.A, unlinked.B));
-        Assert.Contains(server.Log, line => line.Contains("Links changed by mod: 2 set, 1 removed"));
+        Assert.Contains(server.Log, line => line.Contains("Links changed by mod: 2 set, 1 removed", StringComparison.Ordinal));
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
         Assert.Equal(2, late.Welcome.Snapshot.Links.Count);

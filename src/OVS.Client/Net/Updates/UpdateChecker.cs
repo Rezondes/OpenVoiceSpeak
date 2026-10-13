@@ -1,3 +1,4 @@
+using System.Globalization;
 using OVS.Client.Localization;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -31,7 +32,7 @@ public sealed class UpdateChecker(HttpClient http, BuildInfo current)
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             request.Headers.UserAgent.Add(new ProductInfoHeaderValue("OpenVoiceSpeak", current.Version));
             using var response = await http.SendAsync(request, cancel);
-            if (!response.IsSuccessStatusCode) return new UpdateCheckResult(null, string.Format(Strings.Update_GitHubStatus, (int)response.StatusCode));
+            if (!response.IsSuccessStatusCode) return new UpdateCheckResult(null, string.Format(CultureInfo.CurrentCulture, Strings.Update_GitHubStatus, (int)response.StatusCode));
             using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancel), cancellationToken: cancel);
             return new UpdateCheckResult(Evaluate(json.RootElement));
         }
@@ -52,6 +53,6 @@ public sealed class UpdateChecker(HttpClient http, BuildInfo current)
         if (!assets.TryGetValue(ExeName, out var exe) || !assets.TryGetValue(ExeName + ".sha256", out var hash)) return null;
         var title = release.TryGetProperty("name", out var name) ? name.GetString() ?? tag : tag;
         var notes = release.TryGetProperty("body", out var body) ? body.GetString() ?? "" : "";
-        return new UpdateOffer(title.StartsWith(TitlePrefix) ? title[TitlePrefix.Length..] : title, tag, notes.Trim(), published, new Uri(exe), new Uri(hash));
+        return new UpdateOffer(title.StartsWith(TitlePrefix, StringComparison.Ordinal) ? title[TitlePrefix.Length..] : title, tag, notes.Trim(), published, new Uri(exe), new Uri(hash));
     }
 }

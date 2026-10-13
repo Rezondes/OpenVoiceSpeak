@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using OVS.Client.Audio.Capture;
 using OVS.Client.Localization;
 
@@ -131,7 +132,7 @@ public sealed class DeviceLifecycle
                 if (endpoint.GivenUp)
                 {
                     // given up on this device until another one would open or the settings are saved; a failed open told the user already
-                    if (error is not null) warnings.Add(string.Format(failedText, error.Message));
+                    if (error is not null) warnings.Add(string.Format(CultureInfo.CurrentCulture, failedText, error.Message));
                     return;
                 }
             }
@@ -139,7 +140,7 @@ public sealed class DeviceLifecycle
         }
         catch (Exception exception) // a background thread must not take the client down: the user gets a notice instead
         {
-            warnings.Add(string.Format(failedText, exception.Message));
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, failedText, exception.Message));
         }
     }
 
@@ -253,7 +254,7 @@ public sealed class DeviceLifecycle
         }
         catch (Exception exception) // a background thread must not take the client down: the user gets a notice instead
         {
-            warnings.Add(string.Format(Strings.Audio_MicFailed, exception.Message));
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Audio_MicFailed, exception.Message));
         }
         if (warnings.Count > 0) report(warnings);
     }
@@ -268,7 +269,7 @@ public sealed class DeviceLifecycle
         }
         catch (Exception exception) // mixing goes on without a speaker instead of the thread taking the client down
         {
-            warnings.Add(string.Format(Strings.Audio_SpeakerFailed, exception.Message));
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Audio_SpeakerFailed, exception.Message));
         }
         if (warnings.Count > 0) report(warnings);
     }
@@ -297,7 +298,7 @@ public sealed class DeviceLifecycle
         catch (Exception exception) // the open, set-up and start of one capture: a device that cannot open throws (IAudioHardware)
         {
             CaptureSource.Close();
-            warnings.Add(string.Format(Strings.Audio_MicFailed, exception.Message));
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Audio_MicFailed, exception.Message));
             if (device) micEndpoint.OpenFailed();
         }
         finally
@@ -319,7 +320,7 @@ public sealed class DeviceLifecycle
         }
         catch (Exception exception) // a device that cannot open throws (IAudioHardware)
         {
-            warnings.Add(string.Format(Strings.Audio_SpeakerFailed, exception.Message));
+            warnings.Add(string.Format(CultureInfo.CurrentCulture, Strings.Audio_SpeakerFailed, exception.Message));
             speakerEndpoint.OpenFailed();
         }
         finally

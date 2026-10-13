@@ -51,7 +51,7 @@ public sealed class WebsiteShots
     /// </summary>
     static void Shows(TopLevel window, string text, bool part = false) =>
         Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(),
-            textBlock => (part ? textBlock.Text?.Contains(text) == true : textBlock.Text == text) && OnScreen(textBlock, window));
+            textBlock => (part ? textBlock.Text?.Contains(text, StringComparison.Ordinal) == true : textBlock.Text == text) && OnScreen(textBlock, window));
 
     static bool OnScreen(Visual visual, TopLevel window)
     {
@@ -141,7 +141,7 @@ public sealed class WebsiteShots
         scene.Connect();
         OpenSettings(scene, Strings.Ui_AppearanceSection, toBottom: true);
         Shows(scene.Window, Strings.Ui_AppearanceSection);
-        Assert.DoesNotContain(scene.Window.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text?.Contains(" dev.") == true && OnScreen(textBlock, scene.Window));
+        Assert.DoesNotContain(scene.Window.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text?.Contains(" dev.", StringComparison.Ordinal) == true && OnScreen(textBlock, scene.Window));
         scene.Save(Folder, "settings-look");
     }
 
