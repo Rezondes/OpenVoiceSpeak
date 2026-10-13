@@ -8454,10 +8454,10 @@ Test command: `dotnet test OpenVoiceSpeak.slnx`
 **Dependencies:** none
 
 **Affected files:**
-- `src/OVS.Server/ServerHost.cs` (change): `RunOnceAsync` builds the run's `ILoggerFactory` (the file provider plus whatever `configureLogging` adds), `BuildRun` registers it as the container's `ILoggerFactory`; the factory is disposed after the host
-- `src/OVS.Server/Logging/ServerLogWriter.cs` (change): takes the factory; `Server` and `Channel` loggers come from it
+- `src/OVS.Server/ServerHost.cs` (change): `RunAsync` takes `configureLogging`; `RunOnceAsync` hands it to the run's `ServerLogWriter`, `BuildRun` registers the writer's factory as the container's `ILoggerFactory`; the writer is disposed after the host
+- `src/OVS.Server/Logging/ServerLogWriter.cs` (change): builds and owns the factory (the file provider plus whatever `configureLogging` adds); `Server` and `Channel` loggers come from it
 - `src/OVS.Shared/Logging/LogFileLoggerProvider.cs` (unchanged behaviour): other categories still write nothing
-- `tests/OVS.Tests/Server/ServerHostTests.cs`, `Server/Logging/ServerLogWriterTests.cs` (change)
+- `tests/OVS.Tests/Server/ServerHostTests.cs`, `Server/Logging/ServerLogWriterTests.cs` (change), `TestSupport/RecordingLoggerProvider.cs` (new)
 
 ### Context
 
@@ -8465,19 +8465,21 @@ Test command: `dotnet test OpenVoiceSpeak.slnx`
 
 ### Acceptance Criteria
 
-- [ ] AC1: A provider added through `configureLogging` gets every server log line of a run, including the start and version lines, with category `server`, and every channel line with its channel category.
-- [ ] AC2: The files of a run with an extra provider are byte-identical to those of the same run without it.
-- [ ] AC3: Framework categories (the host's own) still reach no file.
-- [ ] AC4: A restart in the same process makes a new factory; the old one is disposed once, after its host.
+- [x] AC1: A provider added through `configureLogging` gets every server log line of a run, including the start and version lines, with category `server`, and every channel line with its channel category.
+- [x] AC2: The files of a run with an extra provider are byte-identical to those of the same run without it.
+- [x] AC3: Framework categories (the host's own) still reach no file.
+- [x] AC4: A restart in the same process makes a new factory; the old one is disposed once, after its host.
 
 ### Tests (TDD)
 
 1. `ServerHostTests > "Run_ExtraProvider_GetsServerAndChannelLines"` (AC1)
    - Given: a run with a recording provider, one channel chat line, then a stop.
    - Expected: the recorder holds the start line, the version line and the chat line under `server` and `channels/<id>`.
-2. `ServerHostTests > "Run_ExtraProvider_FilesByteIdentical"` (AC2): the same run on a fake clock twice, with and without the recorder.
+2. `ServerLogWriterTests > "Lines_ExtraProvider_FilesByteIdentical"` (AC2): the same server and channel lines on the same fake clock twice, with and without the recorder.
 3. `ServerLogWriterTests > "ForeignCategory_Logged_NoFile"` (AC3)
 4. `ServerHostTests > "Restart_NewFactory_OldDisposedOnce"` (AC4)
+
+(as built: `ServerLogWriter` makes the factory with `LoggerFactory.Create`, minimum level `Trace` (the file provider decides what it writes, as before), the file provider and then `configureLogging`; it is `IDisposable` now and disposing it disposes the factory, which disposes the providers its container made, such as the ones the OpenTelemetry SDK registers (a provider instance given to `AddProvider` is not disposed by the factory, so the tests' `RecordingLoggerProvider` registers itself through the factory's services). `RunOnceAsync` holds the run's writer in a `using`, so it is disposed after the host, once per run; a restart makes a new writer and with it a new factory. The container gets the factory as its `ILoggerFactory`. Tests that make a writer of their own dispose it now (CA2000). AC2 is checked on the writer: a whole run cannot give byte-identical files twice, as each data folder gets its own certificate and port. AC4: the auto-restart a few seconds after the start (`ServerHostTests > Restart_NewFactory_OldDisposedOnce`).)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

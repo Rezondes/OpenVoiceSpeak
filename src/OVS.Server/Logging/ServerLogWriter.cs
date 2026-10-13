@@ -8,28 +8,40 @@ namespace OVS.Server.Logging;
 /// a new file per server start and optionally per day, see LogFileWriter.
 /// A failing disk never takes the server down: the first write error is reported on the console.
 /// Step 31: the lines are the logger messages of <see cref="ServerLogLines"/> and <see cref="ChannelLogLines"/>.
+/// Package 144 (A154): every logger comes from the writer's <see cref="Factory"/>, which holds the file provider and whatever
+/// a run adds; the run's container uses that factory, and disposing the writer disposes it and its providers.
 /// </summary>
-#pragma warning disable CA1001 // the logger provider holds nothing to free (its Dispose is empty)
-internal sealed class ServerLogWriter
-#pragma warning restore CA1001
+internal sealed class ServerLogWriter : IDisposable
 {
     readonly LogFileWriter files;
-    readonly LogFileLoggerProvider provider;
 
     /// <param name="keepDays">0 keeps every file.</param>
     /// <param name="newFileEachDay">False keeps the files of this run until the next start.</param>
     /// <param name="dataDir">The data folder; the logs go into its logs folder.</param>
     /// <param name="time">The clock of the time stamps and file names.</param>
     /// <param name="console">Gets every line meant for the console, and the write failures.</param>
-    public ServerLogWriter(string dataDir, int keepDays, TimeProvider time, Action<string> console, bool newFileEachDay = true)
+    /// <param name="configureLogging">Adds further logger providers beside the file provider.</param>
+    public ServerLogWriter(string dataDir, int keepDays, TimeProvider time, Action<string> console, bool newFileEachDay = true,
+        Action<ILoggingBuilder>? configureLogging = null)
     {
         files = new LogFileWriter(Path.Combine(dataDir, "logs"), keepDays, time, console, newFileEachDay);
-        provider = new LogFileLoggerProvider(files, console);
-        Server = provider.CreateLogger(LogFileLoggerProvider.ServerCategory);
+        Factory = LoggerFactory.Create(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Trace); // the file provider decides what it writes, as before
+            builder.AddProvider(new LogFileLoggerProvider(files, console));
+            configureLogging?.Invoke(builder);
+        });
+        Server = Factory.CreateLogger(LogFileLoggerProvider.ServerCategory);
     }
+
+    /// <summary>Package 144: the run's logger factory, also the one of its container.</summary>
+    public ILoggerFactory Factory { get; }
 
     /// <summary>The server log: logs/server/ and the console.</summary>
     public ILogger Server { get; }
+
+    /// <summary>Disposes the factory and its providers, which flushes what they still hold.</summary>
+    public void Dispose() => Factory.Dispose();
 
     /// <summary>Package 69: retention and daily files come from the administration and change at runtime.</summary>
     public void Update(int keepDays, bool newFileEachDay) => files.Update(keepDays, newFileEachDay);
@@ -39,7 +51,7 @@ internal sealed class ServerLogWriter
     /// line carries the channel's current name in brackets.
     /// </summary>
     public ILogger Channel(Guid channelId, string channelName) =>
-        new NamedChannelLogger(provider.CreateLogger(LogFileLoggerProvider.ChannelCategory(channelId)), channelName);
+        new NamedChannelLogger(Factory.CreateLogger(LogFileLoggerProvider.ChannelCategory(channelId)), channelName);
 
     /// <summary>Puts "[name] " in front of every line.</summary>
     sealed class NamedChannelLogger(ILogger inner, string name) : ILogger

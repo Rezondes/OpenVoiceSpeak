@@ -16,14 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["ServerHostTests > \"Run_ExtraProvider_GetsServerAndChannelLines\""] =
-            "planned: Package 144 is not built yet",
-        ["ServerHostTests > \"Run_ExtraProvider_FilesByteIdentical\""] =
-            "planned: Package 144 is not built yet",
-        ["ServerLogWriterTests > \"ForeignCategory_Logged_NoFile\""] =
-            "planned: Package 144 is not built yet",
-        ["ServerHostTests > \"Restart_NewFactory_OldDisposedOnce\""] =
-            "planned: Package 144 is not built yet",
         ["ServerTelemetryTests > \"Start_NoEndpoint_NoProviders\""] =
             "planned: Package 145 is not built yet",
         ["ServerTelemetryTests > \"Endpoint_Set_ResourceNamesServiceAndVersion\""] =

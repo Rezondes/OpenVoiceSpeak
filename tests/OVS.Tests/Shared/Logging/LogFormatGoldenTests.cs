@@ -25,7 +25,7 @@ public sealed class LogFormatGoldenTests() : TempDirectoryTest("ovs-golden-", qu
     [Fact]
     public void ServerLine_ToFileAndConsole_StampSpaceText()
     {
-        var logs = new ServerLogWriter(dir, 0, clock, console.Add);
+        using var logs = new ServerLogWriter(dir, 0, clock, console.Add);
 
         logs.WriteServerLine("Server startet");
 
@@ -36,7 +36,7 @@ public sealed class LogFormatGoldenTests() : TempDirectoryTest("ovs-golden-", qu
     [Fact]
     public void ServerLine_SecretOrConsoleOnly_GoesOnlyWhereItIsAsked()
     {
-        var logs = new ServerLogWriter(dir, 0, clock, console.Add);
+        using var logs = new ServerLogWriter(dir, 0, clock, console.Add);
 
         logs.WriteServerLine("Admin-Token: geheim", toFile: false);
         logs.WriteServerLine("nur in die Datei", toConsole: false);
@@ -48,7 +48,7 @@ public sealed class LogFormatGoldenTests() : TempDirectoryTest("ovs-golden-", qu
     [Fact]
     public void ChannelLine_InTheChannelsFolder_CarriesTheNameInBrackets()
     {
-        var logs = new ServerLogWriter(dir, 0, clock, console.Add);
+        using var logs = new ServerLogWriter(dir, 0, clock, console.Add);
         var channel = Guid.Parse("11111111-2222-3333-4444-555555555555");
 
         logs.WriteChannelLine(channel, "Raid", "anna betritt den Channel");
@@ -61,7 +61,7 @@ public sealed class LogFormatGoldenTests() : TempDirectoryTest("ovs-golden-", qu
     [Fact]
     public void ServerLine_ControlCharacters_EscapedOnOneLine()
     {
-        var logs = new ServerLogWriter(dir, 0, clock, console.Add);
+        using var logs = new ServerLogWriter(dir, 0, clock, console.Add);
 
         logs.WriteServerLine("eins" + (char)0x0A + "zwei" + (char)0x0D + (char)0x09 + "drei" + (char)0x1B + "[31m" + (char)0x2028);
 

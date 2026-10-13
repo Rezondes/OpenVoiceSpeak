@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.Logging;
 using OVS.Server.Logging;
 using OVS.Shared.Identity;
 using OVS.Shared.Permissions;
@@ -38,7 +39,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     {
         // Regression: File.ReadAllText (and editors) lock the file against writers; the line used to be dropped.
         var clock = new ManualTimeProvider();
-        var logs = new ServerLogWriter(dir, 30, clock, _ => { });
+        using var logs = new ServerLogWriter(dir, 30, clock, _ => { });
         logs.WriteServerLine("eins");
         var path = Directory.GetFiles(Path.Combine(dir, "logs", "server")).Single();
         using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -60,7 +61,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     {
         var clock = new ManualTimeProvider();
         var failures = new List<string>();
-        var logs = new ServerLogWriter(dir, 30, clock, failures.Add);
+        using var logs = new ServerLogWriter(dir, 30, clock, failures.Add);
         logs.WriteServerLine("eins", toConsole: false);
         var path = Directory.GetFiles(Path.Combine(dir, "logs", "server")).Single();
         using var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -97,7 +98,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     {
         var time = new ManualTimeProvider();
         var console = new List<string>();
-        var logs = new ServerLogWriter(dir, 30, time, console.Add);
+        using var logs = new ServerLogWriter(dir, 30, time, console.Add);
         var start = Start(time);
         time.Advance(TimeSpan.FromMinutes(5));
         logs.WriteServerLine("Hallo Welt");
@@ -113,15 +114,15 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var time = new ManualTimeProvider();
         var channel = Guid.NewGuid();
         var first = Start(time);
-        var logs = new ServerLogWriter(dir, 30, time, _ => { });
+        using var logs = new ServerLogWriter(dir, 30, time, _ => { });
         logs.WriteServerLine("Lauf eins");
         logs.WriteChannelLine(channel, "Raid", "Lauf eins");
 
         time.Advance(TimeSpan.FromMinutes(90));
         var second = Start(time);
-        logs = new ServerLogWriter(dir, 30, time, _ => { });
-        logs.WriteServerLine("Lauf zwei");
-        logs.WriteChannelLine(channel, "Raid", "Lauf zwei");
+        using var next = new ServerLogWriter(dir, 30, time, _ => { });
+        next.WriteServerLine("Lauf zwei");
+        next.WriteChannelLine(channel, "Raid", "Lauf zwei");
 
         foreach (var folder in new[] { Path.Combine(dir, "logs", "server"), Path.Combine(dir, "logs", "channels", channel.ToString()) })
         {
@@ -136,7 +137,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     {
         var time = new ManualTimeProvider();
         var first = Start(time);
-        var logs = new ServerLogWriter(dir, 30, time, _ => { });
+        using var logs = new ServerLogWriter(dir, 30, time, _ => { });
         logs.WriteServerLine("eins");
         time.Advance(TimeSpan.FromDays(1));
         logs.WriteServerLine("zwei");
@@ -150,7 +151,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     {
         var time = new ManualTimeProvider();
         var console = new List<string>();
-        var logs = new ServerLogWriter(dir, 30, time, console.Add);
+        using var logs = new ServerLogWriter(dir, 30, time, console.Add);
         var id = Guid.NewGuid();
         logs.WriteChannelLine(id, "Raid", "anna hat den Channel betreten");
 
@@ -163,7 +164,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     {
         // Regression (CWE-117): chat text and reasons come from guests; a CR/LF used to add a forged, timestamped line.
         var time = new ManualTimeProvider();
-        var logs = new ServerLogWriter(dir, 30, time, _ => { });
+        using var logs = new ServerLogWriter(dir, 30, time, _ => { });
         var id = Guid.NewGuid();
         logs.WriteChannelLine(id, "Raid", "hi\r\n2026-01-01 00:00:00.000 [Raid] chef gebannt\u0085a\u2028b\u2029c\td\0e\u001b[31m");
         logs.WriteChannelLine(id, "Raid", @"Pfad C:\neu äöü");
@@ -182,7 +183,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     {
         var time = new ManualTimeProvider();
         var console = new List<string>();
-        var logs = new ServerLogWriter(dir, 30, time, console.Add);
+        using var logs = new ServerLogWriter(dir, 30, time, console.Add);
         logs.WriteServerLine("a\rb\nc\u2028d\u2029e\u001b[31mrot\u009b2J\u0007");
 
         var line = Assert.Single(console);
@@ -225,7 +226,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         Touch(server, Start(time, -5));
         Touch(channel, Start(time, -40));
 
-        var logs = new ServerLogWriter(dir, 30, time, _ => { }); // cleanup at start
+        using var logs = new ServerLogWriter(dir, 30, time, _ => { }); // cleanup at start
         Assert.False(File.Exists(Path.Combine(server, Start(time, -31) + ".log")));
         Assert.True(File.Exists(Path.Combine(server, Start(time, -5) + ".log")));
         Assert.False(File.Exists(Path.Combine(channel, Start(time, -40) + ".log")));
@@ -241,7 +242,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var time = new ManualTimeProvider();
         var server = Path.Combine(dir, "logs", "server");
         var start = Start(time);
-        var logs = new ServerLogWriter(dir, 30, time, _ => { }, newFileEachDay: false);
+        using var logs = new ServerLogWriter(dir, 30, time, _ => { }, newFileEachDay: false);
         logs.WriteServerLine("eins");
         Touch(server, Start(time, -29));
 
@@ -264,7 +265,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var server = Path.Combine(dir, "logs", "server");
         var start = Start(time);
         Touch(server, Start(time, -10));
-        var logs = new ServerLogWriter(dir, 30, time, _ => { });
+        using var logs = new ServerLogWriter(dir, 30, time, _ => { });
         logs.WriteServerLine("eins");
         Assert.True(File.Exists(Path.Combine(server, Start(time, -10) + ".log")));
 
@@ -282,7 +283,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var time = new ManualTimeProvider();
         var server = Path.Combine(dir, "logs", "server");
         Touch(server, Start(time, -400));
-        new ServerLogWriter(dir, 0, time, _ => { }).WriteServerLine("x");
+        using (var logs = new ServerLogWriter(dir, 0, time, _ => { })) logs.WriteServerLine("x");
         Assert.True(File.Exists(Path.Combine(server, Start(time, -400) + ".log")));
     }
 
@@ -291,7 +292,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     {
         File.WriteAllText(Path.Combine(dir, "logs"), "ich bin eine Datei, kein Ordner");
         var console = new List<string>();
-        var logs = new ServerLogWriter(dir, 30, new ManualTimeProvider(), console.Add);
+        using var logs = new ServerLogWriter(dir, 30, new ManualTimeProvider(), console.Add);
         logs.WriteServerLine("eins");
         logs.WriteChannelLine(Guid.NewGuid(), "Raid", "zwei");
         logs.WriteServerLine("drei");
@@ -452,5 +453,51 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await again.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.ChannelId == raid);
 
         await EventuallyAsync(() => ChannelLog(server, raid), "[Raid] Channel created by chef", "[Raid 2] chef joined the channel");
+    }
+
+    /// <summary>Package 144 (A154): an extra logger provider sees the lines and leaves the files exactly as they are.</summary>
+    [Fact]
+    public void Lines_ExtraProvider_FilesByteIdentical()
+    {
+        var channel = Guid.Parse("11111111-2222-3333-4444-555555555555");
+        #pragma warning disable CA2000 // the writer's logger factory owns and disposes it
+        var recorder = new RecordingLoggerProvider();
+        #pragma warning restore CA2000
+        string Write(string folder, RecordingLoggerProvider? extra)
+        {
+            var root = Path.Combine(dir, folder);
+            var time = new ManualTimeProvider { Local = TimeZoneInfo.Utc };
+            using (var logs = new ServerLogWriter(root, 0, time, _ => { }, configureLogging: extra is null ? null : extra.AddTo))
+            {
+                logs.Server.ServerChat("anna", "hallo");
+                logs.Channel(channel, "Raid").Chat("anna", "im Channel");
+            }
+            return string.Join("|", Directory.GetFiles(Path.Combine(root, "logs"), "*.log", SearchOption.AllDirectories).Order()
+                .Select(path => Path.GetRelativePath(root, path) + "=" + Convert.ToHexString(File.ReadAllBytes(path))));
+        }
+
+        Assert.Equal(Write("plain", null), Write("extra", recorder));
+        Assert.Contains(recorder.Lines, line => line.Category == "server" && line.Text.Contains("hallo", StringComparison.Ordinal));
+        Assert.Contains(recorder.Lines, line => line.Category == $"channels/{channel}" && line.Text.Contains("im Channel", StringComparison.Ordinal));
+    }
+
+    /// <summary>Package 144 (A154): a framework category reaches an extra provider, never a file.</summary>
+    [Fact]
+    public void ForeignCategory_Logged_NoFile()
+    {
+        #pragma warning disable CA2000 // the writer's logger factory owns and disposes it
+        var recorder = new RecordingLoggerProvider();
+        #pragma warning restore CA2000
+        using (var logs = new ServerLogWriter(dir, 0, new ManualTimeProvider(), _ => { }, configureLogging: recorder.AddTo))
+        {
+            #pragma warning disable CA1848 // the test writes through the plain ILogger extension on purpose
+            logs.Factory.CreateLogger("Microsoft.Hosting.Lifetime").LogInformation("Application started");
+            #pragma warning restore CA1848
+        }
+
+        Assert.Contains(recorder.Lines, line => line.Category == "Microsoft.Hosting.Lifetime");
+        Assert.False(Directory.Exists(Path.Combine(dir, "logs")) && Directory.GetFiles(Path.Combine(dir, "logs"), "*.log", SearchOption.AllDirectories)
+            .Any(path => File.ReadAllText(path).Contains("Application started", StringComparison.Ordinal)));
+        Assert.Equal(1, recorder.Disposed); // the writer owns its factory
     }
 }

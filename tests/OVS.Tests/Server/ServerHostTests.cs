@@ -2,7 +2,9 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using Microsoft.Extensions.Logging;
 using OVS.Server;
+using OVS.Shared;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Tests.TestSupport;
@@ -128,4 +130,80 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
         Assert.DoesNotContain("anna", files[1], StringComparison.Ordinal);
         Assert.Contains("Server stopped", files[1], StringComparison.Ordinal);
     }
+
+    /// <summary>Starts a run on a free port with <paramref name="configureLogging"/>; a reserved port ends with 1, then another is tried.</summary>
+    async Task<StartedRun> StartAsync(Action<ILoggingBuilder> configureLogging, ConcurrentQueue<string> output,
+        Dictionary<string, string>? extra, CancellationToken stop)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            int port = Random.Shared.Next(20_000, 45_000);
+            var env = new Dictionary<string, string> { ["OVS_DATA_DIR"] = dir, ["OVS_PORT"] = port.ToString(CultureInfo.InvariantCulture) };
+            foreach (var (key, value) in extra ?? []) env[key] = value;
+            var host = ServerHost.RunAsync(env.GetValueOrDefault, IPAddress.Loopback, TimeProvider.System, output.Enqueue, output.Enqueue, stop, configureLogging: configureLogging);
+            if (await ConnectWhenUpAsync(port, "anna", host) is { } client) return new(host, port, client);
+            Assert.True(attempt < 20, string.Join("\n", output));
+            Assert.Equal(1, await host);
+        }
+    }
+
+    /// <summary>Package 144 (A154): a provider added to the run's logger factory gets the server and the channel lines.</summary>
+    [Fact]
+    public async Task Run_ExtraProvider_GetsServerAndChannelLines()
+    {
+        #pragma warning disable CA2000 // the run's logger factory owns and disposes it
+        var recorder = new RecordingLoggerProvider();
+        #pragma warning restore CA2000
+        var output = new ConcurrentQueue<string>();
+        using var stop = new CancellationTokenSource();
+        var (host, _, client) = await StartAsync(recorder.AddTo, output, null, stop.Token);
+        await client.DisposeAsync();
+        await stop.CancelAsync();
+        Assert.Equal(0, await host.WaitAsync(TimeSpan.FromSeconds(30)));
+
+        var server = recorder.Lines.Where(line => line.Category == "server").Select(line => line.Text).ToList();
+        Assert.Contains(server, text => text.Contains("OpenVoiceSpeak server starting", StringComparison.Ordinal));
+        Assert.Contains(server, text => text.Contains(BuildInfo.Current.Version, StringComparison.Ordinal));
+        Assert.Contains(recorder.Lines, line => line.Category.StartsWith("channels/", StringComparison.Ordinal) && line.Text.Contains("anna joined the channel", StringComparison.Ordinal));
+        Assert.Equal(1, recorder.Disposed);
+    }
+
+    /// <summary>Package 144 (A154): each run has its own logger factory; the old one is disposed once when its run ends.</summary>
+    [Fact]
+    public async Task Restart_NewFactory_OldDisposedOnce()
+    {
+        var recorders = new ConcurrentQueue<RecordingLoggerProvider>();
+        var output = new ConcurrentQueue<string>();
+        using var stop = new CancellationTokenSource();
+        var restartAt = TimeProvider.System.GetLocalNow().AddSeconds(5).ToString("HH:mm:ss", CultureInfo.InvariantCulture); // the run's own clock
+        var (host, port, client) = await StartAsync(builder =>
+        {
+            #pragma warning disable CA2000 // the run's logger factory owns and disposes it
+            #pragma warning disable CA2000 // the run's logger factory owns and disposes it
+        var recorder = new RecordingLoggerProvider();
+        #pragma warning restore CA2000
+            #pragma warning restore CA2000
+            recorders.Enqueue(recorder);
+            recorder.AddTo(builder);
+        }, output, new() { ["OVS_AUTO_RESTART"] = "an", ["OVS_AUTO_RESTART_TIME"] = restartAt }, stop.Token);
+        await using (client)
+        {
+            await client.WaitForAsync<Disconnected>(timeoutMs: 30_000);
+        }
+        var bert = await ConnectWhenUpAsync(port, "bert", host);
+        Assert.NotNull(bert);
+        await bert.DisposeAsync();
+
+        var (first, second) = (recorders.ElementAt(0), recorders.ElementAt(1));
+        Assert.Equal((1, 0), (first.Disposed, second.Disposed));
+        Assert.DoesNotContain(first.Lines, line => line.Text.Contains("bert", StringComparison.Ordinal));
+        Assert.Contains(second.Lines, line => line.Text.Contains("bert connected", StringComparison.Ordinal));
+
+        await stop.CancelAsync();
+        Assert.Equal(0, await host.WaitAsync(TimeSpan.FromSeconds(30)));
+        Assert.Equal((1, 1, 2), (first.Disposed, second.Disposed, recorders.Count));
+    }
+
+    /// <summary>A run started by <see cref="StartAsync"/>: its task, its port and the client that found it up.</summary>
+    sealed record StartedRun(Task<int> Host, int Port, TestClient Client);
 }

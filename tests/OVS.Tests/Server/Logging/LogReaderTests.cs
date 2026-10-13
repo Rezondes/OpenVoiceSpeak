@@ -28,7 +28,7 @@ public sealed class LogReaderTests() : TempDirectoryTest("ovs-logreader-", quiet
     public void Search_ErrorId_FindsTheLine()
     {
         var time = new ManualTimeProvider();
-        var logs = new ServerLogWriter(dir, 0, time, _ => { });
+        using var logs = new ServerLogWriter(dir, 0, time, _ => { });
         var errorId = ErrorIds.New();
         InvalidOperationException thrown;
         try

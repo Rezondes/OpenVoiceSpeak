@@ -136,7 +136,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         store.Save(old);
 
         var config = Config with { MaxUsers = 20, LogDays = 7, AutoRestartAt = new TimeOnly(3, 30), LogRotateDaily = false };
-        var logs = new ServerLogWriter(dir, 0, TimeProvider.System, _ => { });
+        using var logs = new ServerLogWriter(dir, 0, TimeProvider.System, _ => { });
         _ = new ServerState(config, TimeProvider.System, logs, ServerStores.Open(config, TimeProvider.System));
 
         var migrated = store.LoadOrCreate(() => throw new InvalidOperationException());

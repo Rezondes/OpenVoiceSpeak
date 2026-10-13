@@ -34,9 +34,11 @@ public sealed class RestartScheduleTests
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"), time: time);
         await using var client = await TestClient.ConnectAsync(server, identity: admin);
         var lines = new ConcurrentQueue<string>();
-        var logs = new ServerLogWriter(server.DataDir, 0, time, lines.Enqueue);
+        using var logs = new ServerLogWriter(server.DataDir, 0, time, lines.Enqueue);
         using var stop = new CancellationTokenSource();
+        #pragma warning disable CA2025 // the wait is awaited at the end of the test, before the writer is disposed
         var restart = RestartSchedule.WaitAsync(server.State, time, logs, stop.Token);
+        #pragma warning restore CA2025
 
         // The loop picks up a change on the thread pool: wait until it logged the new schedule, so the
         // time.Advance after it hits the new timer instead of racing the loop on a slow runner.

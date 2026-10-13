@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OVS.Server.Exceptions;
 using OVS.Server.Logging;
 using OVS.Server.State;
@@ -30,13 +31,15 @@ internal static class ServerHost
     /// <param name="console">Gets the console lines.</param>
     /// <param name="error">Gets the lines of a failed start.</param>
     /// <param name="stop">Ends the server.</param>
+    /// <param name="configureLogging">Package 144: adds logger providers to each run's logger factory.</param>
     public static async Task<int> RunAsync(Func<string, string?> getEnv, IPAddress bindAddress, TimeProvider time,
-        Action<string> console, Action<string> error, CancellationToken stop, Func<ServerState, Task>? afterWait = null)
+        Action<string> console, Action<string> error, CancellationToken stop, Func<ServerState, Task>? afterWait = null,
+        Action<ILoggingBuilder>? configureLogging = null)
     {
         bool restarted = false;
         while (true)
         {
-            switch (await RunOnceAsync(getEnv, bindAddress, time, console, error, restarted, afterWait, stop))
+            switch (await RunOnceAsync(getEnv, bindAddress, time, console, error, restarted, afterWait, configureLogging, stop))
             {
                 case RunEnd.Stopped: return 0;
                 case RunEnd.Failed: return 1;
@@ -46,7 +49,8 @@ internal static class ServerHost
     }
 
     static async Task<RunEnd> RunOnceAsync(Func<string, string?> getEnv, IPAddress bindAddress, TimeProvider time,
-        Action<string> console, Action<string> error, bool restarted, Func<ServerState, Task>? afterWait, CancellationToken stop)
+        Action<string> console, Action<string> error, bool restarted, Func<ServerState, Task>? afterWait, Action<ILoggingBuilder>? configureLogging,
+        CancellationToken stop)
     {
         ServerConfig config;
         try
@@ -60,7 +64,7 @@ internal static class ServerHost
         }
         // Package 69: retention and daily files come from server-data.json, which ServerState reads; keeping
         // everything until then stops a stale start value from deleting files.
-        var logs = new ServerLogWriter(config.DataDir, 0, time, console);
+        using var logs = new ServerLogWriter(config.DataDir, 0, time, console, configureLogging: configureLogging); // disposed after the host
         if (restarted) logs.Server.StartingAfterRestart();
         else logs.Server.Starting();
         logs.Server.Version(BuildInfo.Current.Version); // Package 42
@@ -151,6 +155,7 @@ internal static class ServerHost
         services.AddSingleton(time);
         services.AddSingleton(config);
         services.AddSingleton(logs);
+        services.AddSingleton(logs.Factory); // Package 144: the container's loggers are the run's
         services.AddSingleton(_ => ServerStores.Open(config, time));
         services.AddSingleton<ServerState>();
         services.AddSingleton(_ => ServerCertificate.LoadOrCreate(config.DataDir));
