@@ -207,7 +207,9 @@ internal sealed partial class ServerState
                 if (route.Handler is null) Fail(session, request, ReasonCodes.UnknownRequest);
                 else route.Handler(this, session, request);
             }
+            #pragma warning disable CA1031 // Package 83: an unexpected error in a handler is answered and logged, the server goes on
             catch (Exception exception)
+            #pragma warning restore CA1031
             {
                 // Package 83: handlers check before they change anything, so an unexpected error leaves the state as it was
                 logs.Server.RequestFailed(request.GetType().Name, session.Nickname, exception.GetType().Name, exception.Message);

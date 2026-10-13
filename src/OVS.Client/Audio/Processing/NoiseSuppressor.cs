@@ -39,7 +39,9 @@ internal sealed unsafe class NoiseSuppressor : IDisposable
                 Destroy = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "rnnoise_destroy"),
             };
         }
+        #pragma warning disable CA1031 // whatever keeps it from loading (missing, wrong architecture, missing runtime) turns it off
         catch (Exception exception) // whatever keeps it from loading (missing, wrong architecture, missing runtime) turns it off
+        #pragma warning restore CA1031
         {
             return new Native { Error = exception.Message };
         }

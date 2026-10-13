@@ -34,30 +34,8 @@ dotnet_diagnostic.CA1062.severity = none
 dotnet_code_quality.CA2000.dispose_ownership_transfer_at_constructor = true
 dotnet_code_quality.CA2000.dispose_ownership_transfer_at_method_call = true
 
-# Step 38 pending: rules whose findings are still being fixed; each sub-step removes its lines.
-dotnet_diagnostic.CA1002.severity = none
+# Step 38 pending: CA1716 (the namespace OVS.Shared and the type Error are keywords in VB), waits for the user.
 dotnet_diagnostic.CA1716.severity = none
-dotnet_diagnostic.CA5392.severity = none
-dotnet_diagnostic.CA1003.severity = none
-dotnet_diagnostic.CA1031.severity = none
-dotnet_diagnostic.CA1819.severity = none
-dotnet_diagnostic.CA2227.severity = none
-dotnet_diagnostic.CA1032.severity = none
-dotnet_diagnostic.CA1725.severity = none
-dotnet_diagnostic.CA1051.severity = none
-dotnet_diagnostic.CA2234.severity = none
-dotnet_diagnostic.CA2008.severity = none
-dotnet_diagnostic.CA1711.severity = none
-dotnet_diagnostic.CA1508.severity = none
-dotnet_diagnostic.CA5359.severity = none
-dotnet_diagnostic.CA2025.severity = none
-dotnet_diagnostic.CA1068.severity = none
-dotnet_diagnostic.CA1030.severity = none
-dotnet_diagnostic.CA1028.severity = none
-dotnet_diagnostic.CA2208.severity = none
-dotnet_diagnostic.CA2201.severity = none
-dotnet_diagnostic.CA1724.severity = none
-dotnet_diagnostic.CA1044.severity = none
 
 # CA5394: tests make their data with Random on purpose; no security depends on it.
 [{tests,tools/rule-lint-tests}/**/*.cs]

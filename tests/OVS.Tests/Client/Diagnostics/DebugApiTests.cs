@@ -52,7 +52,7 @@ public sealed class DebugApiTests : IAsyncLifetime
     public async Task Request_MissingHeader_Forbidden()
     {
         using var plain = new HttpClient();
-        var response = await plain.GetAsync($"http://localhost:{anna.Port}/state");
+        var response = await plain.GetAsync(new Uri($"http://localhost:{anna.Port}/state"));
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
@@ -68,7 +68,7 @@ public sealed class DebugApiTests : IAsyncLifetime
     [Fact]
     public async Task Devices_ViewModelWithoutAudio_ListsTheHardwaresDevices()
     {
-        var devices = JsonDocument.Parse(await anna.Http.GetStringAsync("devices")).RootElement;
+        var devices = JsonDocument.Parse(await anna.Http.GetStringAsync(new Uri("devices", UriKind.Relative))).RootElement;
         Assert.Equal("mic-1", devices.GetProperty("inputs").EnumerateArray().Single().GetProperty("id").GetString());
         Assert.Equal("Speakers", devices.GetProperty("outputs").EnumerateArray().Single().GetProperty("name").GetString());
     }
@@ -104,7 +104,7 @@ public sealed class DebugApiTests : IAsyncLifetime
     [Fact]
     public async Task Get_UnknownPath_IsBadRequest()
     {
-        var response = await anna.Http.GetAsync("join");
+        var response = await anna.Http.GetAsync(new Uri("join", UriKind.Relative));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("Unknown endpoint GET /join", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
@@ -509,7 +509,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         });
 
         public async Task<JsonElement> StateAsync() =>
-            JsonDocument.Parse(await Http.GetStringAsync("state")).RootElement;
+            JsonDocument.Parse(await Http.GetStringAsync(new Uri("state", UriKind.Relative))).RootElement;
 
         public async Task<JsonElement> UntilAsync(Func<JsonElement, bool> condition, int timeoutMs = 15000) // returns once it holds
         {

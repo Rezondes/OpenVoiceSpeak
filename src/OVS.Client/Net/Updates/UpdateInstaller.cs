@@ -49,7 +49,9 @@ internal sealed class UpdateInstaller(HttpClient http, string exePath, Action<st
         {
             restart(exePath);
         }
+        #pragma warning disable CA1031 // Package 63: whatever it is, the window stays open and says so instead of vanishing
         catch (Exception exception) // Package 63: whatever it is, the window stays open and says so instead of vanishing
+        #pragma warning restore CA1031
         {
             return TextFormat.Of(Strings.Update_RestartFailed, exception.Message);
         }

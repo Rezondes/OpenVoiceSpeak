@@ -350,7 +350,9 @@ internal sealed partial class ConnectionViewModel : ObservableObject
             EndSeries(Strings.Status_TofuRejected);
             return false;
         }
+        #pragma warning disable CA1031 // Package 139: any unexpected failure counts as a failed attempt
         catch (Exception exception)
+        #pragma warning restore CA1031
         {
             // review: also the unexpected, so the series goes on instead of hanging at "Verbinde mit ..."
             log.ReconnectFailed(exception.GetType().Name, exception.Message);

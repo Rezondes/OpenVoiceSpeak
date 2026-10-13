@@ -97,7 +97,9 @@ internal sealed class ClientConnection : IAsyncDisposable
 
             // Self-signed server certs are pinned by fingerprint (TOFU) instead of a CA chain.
             #pragma warning disable CA2000 // it wraps the TCP stream, which the catch closes with the client; on success the connection owns it
+            #pragma warning disable CA5359 // TOFU: the certificate is checked by its pinned fingerprint right after the handshake
             var ssl = new SslStream(tcp.GetStream(), false, (_, _, _, _) => true);
+            #pragma warning restore CA5359
             #pragma warning restore CA2000
             await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions { TargetHost = host }, timeout.Token);
 

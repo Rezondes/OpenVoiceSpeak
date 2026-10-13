@@ -94,7 +94,9 @@ internal static class PopupMotion
             overlay.Children.Add(ghost);
             await FadeOutAsync(ghost);
         }
+        #pragma warning disable CA1031 // a picture that cannot fade away must not take the window down
         catch (Exception)
+        #pragma warning restore CA1031
         {
             // only a picture: if it cannot be taken or shown, the popup is just gone, as in the simplified display
         }

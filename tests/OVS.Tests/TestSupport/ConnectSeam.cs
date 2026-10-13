@@ -74,7 +74,9 @@ sealed class ConnectSeam(string profileDir, TimeProvider time)
         {
             return failure();
         }
+        #pragma warning disable CA1031 // a scripted failure of any type becomes the attempt's fault
         catch (Exception exception)
+        #pragma warning restore CA1031
         {
             return exception;
         }

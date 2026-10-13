@@ -154,9 +154,9 @@ internal sealed partial class GroupListViewModel : ObservableObject
     async Task<bool> SendChangedGroupsAsync()
     {
         var tried = new HashSet<object>();
-        while (ChangedGroups().FirstOrDefault(row => !tried.Contains((object?)row.Id ?? row)) is { } group)
+        while (ChangedGroups().FirstOrDefault(row => !tried.Contains(row.MotionKey)) is { } group)
         {
-            tried.Add((object?)group.Id ?? group);
+            tried.Add(group.MotionKey);
             if (SendGroup(group) is not { } sent || await sent.Completion is not null)
             {
                 SelectGroup(Groups.Live().FirstOrDefault(row => row.Id is not null && row.Id == group.Id) ?? group); // the answer may have rebuilt the row

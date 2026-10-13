@@ -57,8 +57,12 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     static Exception CreateUnexpectedFailure(string kind) => kind switch
     {
         nameof(InvalidOperationException) => new InvalidOperationException("Testmeldung"),
+        #pragma warning disable CA2208 // simulates an unexpected failure
         nameof(ArgumentOutOfRangeException) => new ArgumentOutOfRangeException("port", "Testmeldung"),
+        #pragma warning restore CA2208
+        #pragma warning disable CA2201 // simulates an unexpected failure
         nameof(NullReferenceException) => new NullReferenceException("Testmeldung"),
+        #pragma warning restore CA2201
         nameof(TimeoutException) => new TimeoutException("Testmeldung"),
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "not an unexpected failure"),
     };
@@ -274,7 +278,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     [Fact]
     public async Task ConnectBookmarkAsync_WrongPasswordAndNoAskPasswordDialog_StopsAfterOneAttempt()
     {
-        rig.Seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
+        rig.Seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, detail: null));
 
         await ConnectBookmarkAsync(BookmarkWithSavedPassword("veraltet"));
 
@@ -294,7 +298,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
                 return Task.FromResult<PasswordAnswer?>(null);
             },
         };
-        rig.Seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
+        rig.Seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, detail: null));
 
         await ConnectBookmarkAsync(BookmarkWithSavedPassword(null));
 
@@ -308,7 +312,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     public async Task ConnectBookmarkAsync_WrongPasswordAndUserAnswers_TriesAgainWithTheAnswerAndItsSaveChoice()
     {
         rig.Dialogs = new DialogCallbacks { AskPassword = _ => Task.FromResult<PasswordAnswer?>(new PasswordAnswer("neu", Save: true)) };
-        rig.Seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
+        rig.Seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, detail: null));
         rig.Seam.FailNext(new TofuRejectedException());
 
         await HangGuard.BoundAsync(ConnectBookmarkAsync(BookmarkWithSavedPassword("veraltet")));
@@ -324,7 +328,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
     public async Task ConnectBookmarkAsync_AskPasswordThrows_PropagatesAfterOneAttempt()
     {
         rig.Dialogs = new DialogCallbacks { AskPassword = _ => throw new InvalidOperationException("Dialog kaputt") };
-        rig.Seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
+        rig.Seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, detail: null));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => ConnectBookmarkAsync(BookmarkWithSavedPassword(null)));
 

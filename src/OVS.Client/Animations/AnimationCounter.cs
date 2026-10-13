@@ -21,7 +21,7 @@ internal static class AnimationCounter
     {
         Interlocked.Increment(ref started);
         Interlocked.Increment(ref running);
-        run.ContinueWith(_ => Interlocked.Decrement(ref running), TaskContinuationOptions.ExecuteSynchronously);
+        run.ContinueWith(_ => Interlocked.Decrement(ref running), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         return run;
     }
 }

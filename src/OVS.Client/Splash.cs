@@ -62,7 +62,9 @@ internal static unsafe class Splash
         if (iconFile is null) return;
         fixed (char* path = iconFile)
         {
+            #pragma warning disable CA1508 // the icon is written through a pointer the analyzer does not follow
             if (SHDefExtractIconW(path, 0, 0, &icon, null, (uint)px) != 0 || icon == 0) return; // no icon: no splash
+            #pragma warning restore CA1508
         }
 
         nint screen = GetDC(0), memory = CreateCompatibleDC(screen);

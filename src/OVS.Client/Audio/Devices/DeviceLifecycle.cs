@@ -138,7 +138,9 @@ internal sealed class DeviceLifecycle
             }
             reopen(warnings);
         }
+        #pragma warning disable CA1031 // a background thread must not take the client down: the user gets a notice instead
         catch (Exception exception) // a background thread must not take the client down: the user gets a notice instead
+        #pragma warning restore CA1031
         {
             warnings.Add(string.Format(CultureInfo.CurrentCulture, failedText, exception.Message));
         }
@@ -252,7 +254,9 @@ internal sealed class DeviceLifecycle
         {
             lock (gate) SyncCapture(warnings);
         }
+        #pragma warning disable CA1031 // a background thread must not take the client down: the user gets a notice instead
         catch (Exception exception) // a background thread must not take the client down: the user gets a notice instead
+        #pragma warning restore CA1031
         {
             warnings.Add(TextFormat.Of(Strings.Audio_MicFailed, exception.Message));
         }
@@ -267,7 +271,9 @@ internal sealed class DeviceLifecycle
         {
             lock (gate) OpenSpeaker(warnings);
         }
+        #pragma warning disable CA1031 // mixing goes on without a speaker instead of the thread taking the client down
         catch (Exception exception) // mixing goes on without a speaker instead of the thread taking the client down
+        #pragma warning restore CA1031
         {
             warnings.Add(TextFormat.Of(Strings.Audio_SpeakerFailed, exception.Message));
         }
@@ -295,7 +301,9 @@ internal sealed class DeviceLifecycle
             if (device) RecordOpen(micEndpoint, inputId, AudioDirection.Input);
             CaptureSource.Open(inputId, opened);
         }
+        #pragma warning disable CA1031 // the open, set-up and start of one capture: a device that cannot open throws (IAudioHardware)
         catch (Exception exception) // the open, set-up and start of one capture: a device that cannot open throws (IAudioHardware)
+        #pragma warning restore CA1031
         {
             CaptureSource.Close();
             warnings.Add(TextFormat.Of(Strings.Audio_MicFailed, exception.Message));
@@ -318,7 +326,9 @@ internal sealed class DeviceLifecycle
             RecordOpen(speakerEndpoint, outputId, AudioDirection.Output);
             speaker = hardware.OpenOutput(outputId, opened);
         }
+        #pragma warning disable CA1031 // a device that cannot open throws (IAudioHardware)
         catch (Exception exception) // a device that cannot open throws (IAudioHardware)
+        #pragma warning restore CA1031
         {
             warnings.Add(TextFormat.Of(Strings.Audio_SpeakerFailed, exception.Message));
             speakerEndpoint.OpenFailed();

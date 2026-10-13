@@ -15,7 +15,9 @@ public sealed class ClientIdentity : IDisposable
     }
 
     /// <summary>The public key as SubjectPublicKeyInfo, sent in the hello.</summary>
+    #pragma warning disable CA1819 // the key bytes as the protocol sends them
     public byte[] PublicKey { get; }
+    #pragma warning restore CA1819
     /// <summary>The lowercase hex SHA-256 of the public key: the user id on every server.</summary>
     public string Fingerprint { get; }
 

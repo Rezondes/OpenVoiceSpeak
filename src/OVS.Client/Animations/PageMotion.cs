@@ -84,7 +84,9 @@ internal static class PageMotion
         layer.Classes.Set(PageGhostClass, false);
     }
 
+    #pragma warning disable CA1068 // the animated values are params, which must come last
     static Task RunAsync(Animatable target, CancellationToken token, FillMode fill, params (AvaloniaProperty Property, double From, double To)[] values)
+    #pragma warning restore CA1068
     {
         var start = new KeyFrame { Cue = new Cue(0) };
         var end = new KeyFrame { Cue = new Cue(1) };

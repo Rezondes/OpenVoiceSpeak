@@ -36,7 +36,7 @@ internal static class ServerHost
         bool restarted = false;
         while (true)
         {
-            switch (await RunOnceAsync(getEnv, bindAddress, time, console, error, restarted, stop, afterWait))
+            switch (await RunOnceAsync(getEnv, bindAddress, time, console, error, restarted, afterWait, stop))
             {
                 case RunEnd.Stopped: return 0;
                 case RunEnd.Failed: return 1;
@@ -46,7 +46,7 @@ internal static class ServerHost
     }
 
     static async Task<RunEnd> RunOnceAsync(Func<string, string?> getEnv, IPAddress bindAddress, TimeProvider time,
-        Action<string> console, Action<string> error, bool restarted, CancellationToken stop, Func<ServerState, Task>? afterWait)
+        Action<string> console, Action<string> error, bool restarted, Func<ServerState, Task>? afterWait, CancellationToken stop)
     {
         ServerConfig config;
         try

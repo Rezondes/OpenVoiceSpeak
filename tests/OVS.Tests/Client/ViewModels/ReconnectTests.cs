@@ -331,7 +331,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         {
             // the server comes back with another password: the attempt is refused and the series ends there
             await ConnectToAsync(locked, "alt");
-            seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
+            seam.FailNext(new ConnectionRejectedException(ReasonCodes.WrongPassword, detail: null));
             await locked.DisposeAsync();
             Assert.True(await OnUiUntilAsync(() => viewModel.Connection.IsReconnecting, value => value)); // ServerShutdown retries
             reconnectTime.Advance(TimeSpan.FromSeconds(1));
@@ -449,7 +449,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     public async Task Reconnect_RefusedWithANotNowCode_SchedulesTheNextAttempt(string code)
     {
         await ConnectToAsync(server);
-        seam.FailNext(new ConnectionRejectedException(code, null));
+        seam.FailNext(new ConnectionRejectedException(code, detail: null));
         await DropAsync(server);
 
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
@@ -500,7 +500,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     public async Task Reconnect_AttemptFailingAfterCancel_IsOnlyLogged()
     {
         await ConnectToAsync(server);
-        var oldAttempt = seam.HoldNext(failWith: new ConnectionRejectedException(ReasonCodes.WrongPassword, null));
+        var oldAttempt = seam.HoldNext(failWith: new ConnectionRejectedException(ReasonCodes.WrongPassword, detail: null));
         await DropAsync(server);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
         await HangGuard.BoundAsync(oldAttempt.Reached);

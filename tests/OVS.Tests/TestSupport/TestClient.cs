@@ -41,7 +41,9 @@ internal sealed class TestClient : IAsyncDisposable
     {
         var tcp = new TcpClient();
         await tcp.ConnectAsync(IPAddress.Loopback, port);
+        #pragma warning disable CA5359 // TOFU: the certificate is checked by its pinned fingerprint right after the handshake
         var ssl = new SslStream(tcp.GetStream(), false, (_, _, _, _) => true);
+        #pragma warning restore CA5359
         await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions { TargetHost = "localhost" });
         return new TestClient(tcp, ssl, identity ?? ClientIdentity.Create());
     }

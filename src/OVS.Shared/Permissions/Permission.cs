@@ -2,7 +2,9 @@ namespace OVS.Shared.Permissions;
 
 /// <summary>The rights a group grants, as flags; a user's rights are the union of their groups'.</summary>
 [Flags]
+#pragma warning disable CA1711 // the domain's word (rule 17)
 public enum Permission
+#pragma warning restore CA1711
 {
     /// <summary>No right.</summary>
     None = 0,

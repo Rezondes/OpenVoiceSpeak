@@ -41,7 +41,9 @@ internal sealed class TestDispatcher : IDisposable
             {
                 done.SetResult(await work());
             }
+            #pragma warning disable CA1031 // the work's exception goes to the waiting test
             catch (Exception exception)
+            #pragma warning restore CA1031
             {
                 done.SetException(exception);
             }

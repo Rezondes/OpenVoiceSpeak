@@ -120,7 +120,7 @@ internal sealed class LossyUdpRelay : IDisposable
     {
         if (Delay <= TimeSpan.Zero) return SendAsync(send);
         Interlocked.Increment(ref held);
-        _ = Task.Delay(Delay, time, stopping.Token).ContinueWith(_ => SendAsync(send), TaskContinuationOptions.OnlyOnRanToCompletion);
+        _ = Task.Delay(Delay, time, stopping.Token).ContinueWith(_ => SendAsync(send), CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
         return Task.CompletedTask;
     }
 

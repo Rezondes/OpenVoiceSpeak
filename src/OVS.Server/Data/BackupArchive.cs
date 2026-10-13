@@ -46,7 +46,9 @@ internal static class BackupArchive
             using var zip = ZipFile.OpenRead(path);
             return ReadManifest(zip);
         }
+        #pragma warning disable CA1031 // Package 89: whatever is wrong with it, the archive is listed without a version
         catch (Exception) // Package 89: whatever is wrong with it, the archive is listed without a version
+        #pragma warning restore CA1031
         {
             return null;
         }

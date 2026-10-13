@@ -9,7 +9,9 @@ namespace OVS.Tests.TestSupport;
 public abstract class TempDirectoryTest(string prefix, bool quiet) : IDisposable
 #pragma warning restore CA1515
 {
+    #pragma warning disable CA1051 // the folder of every derived test class; a field keeps its many uses short
     protected readonly string dir = Directory.CreateTempSubdirectory(prefix).FullName;
+    #pragma warning restore CA1051
 
     public void Dispose()
     {

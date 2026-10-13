@@ -42,7 +42,9 @@ internal sealed unsafe class EchoCanceller : IDisposable
                 Destroy = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "ovs_aec_destroy"),
             };
         }
+        #pragma warning disable CA1031 // missing, wrong architecture, a missing export: echo cancellation is off
         catch (Exception exception) // missing, wrong architecture, a missing export: echo cancellation is off
+        #pragma warning restore CA1031
         {
             return new Native { Error = exception.Message };
         }

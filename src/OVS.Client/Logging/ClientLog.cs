@@ -80,7 +80,9 @@ internal sealed class ClientLog : ILogger
                         Writing?.Invoke();
                         files.Append("", "client-", lines);
                     }
+                    #pragma warning disable CA1031 // writing never throws (LogFileWriter catches IO errors); anything else costs a batch, not the log
                     catch (Exception exception) // writing never throws (LogFileWriter catches IO errors); anything else costs a batch, not the log
+                    #pragma warning restore CA1031
                     {
                         System.Diagnostics.Trace.WriteLine($"Log could not be written: {exception.Message}");
                     }

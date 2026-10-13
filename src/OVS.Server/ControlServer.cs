@@ -107,7 +107,9 @@ internal sealed class ControlServer(ServerState state, X509Certificate2 certific
                 tcp.Dispose();
                 continue;
             }
+            #pragma warning disable CA2025 // HandleAsync owns the client and disposes it
             var task = Task.Run(() => HandleAsync(tcp, ip));
+            #pragma warning restore CA2025
             connections.TryAdd(task, 0);
             _ = task.ContinueWith(otherTask => connections.TryRemove(otherTask, out _), TaskScheduler.Default);
         }
@@ -137,7 +139,9 @@ internal sealed class ControlServer(ServerState state, X509Certificate2 certific
 
             // Package 86: an overflowing outbox or a stuck write closes the socket at once, which ends both loops
             using var abort = session.Outbox.Aborted.Register(tcp.Close);
+            #pragma warning disable CA2025 // the write loop is awaited below, before the registration ends
             writeLoop = WriteLoopAsync(session, writer, tcp);
+            #pragma warning restore CA2025
             try
             {
                 await ReadLoopAsync(session, reader);
@@ -232,7 +236,7 @@ internal sealed class ControlServer(ServerState state, X509Certificate2 certific
                 }
                 catch (TimeoutException)
                 {
-                    _ = write.ContinueWith(task => task.Exception, TaskContinuationOptions.OnlyOnFaulted); // fails once the socket is closed
+                    _ = write.ContinueWith(task => task.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default); // fails once the socket is closed
                     session.Outbox.Abort("writing too slow");
                     return;
                 }

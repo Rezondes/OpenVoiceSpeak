@@ -128,7 +128,9 @@ internal sealed class DebugApi : IDisposable
             status = 400;
             result = new { error = exception.Message };
         }
+        #pragma warning disable CA1031 // any failure of a debug request becomes a 500 answer
         catch (Exception exception)
+        #pragma warning restore CA1031
         {
             status = 500;
             result = new { error = exception.ToString() };

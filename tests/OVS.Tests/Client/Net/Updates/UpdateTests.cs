@@ -200,7 +200,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
 #pragma warning disable CA2000 // released on purpose after 700 ms, while the cleanup retries
         var locked = new FileStream(exe + ".old", FileMode.Open, FileAccess.Read, FileShare.None);
 #pragma warning restore CA2000
-        _ = Task.Delay(700).ContinueWith(_ => locked.Dispose());
+        _ = Task.Delay(700).ContinueWith(_ => locked.Dispose(), TaskScheduler.Default);
 
         // up to 10 s of retries: the release above may come late on a busy runner, it still has to wait for it
         Assert.Equal("Old version removed", await UpdateInstaller.CleanupOldAsync(exe, TimeProvider.System, attempts: 100, pause: TimeSpan.FromMilliseconds(100)));

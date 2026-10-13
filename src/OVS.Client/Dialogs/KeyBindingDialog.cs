@@ -23,7 +23,9 @@ internal static class KeyBindingDialog
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         KeyChord? chord = current?.Chord is { Key: > 0 } known ? known : null; // Package 59: key 0 = only the action is chosen
+        #pragma warning disable CA1508 // the analyzer misses the pattern match on the current binding
         var keyText = new TextBlock { Text = chord?.Name ?? Strings.Dlg_NoKeyYet, VerticalAlignment = VerticalAlignment.Center };
+        #pragma warning restore CA1508
         var keycap = new Border { Child = keyText, VerticalAlignment = VerticalAlignment.Center };
         keycap.Classes.Add("keycap");
         var assign = new Button { Content = Strings.Dlg_SetKeyButton, Margin = new Thickness(12, 0, 0, 0) };

@@ -1,7 +1,9 @@
 namespace OVS.Shared.Voice;
 
 /// <summary>The kind of a UDP voice packet.</summary>
+#pragma warning disable CA1028 // one byte on the wire
 public enum PacketType : byte
+#pragma warning restore CA1028
 {
     /// <summary>Binds the client's UDP address to its session.</summary>
     Hello = 0,
