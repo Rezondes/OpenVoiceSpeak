@@ -11,9 +11,9 @@ public static class ChannelSettingsRule
         kind is ChannelKind.Voice or ChannelKind.Separator ? null : new(ReasonCodes.InvalidValue, "Unknown channel kind.");
 
     /// <summary>Package 111 (A120): a separator has no name, description or options; a request with any of them is refused.</summary>
-    public static Refusal? CheckSeparator(CreateChannel r) =>
-        !string.IsNullOrEmpty(r.Name) || !string.IsNullOrEmpty(r.Description) || r.IsMuted || r.MaxUsers != 0
-        || r.AllowedGroupIds is { Count: > 0 } || !string.IsNullOrEmpty(r.Password) || r.Bitrate != ProtocolDefaults.Bitrate // Package 132
+    public static Refusal? CheckSeparator(CreateChannel request) =>
+        !string.IsNullOrEmpty(request.Name) || !string.IsNullOrEmpty(request.Description) || request.IsMuted || request.MaxUsers != 0
+        || request.AllowedGroupIds is { Count: > 0 } || !string.IsNullOrEmpty(request.Password) || request.Bitrate != ProtocolDefaults.Bitrate // Package 132
             ? new(ReasonCodes.InvalidValue, "A separator has no name, description or options.")
             : null;
 

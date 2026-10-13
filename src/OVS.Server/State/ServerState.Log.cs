@@ -17,102 +17,102 @@ public sealed partial class ServerState
     readonly LogReader logReader;
     readonly LogExporter logExporter;
 
-    void OnListLogs(Session s, ListLogs r)
+    void OnListLogs(Session session, ListLogs request)
     {
-        if (!Require(s, r, Permission.LogsView) || !ThrottleList(s, r, r.Offset)) return;
-        var names = data.Channels.ToDictionary(c => c.Id, c => c.Name);
-        int offset = Math.Max(0, r.Offset);
-        QueueLogJob(s, r, () =>
+        if (!Require(session, request, Permission.LogsView) || !ThrottleList(session, request, request.Offset)) return;
+        var names = data.Channels.ToDictionary(channel => channel.Id, channel => channel.Name);
+        int offset = Math.Max(0, request.Offset);
+        QueueLogJob(session, request, () =>
         {
             var all = logReader.List(names);
-            return new LogList(r.RequestId, Page(all, offset), offset, all.Count); // Package 87
+            return new LogList(request.RequestId, Page(all, offset), offset, all.Count); // Package 87
         });
     }
 
-    void OnReadLog(Session s, ReadLog r)
+    void OnReadLog(Session session, ReadLog request)
     {
-        if (!Require(s, r, Permission.LogsView)) return;
-        if (r.Page is < 1)
+        if (!Require(session, request, Permission.LogsView)) return;
+        if (request.Page is < 1)
         {
-            Fail(s, r, ReasonCodes.InvalidValue, $"Seite {r.Page}");
+            Fail(session, request, ReasonCodes.InvalidValue, $"Seite {request.Page}");
             return;
         }
-        QueueLogJob(s, r, () => logReader.Resolve(r.FileId) is { } path
-            ? logReader.ReadPage(r.RequestId, r.FileId, path, r.Page)
-            : new Error(r.RequestId, ReasonCodes.NotFound));
+        QueueLogJob(session, request, () => logReader.Resolve(request.FileId) is { } path
+            ? logReader.ReadPage(request.RequestId, request.FileId, path, request.Page)
+            : new Error(request.RequestId, ReasonCodes.NotFound));
     }
 
-    void OnSearchLogs(Session s, SearchLogs r)
+    void OnSearchLogs(Session session, SearchLogs request)
     {
-        if (!Require(s, r, Permission.LogsView)) return;
-        if (string.IsNullOrWhiteSpace(r.Query) || r.Query.Length > ProtocolLimits.MaxLogQueryLength)
+        if (!Require(session, request, Permission.LogsView)) return;
+        if (string.IsNullOrWhiteSpace(request.Query) || request.Query.Length > ProtocolLimits.MaxLogQueryLength)
         {
-            Fail(s, r, ReasonCodes.InvalidValue, "Suchtext leer oder zu lang");
+            Fail(session, request, ReasonCodes.InvalidValue, "Suchtext leer oder zu lang");
             return;
         }
         // Package 90: only a search that was queued (and so runs) is logged; without the query, so a search never finds itself
-        if (QueueLogJob(s, r, () => logReader.Search(r.RequestId, r))) logs.WriteServerLine($"Logs durchsucht von {s.Nickname}");
+        if (QueueLogJob(session, request, () => logReader.Search(request.RequestId, request))) logs.WriteServerLine($"Logs durchsucht von {session.Nickname}");
     }
 
     // ---- Package 82 (A99): download, a snapshot in logs-export pulled chunk by chunk like a backup ----
 
     const Permission DownloadRights = Permission.LogsView | Permission.LogsDownload;
 
-    void OnPrepareLogDownload(Session s, PrepareLogDownload r)
+    void OnPrepareLogDownload(Session session, PrepareLogDownload request)
     {
-        if (!Require(s, r, DownloadRights)) return;
-        if (r.FileIds is not { Count: > 0 } ids || ids.Distinct().Count() != ids.Count)
+        if (!Require(session, request, DownloadRights)) return;
+        if (request.FileIds is not { Count: > 0 } ids || ids.Distinct().Count() != ids.Count)
         {
-            Fail(s, r, ReasonCodes.InvalidValue, "keine oder doppelte Dateien");
+            Fail(session, request, ReasonCodes.InvalidValue, "keine oder doppelte Dateien");
             return;
         }
-        if (!ThrottleHeavy(s, r)) return; // Package 86
-        var names = data.Channels.ToDictionary(c => c.Id, c => c.Name);
-        QueueLogJob(s, r, () =>
+        if (!ThrottleHeavy(session, request)) return; // Package 86
+        var names = data.Channels.ToDictionary(channel => channel.Id, channel => channel.Name);
+        QueueLogJob(session, request, () =>
         {
             var downloadId = Guid.NewGuid().ToString("N");
             var (export, code) = logExporter.Export(downloadId, ids, names);
-            if (export is null) return new Error(r.RequestId, code);
-            if (!s.LogDownload.TrySet(downloadId, export.Path))
+            if (export is null) return new Error(request.RequestId, code);
+            if (!session.LogDownload.TrySet(downloadId, export.Path))
             {
                 SafeFile.DeleteQuietly(export.Path); // the session ended meanwhile
-                return new Error(r.RequestId, ReasonCodes.NotFound);
+                return new Error(request.RequestId, ReasonCodes.NotFound);
             }
-            logs.WriteServerLine($"Logs heruntergeladen von {s.Nickname}: {export.FileName} ({ids.Count} Dateien, {export.Size} Bytes)");
-            return new LogDownloadReady(r.RequestId, downloadId, export.FileName, export.Size);
+            logs.WriteServerLine($"Logs heruntergeladen von {session.Nickname}: {export.FileName} ({ids.Count} Dateien, {export.Size} Bytes)");
+            return new LogDownloadReady(request.RequestId, downloadId, export.FileName, export.Size);
         });
     }
 
     /// <summary>One chunk per request, read off the lock; the snapshot is deleted after the last one.</summary>
-    void OnDownloadLogChunk(Session s, DownloadLogChunk r)
+    void OnDownloadLogChunk(Session session, DownloadLogChunk request)
     {
-        if (!Require(s, r, DownloadRights)) return;
-        QueueLogJob(s, r, () =>
+        if (!Require(session, request, DownloadRights)) return;
+        QueueLogJob(session, request, () =>
         {
-            if (s.LogDownload.FindPath(r.DownloadId) is not { } path) return new Error(r.RequestId, ReasonCodes.NotFound);
-            if (SafeFile.ReadChunk(path, r.Offset) is not var (bytes, total)) return new Error(r.RequestId, ReasonCodes.InvalidValue, $"Offset {r.Offset}");
-            bool last = r.Offset + bytes.Length >= total;
-            if (last) s.LogDownload.Drop();
-            return new LogChunk(r.RequestId, r.DownloadId, r.Offset, total, Convert.ToBase64String(bytes), last);
+            if (session.LogDownload.FindPath(request.DownloadId) is not { } path) return new Error(request.RequestId, ReasonCodes.NotFound);
+            if (SafeFile.ReadChunk(path, request.Offset) is not var (bytes, total)) return new Error(request.RequestId, ReasonCodes.InvalidValue, $"Offset {request.Offset}");
+            bool last = request.Offset + bytes.Length >= total;
+            if (last) session.LogDownload.Drop();
+            return new LogChunk(request.RequestId, request.DownloadId, request.Offset, total, Convert.ToBase64String(bytes), last);
         });
     }
 
     /// <summary>Runs the file work after the session's earlier log jobs, off the lock; SessionOutbox.Send is safe from any thread.</summary>
     /// <returns>False when the session's queue was full and the request was answered with RateLimited.</returns>
-    bool QueueLogJob(Session s, Request r, Func<Message> work)
+    bool QueueLogJob(Session session, Request request, Func<Message> work)
     {
-        var queued = s.LogJobs.TryQueue(() =>
+        var queued = session.LogJobs.TryQueue(() =>
         {
             try
             {
-                s.Outbox.Send(work());
+                session.Outbox.Send(work());
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
-                s.Outbox.Send(new Error(r.RequestId, ReasonCodes.InvalidValue, e.Message));
+                session.Outbox.Send(new Error(request.RequestId, ReasonCodes.InvalidValue, exception.Message));
             }
         });
-        if (!queued) Fail(s, r, ReasonCodes.RateLimited);
+        if (!queued) Fail(session, request, ReasonCodes.RateLimited);
         return queued;
     }
 }

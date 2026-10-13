@@ -17,7 +17,7 @@ public sealed class UdpVoiceServer : IDisposable
     readonly ServerState state;
     readonly TimeProvider time;
     readonly Socket socket;
-    readonly CancellationTokenSource cts = new();
+    readonly CancellationTokenSource stopping = new();
     // Package 141: the sessions' voice state is touched by the UDP loop and by VoiceUp from the control connections, one at a time
     readonly SemaphoreSlim gate = new(1, 1);
     Task? loop;
@@ -62,14 +62,14 @@ public sealed class UdpVoiceServer : IDisposable
     {
         var buffer = new byte[2048];
         EndPoint any = new IPEndPoint(IPAddress.Any, 0);
-        while (!cts.IsCancellationRequested)
+        while (!stopping.IsCancellationRequested)
         {
             SocketReceiveFromResult result;
             try
             {
-                result = await socket.ReceiveFromAsync(buffer, SocketFlags.None, any, cts.Token);
+                result = await socket.ReceiveFromAsync(buffer, SocketFlags.None, any, stopping.Token);
             }
-            catch (Exception e) when (e is OperationCanceledException or ObjectDisposedException)
+            catch (Exception exception) when (exception is OperationCanceledException or ObjectDisposedException)
             {
                 return;
             }
@@ -83,7 +83,7 @@ public sealed class UdpVoiceServer : IDisposable
             {
                 await HandleAsync(buffer.AsMemory(0, result.ReceivedBytes), (IPEndPoint)result.RemoteEndPoint);
             }
-            catch (Exception e) when (e is SocketException or OverflowException or ObjectDisposedException)
+            catch (Exception exception) when (exception is SocketException or OverflowException or ObjectDisposedException)
             {
             }
             finally
@@ -167,7 +167,7 @@ public sealed class UdpVoiceServer : IDisposable
         int length = 0;
         bool valid = up.Target <= VoiceHeader.TargetLinked && up.Opus is { } text && text.Length <= MaxOpusBase64
             && Convert.TryFromBase64String(text, opus, out length);
-        if (cts.IsCancellationRequested) return;
+        if (stopping.IsCancellationRequested) return;
         if (valid && length == 0 && sender.Voice.TcpVoice) return; // a repeated switch changes nothing and need not wait for the gate
         await gate.WaitAsync();
         try
@@ -186,7 +186,7 @@ public sealed class UdpVoiceServer : IDisposable
             var plain = RelayPayload.Build(up.Seq, opus.AsSpan(0, length));
             await VoiceAsync(sender, up.Target, plain, up.Seq, RelayPayload.HeaderSize..plain.Length, plain.Length..);
         }
-        catch (Exception e) when (e is SocketException or OverflowException or ObjectDisposedException)
+        catch (Exception exception) when (exception is SocketException or OverflowException or ObjectDisposedException)
         {
         }
         finally
@@ -226,23 +226,23 @@ public sealed class UdpVoiceServer : IDisposable
         bool recovered = sentCopy && unseen && recipients.Count > 0 && sender.Voice.Limiter.TryTake();
         if (recovered) sender.Voice.RecoveredFrame = frame - 1;
         byte[]? single = sentCopy ? null : plain, withCopy = sentCopy && usable ? plain : null, alone = null, tcpAlone = null, tcpSingle = null;
-        foreach (var r in recipients)
+        foreach (var session in recipients)
         {
-            if (r.Voice.TcpVoice)
+            if (session.Voice.TcpVoice)
             {
-                if (recovered) r.Outbox.SendVoice(tcpAlone ??= SessionOutbox.Encode(new VoiceDown(sender.Id, frame - 1, target, Convert.ToBase64String(previous.Span))));
-                r.Outbox.SendVoice(tcpSingle ??= SessionOutbox.Encode(new VoiceDown(sender.Id, frame, target, Convert.ToBase64String(plain.AsSpan(current)))));
+                if (recovered) session.Outbox.SendVoice(tcpAlone ??= SessionOutbox.Encode(new VoiceDown(sender.Id, frame - 1, target, Convert.ToBase64String(previous.Span))));
+                session.Outbox.SendVoice(tcpSingle ??= SessionOutbox.Encode(new VoiceDown(sender.Id, frame, target, Convert.ToBase64String(plain.AsSpan(current)))));
                 continue;
             }
             byte[] payload;
-            if (r.Voice.WantsCopies && !previous.IsEmpty) payload = withCopy ??= RelayPayload.Build(frame, plain.AsSpan(current), previous.Span);
+            if (session.Voice.WantsCopies && !previous.IsEmpty) payload = withCopy ??= RelayPayload.Build(frame, plain.AsSpan(current), previous.Span);
             else
             {
                 if (recovered)
-                    await SendAsync(r.Voice, new VoiceHeader(PacketType.Voice, sender.Id, r.Voice.OutSeq.Next(), target), alone ??= RelayPayload.Build(frame - 1, previous.Span));
+                    await SendAsync(session.Voice, new VoiceHeader(PacketType.Voice, sender.Id, session.Voice.OutSeq.Next(), target), alone ??= RelayPayload.Build(frame - 1, previous.Span));
                 payload = single ??= RelayPayload.Build(frame, plain.AsSpan(current));
             }
-            await SendAsync(r.Voice, new VoiceHeader(PacketType.Voice, sender.Id, r.Voice.OutSeq.Next(), target), payload);
+            await SendAsync(session.Voice, new VoiceHeader(PacketType.Voice, sender.Id, session.Voice.OutSeq.Next(), target), payload);
         }
     }
 
@@ -271,8 +271,8 @@ public sealed class UdpVoiceServer : IDisposable
 
     public void Dispose()
     {
-        if (cts.IsCancellationRequested) return;
-        cts.Cancel();
+        if (stopping.IsCancellationRequested) return;
+        stopping.Cancel();
         socket.Dispose();
         try
         {
@@ -281,6 +281,6 @@ public sealed class UdpVoiceServer : IDisposable
         catch (AggregateException)
         {
         }
-        cts.Dispose();
+        stopping.Dispose();
     }
 }

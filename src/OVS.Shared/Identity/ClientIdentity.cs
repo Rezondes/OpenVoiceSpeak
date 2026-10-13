@@ -21,9 +21,9 @@ public sealed class ClientIdentity : IDisposable
 
     public static ClientIdentity FromPkcs8(byte[] pkcs8)
     {
-        var k = ECDsa.Create();
-        k.ImportPkcs8PrivateKey(pkcs8, out _);
-        return new ClientIdentity(k);
+        var ecDsa = ECDsa.Create();
+        ecDsa.ImportPkcs8PrivateKey(pkcs8, out _);
+        return new ClientIdentity(ecDsa);
     }
 
     public byte[] ExportPkcs8() => key.ExportPkcs8PrivateKey();
@@ -34,9 +34,9 @@ public sealed class ClientIdentity : IDisposable
     {
         try
         {
-            using var k = ECDsa.Create();
-            k.ImportSubjectPublicKeyInfo(publicKey, out _);
-            return k.VerifyData(data, signature, HashAlgorithmName.SHA256);
+            using var ecDsa = ECDsa.Create();
+            ecDsa.ImportSubjectPublicKeyInfo(publicKey, out _);
+            return ecDsa.VerifyData(data, signature, HashAlgorithmName.SHA256);
         }
         catch (CryptographicException)
         {

@@ -34,6 +34,6 @@ public sealed partial class ServerState
 
     public IReadOnlySet<Guid> LinkedChannels(Guid channelId)
     {
-        lock (gate) return data.Links.Where(l => l.Touches(channelId)).Select(l => l.Other(channelId)).ToHashSet();
+        lock (gate) return data.Links.Where(channelLink => channelLink.Touches(channelId)).Select(channelLink => channelLink.Other(channelId)).ToHashSet();
     }
 }

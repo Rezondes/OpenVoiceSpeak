@@ -8,9 +8,9 @@ namespace OVS.Server.Rules;
 public static class ChannelLinkRule
 {
     /// <summary>Two different existing channels, neither a separator (Package 111: nothing is spoken in one); a null kind is a missing channel.</summary>
-    public static Refusal? Check(Guid a, Guid b, ChannelKind? kindA, ChannelKind? kindB)
+    public static Refusal? Check(Guid id, Guid otherId, ChannelKind? kindA, ChannelKind? kindB)
     {
-        if (a == b) return new(ReasonCodes.InvalidLink);
+        if (id == otherId) return new(ReasonCodes.InvalidLink);
         if (kindA is null || kindB is null) return new(ReasonCodes.NotFound);
         if (kindA == ChannelKind.Separator || kindB == ChannelKind.Separator) return new(ReasonCodes.InvalidLink);
         return null;

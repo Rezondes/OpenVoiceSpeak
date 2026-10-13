@@ -8,24 +8,24 @@ namespace OVS.Server.State;
 
 public sealed partial class ServerState
 {
-    void OnLinkChannels(Session s, LinkChannels r)
+    void OnLinkChannels(Session session, LinkChannels request)
     {
-        if (!Require(s, r, Permission.ChannelLink) || !CheckLink(s, r, r.A, r.B)) return;
-        var link = ChannelLinkRecord.Of(r.A, r.B);
+        if (!Require(session, request, Permission.ChannelLink) || !CheckLink(session, request, request.A, request.B)) return;
+        var link = ChannelLinkRecord.Of(request.A, request.B);
         if (data.Links.Contains(link)) return;
         data.Links.Add(link);
         saves.Persist();
-        LogLink(link, $"gesetzt von {s.Nickname}");
+        LogLink(link, $"gesetzt von {session.Nickname}");
         Broadcast(new ChannelsLinked(link.A, link.B));
     }
 
-    void OnUnlinkChannels(Session s, UnlinkChannels r)
+    void OnUnlinkChannels(Session session, UnlinkChannels request)
     {
-        if (!Require(s, r, Permission.ChannelLink)) return;
-        var link = ChannelLinkRecord.Of(r.A, r.B);
+        if (!Require(session, request, Permission.ChannelLink)) return;
+        var link = ChannelLinkRecord.Of(request.A, request.B);
         if (!data.Links.Remove(link)) return;
         saves.Persist();
-        LogLink(link, $"entfernt von {s.Nickname}");
+        LogLink(link, $"entfernt von {session.Nickname}");
         Broadcast(new ChannelsUnlinked(link.A, link.B));
     }
 
@@ -33,32 +33,32 @@ public sealed partial class ServerState
     /// Package 38: the link matrix. Everything is checked first, so a bad pair changes nothing; then one save and
     /// the usual per-link messages and channel logs. Adding an existing link or removing a missing one is no error.
     /// </summary>
-    void OnSetChannelLinks(Session s, SetChannelLinks r)
+    void OnSetChannelLinks(Session session, SetChannelLinks request)
     {
-        if (!Require(s, r, Permission.ChannelLink)) return;
-        var add = (r.Add ?? []).ToList();
-        var remove = (r.Remove ?? []).ToList();
-        foreach (var l in add.Concat(remove))
-            if (!CheckLink(s, r, l.A, l.B)) return;
-        var toAdd = add.Select(l => ChannelLinkRecord.Of(l.A, l.B)).Distinct().ToList();
-        var toRemove = remove.Select(l => ChannelLinkRecord.Of(l.A, l.B)).Distinct().ToList();
-        if (Refuse(s, r, ChannelLinkRule.CheckChanges(toAdd, toRemove))) return;
+        if (!Require(session, request, Permission.ChannelLink)) return;
+        var add = (request.Add ?? []).ToList();
+        var remove = (request.Remove ?? []).ToList();
+        foreach (var link in add.Concat(remove))
+            if (!CheckLink(session, request, link.A, link.B)) return;
+        var toAdd = add.Select(link => ChannelLinkRecord.Of(link.A, link.B)).Distinct().ToList();
+        var toRemove = remove.Select(link => ChannelLinkRecord.Of(link.A, link.B)).Distinct().ToList();
+        if (Refuse(session, request, ChannelLinkRule.CheckChanges(toAdd, toRemove))) return;
         toAdd.RemoveAll(data.Links.Contains);
-        toRemove.RemoveAll(l => !data.Links.Contains(l));
+        toRemove.RemoveAll(channelLink => !data.Links.Contains(channelLink));
         if (toAdd.Count + toRemove.Count == 0) return;
 
         data.Links.AddRange(toAdd);
         data.Links.RemoveAll(toRemove.Contains);
         saves.Persist();
-        logs.WriteServerLine($"Links geändert von {s.Nickname}: {toAdd.Count} gesetzt, {toRemove.Count} entfernt");
+        logs.WriteServerLine($"Links geändert von {session.Nickname}: {toAdd.Count} gesetzt, {toRemove.Count} entfernt");
         foreach (var link in toAdd)
         {
-            LogLink(link, $"gesetzt von {s.Nickname}");
+            LogLink(link, $"gesetzt von {session.Nickname}");
             Broadcast(new ChannelsLinked(link.A, link.B));
         }
         foreach (var link in toRemove)
         {
-            LogLink(link, $"entfernt von {s.Nickname}");
+            LogLink(link, $"entfernt von {session.Nickname}");
             Broadcast(new ChannelsUnlinked(link.A, link.B));
         }
     }
@@ -71,6 +71,6 @@ public sealed partial class ServerState
     }
 
     /// <summary>ChannelLinkRule for two channels looked up by id; false when the request was refused.</summary>
-    bool CheckLink(Session s, Request r, Guid a, Guid b) =>
-        !Refuse(s, r, ChannelLinkRule.Check(a, b, FindChannel(a)?.Kind, FindChannel(b)?.Kind));
+    bool CheckLink(Session session, Request request, Guid id, Guid otherId) =>
+        !Refuse(session, request, ChannelLinkRule.Check(id, otherId, FindChannel(id)?.Kind, FindChannel(otherId)?.Kind));
 }

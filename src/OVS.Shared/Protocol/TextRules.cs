@@ -16,9 +16,9 @@ public static class TextRules
     /// </summary>
     public static string? NormalizeName(string? name, int max)
     {
-        var n = name?.Trim();
-        return n is { Length: > 0 } && n.Length <= max && Clean(n, r => Rune.IsControl(r) || Rune.GetUnicodeCategory(r)
-            is UnicodeCategory.Format or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator) ? n : null;
+        var text = name?.Trim();
+        return text is { Length: > 0 } && text.Length <= max && Clean(text, rune => Rune.IsControl(rune) || Rune.GetUnicodeCategory(rune)
+            is UnicodeCategory.Format or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator) ? text : null;
     }
 
     /// <summary>
@@ -29,12 +29,12 @@ public static class TextRules
     /// </summary>
     public static string? NormalizeText(string? text, int max)
     {
-        var t = text?.Replace("\r\n", "\n");
-        return t is not null && t.Length <= max && Clean(t, r => r.Value != '\n' && (Rune.IsControl(r) || IsBidiControl(r)
-            || Rune.GetUnicodeCategory(r) is UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator)) ? t : null;
+        var value = text?.Replace("\r\n", "\n");
+        return value is not null && value.Length <= max && Clean(value, rune => rune.Value != '\n' && (Rune.IsControl(rune) || IsBidiControl(rune)
+            || Rune.GetUnicodeCategory(rune) is UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator)) ? value : null;
     }
 
-    static bool IsBidiControl(Rune r) => r.Value is 0x061C or 0x200E or 0x200F or (>= 0x202A and <= 0x202E) or (>= 0x2066 and <= 0x2069);
+    static bool IsBidiControl(Rune rune) => rune.Value is 0x061C or 0x200E or 0x200F or (>= 0x202A and <= 0x202E) or (>= 0x2066 and <= 0x2069);
 
     /// <summary>False for a lone surrogate or a character the rule forbids.</summary>
     static bool Clean(string text, Func<Rune, bool> forbidden)

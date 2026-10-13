@@ -68,7 +68,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
                 tcp = await listener.AcceptTcpClientAsync(stopping.Token);
             }
             // InvalidOperationException: stopped before this loop got to its first accept
-            catch (Exception e) when (e is OperationCanceledException or SocketException or ObjectDisposedException or InvalidOperationException)
+            catch (Exception exception) when (exception is OperationCanceledException or SocketException or ObjectDisposedException or InvalidOperationException)
             {
                 return;
             }
@@ -78,7 +78,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             {
                 ip = ((IPEndPoint)tcp.Client.RemoteEndPoint!).Address;
             }
-            catch (Exception e) when (e is SocketException or ObjectDisposedException)
+            catch (Exception exception) when (exception is SocketException or ObjectDisposedException)
             {
                 tcp.Dispose();
                 continue;
@@ -99,7 +99,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             }
             var task = Task.Run(() => HandleAsync(tcp, ip));
             connections.TryAdd(task, 0);
-            _ = task.ContinueWith(t => connections.TryRemove(t, out _), TaskScheduler.Default);
+            _ = task.ContinueWith(otherTask => connections.TryRemove(otherTask, out _), TaskScheduler.Default);
         }
     }
 
@@ -138,7 +138,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
                 reason = "Zeitüberschreitung";
             }
         }
-        catch (Exception e) when (e is IOException or OperationCanceledException or ProtocolException
+        catch (Exception exception) when (exception is IOException or OperationCanceledException or ProtocolException
                                       or AuthenticationException or SocketException or ObjectDisposedException)
         {
         }
@@ -153,7 +153,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         }
     }
 
-    async Task<Session?> HandshakeAsync(FrameReader reader, FrameWriter writer, IPAddress ip, CancellationToken ct)
+    async Task<Session?> HandshakeAsync(FrameReader reader, FrameWriter writer, IPAddress ip, CancellationToken cancellation)
     {
         // Only validated values go into the log: a raw nickname could carry line breaks.
         string? logName = null, logFingerprint = null;
@@ -161,11 +161,11 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         async Task<Session?> Reject(string code, string? detail = null)
         {
             state.LogRejected(ip, code, logName, logFingerprint);
-            await writer.WriteAsync(new Rejected(code, detail), ct);
+            await writer.WriteAsync(new Rejected(code, detail), cancellation);
             return null;
         }
 
-        if (await reader.ReadAsync(ct) is not ClientHello hello) return await Reject(ReasonCodes.ProtocolError);
+        if (await reader.ReadAsync(cancellation) is not ClientHello hello) return await Reject(ReasonCodes.ProtocolError);
         if (hello.ProtocolVersion != WireProtocol.Version)
             return await Reject(ReasonCodes.VersionMismatch, $"Server spricht Protokollversion {WireProtocol.Version}");
         var nickname = TextRules.NormalizeName(hello.Nickname, ProtocolLimits.MaxNicknameLength);
@@ -174,9 +174,9 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         if (!Base64Text.TryDecode(hello.PublicKey, out var publicKey)) return await Reject(ReasonCodes.ProtocolError);
 
         var nonce = RandomNumberGenerator.GetBytes(32);
-        await writer.WriteAsync(new Challenge(Convert.ToBase64String(nonce)), ct);
+        await writer.WriteAsync(new Challenge(Convert.ToBase64String(nonce)), cancellation);
 
-        if (await reader.ReadAsync(ct) is not ClientProof proof || !Base64Text.TryDecode(proof.Signature, out var signature))
+        if (await reader.ReadAsync(cancellation) is not ClientProof proof || !Base64Text.TryDecode(proof.Signature, out var signature))
             return await Reject(ReasonCodes.ProtocolError);
         if (!ClientIdentity.Verify(publicKey, ClientIdentity.ProofData(nonce, certHash), signature))
             return await Reject(ReasonCodes.BadSignature);
@@ -197,9 +197,9 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
             {
                 message = await reader.ReadAsync(idle.Token);
             }
-            catch (InvalidRequestException e) // Package 83: a bad request is answered, only a broken frame ends the connection
+            catch (InvalidRequestException exception) // Package 83: a bad request is answered, only a broken frame ends the connection
             {
-                state.HandleMalformed(session, e.RequestId, e.Message);
+                state.HandleMalformed(session, exception.RequestId, exception.Message);
                 continue;
             }
             if (message is null) return;
@@ -222,14 +222,14 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
                 }
                 catch (TimeoutException)
                 {
-                    _ = write.ContinueWith(t => t.Exception, TaskContinuationOptions.OnlyOnFaulted); // fails once the socket is closed
+                    _ = write.ContinueWith(task => task.Exception, TaskContinuationOptions.OnlyOnFaulted); // fails once the socket is closed
                     session.Outbox.Abort("Schreiben zu langsam");
                     return;
                 }
                 session.Outbox.Written(frame);
             }
         }
-        catch (Exception e) when (e is IOException or ObjectDisposedException or ProtocolException or SocketException)
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException or ProtocolException or SocketException)
         {
         }
         finally

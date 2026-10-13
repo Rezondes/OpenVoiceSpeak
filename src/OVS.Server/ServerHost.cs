@@ -54,9 +54,9 @@ public static class ServerHost
             logs.WriteServerLine($"Version {BuildInfo.Current.Version}"); // Package 42
             state = new ServerState(config, time, logs, ServerStores.Open(config, time));
         }
-        catch (Exception e) when (e is ConfigException or InvalidDataException)
+        catch (Exception exception) when (exception is ConfigException or InvalidDataException)
         {
-            error(e.Message);
+            error(exception.Message);
             return RunEnd.Failed;
         }
 
@@ -71,11 +71,11 @@ public static class ServerHost
             control.Start();
             voice = new UdpVoiceServer(state, endpoint, time);
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or CryptographicException or SocketException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or CryptographicException or SocketException)
         {
             // e.g. port already in use, or a damaged cert.pfx
-            logs.WriteServerLine($"Start fehlgeschlagen: {e.Message}", toConsole: false);
-            error($"Start fehlgeschlagen: {e.Message}");
+            logs.WriteServerLine($"Start fehlgeschlagen: {exception.Message}", toConsole: false);
+            error($"Start fehlgeschlagen: {exception.Message}");
             return RunEnd.Failed;
         }
         voice.Start();
@@ -111,9 +111,9 @@ public static class ServerHost
                 restore.ApplyTo(config.DataDir);
                 logs.WriteServerLine($"Backup eingespielt (Datenversion {restore.Manifest.DataVersion}, Serverversion {restore.Manifest.ServerVersion})");
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
-                logs.WriteServerLine($"Backup einspielen fehlgeschlagen: {e.Message}");
+                logs.WriteServerLine($"Backup einspielen fehlgeschlagen: {exception.Message}");
             }
         }
         logs.WriteServerLine(restart ? "Server beendet, startet neu" : "Server beendet");

@@ -17,8 +17,8 @@ public sealed class NewIdentityLimit
     {
         if (now >= nextSweep)
         {
-            foreach (var (key, e) in windows)
-                if (now - e.First >= ServerTuning.NewIdentityWindow) windows.Remove(key);
+            foreach (var (key, window) in windows)
+                if (now - window.First >= ServerTuning.NewIdentityWindow) windows.Remove(key);
             nextSweep = now + ServerTuning.NewIdentityWindow;
         }
         (int Count, DateTimeOffset First, bool RefusalReported) entry = windows.TryGetValue(source, out var old) && now - old.First < ServerTuning.NewIdentityWindow ? old : (0, now, false);

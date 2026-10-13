@@ -26,19 +26,19 @@ static class RequestShape
     {
         var nullability = new NullabilityInfoContext(); // not thread-safe, so one per build
         var result = new List<Func<object, string?>>();
-        foreach (var p in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        foreach (var propertyInfo in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
-            if (p.GetIndexParameters().Length > 0) continue;
-            var info = nullability.Create(p);
-            var valueType = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
-            if (!p.PropertyType.IsValueType && info.ReadState == NullabilityState.NotNull)
-                result.Add(o => p.GetValue(o) is null ? $"{p.Name} fehlt" : null);
+            if (propertyInfo.GetIndexParameters().Length > 0) continue;
+            var info = nullability.Create(propertyInfo);
+            var valueType = Nullable.GetUnderlyingType(propertyInfo.PropertyType) ?? propertyInfo.PropertyType;
+            if (!propertyInfo.PropertyType.IsValueType && info.ReadState == NullabilityState.NotNull)
+                result.Add(request => propertyInfo.GetValue(request) is null ? $"{propertyInfo.Name} fehlt" : null);
             // Flags enums (Permission) are masked by their handlers; any other value must be a named one
             if (valueType.IsEnum && !valueType.IsDefined(typeof(FlagsAttribute), false))
-                result.Add(o => p.GetValue(o) is { } v && !Enum.IsDefined(valueType, v) ? $"{p.Name} ungültig" : null);
-            if (typeof(IEnumerable).IsAssignableFrom(p.PropertyType) && p.PropertyType != typeof(string)
+                result.Add(request => propertyInfo.GetValue(request) is { } value && !Enum.IsDefined(valueType, value) ? $"{propertyInfo.Name} ungültig" : null);
+            if (typeof(IEnumerable).IsAssignableFrom(propertyInfo.PropertyType) && propertyInfo.PropertyType != typeof(string)
                 && info.GenericTypeArguments is [{ ReadState: NullabilityState.NotNull, Type.IsValueType: false }])
-                result.Add(o => p.GetValue(o) is IEnumerable items && items.Cast<object?>().Any(x => x is null) ? $"{p.Name} enthält einen leeren Eintrag" : null);
+                result.Add(request => propertyInfo.GetValue(request) is IEnumerable items && items.Cast<object?>().Any(item => item is null) ? $"{propertyInfo.Name} enthält einen leeren Eintrag" : null);
         }
         return result.ToArray();
     }

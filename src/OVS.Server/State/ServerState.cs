@@ -75,7 +75,7 @@ public sealed partial class ServerState
         if (data.Migrate(config) || pruned) store.Save(data);
         logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);
         HintIgnoredStartValues();
-        if (!data.Users.Any(u => u.GroupIds.Contains(AdminGroupId)))
+        if (!data.Users.Any(user => user.GroupIds.Contains(AdminGroupId)))
         {
             // The token is a secret: console only, never in a log file (files end up in backups).
             logs.WriteServerLine($"Admin-Token: {adminToken.Generate()}  (im Client unter 'Admin-Token einlösen' eingeben)", toFile: false);
@@ -97,14 +97,14 @@ public sealed partial class ServerState
     /// <summary>Package 69: environment and server-config.json only give start values; a differing one is worth a hint.</summary>
     void HintIgnoredStartValues()
     {
-        var s = data.Settings;
+        var serverSettings = data.Settings;
         var values = new (string Key, string Given, string Stored)[]
         {
-            ("OVS_MAX_USERS", $"{config.MaxUsers}", $"{s.MaxUsers}"),
-            ("OVS_LOG_DAYS", $"{config.LogDays}", $"{s.LogDays}"),
-            ("OVS_LOG_ROTATE_DAILY", OnOff(config.LogRotateDaily), OnOff(s.LogRotateDaily)),
-            ("OVS_AUTO_RESTART", OnOff(config.AutoRestartAt is not null), OnOff(s.AutoRestart)),
-            ("OVS_AUTO_RESTART_TIME", $"{config.AutoRestartTime:HH:mm:ss}", $"{s.AutoRestartTime:HH:mm:ss}"),
+            ("OVS_MAX_USERS", $"{config.MaxUsers}", $"{serverSettings.MaxUsers}"),
+            ("OVS_LOG_DAYS", $"{config.LogDays}", $"{serverSettings.LogDays}"),
+            ("OVS_LOG_ROTATE_DAILY", OnOff(config.LogRotateDaily), OnOff(serverSettings.LogRotateDaily)),
+            ("OVS_AUTO_RESTART", OnOff(config.AutoRestartAt is not null), OnOff(serverSettings.AutoRestart)),
+            ("OVS_AUTO_RESTART_TIME", $"{config.AutoRestartTime:HH:mm:ss}", $"{serverSettings.AutoRestartTime:HH:mm:ss}"),
         };
         foreach (var (key, given, stored) in values)
             if (config.GivenStartValues.Contains(key) && given != stored)
@@ -129,47 +129,47 @@ public sealed partial class ServerState
     /// </summary>
     internal static readonly IReadOnlyDictionary<Type, RouteEntry> Routes = new[]
     {
-        Route<JoinChannel>(static (state, s, r) => state.OnJoinChannel(s, r)),
-        Route<CreateChannel>(static (state, s, r) => state.OnCreateChannel(s, r)),
-        Route<EditChannel>(static (state, s, r) => state.OnEditChannel(s, r)),
-        Route<ReorderChannels>(static (state, s, r) => state.OnReorderChannels(s, r)),
-        Route<DeleteChannel>(static (state, s, r) => state.OnDeleteChannel(s, r)),
-        Route<MoveUser>(static (state, s, r) => state.OnMoveUser(s, r)),
-        Route<SetSelfState>(static (state, s, r) => state.OnSetSelfState(s, r)),
-        Route<CreateGroup>(static (state, s, r) => state.OnCreateGroup(s, r)),
-        Route<ReorderGroups>(static (state, s, r) => state.OnReorderGroups(s, r)),
-        Route<UpdateGroup>(static (state, s, r) => state.OnUpdateGroup(s, r)),
-        Route<DeleteGroup>(static (state, s, r) => state.OnDeleteGroup(s, r)),
-        Route<AssignGroup>(static (state, s, r) => state.OnAssignGroup(s, r)),
-        Route<UnassignGroup>(static (state, s, r) => state.OnUnassignGroup(s, r)),
-        Route<ListUsers>(static (state, s, r) => state.OnListUsers(s, r)),
-        Route<RedeemAdminToken>(static (state, s, r) => state.OnRedeemAdminToken(s, r)),
-        Route<UpdateServerSettings>(static (state, s, r) => state.OnUpdateServerSettings(s, r)),
-        Route<SetServerIcon>(static (state, s, r) => state.OnSetServerIcon(s, r)),
-        Route<GetServerIcon>(static (state, s, r) => state.OnGetServerIcon(s, r)),
-        Route<KickSession>(static (state, s, r) => state.OnKickSession(s, r)),
-        Route<BanSession>(static (state, s, r) => state.OnBanSession(s, r)),
-        Route<Unban>(static (state, s, r) => state.OnUnban(s, r)),
-        Route<BanKnownUser>(static (state, s, r) => state.OnBanKnownUser(s, r)),
-        Route<DeleteKnownUser>(static (state, s, r) => state.OnDeleteKnownUser(s, r)),
-        Route<ListBans>(static (state, s, r) => state.OnListBans(s, r)),
-        Route<SetSessionServerMute>(static (state, s, r) => state.OnSetSessionServerMute(s, r)),
-        Route<SetKnownUserServerMute>(static (state, s, r) => state.OnSetKnownUserServerMute(s, r)),
-        Route<LinkChannels>(static (state, s, r) => state.OnLinkChannels(s, r)),
-        Route<SetChannelLinks>(static (state, s, r) => state.OnSetChannelLinks(s, r)),
-        Route<UnlinkChannels>(static (state, s, r) => state.OnUnlinkChannels(s, r)),
-        Route<SendChat>(static (state, s, r) => state.OnSendChat(s, r)),
-        Route<ListBackups>(static (state, s, r) => state.OnListBackups(s, r)),
-        Route<CreateBackup>(static (state, s, r) => state.OnCreateBackup(s, r)),
-        Route<DeleteBackup>(static (state, s, r) => state.OnDeleteBackup(s, r)),
-        Route<RestoreBackup>(static (state, s, r) => state.OnRestoreBackup(s, r)),
-        Route<DownloadBackup>(static (state, s, r) => state.OnDownloadBackup(s, r), isTransfer: true),
-        Route<UploadBackupChunk>(static (state, s, r) => state.OnUploadBackupChunk(s, r), isTransfer: true),
-        Route<ListLogs>(static (state, s, r) => state.OnListLogs(s, r)),
-        Route<ReadLog>(static (state, s, r) => state.OnReadLog(s, r)),
-        Route<SearchLogs>(static (state, s, r) => state.OnSearchLogs(s, r)),
-        Route<PrepareLogDownload>(static (state, s, r) => state.OnPrepareLogDownload(s, r)),
-        Route<DownloadLogChunk>(static (state, s, r) => state.OnDownloadLogChunk(s, r), isTransfer: true),
+        Route<JoinChannel>(static (state, session, request) => state.OnJoinChannel(session, request)),
+        Route<CreateChannel>(static (state, session, request) => state.OnCreateChannel(session, request)),
+        Route<EditChannel>(static (state, session, request) => state.OnEditChannel(session, request)),
+        Route<ReorderChannels>(static (state, session, request) => state.OnReorderChannels(session, request)),
+        Route<DeleteChannel>(static (state, session, request) => state.OnDeleteChannel(session, request)),
+        Route<MoveUser>(static (state, session, request) => state.OnMoveUser(session, request)),
+        Route<SetSelfState>(static (state, session, request) => state.OnSetSelfState(session, request)),
+        Route<CreateGroup>(static (state, session, request) => state.OnCreateGroup(session, request)),
+        Route<ReorderGroups>(static (state, session, request) => state.OnReorderGroups(session, request)),
+        Route<UpdateGroup>(static (state, session, request) => state.OnUpdateGroup(session, request)),
+        Route<DeleteGroup>(static (state, session, request) => state.OnDeleteGroup(session, request)),
+        Route<AssignGroup>(static (state, session, request) => state.OnAssignGroup(session, request)),
+        Route<UnassignGroup>(static (state, session, request) => state.OnUnassignGroup(session, request)),
+        Route<ListUsers>(static (state, session, request) => state.OnListUsers(session, request)),
+        Route<RedeemAdminToken>(static (state, session, request) => state.OnRedeemAdminToken(session, request)),
+        Route<UpdateServerSettings>(static (state, session, request) => state.OnUpdateServerSettings(session, request)),
+        Route<SetServerIcon>(static (state, session, request) => state.OnSetServerIcon(session, request)),
+        Route<GetServerIcon>(static (state, session, request) => state.OnGetServerIcon(session, request)),
+        Route<KickSession>(static (state, session, request) => state.OnKickSession(session, request)),
+        Route<BanSession>(static (state, session, request) => state.OnBanSession(session, request)),
+        Route<Unban>(static (state, session, request) => state.OnUnban(session, request)),
+        Route<BanKnownUser>(static (state, session, request) => state.OnBanKnownUser(session, request)),
+        Route<DeleteKnownUser>(static (state, session, request) => state.OnDeleteKnownUser(session, request)),
+        Route<ListBans>(static (state, session, request) => state.OnListBans(session, request)),
+        Route<SetSessionServerMute>(static (state, session, request) => state.OnSetSessionServerMute(session, request)),
+        Route<SetKnownUserServerMute>(static (state, session, request) => state.OnSetKnownUserServerMute(session, request)),
+        Route<LinkChannels>(static (state, session, request) => state.OnLinkChannels(session, request)),
+        Route<SetChannelLinks>(static (state, session, request) => state.OnSetChannelLinks(session, request)),
+        Route<UnlinkChannels>(static (state, session, request) => state.OnUnlinkChannels(session, request)),
+        Route<SendChat>(static (state, session, request) => state.OnSendChat(session, request)),
+        Route<ListBackups>(static (state, session, request) => state.OnListBackups(session, request)),
+        Route<CreateBackup>(static (state, session, request) => state.OnCreateBackup(session, request)),
+        Route<DeleteBackup>(static (state, session, request) => state.OnDeleteBackup(session, request)),
+        Route<RestoreBackup>(static (state, session, request) => state.OnRestoreBackup(session, request)),
+        Route<DownloadBackup>(static (state, session, request) => state.OnDownloadBackup(session, request), isTransfer: true),
+        Route<UploadBackupChunk>(static (state, session, request) => state.OnUploadBackupChunk(session, request), isTransfer: true),
+        Route<ListLogs>(static (state, session, request) => state.OnListLogs(session, request)),
+        Route<ReadLog>(static (state, session, request) => state.OnReadLog(session, request)),
+        Route<SearchLogs>(static (state, session, request) => state.OnSearchLogs(session, request)),
+        Route<PrepareLogDownload>(static (state, session, request) => state.OnPrepareLogDownload(session, request)),
+        Route<DownloadLogChunk>(static (state, session, request) => state.OnDownloadLogChunk(session, request), isTransfer: true),
     }.ToDictionary();
 
     /// <summary>
@@ -177,7 +177,7 @@ public sealed partial class ServerState
     /// (the client asks for the next chunk after each answer) sets <paramref name="isTransfer"/>.
     /// </summary>
     static KeyValuePair<Type, RouteEntry> Route<T>(Action<ServerState, Session, T> handler, bool isTransfer = false) where T : Request =>
-        new(typeof(T), ((state, s, r) => handler(state, s, (T)r), isTransfer));
+        new(typeof(T), ((state, session, request) => handler(state, session, (T)request), isTransfer));
 
     public void Handle(Session session, Message message)
     {
@@ -199,10 +199,10 @@ public sealed partial class ServerState
                 if (route.Handler is null) Fail(session, request, ReasonCodes.UnknownRequest);
                 else route.Handler(this, session, request);
             }
-            catch (Exception e)
+            catch (Exception exception)
             {
                 // Package 83: handlers check before they change anything, so an unexpected error leaves the state as it was
-                logs.WriteServerLine($"Fehler bei Anfrage {request.GetType().Name} von {session.Nickname}: {e.GetType().Name}: {e.Message}");
+                logs.WriteServerLine($"Fehler bei Anfrage {request.GetType().Name} von {session.Nickname}: {exception.GetType().Name}: {exception.Message}");
                 Fail(session, request, ReasonCodes.InvalidValue);
             }
         }
@@ -247,9 +247,9 @@ public sealed partial class ServerState
     /// <summary>Package 87: at most ListPageSize entries from offset, so no list outgrows a frame.</summary>
     static List<T> Page<T>(IEnumerable<T> all, int offset) => all.Skip(offset).Take(ServerTuning.ListPageSize).ToList();
 
-    UserRecord? FindUser(string fingerprint) => data.Users.FirstOrDefault(u => u.Fingerprint == fingerprint);
+    UserRecord? FindUser(string fingerprint) => data.Users.FirstOrDefault(user => user.Fingerprint == fingerprint);
 
-    ChannelRecord? FindChannel(Guid id) => data.Channels.FirstOrDefault(c => c.Id == id);
+    ChannelRecord? FindChannel(Guid id) => data.Channels.FirstOrDefault(channel => channel.Id == id);
 
     /// <summary>Packages 83 and 94: a server or channel password longer than MaxPasswordLength is refused; true when it was.</summary>
     static bool PasswordTooLong(Session session, Request request, string? password)
@@ -280,18 +280,18 @@ public sealed partial class ServerState
     /// </summary>
     void RecomputePermissions(bool groupsChanged = false)
     {
-        var before = sessions.Values.ToDictionary(s => s, s => (s.Permissions, s.GroupIds));
+        var before = sessions.Values.ToDictionary(session => session, session => (session.Permissions, session.GroupIds));
         var changed = new HashSet<Session>();
-        foreach (var s in sessions.Values)
+        foreach (var session in sessions.Values)
         {
-            var groups = FindUser(s.Fingerprint)?.GroupIds ?? [];
+            var groups = FindUser(session.Fingerprint)?.GroupIds ?? [];
             var perms = Effective(groups, data.Groups);
-            if (perms == s.Permissions && groups.SequenceEqual(s.GroupIds)) continue;
-            bool limitsChanged = perms.Has(Permission.ServerConfig) != s.Permissions.Has(Permission.ServerConfig);
-            s.Permissions = perms;
-            s.GroupIds = groups.ToList();
-            changed.Add(s);
-            if (limitsChanged) s.Outbox.Send(new ServerSettingsChanged(SettingsInfo(s))); // Package 69: the limits come and go with the right
+            if (perms == session.Permissions && groups.SequenceEqual(session.GroupIds)) continue;
+            bool limitsChanged = perms.Has(Permission.ServerConfig) != session.Permissions.Has(Permission.ServerConfig);
+            session.Permissions = perms;
+            session.GroupIds = groups.ToList();
+            changed.Add(session);
+            if (limitsChanged) session.Outbox.Send(new ServerSettingsChanged(SettingsInfo(session))); // Package 69: the limits come and go with the right
         }
         foreach (var to in sessions.Values)
             if (groupsChanged || (changed.Contains(to) && before[to].Permissions != to.Permissions)) to.Outbox.Send(new GroupsChanged(GroupInfos(to)));
@@ -300,12 +300,12 @@ public sealed partial class ServerState
         foreach (var to in sessions.Values)
         {
             var (toBefore, _) = before[to];
-            foreach (var s in sessions.Values)
+            foreach (var session in sessions.Values)
             {
-                bool send = s == to ? changed.Contains(s)
-                    : !before[s].GroupIds.SequenceEqual(s.GroupIds)
-                      || toBefore.CanModerate(to.Fingerprint, before[s].Permissions, s.Fingerprint) != Moderates(to, s);
-                if (send) to.Outbox.Send(new UserUpdated(Info(s, to)));
+                bool send = session == to ? changed.Contains(session)
+                    : !before[session].GroupIds.SequenceEqual(session.GroupIds)
+                      || toBefore.CanModerate(to.Fingerprint, before[session].Permissions, session.Fingerprint) != Moderates(to, session);
+                if (send) to.Outbox.Send(new UserUpdated(Info(session, to)));
             }
         }
     }
@@ -336,13 +336,13 @@ public sealed partial class ServerState
     static bool Moderates(Session actor, Session target) => actor.Permissions.CanModerate(actor.Fingerprint, target.Permissions, target.Fingerprint);
 
     /// <summary>Package 92 (A104): the own entry with its full rights; others without their rights, but with the recipient's flag.</summary>
-    static UserInfo Info(Session s, Session to) =>
-        new(s.Id, s.Fingerprint, s.Nickname, s.ChannelId, s.SelfMuted, s.SelfDeafened, s.ServerMuted,
-            s == to ? s.Permissions : Permission.None, s.GroupIds, Moderates(to, s));
+    static UserInfo Info(Session session, Session to) =>
+        new(session.Id, session.Fingerprint, session.Nickname, session.ChannelId, session.SelfMuted, session.SelfDeafened, session.ServerMuted,
+            session == to ? session.Permissions : Permission.None, session.GroupIds, Moderates(to, session));
 
-    static ChannelInfo Info(ChannelRecord c) =>
-        new(c.Id, c.Name, c.Description, c.Order, c.IsMuted, c.MaxUsers, c.AllowedGroupIds?.ToList(), c.StoredPassword is not null, c.Kind,
-            c.Kind == ChannelKind.Separator ? 0 : c.Bitrate); // Package 132: a separator has none, also one stored before
+    static ChannelInfo Info(ChannelRecord channel) =>
+        new(channel.Id, channel.Name, channel.Description, channel.Order, channel.IsMuted, channel.MaxUsers, channel.AllowedGroupIds?.ToList(), channel.StoredPassword is not null, channel.Kind,
+            channel.Kind == ChannelKind.Separator ? 0 : channel.Bitrate); // Package 132: a separator has none, also one stored before
 
     /// <summary>Package 69: the limits only for those who may change them.</summary>
     ServerSettingsInfo SettingsInfo(Session to) =>
@@ -351,28 +351,28 @@ public sealed partial class ServerState
 
     void BroadcastSettings()
     {
-        foreach (var s in sessions.Values) s.Outbox.Send(new ServerSettingsChanged(SettingsInfo(s)));
+        foreach (var session in sessions.Values) session.Outbox.Send(new ServerSettingsChanged(SettingsInfo(session)));
     }
 
     /// <summary>Package 92 (A104): the rights of the groups only with GroupsView; everyone learns which groups it may assign.</summary>
     List<GroupInfo> GroupInfos(Session to)
     {
         bool view = to.Permissions.Has(Permission.GroupsView);
-        return data.Groups.Select(g => new GroupInfo(g.Id, g.Name, view ? g.Permissions : Permission.None, CanAssign(to.Permissions, g))).ToList();
+        return data.Groups.Select(groupRecord => new GroupInfo(groupRecord.Id, groupRecord.Name, view ? groupRecord.Permissions : Permission.None, CanAssign(to.Permissions, groupRecord))).ToList();
     }
 
     void BroadcastGroups()
     {
-        foreach (var s in sessions.Values) s.Outbox.Send(new GroupsChanged(GroupInfos(s)));
+        foreach (var session in sessions.Values) session.Outbox.Send(new GroupsChanged(GroupInfos(session)));
     }
 
     ServerSnapshot Snapshot(Session to) => new(
         SettingsInfo(to),
         data.DefaultChannelId,
         data.Channels.Select(Info).ToList(),
-        data.Links.Select(l => new LinkInfo(l.A, l.B)).ToList(),
+        data.Links.Select(channelLink => new LinkInfo(channelLink.A, channelLink.B)).ToList(),
         GroupInfos(to),
-        sessions.Values.Select(s => Info(s, to)).ToList());
+        sessions.Values.Select(session => Info(session, to)).ToList());
 
     static string BanText(BanRecord ban) =>
         ban.ExpiresAt is { } until ? $"{ban.Reason} (bis {until:yyyy-MM-dd HH:mm} UTC)" : $"{ban.Reason} (dauerhaft)";

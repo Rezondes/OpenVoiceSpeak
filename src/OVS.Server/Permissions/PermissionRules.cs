@@ -28,7 +28,7 @@ public static class PermissionRules
     {
         var ids = groupIds.ToHashSet();
         if (ids.Contains(AdminGroupId)) return Permission.All;
-        return groups.Where(g => ids.Contains(g.Id)).Aggregate(Permission.None, (acc, g) => acc | g.Permissions);
+        return groups.Where(groupRecord => ids.Contains(groupRecord.Id)).Aggregate(Permission.None, (acc, groupRecord) => acc | groupRecord.Permissions);
     }
 
     public static bool CanDeleteGroup(Permission actor, GroupRecord group) => GroupRules.CanDelete(actor, group.Id, group.Permissions);
@@ -40,7 +40,7 @@ public static class PermissionRules
     {
         if (groupId != AdminGroupId) return false;
         var all = users.ToList();
-        var admins = all.Count(u => u.GroupIds.Contains(AdminGroupId));
-        return all.Any(u => u.Fingerprint == fingerprint && GroupRules.IsLastAdmin(u.GroupIds, admins));
+        var admins = all.Count(user => user.GroupIds.Contains(AdminGroupId));
+        return all.Any(user => user.Fingerprint == fingerprint && GroupRules.IsLastAdmin(user.GroupIds, admins));
     }
 }

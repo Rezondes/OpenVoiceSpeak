@@ -27,7 +27,7 @@ public sealed class LogDownload
     /// <summary>The prepared file when id is the current download, else null.</summary>
     public string? FindPath(string? id)
     {
-        lock (gate) return current is { } d && d.Id == id ? d.Path : null;
+        lock (gate) return current is { } download && download.Id == id ? download.Path : null;
     }
 
     /// <summary>After the last chunk: deletes the file.</summary>
@@ -41,7 +41,7 @@ public sealed class LogDownload
         lock (gate)
         {
             ended |= end;
-            if (current is { } d) SafeFile.DeleteQuietly(d.Path);
+            if (current is { } download) SafeFile.DeleteQuietly(download.Path);
             current = null;
         }
     }

@@ -10,29 +10,29 @@ public sealed partial class ServerState
     // ---- Package 86: request limits (call under gate) ----
 
     /// <summary>The per-session budget and the RequestId length; false when the request was answered or the session dropped.</summary>
-    bool Admissible(Session s, string? requestId, bool isTransfer)
+    bool Admissible(Session session, string? requestId, bool isTransfer)
     {
         var id = requestId is { Length: > ServerTuning.MaxRequestIdLength } tooLong ? tooLong[..ServerTuning.MaxRequestIdLength] : requestId;
         // Transfers are pull-based (one chunk per answer) and need the budget less than their speed does.
-        switch (isTransfer ? null : s.Throttle.TakeRequest())
+        switch (isTransfer ? null : session.Throttle.TakeRequest())
         {
             case true:
-                RemoveLocked(s, new Disconnected(ReasonCodes.RateLimited));
+                RemoveLocked(session, new Disconnected(ReasonCodes.RateLimited));
                 return false;
             case false:
-                s.Outbox.Send(new Error(id, ReasonCodes.RateLimited));
+                session.Outbox.Send(new Error(id, ReasonCodes.RateLimited));
                 return false;
         }
         if (id == requestId) return true;
-        s.Outbox.Send(new Error(id, ReasonCodes.InvalidValue, $"RequestId länger als {ServerTuning.MaxRequestIdLength} Zeichen"));
+        session.Outbox.Send(new Error(id, ReasonCodes.InvalidValue, $"RequestId länger als {ServerTuning.MaxRequestIdLength} Zeichen"));
         return false;
     }
 
     /// <summary>The own limit of a costly request kind, per session; answers RateLimited when it is used up.</summary>
-    static bool Throttle(Session s, Request r, double perSecond, double burst = 1)
+    static bool Throttle(Session session, Request request, double perSecond, double burst = 1)
     {
-        if (s.Throttle.TryTakeCostly(r.GetType(), perSecond, burst)) return true;
-        Fail(s, r, ReasonCodes.RateLimited);
+        if (session.Throttle.TryTakeCostly(request.GetType(), perSecond, burst)) return true;
+        Fail(session, request, ReasonCodes.RateLimited);
         return false;
     }
 
@@ -40,29 +40,29 @@ public sealed partial class ServerState
     /// Package 87: the first page counts; a later page is free only once per round, within ListRoundWindow
     /// of an answered first page of the same list. Any other page counts like a first page.
     /// </summary>
-    static bool ThrottleList(Session s, Request r, int offset)
+    static bool ThrottleList(Session session, Request request, int offset)
     {
-        if (offset > 0 && s.Throttle.TakeFollowPage(r.GetType(), offset)) return true;
-        if (!Throttle(s, r, ServerTuning.ListsPerSecond, ServerTuning.ListBurst)) return false;
-        if (offset <= 0) s.Throttle.StartListRound(r.GetType());
+        if (offset > 0 && session.Throttle.TakeFollowPage(request.GetType(), offset)) return true;
+        if (!Throttle(session, request, ServerTuning.ListsPerSecond, ServerTuning.ListBurst)) return false;
+        if (offset <= 0) session.Throttle.StartListRound(request.GetType());
         return true;
     }
 
-    static bool ThrottleHeavy(Session s, Request r) => Throttle(s, r, 1 / ServerTuning.HeavyInterval.TotalSeconds);
+    static bool ThrottleHeavy(Session session, Request request) => Throttle(session, request, 1 / ServerTuning.HeavyInterval.TotalSeconds);
 
     /// <summary>
     /// Needs no right, but one answer can be ~700 KB: from the cached string, once per IconInterval.
     /// A logo this session has not been sent yet is always answered, so a change reaches it at once.
     /// </summary>
-    void OnGetServerIcon(Session s, GetServerIcon r)
+    void OnGetServerIcon(Session session, GetServerIcon request)
     {
-        bool allowed = s.Throttle.TryTakeCostly(r.GetType(), 1 / ServerTuning.IconInterval.TotalSeconds, 1);
-        if (!allowed && icon.Hash == s.ServedIconHash)
+        bool allowed = session.Throttle.TryTakeCostly(request.GetType(), 1 / ServerTuning.IconInterval.TotalSeconds, 1);
+        if (!allowed && icon.Hash == session.ServedIconHash)
         {
-            Fail(s, r, ReasonCodes.RateLimited);
+            Fail(session, request, ReasonCodes.RateLimited);
             return;
         }
-        s.ServedIconHash = icon.Hash;
-        s.Outbox.Send(new ServerIcon(r.RequestId, icon.Hash, icon.Base64));
+        session.ServedIconHash = icon.Hash;
+        session.Outbox.Send(new ServerIcon(request.RequestId, icon.Hash, icon.Base64));
     }
 }

@@ -13,18 +13,18 @@ public sealed class FrameReader(Stream stream)
     readonly byte[] header = new byte[4];
 
     /// <returns>The next message, or null when the stream ended cleanly between frames.</returns>
-    public async Task<Message?> ReadAsync(CancellationToken ct = default)
+    public async Task<Message?> ReadAsync(CancellationToken cancellation = default)
     {
         int read = 0;
         while (read < header.Length)
         {
-            int n = await stream.ReadAsync(header.AsMemory(read), ct);
-            if (n == 0)
+            int count = await stream.ReadAsync(header.AsMemory(read), cancellation);
+            if (count == 0)
             {
                 if (read == 0) return null;
                 throw new EndOfStreamException();
             }
-            read += n;
+            read += count;
         }
 
         uint length = BinaryPrimitives.ReadUInt32BigEndian(header);
@@ -32,15 +32,15 @@ public sealed class FrameReader(Stream stream)
             throw new ProtocolException($"Invalid frame length {length}");
 
         var payload = new byte[length];
-        await stream.ReadExactlyAsync(payload, ct);
+        await stream.ReadExactlyAsync(payload, cancellation);
         try
         {
             return JsonSerializer.Deserialize<Message>(payload, ProtocolJson.Options)
                 ?? throw new ProtocolException("Empty message");
         }
-        catch (Exception e) when (e is JsonException or NotSupportedException)
+        catch (Exception exception) when (exception is JsonException or NotSupportedException)
         {
-            throw Invalid(payload, "Invalid message: " + e.Message);
+            throw Invalid(payload, "Invalid message: " + exception.Message);
         }
     }
 
@@ -51,7 +51,7 @@ public sealed class FrameReader(Stream stream)
         {
             using var json = JsonDocument.Parse(payload);
             if (json.RootElement.ValueKind != JsonValueKind.Object) return new ProtocolException(message);
-            var id = json.RootElement.TryGetProperty("requestId", out var r) && r.ValueKind == JsonValueKind.String ? r.GetString() : null;
+            var id = json.RootElement.TryGetProperty("requestId", out var jsonElement) && jsonElement.ValueKind == JsonValueKind.String ? jsonElement.GetString() : null;
             return new InvalidRequestException(id, message);
         }
         catch (JsonException)

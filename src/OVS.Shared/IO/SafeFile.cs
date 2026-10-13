@@ -12,7 +12,7 @@ public static class SafeFile
         {
             File.Delete(path);
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
         }
     }

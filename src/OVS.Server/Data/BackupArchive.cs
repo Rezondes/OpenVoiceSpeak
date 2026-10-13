@@ -93,16 +93,16 @@ public static class BackupArchive
             if (icon is not null && ServerIconFormat.Validate(icon) is { } why) throw new InvalidDataException($"Logo ungültig: {why}");
             return new BackupContent(manifest, dataBytes, cert, icon);
         }
-        catch (Exception e) when (e is not InvalidDataException) // Package 89: nothing unexpected gets past the check
+        catch (Exception exception) when (exception is not InvalidDataException) // Package 89: nothing unexpected gets past the check
         {
-            throw new InvalidDataException(e.Message, e);
+            throw new InvalidDataException(exception.Message, exception);
         }
     }
 
     /// <summary>Package 89 (A101): everything a start of the server relies on (<see cref="ServerData.FindProblem"/>), so a restored archive can never keep it from starting.</summary>
     /// <exception cref="InvalidDataException">With the reason for the log.</exception>
-    public static void Validate(ServerData d)
+    public static void Validate(ServerData serverData)
     {
-        if (d.FindProblem() is { } problem) throw new InvalidDataException(problem);
+        if (serverData.FindProblem() is { } problem) throw new InvalidDataException(problem);
     }
 }

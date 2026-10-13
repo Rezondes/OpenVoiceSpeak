@@ -74,8 +74,8 @@ public sealed class SessionVoice(byte[] voiceKey, TimeProvider time) : IDisposab
     {
         long now = time.GetTimestamp();
         var last = lastRelayed;
-        bool close = frame > 0 && last is { } l && l.Channel == channel && l.Target == target
-            && time.GetElapsedTime(l.At, now) <= RelayPayload.CopyMaxAge;
+        bool close = frame > 0 && last is { } previous && previous.Channel == channel && previous.Target == target
+            && time.GetElapsedTime(previous.At, now) <= RelayPayload.CopyMaxAge;
         var kept = close && last!.Value.Seq == frame - 1 ? last.Value.Opus : default;
         bool unseen = close && highestSeen < frame - 1;
         if (frame > highestSeen) highestSeen = frame;

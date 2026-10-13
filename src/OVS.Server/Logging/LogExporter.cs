@@ -34,14 +34,14 @@ public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider t
     /// <param name="downloadId">Chosen by the server (Guid "N"), never by a client.</param>
     public LogExportResult Export(string downloadId, IReadOnlyList<string> ids, IReadOnlyDictionary<Guid, string> channelNames)
     {
-        var listed = reader.ListWithPaths(channelNames).ToDictionary(e => e.Info.Id);
+        var listed = reader.ListWithPaths(channelNames).ToDictionary(locatedLogFile => locatedLogFile.Info.Id);
         var chosen = new List<LocatedLogFile>();
         foreach (var id in ids)
         {
             if (!listed.TryGetValue(id, out var entry)) return new LogExportResult(null, ReasonCodes.NotFound);
             chosen.Add(entry);
         }
-        if (chosen.Sum(e => e.Info.Size) > ServerTuning.MaxLogDownloadBytes) return new LogExportResult(null, ReasonCodes.LogsTooLarge);
+        if (chosen.Sum(locatedLogFile => locatedLogFile.Info.Size) > ServerTuning.MaxLogDownloadBytes) return new LogExportResult(null, ReasonCodes.LogsTooLarge);
         Directory.CreateDirectory(ExportDir);
         bool single = chosen.Count == 1;
         var path = Path.Combine(ExportDir, downloadId + (single ? ".log" : ".zip"));
@@ -76,7 +76,7 @@ public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider t
             return new LogExportResult(null, ReasonCodes.LogsTooLarge);
         }
         var name = single ? Path.GetFileName(chosen[0].Path)
-            : $"ovs-logs_{Local(chosen.Min(e => e.Info.Start)):yyyy-MM-dd}_{Local(chosen.Max(e => e.Info.LastWrite)):yyyy-MM-dd}.zip";
+            : $"ovs-logs_{Local(chosen.Min(locatedLogFile => locatedLogFile.Info.Start)):yyyy-MM-dd}_{Local(chosen.Max(locatedLogFile => locatedLogFile.Info.LastWrite)):yyyy-MM-dd}.zip";
         return new LogExportResult(new LogExport(name, path, size), "");
     }
 
@@ -89,7 +89,7 @@ public sealed class LogExporter(string dataDir, LogReader reader, TimeProvider t
     /// <summary>A channel name as one folder name on every system: no separators or reserved characters, no leading or trailing dots.</summary>
     static string SafeName(string? name)
     {
-        var safe = new string((name ?? "").Select(c => char.IsControl(c) || "\\/:*?\"<>|".Contains(c) ? '_' : c).ToArray()).Trim(' ', '.');
+        var safe = new string((name ?? "").Select(character => char.IsControl(character) || "\\/:*?\"<>|".Contains(character) ? '_' : character).ToArray()).Trim(' ', '.');
         return safe.Length == 0 ? "channel" : safe;
     }
 

@@ -77,11 +77,11 @@ public sealed class LogFileWriter
                 foreach (var line in lines) text.Append(EscapeToOneLine(line)).Append(Environment.NewLine);
                 AppendShared(Path.Combine(dir, $"{prefix}{fileName}.log"), text.ToString());
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
                 if (failureReported) return;
                 failureReported = true;
-                onFailure(EscapeToOneLine($"{FormatNow()} Log konnte nicht geschrieben werden: {e.Message}"));
+                onFailure(EscapeToOneLine($"{FormatNow()} Log konnte nicht geschrieben werden: {exception.Message}"));
             }
         }
     }
@@ -96,18 +96,18 @@ public sealed class LogFileWriter
     {
         if (!line.Any(IsBreaking)) return line;
         var text = new StringBuilder(line.Length + 16);
-        foreach (var c in line)
+        foreach (var character in line)
         {
-            if (c == '\r') text.Append(@"\r");
-            else if (c == '\n') text.Append(@"\n");
-            else if (c == '\t') text.Append(@"\t");
-            else if (IsBreaking(c)) text.Append(@"\u").Append(((int)c).ToString("X4", CultureInfo.InvariantCulture));
-            else text.Append(c);
+            if (character == '\r') text.Append(@"\r");
+            else if (character == '\n') text.Append(@"\n");
+            else if (character == '\t') text.Append(@"\t");
+            else if (IsBreaking(character)) text.Append(@"\u").Append(((int)character).ToString("X4", CultureInfo.InvariantCulture));
+            else text.Append(character);
         }
         return text.ToString();
     }
 
-    static bool IsBreaking(char c) => char.IsControl(c) || c is '\u2028' or '\u2029';
+    static bool IsBreaking(char character) => char.IsControl(character) || character is '\u2028' or '\u2029';
 
     /// <summary>
     /// Lets readers keep the file open, and retries briefly while a reader locks it against writing
@@ -149,7 +149,7 @@ public sealed class LogFileWriter
                     File.Delete(file);
             }
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             // an undeletable old file is not worth failing over; the next day change tries again
         }

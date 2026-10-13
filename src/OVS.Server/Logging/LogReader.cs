@@ -28,21 +28,21 @@ public sealed class LogReader(string dataDir, TimeProvider time)
 
     /// <summary>Newest first.</summary>
     /// <param name="channelNames">Current channel names; a channel missing there (deleted) is named after its file.</param>
-    public List<LogFileInfo> List(IReadOnlyDictionary<Guid, string>? channelNames = null) => ListWithPaths(channelNames).Select(e => e.Info).ToList();
+    public List<LogFileInfo> List(IReadOnlyDictionary<Guid, string>? channelNames = null) => ListWithPaths(channelNames).Select(locatedLogFile => locatedLogFile.Info).ToList();
 
     /// <summary>The listing with each file's path, in the same order; LogExporter copies from it.</summary>
     internal List<LocatedLogFile> ListWithPaths(IReadOnlyDictionary<Guid, string>? channelNames) =>
-        Files().Select(f =>
+        Files().Select(logFileLocation =>
             {
-                var info = new FileInfo(f.Path);
-                var name = f.ChannelId is { } id && channelNames is not null ? channelNames.GetValueOrDefault(id) ?? NameInFile(f.Path) : null;
-                return new LocatedLogFile(new LogFileInfo(f.Id, f.ChannelId is null ? LogKind.Server : LogKind.Channel, f.ChannelId, name,
-                    StartOf(info), new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero), info.Length), f.Path);
+                var info = new FileInfo(logFileLocation.Path);
+                var name = logFileLocation.ChannelId is { } id && channelNames is not null ? channelNames.GetValueOrDefault(id) ?? NameInFile(logFileLocation.Path) : null;
+                return new LocatedLogFile(new LogFileInfo(logFileLocation.Id, logFileLocation.ChannelId is null ? LogKind.Server : LogKind.Channel, logFileLocation.ChannelId, name,
+                    StartOf(info), new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero), info.Length), logFileLocation.Path);
             })
-            .OrderByDescending(e => e.Info.Start).ThenBy(e => e.Info.Kind).ThenBy(e => e.Info.Id, StringComparer.Ordinal).ToList();
+            .OrderByDescending(locatedLogFile => locatedLogFile.Info.Start).ThenBy(locatedLogFile => locatedLogFile.Info.Kind).ThenBy(locatedLogFile => locatedLogFile.Info.Id, StringComparer.Ordinal).ToList();
 
     /// <summary>The file with exactly this id in the listing, null for anything else.</summary>
-    public string? Resolve(string? id) => Files().FirstOrDefault(f => f.Id == id).Path;
+    public string? Resolve(string? id) => Files().FirstOrDefault(logFileLocation => logFileLocation.Id == id).Path;
 
     IEnumerable<LogFileLocation> Files()
     {
@@ -63,8 +63,8 @@ public sealed class LogReader(string dataDir, TimeProvider time)
         var dir = new DirectoryInfo(folder);
         if (!dir.Exists || dir.Attributes.HasFlag(FileAttributes.ReparsePoint)) return [];
         return dir.EnumerateFiles("*.log")
-            .Where(f => f.Name.EndsWith(".log", StringComparison.Ordinal) && !f.Attributes.HasFlag(FileAttributes.ReparsePoint))
-            .Select(f => f.FullName);
+            .Where(fileInfo => fileInfo.Name.EndsWith(".log", StringComparison.Ordinal) && !fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            .Select(fileInfo => fileInfo.FullName);
     }
 
     /// <summary>The start in the name (server local time, like LogFileWriter writes it), else the creation time.</summary>
@@ -108,11 +108,11 @@ public sealed class LogReader(string dataDir, TimeProvider time)
             if (total % size == 0) last.Clear();
             var cut = Cut(line, ServerTuning.MaxLogLineLength);
             last.Add(cut);
-            if (page is { } p && total / size == p - 1) wanted.Add(cut);
+            if (page is { } pageNumber && total / size == pageNumber - 1) wanted.Add(cut);
             total++;
         }
         int count = Math.Max(1, (total + size - 1) / size);
-        int shown = page is { } n && n <= count ? n : count;
+        int shown = page is { } limit && limit <= count ? limit : count;
         var lines = shown == count ? last : wanted;
         return new LogPage(requestId, id, shown, count, (shown - 1) * size + 1, Fit(lines));
     }
@@ -126,9 +126,9 @@ public sealed class LogReader(string dataDir, TimeProvider time)
         long started = time.GetTimestamp();
         var hits = new List<LogHit>();
         bool timedOut = false;
-        var files = ListWithPaths(null).Where(e => e.Info is var f
-            && (search.Kind is null || f.Kind == search.Kind) && (search.ChannelId is null || f.ChannelId == search.ChannelId)
-            && (search.To is null || f.Start <= search.To) && (search.From is null || f.LastWrite >= search.From));
+        var files = ListWithPaths(null).Where(locatedLogFile => locatedLogFile.Info is var logFile
+            && (search.Kind is null || logFile.Kind == search.Kind) && (search.ChannelId is null || logFile.ChannelId == search.ChannelId)
+            && (search.To is null || logFile.Start <= search.To) && (search.From is null || logFile.LastWrite >= search.From));
         foreach (var (file, path) in files)
         {
             if (hits.Count > ProtocolLimits.MaxLogHits || timedOut) break;
@@ -151,8 +151,8 @@ public sealed class LogReader(string dataDir, TimeProvider time)
         }
         bool truncated = hits.Count > ProtocolLimits.MaxLogHits;
         if (truncated) hits.RemoveRange(ProtocolLimits.MaxLogHits, hits.Count - ProtocolLimits.MaxLogHits);
-        var texts = Fit(hits.Select(h => h.Text).ToList());
-        return new LogSearchResult(requestId, hits.Select((h, i) => h with { Text = texts[i] }).ToList(), truncated, timedOut);
+        var texts = Fit(hits.Select(logHit => logHit.Text).ToList());
+        return new LogSearchResult(requestId, hits.Select((logHit, index) => logHit with { Text = texts[index] }).ToList(), truncated, timedOut);
     }
 
     /// <summary>At most max characters plus the marker; never splits a surrogate pair.</summary>
@@ -176,9 +176,9 @@ public sealed class LogReader(string dataDir, TimeProvider time)
         while (low < high)
         {
             int mid = (low + high + 1) / 2;
-            if (lines.Sum(l => JsonBytes(Cut(l, mid))) <= LineBudget) low = mid;
+            if (lines.Sum(text => JsonBytes(Cut(text, mid))) <= LineBudget) low = mid;
             else high = mid - 1;
         }
-        return lines.Select(l => Cut(l, low)).ToList();
+        return lines.Select(text => Cut(text, low)).ToList();
     }
 }

@@ -27,194 +27,194 @@ public sealed partial class ServerState
     }
 
     /// <summary>Package 87: one page, the first one unless r asks for another.</summary>
-    void SendBackups(Session s, Request r)
+    void SendBackups(Session session, Request request)
     {
-        int offset = r is ListBackups l ? Math.Max(0, l.Offset) : 0;
+        int offset = request is ListBackups listBackups ? Math.Max(0, listBackups.Offset) : 0;
         var all = backups.List();
-        s.Outbox.Send(new BackupList(r.RequestId, Page(all, offset), offset, all.Count));
+        session.Outbox.Send(new BackupList(request.RequestId, Page(all, offset), offset, all.Count));
     }
 
     /// <summary>Package 89: checked on every request, so leaving the group stops an upload at its next chunk.</summary>
-    bool RequireAdminGroup(Session s, Request r)
+    bool RequireAdminGroup(Session session, Request request)
     {
-        if (s.GroupIds.Contains(WellKnownGroups.Admin)) return true;
-        Fail(s, r, ReasonCodes.PermissionDenied);
+        if (session.GroupIds.Contains(WellKnownGroups.Admin)) return true;
+        Fail(session, request, ReasonCodes.PermissionDenied);
         return false;
     }
 
-    void OnListBackups(Session s, ListBackups r)
+    void OnListBackups(Session session, ListBackups request)
     {
-        if (Require(s, r, Permission.BackupsManage) && ThrottleList(s, r, r.Offset)) SendBackups(s, r);
+        if (Require(session, request, Permission.BackupsManage) && ThrottleList(session, request, request.Offset)) SendBackups(session, request);
     }
 
-    void OnCreateBackup(Session s, CreateBackup r)
+    void OnCreateBackup(Session session, CreateBackup request)
     {
-        if (!Require(s, r, Permission.BackupsManage) || !ThrottleHeavy(s, r)) return;
+        if (!Require(session, request, Permission.BackupsManage) || !ThrottleHeavy(session, request)) return;
         try
         {
             saves.FlushPending(); // the archive is made from the file, so it gets what the debounced save still holds
             var created = backups.Create();
-            logs.WriteServerLine($"Backup {created.FileName} angelegt von {s.Nickname}");
+            logs.WriteServerLine($"Backup {created.FileName} angelegt von {session.Nickname}");
         }
-        catch (BackupQuotaException e)
+        catch (BackupQuotaException exception)
         {
-            logs.WriteServerLine($"Backup anlegen abgelehnt ({s.Nickname}), Backup-Limit erreicht: {e.Message}");
-            Fail(s, r, ReasonCodes.BackupQuotaExceeded, e.Message);
+            logs.WriteServerLine($"Backup anlegen abgelehnt ({session.Nickname}), Backup-Limit erreicht: {exception.Message}");
+            Fail(session, request, ReasonCodes.BackupQuotaExceeded, exception.Message);
             return;
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            logs.WriteServerLine($"Backup anlegen fehlgeschlagen ({s.Nickname}): {e.Message}");
-            Fail(s, r, ReasonCodes.InvalidValue, e.Message);
+            logs.WriteServerLine($"Backup anlegen fehlgeschlagen ({session.Nickname}): {exception.Message}");
+            Fail(session, request, ReasonCodes.InvalidValue, exception.Message);
             return;
         }
-        SendBackups(s, r);
+        SendBackups(session, request);
     }
 
-    void OnDeleteBackup(Session s, DeleteBackup r)
+    void OnDeleteBackup(Session session, DeleteBackup request)
     {
-        if (!Require(s, r, Permission.BackupsManage)) return;
-        if (backups.Find(r.FileName) is not { } path)
+        if (!Require(session, request, Permission.BackupsManage)) return;
+        if (backups.Find(request.FileName) is not { } path)
         {
-            Fail(s, r, ReasonCodes.NotFound);
+            Fail(session, request, ReasonCodes.NotFound);
             return;
         }
         backups.Delete(path);
-        logs.WriteServerLine($"Backup {r.FileName} gelöscht von {s.Nickname}");
-        SendBackups(s, r);
+        logs.WriteServerLine($"Backup {request.FileName} gelöscht von {session.Nickname}");
+        SendBackups(session, request);
     }
 
     // ---- Package 75: download and upload in chunks ----
 
     /// <summary>One chunk per request: the client asks for the next one, so the outbox never fills up (A91).</summary>
-    void OnDownloadBackup(Session s, DownloadBackup r)
+    void OnDownloadBackup(Session session, DownloadBackup request)
     {
-        if (!Require(s, r, Permission.BackupsManage)) return;
-        if (backups.Find(r.FileName) is not { } path)
+        if (!Require(session, request, Permission.BackupsManage)) return;
+        if (backups.Find(request.FileName) is not { } path)
         {
-            Fail(s, r, ReasonCodes.NotFound);
+            Fail(session, request, ReasonCodes.NotFound);
             return;
         }
         // ponytail: file reads of up to 512 KB under the state lock; fine for the few MB a backup has
-        if (SafeFile.ReadChunk(path, r.Offset) is not var (bytes, total))
+        if (SafeFile.ReadChunk(path, request.Offset) is not var (bytes, total))
         {
-            Fail(s, r, ReasonCodes.InvalidValue, $"Offset {r.Offset}");
+            Fail(session, request, ReasonCodes.InvalidValue, $"Offset {request.Offset}");
             return;
         }
-        if (r.Offset == 0) logs.WriteServerLine($"Backup {r.FileName} wird heruntergeladen von {s.Nickname}");
-        s.Outbox.Send(new BackupChunk(r.RequestId, r.FileName, r.Offset, total, Convert.ToBase64String(bytes), r.Offset + bytes.Length >= total));
+        if (request.Offset == 0) logs.WriteServerLine($"Backup {request.FileName} wird heruntergeladen von {session.Nickname}");
+        session.Outbox.Send(new BackupChunk(request.RequestId, request.FileName, request.Offset, total, Convert.ToBase64String(bytes), request.Offset + bytes.Length >= total));
     }
 
     /// <summary>
     /// Appends each chunk to backups/.upload-&lt;id&gt;; the last one is checked like a restore and then becomes a normal backup.
     /// Every error drops the upload with its file, so the client can simply start over.
     /// </summary>
-    void OnUploadBackupChunk(Session s, UploadBackupChunk r)
+    void OnUploadBackupChunk(Session session, UploadBackupChunk request)
     {
-        if (!RequireAdminGroup(s, r))
+        if (!RequireAdminGroup(session, request))
         {
-            DropUpload(s);
+            DropUpload(session);
             return;
         }
-        if (!UploadFolder.IsValidId(r.UploadId) || r.DataBase64.Length > Base64Text.Encoded(ProtocolLimits.BackupChunkBytes))
+        if (!UploadFolder.IsValidId(request.UploadId) || request.DataBase64.Length > Base64Text.Encoded(ProtocolLimits.BackupChunkBytes))
         {
-            Fail(s, r, ReasonCodes.InvalidValue);
+            Fail(session, request, ReasonCodes.InvalidValue);
             return;
         }
-        if (s.Upload?.Id != r.UploadId)
+        if (session.Upload?.Id != request.UploadId)
         {
-            DropUpload(s); // a new upload replaces an unfinished one
-            if (r.Offset != 0)
+            DropUpload(session); // a new upload replaces an unfinished one
+            if (request.Offset != 0)
             {
-                Fail(s, r, ReasonCodes.InvalidValue, "unbekannter Upload");
+                Fail(session, request, ReasonCodes.InvalidValue, "unbekannter Upload");
                 return;
             }
-            s.Upload = new BackupUpload(r.UploadId, uploads.PreparePath(r.UploadId));
+            session.Upload = new BackupUpload(request.UploadId, uploads.PreparePath(request.UploadId));
         }
-        var upload = s.Upload!;
-        if (!Base64Text.TryDecode(r.DataBase64, out var bytes))
+        var upload = session.Upload!;
+        if (!Base64Text.TryDecode(request.DataBase64, out var bytes))
         {
-            DropUpload(s);
-            Fail(s, r, ReasonCodes.InvalidValue, "kein Base64");
+            DropUpload(session);
+            Fail(session, request, ReasonCodes.InvalidValue, "kein Base64");
             return;
         }
-        if (!upload.Continues(r.Offset) || bytes.Length > ProtocolLimits.BackupChunkBytes)
+        if (!upload.Continues(request.Offset) || bytes.Length > ProtocolLimits.BackupChunkBytes)
         {
-            DropUpload(s);
-            Fail(s, r, ReasonCodes.InvalidValue, $"Offset {r.Offset}, erwartet {upload.Received}");
+            DropUpload(session);
+            Fail(session, request, ReasonCodes.InvalidValue, $"Offset {request.Offset}, erwartet {upload.Received}");
             return;
         }
         if (upload.Overflows(bytes.Length))
         {
-            DropUpload(s);
-            logs.WriteServerLine($"Backup-Upload von {s.Nickname} abgelehnt: grösser als {ProtocolLimits.MaxBackupUploadBytes / (1024 * 1024)} MB");
-            Fail(s, r, ReasonCodes.BackupTooLarge);
+            DropUpload(session);
+            logs.WriteServerLine($"Backup-Upload von {session.Nickname} abgelehnt: grösser als {ProtocolLimits.MaxBackupUploadBytes / (1024 * 1024)} MB");
+            Fail(session, request, ReasonCodes.BackupTooLarge);
             return;
         }
         if (backups.QuotaProblem(upload.Received + bytes.Length) is { } quota) // Package 89: before the bytes are written
         {
-            DropUpload(s);
-            logs.WriteServerLine($"Backup-Upload von {s.Nickname} abgelehnt, Backup-Limit erreicht: {quota}");
-            Fail(s, r, ReasonCodes.BackupQuotaExceeded, quota);
+            DropUpload(session);
+            logs.WriteServerLine($"Backup-Upload von {session.Nickname} abgelehnt, Backup-Limit erreicht: {quota}");
+            Fail(session, request, ReasonCodes.BackupQuotaExceeded, quota);
             return;
         }
         try
         {
             upload.Append(bytes);
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            DropUpload(s);
-            logs.WriteServerLine($"Backup-Upload von {s.Nickname} fehlgeschlagen: {e.Message}");
-            Fail(s, r, ReasonCodes.InvalidValue, e.Message);
+            DropUpload(session);
+            logs.WriteServerLine($"Backup-Upload von {session.Nickname} fehlgeschlagen: {exception.Message}");
+            Fail(session, request, ReasonCodes.InvalidValue, exception.Message);
             return;
         }
-        if (!r.IsLast)
+        if (!request.IsLast)
         {
-            s.Outbox.Send(new UploadBackupAck(r.RequestId, upload.Id, upload.Received));
+            session.Outbox.Send(new UploadBackupAck(request.RequestId, upload.Id, upload.Received));
             return;
         }
-        s.Upload = null;
+        session.Upload = null;
         var path = upload.Path;
         BackupInfo info;
         try
         {
             info = backups.AdoptUpload(path);
         }
-        catch (BackupQuotaException e)
+        catch (BackupQuotaException exception)
         {
             SafeFile.DeleteQuietly(path);
-            logs.WriteServerLine($"Backup-Upload von {s.Nickname} abgelehnt, Backup-Limit erreicht: {e.Message}");
-            Fail(s, r, ReasonCodes.BackupQuotaExceeded, e.Message);
+            logs.WriteServerLine($"Backup-Upload von {session.Nickname} abgelehnt, Backup-Limit erreicht: {exception.Message}");
+            Fail(session, request, ReasonCodes.BackupQuotaExceeded, exception.Message);
             return;
         }
-        catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
         {
             SafeFile.DeleteQuietly(path);
-            logs.WriteServerLine($"Hochgeladenes Backup ist ungültig ({s.Nickname}): {e.Message}");
-            Fail(s, r, e is InvalidDataException ? ReasonCodes.InvalidBackup : ReasonCodes.InvalidValue, e.Message);
+            logs.WriteServerLine($"Hochgeladenes Backup ist ungültig ({session.Nickname}): {exception.Message}");
+            Fail(session, request, exception is InvalidDataException ? ReasonCodes.InvalidBackup : ReasonCodes.InvalidValue, exception.Message);
             return;
         }
-        logs.WriteServerLine($"Backup {info.FileName} hochgeladen von {s.Nickname}");
-        s.Outbox.Send(new BackupUploaded(r.RequestId, info));
-        SendBackups(s, r);
+        logs.WriteServerLine($"Backup {info.FileName} hochgeladen von {session.Nickname}");
+        session.Outbox.Send(new BackupUploaded(request.RequestId, info));
+        SendBackups(session, request);
     }
 
     /// <summary>Forgets the session's unfinished upload and deletes its file (errors, disconnect, shutdown).</summary>
-    void DropUpload(Session s)
+    void DropUpload(Session session)
     {
-        if (s.Upload is not { } upload) return;
-        s.Upload = null;
+        if (session.Upload is not { } upload) return;
+        session.Upload = null;
         SafeFile.DeleteQuietly(upload.Path);
     }
 
     /// <summary>Checks the archive first; only a valid one leads to the safety backup, the disconnect and the restart.</summary>
-    void OnRestoreBackup(Session s, RestoreBackup r)
+    void OnRestoreBackup(Session session, RestoreBackup request)
     {
-        if (!RequireAdminGroup(s, r)) return;
-        if (backups.Find(r.FileName) is not { } path)
+        if (!RequireAdminGroup(session, request)) return;
+        if (backups.Find(request.FileName) is not { } path)
         {
-            Fail(s, r, ReasonCodes.NotFound);
+            Fail(session, request, ReasonCodes.NotFound);
             return;
         }
         BackupContent content;
@@ -222,19 +222,19 @@ public sealed partial class ServerState
         {
             content = BackupArchive.Read(path);
         }
-        catch (InvalidDataException e)
+        catch (InvalidDataException exception)
         {
-            logs.WriteServerLine($"Backup {r.FileName} ist ungültig ({s.Nickname}): {e.Message}");
-            Fail(s, r, ReasonCodes.InvalidBackup, e.Message);
+            logs.WriteServerLine($"Backup {request.FileName} ist ungültig ({session.Nickname}): {exception.Message}");
+            Fail(session, request, ReasonCodes.InvalidBackup, exception.Message);
             return;
         }
         // The safety backup gets pending changes and the running sessions' statistics, which CloseAll then does not add again.
         var now = time.GetUtcNow();
-        var running = sessions.Values.Select(x => (x.Fingerprint, Online: now - x.ConnectedAt, x.SpeechTime, x.ChatMessages)).ToList();
-        foreach (var x in running) AddStats(x.Fingerprint, x.Online, x.SpeechTime, x.ChatMessages);
+        var running = sessions.Values.Select(otherSession => (otherSession.Fingerprint, Online: now - otherSession.ConnectedAt, otherSession.SpeechTime, otherSession.ChatMessages)).ToList();
+        foreach (var stats in running) AddStats(stats.Fingerprint, stats.Online, stats.SpeechTime, stats.ChatMessages);
         void Uncount()
         {
-            foreach (var x in running) AddStats(x.Fingerprint, -x.Online, -x.SpeechTime, -x.ChatMessages);
+            foreach (var stats in running) AddStats(stats.Fingerprint, -stats.Online, -stats.SpeechTime, -stats.ChatMessages);
             saves.PersistSoon(); // the file may hold the counted statistics now
         }
         BackupInfo safety;
@@ -243,21 +243,21 @@ public sealed partial class ServerState
             saves.Persist();
             safety = backups.Create(BackupStore.SafetyPrefix);
         }
-        catch (BackupQuotaException e) // Package 89: no restore without the safety backup
+        catch (BackupQuotaException exception) // Package 89: no restore without the safety backup
         {
             Uncount();
-            logs.WriteServerLine($"Sicherheits-Backup nicht möglich, Backup-Limit erreicht, keine Wiederherstellung ({s.Nickname}): {e.Message}");
-            Fail(s, r, ReasonCodes.BackupQuotaExceeded, e.Message);
+            logs.WriteServerLine($"Sicherheits-Backup nicht möglich, Backup-Limit erreicht, keine Wiederherstellung ({session.Nickname}): {exception.Message}");
+            Fail(session, request, ReasonCodes.BackupQuotaExceeded, exception.Message);
             return;
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             Uncount();
-            logs.WriteServerLine($"Sicherheits-Backup fehlgeschlagen, keine Wiederherstellung ({s.Nickname}): {e.Message}");
-            Fail(s, r, ReasonCodes.InvalidValue, e.Message);
+            logs.WriteServerLine($"Sicherheits-Backup fehlgeschlagen, keine Wiederherstellung ({session.Nickname}): {exception.Message}");
+            Fail(session, request, ReasonCodes.InvalidValue, exception.Message);
             return;
         }
-        logs.WriteServerLine($"Backup {r.FileName} wird wiederhergestellt von {s.Nickname} (Datenversion {content.Manifest.DataVersion}, " +
+        logs.WriteServerLine($"Backup {request.FileName} wird wiederhergestellt von {session.Nickname} (Datenversion {content.Manifest.DataVersion}, " +
                     $"Serverversion {content.Manifest.ServerVersion}), Sicherheits-Backup {safety.FileName}");
         pendingRestore = content;
         CloseAll(new Disconnected(ReasonCodes.Restoring), statsCounted: true);

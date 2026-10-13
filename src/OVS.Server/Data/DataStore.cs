@@ -25,9 +25,9 @@ public sealed class DataStore(string path)
             return JsonSerializer.Deserialize<ServerData>(File.ReadAllBytes(path), ProtocolJson.Indented)
                 ?? throw new InvalidDataException($"{path} ist leer.");
         }
-        catch (JsonException e)
+        catch (JsonException exception)
         {
-            throw new InvalidDataException($"{path} ist beschädigt und wurde nicht verändert: {e.Message}");
+            throw new InvalidDataException($"{path} ist beschädigt und wurde nicht verändert: {exception.Message}");
         }
     }
 

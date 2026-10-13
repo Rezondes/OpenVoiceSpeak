@@ -11,7 +11,7 @@ public sealed class ChannelPasswordGuessLimit
 
     /// <summary>True while this session is blocked from this channel.</summary>
     public bool IsBlocked(uint sessionId, Guid channelId, DateTimeOffset now) =>
-        failures.TryGetValue(sessionId, out var channels) && channels.TryGetValue(channelId, out var f) && now < f.BlockedUntil;
+        failures.TryGetValue(sessionId, out var channels) && channels.TryGetValue(channelId, out var attempts) && now < attempts.BlockedUntil;
 
     /// <summary>The right password: the count of this channel starts again.</summary>
     public void Forget(uint sessionId, Guid channelId)
@@ -24,12 +24,12 @@ public sealed class ChannelPasswordGuessLimit
     {
         if (!failures.TryGetValue(sessionId, out var channels))
             failures[sessionId] = channels = [];
-        channels.TryGetValue(channelId, out var f);
-        if (now - f.First > ServerTuning.ChannelPasswordWindow || f.Count >= ServerTuning.ChannelPasswordFailures) f = (0, now, default);
-        f.Count++;
-        if (f.Count >= ServerTuning.ChannelPasswordFailures) f.BlockedUntil = now + ServerTuning.ChannelPasswordBlock;
-        channels[channelId] = f;
-        return f.Count;
+        channels.TryGetValue(channelId, out var attempts);
+        if (now - attempts.First > ServerTuning.ChannelPasswordWindow || attempts.Count >= ServerTuning.ChannelPasswordFailures) attempts = (0, now, default);
+        attempts.Count++;
+        if (attempts.Count >= ServerTuning.ChannelPasswordFailures) attempts.BlockedUntil = now + ServerTuning.ChannelPasswordBlock;
+        channels[channelId] = attempts;
+        return attempts.Count;
     }
 
     /// <summary>The session ended: its counts go with it.</summary>

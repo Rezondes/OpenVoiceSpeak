@@ -43,10 +43,10 @@ public sealed class SaveScheduler(object gate, Action save, TimeProvider time, A
                 {
                     Persist();
                 }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
                 {
                     // A virus scanner or backup tool holds the file, or the disk is full: keep the changes and try again.
-                    if (!failed) log($"Serverdaten nicht gespeichert, neuer Versuch alle {ServerTuning.SaveDelay.TotalSeconds:0} s: {e.Message}");
+                    if (!failed) log($"Serverdaten nicht gespeichert, neuer Versuch alle {ServerTuning.SaveDelay.TotalSeconds:0} s: {exception.Message}");
                     failed = true;
                     timer!.Change(ServerTuning.SaveDelay, Timeout.InfiniteTimeSpan);
                 }
@@ -85,9 +85,9 @@ public sealed class SaveScheduler(object gate, Action save, TimeProvider time, A
             {
                 Persist();
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
-                log($"Serverdaten beim Beenden nicht gespeichert: {e.Message}");
+                log($"Serverdaten beim Beenden nicht gespeichert: {exception.Message}");
             }
         }
     }

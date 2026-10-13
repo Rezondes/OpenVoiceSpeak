@@ -49,5 +49,5 @@ public static class ReasonCodes
     public const string BackupQuotaExceeded = nameof(BackupQuotaExceeded); // Package 89: too many backups or too many bytes in total
 
     public static IEnumerable<string> All() =>
-        typeof(ReasonCodes).GetFields().Where(f => f.IsLiteral).Select(f => (string)f.GetRawConstantValue()!);
+        typeof(ReasonCodes).GetFields().Where(fieldInfo => fieldInfo.IsLiteral).Select(fieldInfo => (string)fieldInfo.GetRawConstantValue()!);
 }

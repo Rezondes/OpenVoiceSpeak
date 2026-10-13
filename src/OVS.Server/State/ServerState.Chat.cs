@@ -10,63 +10,63 @@ namespace OVS.Server.State;
 /// </summary>
 public sealed partial class ServerState
 {
-    void OnSendChat(Session s, SendChat r)
+    void OnSendChat(Session session, SendChat request)
     {
-        var right = r.Target switch
+        var right = request.Target switch
         {
             ChatTarget.Server => Permission.ChatServer,
             ChatTarget.Channel => Permission.ChatChannel,
             _ => Permission.ChatPrivate,
         };
-        if (!Require(s, r, right)) return;
+        if (!Require(session, request, right)) return;
 
         // Package 83: line breaks are fine, other control and bidi characters are not
-        var text = TextRules.NormalizeText(r.Text, ProtocolLimits.MaxChatLength)?.Trim() ?? "";
+        var text = TextRules.NormalizeText(request.Text, ProtocolLimits.MaxChatLength)?.Trim() ?? "";
         if (text.Length == 0)
         {
-            Fail(s, r, ReasonCodes.InvalidValue, $"Eine Nachricht hat 1 bis {ProtocolLimits.MaxChatLength} Zeichen, ohne Steuerzeichen.");
+            Fail(session, request, ReasonCodes.InvalidValue, $"Eine Nachricht hat 1 bis {ProtocolLimits.MaxChatLength} Zeichen, ohne Steuerzeichen.");
             return;
         }
 
         Session? to = null;
-        if (r.Target == ChatTarget.Private)
+        if (request.Target == ChatTarget.Private)
         {
-            to = r.ToSessionId is { } id ? sessions.GetValueOrDefault(id) : null;
+            to = request.ToSessionId is { } id ? sessions.GetValueOrDefault(id) : null;
             if (to is null)
             {
-                Fail(s, r, ReasonCodes.NotFound, "Der Empfänger ist nicht online.");
+                Fail(session, request, ReasonCodes.NotFound, "Der Empfänger ist nicht online.");
                 return;
             }
-            if (to == s)
+            if (to == session)
             {
-                Fail(s, r, ReasonCodes.InvalidValue, "Eine private Nachricht an dich selbst geht nicht.");
+                Fail(session, request, ReasonCodes.InvalidValue, "Eine private Nachricht an dich selbst geht nicht.");
                 return;
             }
         }
 
-        if (!s.Throttle.TryChat())
+        if (!session.Throttle.TryChat())
         {
-            Fail(s, r, ReasonCodes.RateLimited);
+            Fail(session, request, ReasonCodes.RateLimited);
             return;
         }
-        s.ChatMessages++; // Package 70
+        session.ChatMessages++; // Package 70
 
-        var message = new ChatMessage(r.Target, s.Id, s.Nickname, r.Target == ChatTarget.Channel ? s.ChannelId : null,
+        var message = new ChatMessage(request.Target, session.Id, session.Nickname, request.Target == ChatTarget.Channel ? session.ChannelId : null,
             to?.Id, text, time.GetUtcNow());
-        switch (r.Target)
+        switch (request.Target)
         {
             case ChatTarget.Server:
-                logs.WriteServerLine($"Chat von {s.Nickname}: {text}");
+                logs.WriteServerLine($"Chat von {session.Nickname}: {text}");
                 Broadcast(message);
                 break;
             case ChatTarget.Channel:
-                ChannelLog(s.ChannelId, $"{s.Nickname}: {text}");
-                foreach (var member in sessions.Values.Where(x => x.ChannelId == s.ChannelId)) member.Outbox.Send(message);
+                ChannelLog(session.ChannelId, $"{session.Nickname}: {text}");
+                foreach (var member in sessions.Values.Where(otherSession => otherSession.ChannelId == session.ChannelId)) member.Outbox.Send(message);
                 break;
             case ChatTarget.Private:
-                logs.WriteServerLine($"{s.Nickname} schreibt privat an {to!.Nickname}"); // never the content (A29)
+                logs.WriteServerLine($"{session.Nickname} schreibt privat an {to!.Nickname}"); // never the content (A29)
                 to.Outbox.Send(message);
-                s.Outbox.Send(message);
+                session.Outbox.Send(message);
                 break;
         }
     }

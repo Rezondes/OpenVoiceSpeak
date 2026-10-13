@@ -28,10 +28,10 @@ public sealed class UserRecord
     {
         if (LastNickname.Length > 0 && LastNickname != nickname)
         {
-            PreviousNicknames.RemoveAll(n => n.Equals(LastNickname, StringComparison.OrdinalIgnoreCase));
+            PreviousNicknames.RemoveAll(text => text.Equals(LastNickname, StringComparison.OrdinalIgnoreCase));
             PreviousNicknames.Insert(0, LastNickname);
         }
-        PreviousNicknames.RemoveAll(n => n.Equals(nickname, StringComparison.OrdinalIgnoreCase));
+        PreviousNicknames.RemoveAll(text => text.Equals(nickname, StringComparison.OrdinalIgnoreCase));
         if (PreviousNicknames.Count > MaxPreviousNicknames) PreviousNicknames.RemoveRange(MaxPreviousNicknames, PreviousNicknames.Count - MaxPreviousNicknames);
         LastNickname = nickname;
         LastLogin = now;

@@ -34,35 +34,35 @@ public sealed class LossWindow(TimeProvider time)
     {
         Roll();
         long now = time.GetTimestamp();
-        if (!streams.TryGetValue(id, out var s)) streams[id] = s = new Stream();
-        else if (time.GetElapsedTime(s.LastArrival, now) <= FreshAfter)
+        if (!streams.TryGetValue(id, out var stream)) streams[id] = stream = new Stream();
+        else if (time.GetElapsedTime(stream.LastArrival, now) <= FreshAfter)
         {
-            s.LastArrival = now;
-            if (frame > s.Highest && frame - s.Highest <= MaxGap)
+            stream.LastArrival = now;
+            if (frame > stream.Highest && frame - stream.Highest <= MaxGap)
             {
-                uint gap = frame - s.Highest;
+                uint gap = frame - stream.Highest;
                 missed += gap - 1;
-                s.Seen = (s.Seen << (int)gap) | 1; // the gap's bits are 0: missing, counted in this window
-                s.Highest = frame;
+                stream.Seen = (stream.Seen << (int)gap) | 1; // the gap's bits are 0: missing, counted in this window
+                stream.Highest = frame;
                 received++;
                 return;
             }
-            uint age = s.Highest - frame;
-            if (frame <= s.Highest && age < 64)
+            uint age = stream.Highest - frame;
+            if (frame <= stream.Highest && age < 64)
             {
                 ulong bit = 1UL << (int)age;
-                if ((s.Seen & bit) != 0) return; // a duplicate, or older than what this window counted
-                s.Seen |= bit;
+                if ((stream.Seen & bit) != 0) return; // a duplicate, or older than what this window counted
+                stream.Seen |= bit;
                 missed--; // late: its gap was counted in this window, so missed is at least 1
                 received++;
                 return;
             }
-            if (frame <= s.Highest) return; // far too old to place
+            if (frame <= stream.Highest) return; // far too old to place
         }
         // first frame, after a silence, or a jump beyond MaxGap: a fresh start
-        s.Highest = frame;
-        s.Seen = ulong.MaxValue;
-        s.LastArrival = now;
+        stream.Highest = frame;
+        stream.Seen = ulong.MaxValue;
+        stream.LastArrival = now;
         received++;
     }
 
@@ -86,6 +86,6 @@ public sealed class LossWindow(TimeProvider time)
         last = Current();
         received = missed = 0;
         start = now;
-        foreach (var s in streams.Values) s.Seen = ulong.MaxValue; // a late frame does not take back a gap of the last window
+        foreach (var stream in streams.Values) stream.Seen = ulong.MaxValue; // a late frame does not take back a gap of the last window
     }
 }

@@ -24,7 +24,7 @@ public static class VoiceRouting
             channels.UnionWith(linkedChannels(sender.ChannelId));
 
         return sessions
-            .Where(s => s != sender && !s.SelfDeafened && (s.Voice.UdpEndpoint is not null || s.Voice.TcpVoice) && channels.Contains(s.ChannelId))
+            .Where(session => session != sender && !session.SelfDeafened && (session.Voice.UdpEndpoint is not null || session.Voice.TcpVoice) && channels.Contains(session.ChannelId))
             .ToList();
     }
 }

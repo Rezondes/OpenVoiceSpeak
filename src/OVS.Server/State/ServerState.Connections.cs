@@ -55,8 +55,8 @@ public sealed partial class ServerState
             var ipText = ip.ToString();
             var source = IpAddresses.ToAddressGroup(ip);
             // Package 88: an IP ban keeps the address it was given and matches everything in its group (IPv6: the /64)
-            var ban = data.Bans.FirstOrDefault(b => b.IsActive(now) && (b.Fingerprint == fingerprint
-                || b.Ip is not null && IPAddress.TryParse(b.Ip, out var banned) && IpAddresses.ToAddressGroup(banned).Equals(source)));
+            var ban = data.Bans.FirstOrDefault(banRecord => banRecord.IsActive(now) && (banRecord.Fingerprint == fingerprint
+                || banRecord.Ip is not null && IPAddress.TryParse(banRecord.Ip, out var banned) && IpAddresses.ToAddressGroup(banned).Equals(source)));
             if (ban is not null)
             {
                 ban.CountBlockedAttempt(ipText, now); // Package 80 (A97)
@@ -81,7 +81,7 @@ public sealed partial class ServerState
                 logs.WriteServerLine("Serverpasswort-Hash auf PBKDF2 umgestellt");
             }
 
-            var replaced = sessions.Values.FirstOrDefault(s => s.Fingerprint == fingerprint);
+            var replaced = sessions.Values.FirstOrDefault(otherSession => otherSession.Fingerprint == fingerprint);
             if (sessions.Count - (replaced is null ? 0 : 1) >= data.Settings.MaxUsers)
                 return new Admission(null, new Rejected(ReasonCodes.ServerFull));
             // Package 83: normalized, and an offline user's last name is taken as well
@@ -89,10 +89,10 @@ public sealed partial class ServerState
             var key = NicknameKey(nickname);
             // A stored name can be held by several records from older data: it belongs to the one that logged in last
             // (no login counts as oldest, then the one seen first), so the others cannot lock each other out.
-            var owner = data.Users.Where(u => u.LastNickname.Length > 0 && NicknameKey(u.LastNickname) == key)
-                .OrderByDescending(u => u.LastLogin ?? DateTimeOffset.MinValue).ThenBy(u => u.FirstSeen).ThenBy(u => u.Fingerprint, StringComparer.Ordinal)
+            var owner = data.Users.Where(userRecord => userRecord.LastNickname.Length > 0 && NicknameKey(userRecord.LastNickname) == key)
+                .OrderByDescending(userRecord => userRecord.LastLogin ?? DateTimeOffset.MinValue).ThenBy(userRecord => userRecord.FirstSeen).ThenBy(userRecord => userRecord.Fingerprint, StringComparer.Ordinal)
                 .FirstOrDefault();
-            if (sessions.Values.Any(s => s != replaced && NicknameKey(s.Nickname) == key) || owner is not null && owner.Fingerprint != fingerprint)
+            if (sessions.Values.Any(otherSession => otherSession != replaced && NicknameKey(otherSession.Nickname) == key) || owner is not null && owner.Fingerprint != fingerprint)
                 return new Admission(null, new Rejected(ReasonCodes.NicknameTaken));
 
             var user = FindUser(fingerprint);
@@ -144,7 +144,7 @@ public sealed partial class ServerState
     {
         lock (gate)
         {
-            closedWith = final is Disconnected d ? d.Reason : ReasonCodes.ServerShutdown;
+            closedWith = final is Disconnected disconnected ? disconnected.Reason : ReasonCodes.ServerShutdown;
             var why = final switch
             {
                 Disconnected { Reason: ReasonCodes.ServerRestart } => "Server startet neu",
@@ -152,14 +152,14 @@ public sealed partial class ServerState
                 _ => "Server fährt herunter",
             };
             var now = time.GetUtcNow();
-            foreach (var s in sessions.Values)
+            foreach (var session in sessions.Values)
             {
-                s.Outbox.Close(final);
-                DropUpload(s);
-                s.LogDownload.End(); // Package 82
-                channelPasswordGuesses.ForgetSession(s.Id);
-                if (!statsCounted) AddSessionStats(s, now);
-                ChannelLog(s.ChannelId, $"{s.Nickname} hat den Channel verlassen ({why})");
+                session.Outbox.Close(final);
+                DropUpload(session);
+                session.LogDownload.End(); // Package 82
+                channelPasswordGuesses.ForgetSession(session.Id);
+                if (!statsCounted) AddSessionStats(session, now);
+                ChannelLog(session.ChannelId, $"{session.Nickname} hat den Channel verlassen ({why})");
             }
             logs.WriteServerLine($"{why}, {sessions.Count} Nutzer getrennt");
             saves.Close(force: sessions.Count > 0); // the running sessions' statistics, or what is still pending
@@ -186,21 +186,21 @@ public sealed partial class ServerState
         AddSessionStats(session, time.GetUtcNow());
         saves.PersistSoon();
         Broadcast(new UserLeft(session.Id));
-        if (final is Disconnected d) reason = d.Reason switch
+        if (final is Disconnected disconnected) reason = disconnected.Reason switch
         {
             ReasonCodes.Kicked => "gekickt",
             ReasonCodes.Banned => "gebannt",
             ReasonCodes.ReplacedByNewConnection => "durch neue Verbindung ersetzt",
             ReasonCodes.UserDeleted => "Nutzerdaten gelöscht",
             ReasonCodes.RateLimited => "zu viele Anfragen", // Package 86
-            _ => d.Reason,
+            _ => disconnected.Reason,
         };
         logs.WriteServerLine($"{session.Nickname} getrennt ({reason})");
         ChannelLog(session.ChannelId, $"{session.Nickname} hat den Channel verlassen ({reason})");
     }
 
     /// <summary>Package 70: adds the ended session to the user's totals (A86: saved on disconnect, not while online).</summary>
-    void AddSessionStats(Session s, DateTimeOffset now) => AddStats(s.Fingerprint, now - s.ConnectedAt, s.SpeechTime, s.ChatMessages);
+    void AddSessionStats(Session session, DateTimeOffset now) => AddStats(session.Fingerprint, now - session.ConnectedAt, session.SpeechTime, session.ChatMessages);
 
     /// <summary>Negative values take back what was added before.</summary>
     void AddStats(string fingerprint, TimeSpan online, TimeSpan speech, int chatMessages)
@@ -217,5 +217,5 @@ public sealed partial class ServerState
         if (FindChannel(channelId) is { Kind: ChannelKind.Voice } channel) logs.WriteChannelLine(channel.Id, channel.Name, text);
     }
 
-    string ChannelName(Guid id) => FindChannel(id) is { } c ? c.Kind == ChannelKind.Separator ? "(Trenner)" : c.Name : "?";
+    string ChannelName(Guid id) => FindChannel(id) is { } channel ? channel.Kind == ChannelKind.Separator ? "(Trenner)" : channel.Name : "?";
 }

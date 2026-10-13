@@ -33,7 +33,7 @@ public sealed record ServerConfig(
 
     public static ServerConfig Load(Func<string, string?> getEnv)
     {
-        var dataDir = Path.GetFullPath(getEnv("OVS_DATA_DIR") is { Length: > 0 } d ? d : "data");
+        var dataDir = Path.GetFullPath(getEnv("OVS_DATA_DIR") is { Length: > 0 } text ? text : "data");
         try
         {
             Directory.CreateDirectory(dataDir);
@@ -42,9 +42,9 @@ public sealed record ServerConfig(
             File.WriteAllText(probe, "");
             File.Delete(probe);
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
         {
-            throw new ConfigException($"OVS_DATA_DIR '{dataDir}' ist nicht anlegbar oder nicht beschreibbar: {e.Message}");
+            throw new ConfigException($"OVS_DATA_DIR '{dataDir}' ist nicht anlegbar oder nicht beschreibbar: {exception.Message}");
         }
 
         var file = ReadFile(Path.Combine(dataDir, FileName));
@@ -67,7 +67,7 @@ public sealed record ServerConfig(
                 ("OVS_MAX_USERS", file.MaxUsers), ("OVS_LOG_DAYS", file.LogDays), ("OVS_LOG_ROTATE_DAILY", file.LogRotateDaily),
                 ("OVS_AUTO_RESTART", file.AutoRestart), ("OVS_AUTO_RESTART_TIME", file.AutoRestartTime),
             }
-            .Where(v => getEnv(v.Key) is not null || v.FileValue is not null).Select(v => v.Key).ToHashSet();
+            .Where(startValue => getEnv(startValue.Key) is not null || startValue.FileValue is not null).Select(startValue => startValue.Key).ToHashSet();
 
         return new ServerConfig(port, dataDir, maxUsers, name, password, logDays, autoRestart ? restartTime : null, logRotateDaily)
         {
@@ -84,13 +84,13 @@ public sealed record ServerConfig(
         {
             return JsonSerializer.Deserialize<FileValues>(File.ReadAllBytes(path), ProtocolJson.Options) ?? none;
         }
-        catch (JsonException e)
+        catch (JsonException exception)
         {
-            throw new ConfigException($"{path} ist kein gültiges JSON: {e.Message}");
+            throw new ConfigException($"{path} ist kein gültiges JSON: {exception.Message}");
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            throw new ConfigException($"{path} kann nicht gelesen werden: {e.Message}");
+            throw new ConfigException($"{path} kann nicht gelesen werden: {exception.Message}");
         }
     }
 

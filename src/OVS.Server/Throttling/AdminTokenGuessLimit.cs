@@ -13,7 +13,7 @@ public sealed class AdminTokenGuessLimit
     /// <summary>An ended window is forgotten here.</summary>
     public bool IsBlocked(IPAddress source, DateTimeOffset now)
     {
-        if (failures.TryGetValue(source, out var f) && now - f.First >= ServerTuning.AdminTokenWindow)
+        if (failures.TryGetValue(source, out var attempts) && now - attempts.First >= ServerTuning.AdminTokenWindow)
             failures.Remove(source);
         return failures.GetValueOrDefault(source).Count >= ServerTuning.AdminTokenFailures;
     }

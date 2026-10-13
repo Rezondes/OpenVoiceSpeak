@@ -50,7 +50,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
     {
         var all = List();
         if (all.Count >= maxCount) return $"höchstens {maxCount} Backups";
-        return all.Sum(b => b.Size) + size > maxBytes ? $"höchstens {maxBytes / (1024 * 1024)} MB Backups insgesamt" : null;
+        return all.Sum(backup => backup.Size) + size > maxBytes ? $"höchstens {maxBytes / (1024 * 1024)} MB Backups insgesamt" : null;
     }
 
     /// <summary>A free name of the form prefix + local time, with _2, _3 ... when that second is taken already.</summary>
@@ -59,7 +59,7 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         Directory.CreateDirectory(Folder);
         var stamp = prefix + TimeZoneInfo.ConvertTime(now, time.LocalTimeZone).ToString(LogFileWriter.NameFormat);
         var name = stamp + Extension;
-        for (int i = 2; File.Exists(Path.Combine(Folder, name)); i++) name = $"{stamp}_{i}{Extension}";
+        for (int index = 2; File.Exists(Path.Combine(Folder, name)); index++) name = $"{stamp}_{index}{Extension}";
         return new BackupFile(name, Path.Combine(Folder, name));
     }
 
@@ -85,28 +85,28 @@ public sealed class BackupStore(string dataDir, TimeProvider time, int maxCount 
         if (!Directory.Exists(Folder)) return [];
         var known = cache ?? [];
         var seen = new Dictionary<string, (long Length, DateTime Written, BackupInfo Info)>(StringComparer.Ordinal);
-        foreach (var f in Directory.GetFiles(Folder, "*" + Extension, SearchOption.TopDirectoryOnly))
+        foreach (var text in Directory.GetFiles(Folder, "*" + Extension, SearchOption.TopDirectoryOnly))
         {
-            if (!f.EndsWith(Extension, StringComparison.Ordinal)) continue; // the pattern would also match ".ovsbackupX" on Windows
-            var file = new FileInfo(f);
+            if (!text.EndsWith(Extension, StringComparison.Ordinal)) continue; // the pattern would also match ".ovsbackupX" on Windows
+            var file = new FileInfo(text);
             if (known.TryGetValue(file.Name, out var entry) && entry.Length == file.Length && entry.Written == file.LastWriteTimeUtc)
             {
                 seen[file.Name] = entry;
                 continue;
             }
-            var manifest = BackupArchive.TryReadManifest(f);
+            var manifest = BackupArchive.TryReadManifest(text);
             var info = new BackupInfo(file.Name, manifest?.CreatedAt ?? file.LastWriteTimeUtc, file.Length, manifest?.ServerVersion ?? "?");
             seen[file.Name] = (file.Length, file.LastWriteTimeUtc, info);
         }
         cache = seen;
-        return seen.Values.Select(e => e.Info)
-            .OrderByDescending(b => b.CreatedAt).ThenByDescending(b => b.FileName, StringComparer.Ordinal)
+        return seen.Values.Select(entry => entry.Info)
+            .OrderByDescending(backup => backup.CreatedAt).ThenByDescending(backup => backup.FileName, StringComparer.Ordinal)
             .ToList();
     }
 
     /// <summary>The full path of a listed archive; anything else (other folders, other files, "..") is null.</summary>
     public string? Find(string? fileName) =>
-        List().Any(b => b.FileName == fileName) ? Path.Combine(Folder, fileName!) : null;
+        List().Any(backup => backup.FileName == fileName) ? Path.Combine(Folder, fileName!) : null;
 
     /// <summary>Half written archives a crash left behind.</summary>
     public void RemoveUnfinished()
