@@ -43,8 +43,6 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
 
     static Border Scrim(OverlayHost overlay) => (Border)overlay.Children[0];
     static Border Card(OverlayHost overlay) => (Border)overlay.Children[1];
-    static double Scale(Visual visual) => visual.RenderTransform?.Value.M11 ?? 1;
-    static double OffsetX(Visual visual) => visual.RenderTransform?.Value.M31 ?? 0;
 
     static void ClickMenu(MainWindow main) =>
         main.GetVisualDescendants().OfType<Button>().Single(button => button.IsEffectivelyVisible && AutomationProperties.GetName(button) == Strings.Ui_ShowChannels)
@@ -58,13 +56,13 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         // the smallest values seen while it opens, every value as it happens: under load one frame can outlast the pop
         var scrims = MotionWait.Record(Scrim(overlay), visual => visual.Opacity);
         var cards = MotionWait.Record(Card(overlay), visual => visual.Opacity);
-        var scales = MotionWait.Record(Card(overlay), Scale);
+        var scales = MotionWait.Record(Card(overlay), MotionWait.Scale);
         var answer = ConfirmDialog.ShowAsync(overlay, "Weg damit?");
         MotionWait.Eventually(() =>
         {
             Assert.Contains(cards, value => value < 1); // it has begun
             Assert.Equal((1d, 1d), (Card(overlay).Opacity, Scrim(overlay).Opacity));
-            Assert.Equal(1, Scale(Card(overlay)), 2);
+            Assert.Equal(1, MotionWait.Scale(Card(overlay)), 2);
         });
         double scrimLeast = scrims.DefaultIfEmpty(1).Min(), cardLeast = cards.DefaultIfEmpty(1).Min(), scaleLeast = scales.DefaultIfEmpty(1).Min();
         Assert.True(scrimLeast < 0.9, "the scrim fades in");
@@ -131,14 +129,14 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         _ = ConnectDialog.ShowAsync(overlay, viewModel.Bookmarks.Saved, null); // nothing filled in
         MotionWait.Settle(350);
         MotionWait.Eventually(() => Assert.Equal(1, Card(overlay).Opacity, 2)); // it has popped up: the shake is the only movement
-        var swings = MotionWait.Record(Card(overlay), OffsetX); // every swing as it happens: under load one frame can outlast the shake
+        var swings = MotionWait.Record(Card(overlay), MotionWait.OffsetX); // every swing as it happens: under load one frame can outlast the shake
         main.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
         // a shake swings through 0, and ends there
-        MotionWait.Until(() => swings.Any(value => Math.Abs(value) > 2) && Math.Abs(OffsetX(Card(overlay))) < 0.01, atLeast: 450);
+        MotionWait.Until(() => swings.Any(value => Math.Abs(value) > 2) && Math.Abs(MotionWait.OffsetX(Card(overlay))) < 0.01, atLeast: 450);
         double swing = swings.Select(value => Math.Abs(value)).DefaultIfEmpty(0).Max();
         Assert.True(swing > 2, $"the card shakes ({swing})");
         Assert.True(overlay.IsOpen); // still asking
-        Assert.Equal(0, OffsetX(Card(overlay)), 2);
+        Assert.Equal(0, MotionWait.OffsetX(Card(overlay)), 2);
         overlay.Close();
         main.Close();
     }
@@ -156,7 +154,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         var child = popup.Child!;
         // every value as it happens: under load one frame can outlast the whole fade
         var fades = MotionWait.Record(child, visual => visual.Opacity);
-        var slides = MotionWait.Record(child, visual => visual.RenderTransform?.Value.M32 ?? 0);
+        var slides = MotionWait.Record(child, MotionWait.OffsetY);
         combo.IsDropDownOpen = true;
         MotionWait.Eventually(() =>
         {
@@ -234,7 +232,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         var sidebar = main.FindControl<Border>("Sidebar")!;
         var scrim = main.FindControl<Border>("DrawerScrim")!;
         // every value as it happens: under load one frame can outlast the whole slide
-        var slides = MotionWait.Record(sidebar, OffsetX);
+        var slides = MotionWait.Record(sidebar, MotionWait.OffsetX);
         var fades = MotionWait.Record(scrim, visual => visual.Opacity);
         ClickMenu(main);
         Frame();
@@ -242,7 +240,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         MotionWait.Eventually(() =>
         {
             Assert.True(slides.Any(slide => slide < 0) && fades.Any(fade => fade < 1), "it slides in from the left with its scrim");
-            Assert.Equal((0d, 1d), (OffsetX(sidebar), scrim.Opacity));
+            Assert.Equal((0d, 1d), (MotionWait.OffsetX(sidebar), scrim.Opacity));
         });
 
         slides.Clear();
@@ -262,7 +260,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         var overlay = main.Overlay;
         _ = ConfirmDialog.ShowAsync(overlay, "Weg damit?");
         Frame();
-        Assert.Equal((1d, 1d), (Card(overlay).Opacity, Scale(Card(overlay))));
+        Assert.Equal((1d, 1d), (Card(overlay).Opacity, MotionWait.Scale(Card(overlay))));
         overlay.Close();
         Frame();
         Assert.False(overlay.IsVisible);
@@ -271,7 +269,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         ClickMenu(main);
         Frame();
         Assert.True(sidebar.IsEffectivelyVisible);
-        Assert.Equal(0, OffsetX(sidebar));
+        Assert.Equal(0, MotionWait.OffsetX(sidebar));
         main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Frame();
         Assert.False(sidebar.IsEffectivelyVisible);
@@ -294,7 +292,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         MotionWait.Eventually(() =>
         {
             Assert.Equal((1d, 1d), (Card(overlay).Opacity, Scrim(overlay).Opacity));
-            Assert.Equal(1, Scale(Card(overlay)), 2);
+            Assert.Equal(1, MotionWait.Scale(Card(overlay)), 2);
             Assert.True(Card(overlay).IsEnabled && overlay.IsHitTestVisible);
         });
         overlay.Close();
@@ -313,7 +311,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         {
             ClickMenu(main);
             MotionWait.Settle(350);
-            MotionWait.Eventually(() => Assert.Equal((0d, 1d), (OffsetX(sidebar), scrim.Opacity)));
+            MotionWait.Eventually(() => Assert.Equal((0d, 1d), (MotionWait.OffsetX(sidebar), scrim.Opacity)));
             main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
             MotionWait.Settle(350);
             MotionWait.Eventually(() => Assert.False(sidebar.IsEffectivelyVisible));
@@ -323,7 +321,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         MotionWait.Eventually(() =>
         {
             Assert.True(sidebar.IsEffectivelyVisible);
-            Assert.Equal(0, OffsetX(sidebar));
+            Assert.Equal(0, MotionWait.OffsetX(sidebar));
             Assert.True(sidebar.IsHitTestVisible);
         });
 
@@ -333,14 +331,14 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         MotionWait.Until(() => !sidebar.IsEffectivelyVisible); // narrow again: the drawer is closed
         ClickMenu(main);
         MotionWait.Settle(350);
-        MotionWait.Eventually(() => Assert.Equal((0d, 1d), (OffsetX(sidebar), scrim.Opacity))); // fully in
+        MotionWait.Eventually(() => Assert.Equal((0d, 1d), (MotionWait.OffsetX(sidebar), scrim.Opacity))); // fully in
         main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Frame();
         main.Width = 1100;
         MotionWait.Settle(350);
         MotionWait.Eventually(() =>
         {
-            Assert.Equal(0, OffsetX(sidebar));
+            Assert.Equal(0, MotionWait.OffsetX(sidebar));
             Assert.True(sidebar.IsEffectivelyVisible);
         });
         main.Close();
@@ -389,7 +387,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
             for (Visual? visual = content; visual is not null; visual = visual.GetVisualParent())
             {
                 shown *= visual.Opacity;
-                if (Math.Abs(visual.RenderTransform?.Value.M32 ?? 0) > Math.Abs(slid)) slid = visual.RenderTransform!.Value.M32;
+                if (Math.Abs(MotionWait.OffsetY(visual)) > Math.Abs(slid)) slid = MotionWait.OffsetY(visual);
             }
             seen.Add(Math.Round(shown, 3));
             Thread.Sleep(1);

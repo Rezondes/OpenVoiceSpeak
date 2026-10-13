@@ -35,8 +35,6 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     }
 
     static T Named<T>(MainWindow main, string name) where T : Control => main.FindControl<T>(name)!;
-    static double OffsetX(Visual visual) => visual.RenderTransform?.Value.M31 ?? 0;
-    static double OffsetY(Visual visual) => visual.RenderTransform?.Value.M32 ?? 0;
 
     [AvaloniaFact]
     public void Connecting_PendingOrFailed_PulsesOrShakes()
@@ -47,7 +45,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         viewModel.Connection.IsConnecting = true;
         // looked at after every frame until it shows: under load a single look can land where the loop is at rest
         bool breathes = false;
-        MotionWait.Until(() => breathes |= (logo.RenderTransform?.Value.M11 ?? 1) > 1.001 || logo.Opacity < 0.999);
+        MotionWait.Until(() => breathes |= MotionWait.Scale(logo) > 1.001 || logo.Opacity < 0.999);
         Assert.Contains("connecting", logo.Classes);
         Assert.True(breathes, "the logo breathes");
         MotionWait.Eventually(() => Assert.Equal(3, bar.Bounds.Height, 1)); // a slim line
@@ -55,17 +53,17 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         // every swing and every step of the fade as they happen: under load one frame can outlast the shake
         var card = Named<StackPanel>(main, "StartCard");
         var status = Named<TextBlock>(main, "StatusText");
-        var swings = MotionWait.Record(card, OffsetX);
+        var swings = MotionWait.Record(card, MotionWait.OffsetX);
         var fades = MotionWait.Record(status, visual => visual.Opacity);
         viewModel.Status = "Verbindung fehlgeschlagen";
         viewModel.Connection.IsConnecting = false; // failed: no server
-        MotionWait.Until(() => swings.Any(swing => Math.Abs(swing) > 2) && (OffsetX(card), status.Opacity) == (0d, 1d), atLeast: 450);
+        MotionWait.Until(() => swings.Any(swing => Math.Abs(swing) > 2) && (MotionWait.OffsetX(card), status.Opacity) == (0d, 1d), atLeast: 450);
         double shook = swings.Select(swing => Math.Abs(swing)).DefaultIfEmpty(0).Max(), faded = fades.DefaultIfEmpty(1).Min();
         Assert.True(shook > 2, $"the start card shakes ({shook})");
         Assert.DoesNotContain("connecting", logo.Classes);
-        Assert.Equal(1, logo.RenderTransform?.Value.M11 ?? 1, 3); // the breathing stops with the connecting
+        Assert.Equal(1, MotionWait.Scale(logo), 3); // the breathing stops with the connecting
         Assert.True(faded < 1, "the reason fades in");
-        Assert.Equal((0d, 1d), (OffsetX(card), status.Opacity));
+        Assert.Equal((0d, 1d), (MotionWait.OffsetX(card), status.Opacity));
         main.Close();
     }
 
@@ -79,7 +77,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         // connect can take longer than a whole fade (the crowded tree builds up in it)
         Named<Border>(main, "PageGhost").PropertyChanged += (_, args) => pageLeft |= args.Property == Visual.IsVisibleProperty && args.NewValue is true;
         Named<Border>(main, "TreeGhost").PropertyChanged += (_, args) => bookmarksLeft |= args.Property == Visual.IsVisibleProperty && args.NewValue is true;
-        Named<Panel>(main, "PageHost").PropertyChanged += (_, args) => chatCameUp |= OffsetY(Named<Panel>(main, "PageHost")) > 0;
+        Named<Panel>(main, "PageHost").PropertyChanged += (_, args) => chatCameUp |= MotionWait.OffsetY(Named<Panel>(main, "PageHost")) > 0;
         Named<Border>(main, "ServerHeader").PropertyChanged += (_, args) => nameFaded |= args.Property == Visual.OpacityProperty && args.NewValue is double opacity && opacity < 1;
         var entered = new HashSet<Control>(); // every row that came in entering
         tree.ContainerPrepared += (_, args) =>
@@ -115,7 +113,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         Assert.True(took <= TimeSpan.FromMilliseconds(700) + 4 * gap, $"over after {took.TotalMilliseconds:F0} ms (longest frame gap {gap.TotalMilliseconds:F0} ms)");
         Assert.False(Named<Border>(main, "PageGhost").IsVisible);
         Assert.False(Named<Border>(main, "TreeGhost").IsVisible);
-        Assert.Equal((0d, 1d), (OffsetY(Named<Panel>(main, "PageHost")), Named<Border>(main, "ServerHeader").Opacity));
+        Assert.Equal((0d, 1d), (MotionWait.OffsetY(Named<Panel>(main, "PageHost")), Named<Border>(main, "ServerHeader").Opacity));
         Assert.All(tree.GetRealizedContainers(), control => Assert.Equal(1, control.Opacity, 2));
         Assert.DoesNotContain(tree.GetRealizedContainers(), control => control.Classes.Contains("entering"));
         main.Close();
@@ -133,7 +131,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         Frame();
         Assert.True(Named<Border>(main, "PageGhost").IsVisible && Named<Border>(main, "TreeGhost").IsVisible, "the server folds away as a picture");
         var picture = (Image)Named<Border>(main, "PageGhost").Child!;
-        var drops = MotionWait.Record(picture, OffsetY); // as it happens: under load one frame can outlast the fold
+        var drops = MotionWait.Record(picture, MotionWait.OffsetY); // as it happens: under load one frame can outlast the fold
         MotionWait.Eventually(() =>
         {
             Assert.False(Named<Border>(main, "PageGhost").IsVisible);
@@ -170,12 +168,12 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         var main = Open(out var viewModel, DisplayMode.Simplified);
         viewModel.Connection.IsConnecting = true;
         Frame();
-        Assert.Equal(1, main.GetVisualDescendants().OfType<LogoMark>().First(logoMark => logoMark.Bounds.Width >= 64).RenderTransform?.Value.M11 ?? 1);
+        Assert.Equal(1, MotionWait.Scale(main.GetVisualDescendants().OfType<LogoMark>().First(logoMark => logoMark.Bounds.Width >= 64)));
         viewModel.Connection.IsConnecting = false;
         MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
         Frame();
         Assert.False(Named<Border>(main, "PageGhost").IsVisible);
-        Assert.Equal((0d, 1d), (OffsetY(Named<Panel>(main, "PageHost")), Named<Border>(main, "ServerHeader").Opacity));
+        Assert.Equal((0d, 1d), (MotionWait.OffsetY(Named<Panel>(main, "PageHost")), Named<Border>(main, "ServerHeader").Opacity));
         Assert.DoesNotContain(Named<ItemsControl>(main, "ChannelItems").GetRealizedContainers(), control => control.Classes.Contains("entering"));
         main.Close();
     }

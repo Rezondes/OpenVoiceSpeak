@@ -41,7 +41,6 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     static void Switched(MainWindow main) => MotionWait.Until(() => !PageGhostShown(main));
 
     static Panel Host(MainWindow main) => main.FindControl<Panel>("PageHost")!;
-    static double OffsetX(Visual visual) => visual.RenderTransform?.Value.M31 ?? 0;
     static bool PageGhostShown(MainWindow main) => main.FindControl<Border>("PageGhost")!.IsVisible;
 
     static IEnumerable<Border> Ghosts(Visual main, string kind) =>
@@ -52,7 +51,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     {
         var main = Open(out var viewModel);
         // every value as it happens: under load one frame can outlast the whole change
-        var slides = MotionWait.Record(Host(main), OffsetX);
+        var slides = MotionWait.Record(Host(main), MotionWait.OffsetX);
         var fades = MotionWait.Record(Host(main), visual => visual.Opacity);
         viewModel.PageFlow.OpenSettings();
         Frame();
@@ -60,7 +59,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         MotionWait.Eventually(() =>
         {
             Assert.False(PageGhostShown(main));
-            Assert.Equal((0d, 1d), (OffsetX(Host(main)), Host(main).Opacity));
+            Assert.Equal((0d, 1d), (MotionWait.OffsetX(Host(main)), Host(main).Opacity));
         });
         Assert.True(slides.Any(slide => slide > 0) && fades.Any(fade => fade < 1), "the settings come in from the right");
 
@@ -70,7 +69,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         {
             Assert.True(slides.Any(slide => slide < 0), "going back comes in from the left");
             Assert.False(PageGhostShown(main));
-            Assert.Equal(0, OffsetX(Host(main)));
+            Assert.Equal(0, MotionWait.OffsetX(Host(main)));
         });
         main.Close();
     }
@@ -87,7 +86,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         MotionWait.Eventually(() =>
         {
             Assert.False(PageGhostShown(main));
-            Assert.Equal((0d, 1d), (OffsetX(Host(main)), Host(main).Opacity));
+            Assert.Equal((0d, 1d), (MotionWait.OffsetX(Host(main)), Host(main).Opacity));
         });
         Assert.True(viewModel.PageFlow.IsAdminPage);
         Assert.True(main.GetVisualDescendants().OfType<AdminView>().Single().IsEffectivelyVisible);
@@ -130,7 +129,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
             marks += args.NewItems?.OfType<Border>().Count(border => border.Classes.Contains(PageMotion.PipeGhostClass)) ?? 0;
         var content = tabs.GetVisualDescendants().OfType<Control>().First(control => control.Name == "PART_SelectedContentHost");
         var fades = MotionWait.Record(content, visual => visual.Opacity);
-        var slides = MotionWait.Record(content, OffsetX);
+        var slides = MotionWait.Record(content, MotionWait.OffsetX);
         var pipe = ((Control)tabs.ContainerFromIndex(1)!).GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_SelectedPipe");
         tabs.SelectedIndex = 1;
         Assert.Equal(0, pipe.Opacity); // the mark is on its way
@@ -176,7 +175,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         groups.SelectedIndex = 1; // its SelectionChanged bubbles up to the tabs
         Frame();
         var content = tabs.GetVisualDescendants().OfType<Control>().First(control => control.Name == "PART_SelectedContentHost");
-        Assert.Equal((1d, 0d), (content.Opacity, OffsetX(content))); // the tab's content stays where it is
+        Assert.Equal((1d, 0d), (content.Opacity, MotionWait.OffsetX(content))); // the tab's content stays where it is
         Assert.Empty(Ghosts(main, PageMotion.PipeGhostClass));
         main.Close();
     }
@@ -239,7 +238,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         viewModel.PageFlow.OpenSettings();
         Frame();
         Assert.False(PageGhostShown(main));
-        Assert.Equal((0d, 1d), (OffsetX(Host(main)), Host(main).Opacity));
+        Assert.Equal((0d, 1d), (MotionWait.OffsetX(Host(main)), Host(main).Opacity));
         var scroll = main.GetVisualDescendants().OfType<SettingsView>().Single().GetVisualDescendants().OfType<ScrollViewer>().First(scrollViewer => PageMotion.GetReveal(scrollViewer));
         Assert.All(((Panel)scroll.Content!).Children, control => Assert.Equal(1, control.Opacity));
         viewModel.PageFlow.ClosePage();
@@ -316,7 +315,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         viewModel.PageFlow.OpenSettings();
         Switched(main);
         seen.Clear();
-        var slides = MotionWait.Record(Host(main), OffsetX); // as it happens: under load one frame can outlast the change
+        var slides = MotionWait.Record(Host(main), MotionWait.OffsetX); // as it happens: under load one frame can outlast the change
         await viewModel.PageFlow.OpenAdminAsync(); // closes the settings, then opens the administration: one switch
         Assert.Equal([(Page.Settings, true)], seen);
         Switched(main);

@@ -240,12 +240,12 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
         tree.Main.MouseUp(end, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
         Assert.Single(tree.Sent.OfType<ReorderChannels>());
-        Assert.All(tree.List.GetRealizedContainers(), control => Assert.Equal(0, control.RenderTransform?.Value.M32 ?? 0));
+        Assert.All(tree.List.GetRealizedContainers(), control => Assert.Equal(0, MotionWait.OffsetY(control)));
         tree.Vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 0))); // the server confirms
         tree.Vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 1)));
         Dispatcher.UIThread.RunJobs();
         tree.Main.UpdateLayout();
-        Assert.All(tree.List.GetRealizedContainers(), control => Assert.Equal(0, control.RenderTransform?.Value.M32 ?? 0));
+        Assert.All(tree.List.GetRealizedContainers(), control => Assert.Equal(0, MotionWait.OffsetY(control)));
         tree.Main.Close();
     }
 

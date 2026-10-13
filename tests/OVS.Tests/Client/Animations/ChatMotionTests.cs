@@ -72,7 +72,6 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
     static Control Row(ChatView chat, string text) =>
         chat.FindControl<ItemsControl>("History")!.GetRealizedContainers().Last(control => control.DataContext is ChatEntry chatEntry && chatEntry.Text == text);
 
-    static double OffsetX(Visual visual) => visual.RenderTransform?.Value.M31 ?? 0;
 
     /// <summary>The smallest opacity and the offset furthest from 0 seen while it arrives.</summary>
     static (double Opacity, double X) Arrival(Func<Control> row)
@@ -83,7 +82,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         {
             var control = row();
             least = Math.Min(least, control.Opacity);
-            if (Math.Abs(OffsetX(control)) > Math.Abs(far)) far = OffsetX(control);
+            if (Math.Abs(MotionWait.OffsetX(control)) > Math.Abs(far)) far = MotionWait.OffsetX(control);
             Frame();
             Thread.Sleep(1);
         }
@@ -104,7 +103,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         Frame();
         (opacity, offsetX) = Arrival(() => Row(chat, "Hallo anna"));
         Assert.True(opacity < 1 && offsetX > 0, $"one's own comes from the composer side ({opacity}, {offsetX})");
-        MotionWait.Eventually(() => Assert.Equal(0, OffsetX(Row(chat, "Hallo anna"))));
+        MotionWait.Eventually(() => Assert.Equal(0, MotionWait.OffsetX(Row(chat, "Hallo anna"))));
         main.Close();
     }
 
@@ -118,7 +117,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         MotionWait.Settle(100);
         viewModel.Chat.Selected = viewModel.Chat.Tabs[0];
         Frame();
-        Assert.All(chat.FindControl<ItemsControl>("History")!.GetRealizedContainers(), control => Assert.Equal(0, OffsetX(control)));
+        Assert.All(chat.FindControl<ItemsControl>("History")!.GetRealizedContainers(), control => Assert.Equal(0, MotionWait.OffsetX(control)));
         main.Close();
     }
 
@@ -200,8 +199,8 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         var badge = chat.FindControl<Avalonia.Controls.Primitives.TabStrip>("Tabs")!.ContainerFromIndex(0)!
             .GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("count"));
         Assert.True(badge.IsVisible);
-        Assert.True((badge.RenderTransform?.Value.M11 ?? 1) < 1 || badge.Opacity < 1, "the badge pops in");
-        MotionWait.Eventually(() => Assert.Equal(1, badge.RenderTransform?.Value.M11 ?? 1, 2));
+        Assert.True(MotionWait.Scale(badge) < 1 || badge.Opacity < 1, "the badge pops in");
+        MotionWait.Eventually(() => Assert.Equal(1, MotionWait.Scale(badge), 2));
         main.Close();
     }
 
@@ -236,7 +235,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         MotionWait.Settle(50);
         server.Apply(From("anna", 2, "Noch eine"));
         Frame();
-        Assert.Equal((1d, 0d), (Row(chat, "Noch eine").Opacity, OffsetX(Row(chat, "Noch eine"))));
+        Assert.Equal((1d, 0d), (Row(chat, "Noch eine").Opacity, MotionWait.OffsetX(Row(chat, "Noch eine"))));
         Assert.False(chat.FindControl<Button>("NewMessagesPill")!.IsVisible);
         main.Close();
     }
@@ -262,7 +261,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         Frame();
         var count = chat.FindControl<Avalonia.Controls.Primitives.TabStrip>("Tabs")!.ContainerFromIndex(0)!
             .GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("count")).Child!;
-        Assert.True((count.RenderTransform?.Value.M32 ?? 0) > 0 || count.Opacity < 1, "the number ticks");
+        Assert.True(MotionWait.OffsetY(count) > 0 || count.Opacity < 1, "the number ticks");
         main.Close();
     }
 
@@ -310,8 +309,8 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
         entry.Sending!.Pending.Fail("abgelehnt"); // the server said no
         Frame();
         var notSent = Row(chat, "Geht nicht").GetVisualDescendants().OfType<WrapPanel>().First(wrapPanel => wrapPanel.Name == "NotSent");
-        var swings = MotionWait.Record(notSent, OffsetX); // every swing as it happens: under load one frame can outlast the shake
-        MotionWait.Until(() => swings.Any(value => Math.Abs(value) > 2) && OffsetX(notSent) == 0); // a shake swings through 0, and ends there
+        var swings = MotionWait.Record(notSent, MotionWait.OffsetX); // every swing as it happens: under load one frame can outlast the shake
+        MotionWait.Until(() => swings.Any(value => Math.Abs(value) > 2) && MotionWait.OffsetX(notSent) == 0); // a shake swings through 0, and ends there
         double swing = swings.Select(value => Math.Abs(value)).DefaultIfEmpty(0).Max();
         Assert.True(notSent.IsVisible);
         Assert.True(swing > 2, $"\"nicht gesendet\" shakes ({swing})");
