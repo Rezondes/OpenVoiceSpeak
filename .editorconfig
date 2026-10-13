@@ -34,7 +34,7 @@ dotnet_diagnostic.CA1062.severity = none
 dotnet_code_quality.CA2000.dispose_ownership_transfer_at_constructor = true
 dotnet_code_quality.CA2000.dispose_ownership_transfer_at_method_call = true
 
-# Step 38 pending: CA1716 (the namespace OVS.Shared and the type Error are keywords in VB), waits for the user.
+# CA1716: names that are keywords in other languages (the namespace OVS.Shared, the record Error are VB keywords); the code is C# only.
 dotnet_diagnostic.CA1716.severity = none
 
 # CA5394: tests make their data with Random on purpose; no security depends on it.
