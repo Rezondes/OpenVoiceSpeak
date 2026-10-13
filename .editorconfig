@@ -21,3 +21,60 @@ dotnet_diagnostic.IDE1006.severity = error
 # Async rule 2 (the user, 13 October 2026): the async variant wherever one exists, and the CancellationToken passed on.
 dotnet_diagnostic.CA1849.severity = error
 dotnet_diagnostic.CA2016.severity = error
+
+# Step 38 (decision CA a, 13 October 2026): AnalysisMode All, every CA rule an error. Off, with the reason:
+# CA1707: the three-part test names (N22) have underscores.
+dotnet_diagnostic.CA1707.severity = none
+# CA2007: the client continues on the UI thread after an await; ConfigureAwait(false) would leave it.
+dotnet_diagnostic.CA2007.severity = none
+# CA1062: nullable reference types already say which arguments may be null.
+dotnet_diagnostic.CA1062.severity = none
+
+# Step 38 pending: rules whose findings are still being fixed; each sub-step removes its lines.
+dotnet_diagnostic.CA1515.severity = none
+dotnet_diagnostic.CA1307.severity = none
+dotnet_diagnostic.CA2000.severity = none
+dotnet_diagnostic.CA1305.severity = none
+dotnet_diagnostic.CA1863.severity = none
+dotnet_diagnostic.CA1002.severity = none
+dotnet_diagnostic.CA1310.severity = none
+dotnet_diagnostic.CA1716.severity = none
+dotnet_diagnostic.CA5392.severity = none
+dotnet_diagnostic.CA1003.severity = none
+dotnet_diagnostic.CA1873.severity = none
+dotnet_diagnostic.CA1822.severity = none
+dotnet_diagnostic.CA1859.severity = none
+dotnet_diagnostic.CA1031.severity = none
+dotnet_diagnostic.CA1819.severity = none
+dotnet_diagnostic.CA2227.severity = none
+dotnet_diagnostic.CA1806.severity = none
+dotnet_diagnostic.CA1001.severity = none
+dotnet_diagnostic.CA2213.severity = none
+dotnet_diagnostic.CA1032.severity = none
+dotnet_diagnostic.CA1725.severity = none
+dotnet_diagnostic.CA1308.severity = none
+dotnet_diagnostic.CA1051.severity = none
+dotnet_diagnostic.CA2234.severity = none
+dotnet_diagnostic.CA2008.severity = none
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA1848.severity = none
+dotnet_diagnostic.CA1820.severity = none
+dotnet_diagnostic.CA1711.severity = none
+dotnet_diagnostic.CA1508.severity = none
+dotnet_diagnostic.CA5359.severity = none
+dotnet_diagnostic.CA2025.severity = none
+dotnet_diagnostic.CA1826.severity = none
+dotnet_diagnostic.CA1068.severity = none
+dotnet_diagnostic.CA1063.severity = none
+dotnet_diagnostic.CA1030.severity = none
+dotnet_diagnostic.CA1028.severity = none
+dotnet_diagnostic.CA2208.severity = none
+dotnet_diagnostic.CA2201.severity = none
+dotnet_diagnostic.CA1869.severity = none
+dotnet_diagnostic.CA1816.severity = none
+dotnet_diagnostic.CA1724.severity = none
+dotnet_diagnostic.CA1044.severity = none
+
+# CA5394: tests make their data with Random on purpose; no security depends on it.
+[{tests,tools/rule-lint-tests}/**/*.cs]
+dotnet_diagnostic.CA5394.severity = none

@@ -7,6 +7,8 @@
     <LangVersion>latest</LangVersion>
     <!-- Rule 17 (N6): the naming rules of .editorconfig are checked in every build (built-in analyzers, no package). -->
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- Step 38 (decision CA a, 13 October 2026): every CA rule, an error under TreatWarningsAsErrors; the exceptions are in .editorconfig. -->
+    <AnalysisMode>All</AnalysisMode>
   </PropertyGroup>
 
   <!--
