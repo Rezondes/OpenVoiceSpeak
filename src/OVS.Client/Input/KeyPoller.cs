@@ -8,7 +8,7 @@ namespace OVS.Client.Input;
 /// </summary>
 public sealed class KeyPoller : IDisposable
 {
-    readonly CancellationTokenSource cts = new();
+    readonly CancellationTokenSource stopping = new();
     readonly Thread thread;
     readonly object gate = new();
     KeyActionSet simulated;
@@ -81,8 +81,8 @@ public sealed class KeyPoller : IDisposable
     /// <summary>Shorthand for the two talk keys. Null leaves a key unchanged.</summary>
     public void Simulate(bool? ptt = null, bool? linkPtt = null)
     {
-        if (ptt is { } p) Simulate(KeyAction.PushToTalk, p);
-        if (linkPtt is { } l) Simulate(KeyAction.LinkPushToTalk, l);
+        if (ptt is { } pushToTalkDown) Simulate(KeyAction.PushToTalk, pushToTalkDown);
+        if (linkPtt is { } linkPushToTalkDown) Simulate(KeyAction.LinkPushToTalk, linkPushToTalkDown);
     }
 
     static bool IsKeyDown(int vk) => vk != 0 && (NativeMethods.GetAsyncKeyState(vk) & 0x8000) != 0;
@@ -108,7 +108,7 @@ public sealed class KeyPoller : IDisposable
         var tracker = new KeyStateTracker();
         TaskCompletionSource<KeyChord>? primedFor = null;
         int lone = 0; // the modifier pressed alone during a capture; -1 once a second one joined it, until all are up
-        while (!cts.IsCancellationRequested)
+        while (!stopping.IsCancellationRequested)
         {
             var held = HeldModifiers();
             if (capture is { } pending)
@@ -153,8 +153,8 @@ public sealed class KeyPoller : IDisposable
 
     public void Dispose()
     {
-        cts.Cancel();
+        stopping.Cancel();
         thread.Join(200); // clock: real time
-        cts.Dispose();
+        stopping.Dispose();
     }
 }

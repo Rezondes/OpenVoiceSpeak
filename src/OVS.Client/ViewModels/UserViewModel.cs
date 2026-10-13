@@ -113,11 +113,11 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
         CanMessage = actor.Has(Permission.ChatPrivate) && !isSelf;
         // Package 119 (A128): the administration's rule; the rank also keeps the last admin's Admin group, an admin is never weaker
         var wanted = actor.Has(Permission.GroupsAssign) && rank
-            ? serverGroups.Select(groupInfo => (groupInfo.Id, groupInfo.Name, Checked: pendingGroups.TryGetValue(groupInfo.Id, out var p) ? p.On : info.GroupIds.Contains(groupInfo.Id), groupInfo.AssignableByMe)).ToList()
+            ? serverGroups.Select(groupInfo => (groupInfo.Id, groupInfo.Name, Checked: pendingGroups.TryGetValue(groupInfo.Id, out var pending) ? pending.On : info.GroupIds.Contains(groupInfo.Id), groupInfo.AssignableByMe)).ToList()
             : [];
         // compared with the live ticks: a refused click is put back, and an open menu is not rebuilt by unrelated updates
         if (!wanted.SequenceEqual(Groups.Select(groupAssignment => (groupAssignment.GroupId, groupAssignment.Name, groupAssignment.IsChecked, groupAssignment.IsEnabled))))
-            Groups = wanted.Select(w => new GroupAssignmentViewModel(w.Id, w.Name, w.Checked, w.AssignableByMe, ToggleGroup)).ToList();
+            Groups = wanted.Select(wantedGroup => new GroupAssignmentViewModel(wantedGroup.Id, wantedGroup.Name, wantedGroup.Checked, wantedGroup.AssignableByMe, ToggleGroup)).ToList();
     }
 
     /// <summary>Package 119: IsChecked already holds the new value; the row spins until the server shows it.</summary>
@@ -133,7 +133,7 @@ public sealed partial class UserViewModel(ServerViewModel owner, uint sessionId)
     {
         await sent.Completion;
         if (pendingGroups.GetValueOrDefault(groupId).Sent == sent) pendingGroups.Remove(groupId);
-        if (pendingGroups.Values.Any(p => p.Sent.IsBusy)) IsBusy = true; // this one ending cleared the spinner a later click still needs
+        if (pendingGroups.Values.Any(pending => pending.Sent.IsBusy)) IsBusy = true; // this one ending cleared the spinner a later click still needs
         owner.Rebuild(); // done: the server's state is shown already; refused or no answer: the tick goes back
     }
 

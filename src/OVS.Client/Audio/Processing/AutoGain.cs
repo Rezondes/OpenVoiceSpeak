@@ -43,14 +43,14 @@ public sealed class AutoGain
     public void Process(Span<float> frame, float? voiceProbability = null)
     {
         float level = VoiceActivityDetector.LevelDb(frame);
-        if (voiceProbability is { } p ? p >= SpeechProbability : level >= VoiceFloorDb)
+        if (voiceProbability is { } probability ? probability >= SpeechProbability : level >= VoiceFloorDb)
         {
             float wanted = Math.Clamp(TargetDb - level, 0f, MaxGainDb);
             GainDb = Math.Clamp(wanted, GainDb - FallDbPerFrame, GainDb + RiseDbPerFrame);
         }
 
         float peak = 0;
-        foreach (var s in frame) peak = Math.Max(peak, Math.Abs(s));
+        foreach (var sample in frame) peak = Math.Max(peak, Math.Abs(sample));
         // never above the peak limit, but never below 1 either: a signal already that loud is left alone
         float limit = peak > 0 ? Math.Max(1f, PeakLimit / peak) : float.MaxValue;
         float end = Math.Min(MathF.Pow(10, GainDb / 20), limit);

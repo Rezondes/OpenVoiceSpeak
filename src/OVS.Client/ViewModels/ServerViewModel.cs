@@ -138,13 +138,13 @@ public sealed partial class ServerViewModel : ObservableObject
     {
         ApplyMessage(message);
         // Package 98: actions without an answer of their own end with the message that shows them done
-        foreach (var c in confirming.ToList())
+        foreach (var waiting in confirming.ToList())
         {
-            if (!c.Pending.IsRunning) confirming.Remove(c);
-            else if (c.Confirms(message))
+            if (!waiting.Pending.IsRunning) confirming.Remove(waiting);
+            else if (waiting.Confirms(message))
             {
-                confirming.Remove(c);
-                c.Pending.Done();
+                confirming.Remove(waiting);
+                waiting.Pending.Done();
             }
         }
     }
@@ -393,9 +393,9 @@ public sealed partial class ServerViewModel : ObservableObject
 
 
     public PendingActionViewModel Link(Guid id, Guid otherId) =>
-        SendConfirmed(new LinkChannels(id, otherId), message => message is ChannelsLinked channelsLinked && (channelsLinked.A, channelsLinked.B) is var p && (p == (id, otherId) || p == (otherId, id)), notify: false);
+        SendConfirmed(new LinkChannels(id, otherId), message => message is ChannelsLinked linked && ChannelPair.Of(linked.A, linked.B) == ChannelPair.Of(id, otherId), notify: false);
     public PendingActionViewModel Unlink(Guid id, Guid otherId) =>
-        SendConfirmed(new UnlinkChannels(id, otherId), message => message is ChannelsUnlinked channelsUnlinked && (channelsUnlinked.A, channelsUnlinked.B) is var p && (p == (id, otherId) || p == (otherId, id)), notify: false);
+        SendConfirmed(new UnlinkChannels(id, otherId), message => message is ChannelsUnlinked unlinked && ChannelPair.Of(unlinked.A, unlinked.B) == ChannelPair.Of(id, otherId), notify: false);
     /// <summary>Package 120: without the dialog that waited, the moved user's row spins until the server shows the move.</summary>
     public PendingActionViewModel Move(uint sessionId, Guid channelId)
     {

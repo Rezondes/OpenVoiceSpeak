@@ -29,7 +29,7 @@ internal static class SampleConversion
         for (int index = 0; index < result.Length; index++)
         {
             float sum = 0;
-            for (int c = 0; c < channels; c++) sum += interleaved[index * channels + c];
+            for (int channel = 0; channel < channels; channel++) sum += interleaved[index * channels + channel];
             result[index] = sum / channels;
         }
         return result;
@@ -101,10 +101,10 @@ internal static class SampleConversion
         for (int index = 0; index < interleaved.Length; index++) energy[index % channels] += interleaved[index] * interleaved[index];
         int loudest = 0;
         double total = 0;
-        for (int c = 0; c < channels; c++)
+        for (int channel = 0; channel < channels; channel++)
         {
-            total += energy[c];
-            if (energy[c] > energy[loudest]) loudest = c;
+            total += energy[channel];
+            if (energy[channel] > energy[loudest]) loudest = channel;
         }
         double others = (total - energy[loudest]) / (channels - 1);
         return energy[loudest] > 0 && energy[loudest] >= 4 * others ? loudest : null;

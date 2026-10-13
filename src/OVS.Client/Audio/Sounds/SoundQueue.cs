@@ -37,9 +37,9 @@ public sealed class SoundQueue
                 int count = Math.Min(frame.Length / 2, tone.Samples.Length - tone.Position);
                 for (int index = 0; index < count; index++)
                 {
-                    float s = tone.Samples[tone.Position + index] * tone.Gain;
-                    frame[2 * index] += s;
-                    frame[2 * index + 1] += s;
+                    float sample = tone.Samples[tone.Position + index] * tone.Gain;
+                    frame[2 * index] += sample;
+                    frame[2 * index + 1] += sample;
                 }
                 tone.Position += count;
             }

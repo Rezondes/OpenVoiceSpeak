@@ -52,7 +52,7 @@ public sealed class DebugApi : IDisposable
     public const string Header = "X-OVS-Debug";
 
     readonly HttpListener listener = new();
-    readonly MainViewModel vm;
+    readonly MainViewModel viewModel;
     readonly Func<Func<Task<object?>>, Task<object?>> onUi;
     readonly Func<AudioDirection, List<AudioDevice>> listDevices;
     readonly Task loop;
@@ -73,7 +73,7 @@ public sealed class DebugApi : IDisposable
         lifecycle = audio.DeviceLifecycle; // the /tone route sets the test tone there and reads it back
         clientRoutes = CreateClientRoutes();
         serverRoutes = CreateServerRoutes();
-        this.vm = viewModel;
+        this.viewModel = viewModel;
         this.onUi = onUi;
         this.listDevices = listDevices;
         listener.Prefixes.Add($"http://localhost:{port}/");
@@ -149,7 +149,7 @@ public sealed class DebugApi : IDisposable
             return new { Inputs = listDevices(AudioDirection.Input), Outputs = listDevices(AudioDirection.Output) };
         if (method != "POST") throw new DebugApiException($"Unbekannter Endpunkt {method} {path}");
         if (clientRoutes.TryGetValue(path, out var clientRoute)) return await clientRoute(body);
-        var server = vm.Server ?? throw new DebugApiException("Nicht verbunden");
+        var server = viewModel.Server ?? throw new DebugApiException("Nicht verbunden");
         if (!serverRoutes.TryGetValue(path, out var serverRoute)) throw new DebugApiException($"Unbekannter Endpunkt {method} {path}");
         await serverRoute(server, body);
         return new { ok = true };
@@ -160,7 +160,7 @@ public sealed class DebugApi : IDisposable
     {
         // connection
         ["/connect"] = async body => { await ConnectAsync(body); return State(); },
-        ["/disconnect"] = async _ => { await vm.Connection.DisconnectAsync(); return State(); },
+        ["/disconnect"] = async _ => { await viewModel.Connection.DisconnectAsync(); return State(); },
         // keys
         ["/ptt"] = body => { keys.Simulate(ptt: body.GetProperty("down").GetBoolean()); return Done; },
         ["/linkptt"] = body => { keys.Simulate(linkPtt: body.GetProperty("down").GetBoolean()); return Done; },
@@ -183,11 +183,11 @@ public sealed class DebugApi : IDisposable
     {
         var settings = body.Deserialize<ClientSettings>(ProtocolJson.Options) ?? throw new DebugApiException("Einstellungen fehlen");
         // Package 127: a body without a version keeps the current one (a missing key reads as 0)
-        if (Optional(body, "settingsVersion") is null) settings.SettingsVersion = vm.Settings.SettingsVersion;
+        if (Optional(body, "settingsVersion") is null) settings.SettingsVersion = viewModel.Settings.SettingsVersion;
         // Package 129: a body without the switch is read like an old file (A135 step 3): a threshold given by hand stays manual
         if (Optional(body, "vadAutomatic") is null) settings.InferVadAutomatic();
-        vm.ApplySettings(settings);
-        return vm.Settings;
+        viewModel.ApplySettings(settings);
+        return viewModel.Settings;
     }
 
     /// <summary>The POST routes on the connected server, path to handler, grouped: own state, channels, moderation, chat, raw requests.</summary>
@@ -235,11 +235,11 @@ public sealed class DebugApi : IDisposable
     async Task ConnectAsync(JsonElement body)
     {
         bool trust = Optional(body, "trust")?.GetBoolean() ?? true;
-        var previous = vm.ConfirmTofu;
-        vm.ConfirmTofu = _ => Task.FromResult(trust);
+        var previous = viewModel.ConfirmTofu;
+        viewModel.ConfirmTofu = _ => Task.FromResult(trust);
         try
         {
-            await vm.Connection.ConnectAsync(new ConnectChoice(
+            await viewModel.Connection.ConnectAsync(new ConnectChoice(
                 Text(body, "host"),
                 Optional(body, "port")?.GetInt32() ?? ProtocolDefaults.Port,
                 Text(body, "nickname"),
@@ -248,36 +248,36 @@ public sealed class DebugApi : IDisposable
         }
         finally
         {
-            vm.ConfirmTofu = previous;
+            viewModel.ConfirmTofu = previous;
         }
     }
 
     object State()
     {
-        vm.Tick();
-        var server = vm.Server;
+        viewModel.Tick();
+        var server = viewModel.Server;
         return new
         {
-            vm.Status,
+            viewModel.Status,
             Connected = server is not null,
-            vm.TransmitText,
-            vm.VoiceHint,
-            vm.Connection.PingText,
+            viewModel.TransmitText,
+            viewModel.VoiceHint,
+            viewModel.Connection.PingText,
             Connection = new // Package 133: the figures of the signal icon and the connection details
             {
-                vm.Stats.Rating,
-                vm.Stats.Bars,
-                vm.Stats.Unreachable,
-                vm.Stats.BaselineMs,
-                RoundTrip = vm.Stats.RoundTripText,
-                Uplink = vm.Stats.UplinkText,
-                Downlink = vm.Stats.DownlinkText,
-                Jitter = vm.Stats.JitterText,
-                Buffer = vm.Stats.DelayText,
-                Concealed = vm.Stats.ConcealedText,
-                Bitrate = vm.Stats.BitrateText,
+                viewModel.Stats.Rating,
+                viewModel.Stats.Bars,
+                viewModel.Stats.Unreachable,
+                viewModel.Stats.BaselineMs,
+                RoundTrip = viewModel.Stats.RoundTripText,
+                Uplink = viewModel.Stats.UplinkText,
+                Downlink = viewModel.Stats.DownlinkText,
+                Jitter = viewModel.Stats.JitterText,
+                Buffer = viewModel.Stats.DelayText,
+                Concealed = viewModel.Stats.ConcealedText,
+                Bitrate = viewModel.Stats.BitrateText,
             },
-            Notices = vm.Notices.Take(50).Select(notice => notice.ToString()).ToList(),
+            Notices = viewModel.Notices.Take(50).Select(notice => notice.ToString()).ToList(),
             Sounds = audio.Sounds.Recent.Select(soundEvent => soundEvent.ToString()).ToList(), // Package 47
             Server = server is null ? null : new
             {
@@ -328,14 +328,14 @@ public sealed class DebugApi : IDisposable
                 LinkPtt = keys.LinkPttDown,
                 PushToMute = keys.MuteHeld,
             },
-            KeyBindings = vm.Settings.KeyBindings.Select(keyBinding => new { keyBinding.Action, Chord = keyBinding.Chord.Name }).ToList(),
+            KeyBindings = viewModel.Settings.KeyBindings.Select(keyBinding => new { keyBinding.Action, Chord = keyBinding.Chord.Name }).ToList(),
         };
     }
 
     /// <summary>{path}: checks and scales the image like the admin page; without a path the logo is removed.</summary>
     async Task SetServerIconAsync(JsonElement body)
     {
-        var server = vm.Server ?? throw new DebugApiException("Nicht verbunden");
+        var server = viewModel.Server ?? throw new DebugApiException("Nicht verbunden");
         if (Optional(body, "path")?.GetString() is not { } path)
         {
             await server.SendAsync(new SetServerIcon(null));

@@ -107,7 +107,7 @@ public sealed partial class LogsViewModel : ObservableObject
         switch (message)
         {
             case LogList list:
-                if (filePages.Add(list.RequestId, list.Offset, list.Total, list.Files, (id, o) => _ = SendRoutedAsync(new ListLogs(o), id)) is not { } files) break;
+                if (filePages.Add(list.RequestId, list.Offset, list.Total, list.Files, (id, offset) => _ = SendRoutedAsync(new ListLogs(offset), id)) is not { } files) break;
                 allFiles = files;
                 FilesLoad.Done();
                 selected.IntersectWith(allFiles.Select(logFile => logFile.Id)); // files gone meanwhile (retention) drop out
@@ -151,7 +151,7 @@ public sealed partial class LogsViewModel : ObservableObject
         var wanted = new List<Choice<LogSource>> { new(new(null, null), Strings.Ui_LogSourceAll), new(new(LogKind.Server, null), Strings.Ui_LogSourceServer) };
         wanted.AddRange(allFiles.Where(logFile => logFile.ChannelId is not null)
             .GroupBy(logFile => logFile.ChannelId).Select(grouping => new Choice<LogSource>(new(LogKind.Channel, grouping.Key), grouping.First().ChannelName ?? Strings.Ui_LogDeletedChannel))
-            .OrderBy(c => c.Label, StringComparer.CurrentCultureIgnoreCase));
+            .OrderBy(source => source.Label, StringComparer.CurrentCultureIgnoreCase));
         if (wanted.SequenceEqual(Sources)) return;
         var selected = SelectedSource?.Value;
         Sources.Clear();

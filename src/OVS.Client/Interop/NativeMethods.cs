@@ -16,13 +16,13 @@ internal static unsafe partial class NativeMethods
     [LibraryImport("gdi32.dll")] internal static partial nint SelectObject(nint dc, nint obj);
     [LibraryImport("gdi32.dll")] internal static partial int DeleteDC(nint dc);
     [LibraryImport("gdi32.dll")] internal static partial int DeleteObject(nint obj);
-    [LibraryImport("user32.dll")] internal static partial int DrawIconEx(nint dc, int x, int y, nint icon, int w, int h, uint step, nint brush, uint flags);
+    [LibraryImport("user32.dll")] internal static partial int DrawIconEx(nint dc, int left, int top, nint icon, int width, int height, uint step, nint brush, uint flags);
     [LibraryImport("user32.dll")] internal static partial int DestroyIcon(nint icon);
     [LibraryImport("kernel32.dll")] internal static partial nint GetModuleHandleW(char* name);
     [LibraryImport("user32.dll")] internal static partial nint LoadCursorW(nint instance, nint name);
     [LibraryImport("user32.dll")] internal static partial ushort RegisterClassExW(WNDCLASSEXW* type);
     [LibraryImport("user32.dll")] internal static partial int UnregisterClassW(char* name, nint instance);
-    [LibraryImport("user32.dll")] internal static partial nint CreateWindowExW(uint exStyle, char* type, char* title, uint style, int x, int y, int w, int h, nint parent, nint menu, nint instance, nint param);
+    [LibraryImport("user32.dll")] internal static partial nint CreateWindowExW(uint exStyle, char* type, char* title, uint style, int left, int top, int width, int height, nint parent, nint menu, nint instance, nint param);
     [LibraryImport("user32.dll")] internal static partial int UpdateLayeredWindow(nint hwnd, nint dst, POINT* at, SIZE* size, nint src, POINT* origin, uint key, BLENDFUNCTION* blend, uint flags);
     [LibraryImport("user32.dll")] internal static partial int ShowWindow(nint hwnd, int command);
     [LibraryImport("user32.dll")] internal static partial nuint SetTimer(nint hwnd, nuint id, uint milliseconds, nint callback);

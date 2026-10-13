@@ -437,6 +437,6 @@ public sealed partial class SettingsViewModel : ObservableObject, IPageViewModel
         BackgroundOpacity = (float)(BackgroundOpacityPercent / 100),
         BlurBackground = BlurBackground,
         Display = SelectedDisplay.Value,
-        Sounds = SoundRows.Select(soundRow => (soundRow.Event, Setting: soundRow.ToSetting())).Where(r => !r.Setting.IsDefaultFor(r.Event)).ToDictionary(r => r.Event, r => r.Setting),
+        Sounds = SoundRows.Select(soundRow => (soundRow.Event, Setting: soundRow.ToSetting())).Where(sound => !sound.Setting.IsDefaultFor(sound.Event)).ToDictionary(sound => sound.Event, sound => sound.Setting),
     }.Clamp();
 }

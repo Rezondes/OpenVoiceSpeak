@@ -132,10 +132,10 @@ public partial class ChatView : UserControl
                 return;
             }
             double end = Math.Max(0, Scroller.Extent.Height - Scroller.Viewport.Height);
-            double t = Math.Min(1, clock.Elapsed / Motion.Normal);
-            glidSet = t < 1 ? from + (end - from) * Motion.Ease.Ease(t) : end;
+            double progress = Math.Min(1, clock.Elapsed / Motion.Normal);
+            glidSet = progress < 1 ? from + (end - from) * Motion.Ease.Ease(progress) : end;
             Scroller.Offset = new Vector(Scroller.Offset.X, glidSet);
-            if (t < 1) top.RequestAnimationFrame(Frame);
+            if (progress < 1) top.RequestAnimationFrame(Frame);
             else gliding = false;
         }
         top.RequestAnimationFrame(Frame);

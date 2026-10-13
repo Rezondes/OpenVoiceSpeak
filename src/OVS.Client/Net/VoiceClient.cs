@@ -40,7 +40,7 @@ public sealed class VoiceClient : IDisposable
     byte lastTarget;
     long lastSentAt;
     volatile bool sendCopies; // Package 136 (A145): the server reported at least 2 % of my frames missing
-    readonly CancellationTokenSource cts = new();
+    readonly CancellationTokenSource stopping = new();
     Task? receiveLoop;
     ITimer? pingTimer;
 
@@ -232,12 +232,12 @@ public sealed class VoiceClient : IDisposable
 
     async Task ReceiveLoopAsync()
     {
-        while (!cts.IsCancellationRequested)
+        while (!stopping.IsCancellationRequested)
         {
             UdpReceiveResult result;
             try
             {
-                result = await udp.ReceiveAsync(cts.Token);
+                result = await udp.ReceiveAsync(stopping.Token);
             }
             catch (Exception exception) when (exception is OperationCanceledException or ObjectDisposedException)
             {
@@ -293,7 +293,7 @@ public sealed class VoiceClient : IDisposable
     public void Dispose()
     {
         if (control is not null) control.VoiceDownReceived -= OnVoiceDown;
-        cts.Cancel();
+        stopping.Cancel();
         pingTimer?.Dispose();
         udp.Dispose();
         try
@@ -305,6 +305,6 @@ public sealed class VoiceClient : IDisposable
         }
         sendCrypto.Dispose();
         receiveCrypto.Dispose();
-        cts.Dispose();
+        stopping.Dispose();
     }
 }

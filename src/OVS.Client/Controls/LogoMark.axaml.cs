@@ -24,8 +24,8 @@ public partial class LogoMark : UserControl
         int count = BitConverter.ToUInt16(bytes, 4);
         return Enumerable.Range(0, count)
             .Select(index => (Size: (int)bytes[6 + index * 16], Length: BitConverter.ToInt32(bytes, 6 + index * 16 + 8), Offset: BitConverter.ToInt32(bytes, 6 + index * 16 + 12)))
-            .Where(f => f.Size is > 0 and <= (int)SmallSize)
-            .ToDictionary(f => f.Size, f => new Bitmap(new MemoryStream(bytes, f.Offset, f.Length)));
+            .Where(entry => entry.Size is > 0 and <= (int)SmallSize)
+            .ToDictionary(entry => entry.Size, entry => new Bitmap(new MemoryStream(bytes, entry.Offset, entry.Length)));
     });
 
     public LogoMark() => InitializeComponent();

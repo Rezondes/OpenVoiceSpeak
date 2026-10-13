@@ -15,7 +15,7 @@ public sealed class SoftLimiter
     public void Process(Span<float> frame)
     {
         float peak = 0;
-        foreach (float s in frame) peak = Math.Max(peak, Math.Abs(s));
+        foreach (float sample in frame) peak = Math.Max(peak, Math.Abs(sample));
         float allowed = peak > Threshold ? Threshold / peak : 1f;
         if (allowed <= Gain)
         {

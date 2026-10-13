@@ -82,9 +82,9 @@ public static unsafe class Splash
                 lpszClassName = name,
             };
             RegisterClassExW(&type);
-            var at = new POINT { x = (GetSystemMetrics(SM_CXSCREEN) - px) / 2, y = (GetSystemMetrics(SM_CYSCREEN) - px) / 2 };
+            var at = new POINT { screenX = (GetSystemMetrics(SM_CXSCREEN) - px) / 2, screenY = (GetSystemMetrics(SM_CYSCREEN) - px) / 2 };
             nint hwnd = CreateWindowExW(WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, name, name, WS_POPUP,
-                at.x, at.y, px, px, 0, 0, type.hInstance, 0);
+                at.screenX, at.screenY, px, px, 0, 0, type.hInstance, 0);
             var size = new SIZE { cx = px, cy = px };
             var origin = new POINT();
             var blend = new BLENDFUNCTION { SourceConstantAlpha = 255, AlphaFormat = AC_SRC_ALPHA };

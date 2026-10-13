@@ -100,17 +100,17 @@ public sealed class ReorderDrag
     /// Index of the gap from the items' natural positions (as if there were no gap): before the first item whose
     /// middle lies below the pointer. The gap next to the dragged item itself means "no change" and is not shown.
     /// </summary>
-    int SlotAt(double y)
+    int SlotAt(double pointerY)
     {
         var containers = Containers();
         double top = list.ItemsPanelRoot?.TranslatePoint(default, list)?.Y ?? 0;
         int index = containers.Count;
-        for (int i = 0; i < containers.Count; i++)
+        for (int position = 0; position < containers.Count; position++)
         {
-            double height = containers[i].Bounds.Height;
-            if (y < top + height / 2)
+            double height = containers[position].Bounds.Height;
+            if (pointerY < top + height / 2)
             {
-                index = i;
+                index = position;
                 break;
             }
             top += height;
@@ -142,8 +142,8 @@ public sealed class ReorderDrag
             return;
         }
         var panelTop = list.ItemsPanelRoot?.TranslatePoint(default, list) ?? default;
-        double y = panelTop.Y + containers.Take(slot).Sum(control => control.Bounds.Height);
-        if (list.TranslatePoint(new Point(panelTop.X, y), overlay) is not { } at) return;
+        double gapTop = panelTop.Y + containers.Take(slot).Sum(control => control.Bounds.Height);
+        if (list.TranslatePoint(new Point(panelTop.X, gapTop), overlay) is not { } at) return;
         Canvas.SetLeft(placeholder, at.X);
         Canvas.SetTop(placeholder, at.Y);
         placeholder.IsVisible = true;

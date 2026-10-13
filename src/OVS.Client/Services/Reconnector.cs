@@ -8,7 +8,7 @@ namespace OVS.Client.Services;
 /// <param name="post">Runs the attempts on the UI thread, like everything else that touches the connection.</param>
 public sealed class Reconnector(TimeProvider time, Action<Action> post)
 {
-    public static readonly IReadOnlyList<TimeSpan> Delays = [.. new[] { 1, 2, 4, 8, 16 }.Select(s => TimeSpan.FromSeconds(s))];
+    public static readonly IReadOnlyList<TimeSpan> Delays = [.. new[] { 1, 2, 4, 8, 16 }.Select(seconds => TimeSpan.FromSeconds(seconds))];
 
     int generation;
     int attempts;

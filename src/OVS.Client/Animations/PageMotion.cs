@@ -152,7 +152,7 @@ public static class PageMotion
             mark.Bind(Border.BackgroundProperty, mark.GetResourceObservable("SystemControlHighlightAccentBrush"));
             newPipe.Opacity = 0;
             _ = FlyGhost.Fly(overlay, mark, start, () => newPipe.TranslatePoint(default, overlay) is { } at ? new Rect(at, newPipe.Bounds.Size) : null,
-                t => { if (t >= 1) newPipe.ClearValue(Visual.OpacityProperty); }); // in the frame the mark lands
+                progress => { if (progress >= 1) newPipe.ClearValue(Visual.OpacityProperty); }); // in the frame the mark lands
         }
         // the content: from the side the new tab lies on
         var content = GetContent(tabs) ?? tabs.GetVisualDescendants().OfType<Control>().FirstOrDefault(control => control.Name == "PART_SelectedContentHost");

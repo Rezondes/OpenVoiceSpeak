@@ -24,7 +24,7 @@ public sealed class ClientConnection : IAsyncDisposable
     readonly SslStream ssl;
     readonly FrameReader reader;
     readonly FrameWriter writer;
-    readonly CancellationTokenSource cts = new();
+    readonly CancellationTokenSource stopping = new();
     readonly CancellationTokenSource pingCts = new(); // stopped first on dispose, before the TLS shutdown (also voice, Package 141)
     readonly TimeProvider time;
     long pingSentAt;
@@ -144,7 +144,7 @@ public sealed class ClientConnection : IAsyncDisposable
         voiceLoop = Task.Run(VoiceLoopAsync); // Package 141
     }
 
-    public Task SendAsync(Message message) => writer.WriteAsync(message, cts.Token);
+    public Task SendAsync(Message message) => writer.WriteAsync(message, stopping.Token);
 
     // Package 141: at most 10 frames (200 ms) wait for the TLS stream, in order; more is dropped
     readonly Channel<VoiceUp> voiceOut = Channel.CreateBounded<VoiceUp>(
@@ -179,7 +179,7 @@ public sealed class ClientConnection : IAsyncDisposable
         string? detail = null;
         try
         {
-            while (await reader.ReadAsync(cts.Token) is { } message)
+            while (await reader.ReadAsync(stopping.Token) is { } message)
             {
                 switch (message)
                 {
@@ -255,11 +255,11 @@ public sealed class ClientConnection : IAsyncDisposable
         // Wait until the server has read the close_notify and closed its side. Closing the socket while its last
         // messages are still unread makes Windows send a reset, and the server logs "Verbindung abgebrochen".
         if (receiveLoop is not null) await Task.WhenAny(receiveLoop, Task.Delay(TimeSpan.FromSeconds(1))); // clock: real time
-        cts.Cancel();
+        stopping.Cancel();
         tcp.Dispose();
         if (receiveLoop is not null) await receiveLoop;
         await ssl.DisposeAsync();
-        cts.Dispose();
+        stopping.Dispose();
         pingCts.Dispose();
     }
 }

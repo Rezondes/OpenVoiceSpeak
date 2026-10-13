@@ -92,8 +92,8 @@ internal static class ProtocolLogText
     /// <summary>An own request in words. Passwords and tokens are never part of the text.</summary>
     internal static string Describe(Request request, StateMirror mirror)
     {
-        static string YesNo(bool b) => b ? "yes" : "no";
-        static string BanTerms(int? minutes, bool includeIp) => $"{(minutes is { } m ? $"{m} minutes" : "permanently")}{(includeIp ? ", with IP" : "")}";
+        static string YesNo(bool value) => value ? "yes" : "no";
+        static string BanTerms(int? minutes, bool includeIp) => $"{(minutes is { } count ? $"{count} minutes" : "permanently")}{(includeIp ? ", with IP" : "")}";
         static string ServerMute(bool muted) => muted ? "Server-mute" : "Server-unmute";
 
         var text = request switch

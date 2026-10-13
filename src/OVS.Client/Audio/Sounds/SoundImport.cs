@@ -37,7 +37,7 @@ public static class SoundImport
             for (int index = 0; index < mono.Length; index++)
             {
                 float sum = 0;
-                for (int c = 0; c < channels; c++) sum += all[index * channels + c];
+                for (int channel = 0; channel < channels; channel++) sum += all[index * channels + channel];
                 mono[index] = sum / channels;
             }
             // Package 138: silence after the end pushes out what the resampler holds back (about 36 input samples plus

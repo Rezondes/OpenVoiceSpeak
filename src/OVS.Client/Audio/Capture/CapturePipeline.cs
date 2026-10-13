@@ -192,7 +192,7 @@ public sealed class CapturePipeline : IDisposable
                 bool voice = Vad.Process(frame, channels); // Package 142: the louder side
                 Level?.Invoke(Vad.LastLevelDb);
                 var target = ChooseTarget(voice);
-                if (target is { } t)
+                if (target is { } voiceTarget)
                 {
                     int kbps = Bitrate();
                     var opus = music ? musicEncoder ??= new VoiceEncoder(music: true) : encoder;
@@ -207,8 +207,8 @@ public sealed class CapturePipeline : IDisposable
                     if (kbps != opus.BitrateKbps) opus.BitrateKbps = kbps;
                     if (LossHint() is var loss && loss != opus.PacketLossPercent) opus.PacketLossPercent = loss; // Package 135
                     // The level only crosses the threshold inside a word: send the 20 ms before it too, so the onset is not cut.
-                    if (!sending) FrameEncoded?.Invoke(Encode(opus, previous, channels), t);
-                    FrameEncoded?.Invoke(Encode(opus, frame, channels), t);
+                    if (!sending) FrameEncoded?.Invoke(Encode(opus, previous, channels), voiceTarget);
+                    FrameEncoded?.Invoke(Encode(opus, frame, channels), voiceTarget);
                 }
                 sending = target is not null;
                 frame.CopyTo(previous, 0);
@@ -239,10 +239,10 @@ public sealed class CapturePipeline : IDisposable
         const float knee = Processing.AutoGain.PeakLimit, room = 1f - knee;
         for (int index = 0; index < frame.Length; index++)
         {
-            float s = frame[index] * gain;
-            float magnitude = Math.Abs(s);
+            float sample = frame[index] * gain;
+            float magnitude = Math.Abs(sample);
             // above the knee: the same slope at the knee, then flattening toward 1 (reached only by rounding)
-            frame[index] = magnitude <= knee ? s : MathF.CopySign(knee + room * MathF.Tanh((magnitude - knee) / room), s);
+            frame[index] = magnitude <= knee ? sample : MathF.CopySign(knee + room * MathF.Tanh((magnitude - knee) / room), sample);
         }
     }
 

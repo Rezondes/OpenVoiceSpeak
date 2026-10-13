@@ -22,21 +22,21 @@ public sealed class StereoInput
     /// <returns>The side (0 left, 1 right) that alone carries the signal, or null for stereo.</returns>
     public int? OnlySide(ReadOnlySpan<float> stereo, int sampleRate)
     {
-        double l = 0, r = 0;
+        double left = 0, right = 0;
         for (int index = 0; index + 1 < stereo.Length; index += 2)
         {
-            l += stereo[index] * stereo[index];
-            r += stereo[index + 1] * stereo[index + 1];
+            left += stereo[index] * stereo[index];
+            right += stereo[index + 1] * stereo[index + 1];
         }
         int frames = stereo.Length / 2;
-        if (frames == 0 || Math.Max(l, r) / frames < SilentBelow) return only; // silence says nothing
-        l /= frames;
-        r /= frames;
+        if (frames == 0 || Math.Max(left, right) / frames < SilentBelow) return only; // silence says nothing
+        left /= frames;
+        right /= frames;
         double step = Math.Min(1, frames / (FastSeconds * sampleRate));
-        fastLeft += step * (l - fastLeft);
-        fastRight += step * (r - fastRight);
+        fastLeft += step * (left - fastLeft);
+        fastRight += step * (right - fastRight);
 
-        int side = l >= 4 * r ? 0 : r >= 4 * l ? 1 : -1;
+        int side = left >= 4 * right ? 0 : right >= 4 * left ? 1 : -1;
         run = side >= 0 && side == runSide ? run + frames : side >= 0 ? frames : 0;
         runSide = side;
         if (only is { } one)

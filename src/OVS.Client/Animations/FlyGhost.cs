@@ -56,14 +56,14 @@ public static class FlyGhost
         void Frame(TimeSpan _)
         {
             target = to() ?? target;
-            double t = Math.Min(1, clock.Elapsed / Motion.Slow);
-            double eased = Motion.Ease.Ease(t);
+            double progress = Math.Min(1, clock.Elapsed / Motion.Slow);
+            double eased = Motion.Ease.Ease(progress);
             Canvas.SetLeft(ghost, from.X + (target.X - from.X) * eased);
             Canvas.SetTop(ghost, from.Y + (target.Y - from.Y) * eased);
             ghost.Width = from.Width + (target.Width - from.Width) * eased;
             ghost.Height = from.Height + (target.Height - from.Height) * eased;
-            frame?.Invoke(t);
-            if (t < 1 && top is not null) top.RequestAnimationFrame(Frame);
+            frame?.Invoke(progress);
+            if (progress < 1 && top is not null) top.RequestAnimationFrame(Frame);
             else
             {
                 overlay.Children.Remove(ghost);
@@ -78,9 +78,9 @@ public static class FlyGhost
     public static async Task Row(OverlayLayer overlay, IImage picture, Rect from, Func<Point?> to, Action landed)
     {
         Rect? Target() => to() is { } at ? new Rect(at, from.Size) : null;
-        await Fly(overlay, new Border { Classes = { GhostClass }, Child = new Image { Source = picture } }, from, Target, t =>
+        await Fly(overlay, new Border { Classes = { GhostClass }, Child = new Image { Source = picture } }, from, Target, progress =>
         {
-            if (t >= 1) landed();
+            if (progress >= 1) landed();
         });
         (picture as IDisposable)?.Dispose();
     }
@@ -100,11 +100,11 @@ public static class FlyGhost
         var ghost = new Border { Classes = { HighlightClass }, CornerRadius = toRow.CornerRadius, Opacity = GhostOpacity };
         ghost.Bind(Border.BackgroundProperty, ghost.GetResourceObservable("Ovs.SurfaceSelected"));
         toRow.Classes.Set(ArrivingClass, true);
-        await Fly(overlay, ghost, from, () => toRow.TranslatePoint(default, overlay) is { } at ? new Rect(at, toRow.Bounds.Size) : null, t =>
+        await Fly(overlay, ghost, from, () => toRow.TranslatePoint(default, overlay) is { } at ? new Rect(at, toRow.Bounds.Size) : null, progress =>
         {
-            if (t < HandOver) return;
+            if (progress < HandOver) return;
             toRow.Classes.Set(ArrivingClass, false);
-            ghost.Opacity = GhostOpacity * (1 - t) / (1 - HandOver);
+            ghost.Opacity = GhostOpacity * (1 - progress) / (1 - HandOver);
         });
         toRow.Classes.Set(ArrivingClass, false); // also when the flight ended early
     }

@@ -79,7 +79,7 @@ public sealed class UpdateInstaller(HttpClient http, string exePath, Action<stri
         await using var target = File.Create(NewPath);
         var buffer = new byte[81920];
         long bytes = 0, reported = -1;
-        long step = total is > 0 and var t ? Math.Max(1, t / 100) : long.MaxValue;
+        long step = total is > 0 and var totalBytes ? Math.Max(1, totalBytes / 100) : long.MaxValue;
         var clock = System.Diagnostics.Stopwatch.StartNew(); // clock: real time, how often the download reports its progress
         int read;
         while ((read = await source.ReadAsync(buffer, cancel)) > 0)

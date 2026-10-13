@@ -49,7 +49,7 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
 
     partial void OnMaxUsersChanged(decimal? value)
     {
-        if (value is { } v && (v < 0 || v > MaxSlots)) MaxUsers = Math.Clamp(v, 0, MaxSlots);
+        if (value is { } slots && (slots < 0 || slots > MaxSlots)) MaxUsers = Math.Clamp(slots, 0, MaxSlots);
     }
 
     /// <summary>Package 132 (A141): "Qualität" in kbps, also for the default channel.</summary>
@@ -59,7 +59,7 @@ public sealed partial class ChannelDialogViewModel(ChannelEdit current, ChannelD
 
     partial void OnBitrateChanged(decimal? value)
     {
-        if (value is { } v && (v < MinBitrate || v > MaxBitrate)) Bitrate = Math.Clamp(v, MinBitrate, MaxBitrate);
+        if (value is { } rate && (rate < MinBitrate || rate > MaxBitrate)) Bitrate = Math.Clamp(rate, MinBitrate, MaxBitrate);
     }
 
     /// <summary>
