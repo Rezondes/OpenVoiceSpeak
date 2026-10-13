@@ -80,7 +80,7 @@ sealed class PageFlowRig
 
     public ClientSettings Settings { get; set; } = new() { VadThresholdDb = -30 };
 
-    public DeviceLists? KnownDevices { get; set; }
+    public ActiveDevices? KnownDevices { get; set; }
 
     public DialogCallbacks Dialogs { get; set; }
 

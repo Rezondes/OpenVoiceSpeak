@@ -26,7 +26,7 @@ internal sealed class DeviceList
     }
 
     /// <summary>The last list loaded; null before the first.</summary>
-    internal DeviceLists? Known { get; private set; }
+    internal ActiveDevices? Known { get; private set; }
 
     /// <summary>
     /// Loads both lists on the pool and shows them on the UI thread, unless a newer load was started meanwhile. Returns the
@@ -35,7 +35,7 @@ internal sealed class DeviceList
     internal Task Refresh()
     {
         int load = ++loads;
-        return Task.Run(() => new DeviceLists(listDevices(AudioDirection.Input), listDevices(AudioDirection.Output)))
+        return Task.Run(() => new ActiveDevices(listDevices(AudioDirection.Input), listDevices(AudioDirection.Output)))
             .ContinueWith(listing => post(() =>
             {
                 if (load != loads) return; // a newer list is on its way

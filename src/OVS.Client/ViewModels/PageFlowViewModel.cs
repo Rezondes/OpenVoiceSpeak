@@ -19,7 +19,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     readonly TimeProvider time;
     readonly Action<Action> post;
     readonly Func<ClientSettings> settings;
-    readonly Func<DeviceLists?> knownDevices;
+    readonly Func<ActiveDevices?> knownDevices;
     readonly Action refreshDevices;
     readonly Func<Task<KeyChord>> captureChord;
     readonly Action<IReadOnlyList<KeyBinding>> setKeyBindings;
@@ -67,7 +67,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     /// <param name="stopLevelMeter">Removes that handler and closes the meter.</param>
     /// <param name="readThresholdDb">The voice activation threshold in use, read with each level (Package 129).</param>
     /// <param name="shownServer">The server view model now shown; the administration needs one.</param>
-    internal PageFlowViewModel(TimeProvider time, Action<Action> post, Func<ClientSettings> settings, Func<DeviceLists?> knownDevices,
+    internal PageFlowViewModel(TimeProvider time, Action<Action> post, Func<ClientSettings> settings, Func<ActiveDevices?> knownDevices,
         Action refreshDevices, Func<Task<KeyChord>> captureChord, Action<IReadOnlyList<KeyBinding>> setKeyBindings, Func<PageFlowDialogs> dialogs, Func<AdminDialogs> adminDialogs,
         Func<Task<string>> checkNow, Func<string, SoundEvent, SoundImportResult> importSound,
         Action<SoundEvent, SoundSetting, float> previewSound, Action<ClientSettings> applyLive, Action<BackgroundAppearance> showAppearance,
