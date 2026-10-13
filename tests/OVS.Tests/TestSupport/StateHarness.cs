@@ -98,7 +98,7 @@ public sealed class StateHarness : IDisposable
         {
             Directory.Delete(DataDir, true);
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             // a log job may still hold a file open; the folder is in the temp directory
         }

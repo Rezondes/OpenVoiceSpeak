@@ -14,7 +14,7 @@ public class KeyActionLabelsTests
         var english = TestCulture.With("en-US", () => KeyActionTraits.All.Select(KeyActionLabels.Localize).ToList());
         Assert.Equal(KeyActionTraits.All.Count, german.Distinct().Count());
         Assert.Equal(KeyActionTraits.All.Count, english.Distinct().Count());
-        Assert.DoesNotContain(german, text => KeyActionTraits.All.Any(a => a.ToString() == text)); // no enum name as a fallback
+        Assert.DoesNotContain(german, text => KeyActionTraits.All.Any(keyAction => keyAction.ToString() == text)); // no enum name as a fallback
         Assert.NotEqual(german, english);
     }
 }

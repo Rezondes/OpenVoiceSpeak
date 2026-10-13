@@ -32,9 +32,9 @@ public sealed class MotionStyleTests
 
     static Matrix Expected(string operations) => TransformOperations.Parse(operations).Value;
 
-    static bool Near(Matrix a, Matrix b) =>
-        Math.Abs(a.M11 - b.M11) < 0.01 && Math.Abs(a.M12 - b.M12) < 0.01 && Math.Abs(a.M21 - b.M21) < 0.01
-        && Math.Abs(a.M22 - b.M22) < 0.01 && Math.Abs(a.M31 - b.M31) < 0.05 && Math.Abs(a.M32 - b.M32) < 0.05;
+    static bool Near(Matrix matrix, Matrix otherMatrix) =>
+        Math.Abs(matrix.M11 - otherMatrix.M11) < 0.01 && Math.Abs(matrix.M12 - otherMatrix.M12) < 0.01 && Math.Abs(matrix.M21 - otherMatrix.M21) < 0.01
+        && Math.Abs(matrix.M22 - otherMatrix.M22) < 0.01 && Math.Abs(matrix.M31 - otherMatrix.M31) < 0.05 && Math.Abs(matrix.M32 - otherMatrix.M32) < 0.05;
 
     /// <summary>
     /// After the transition time, the checks once more until they pass (at most 5 s): under load a transition may take
@@ -54,10 +54,10 @@ public sealed class MotionStyleTests
         var button = new Button { Content = "Speichern", Classes = { "accent" } };
         var window = Host(button, animated);
         // Fluent's own short press transition is part of the simplified look; the animated one is Motion.Fast long
-        Assert.Equal(animated, button.Transitions?.OfType<TransformOperationsTransition>().Any(t => t.Duration == Motion.Fast) == true);
+        Assert.Equal(animated, button.Transitions?.OfType<TransformOperationsTransition>().Any(transformOperationsTransition => transformOperationsTransition.Duration == Motion.Fast) == true);
 
         window.MouseMove(Rows.Center(button, window));
-        var presenter = button.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
+        var presenter = button.GetVisualDescendants().OfType<ContentPresenter>().First(contentPresenter => contentPresenter.Name == "PART_ContentPresenter");
         Settled(() =>
         {
             Assert.True(Near(animated ? Expected("translateY(-1px)") : Matrix.Identity, Transform(button)), $"hover {Transform(button)}");
@@ -85,7 +85,7 @@ public sealed class MotionStyleTests
         });
 
         // every width the bar takes as it happens: under load one frame can outlast the whole transition
-        var bars = MotionWait.Record(row, v => ((Border)v).BoxShadow.Count > 0 ? ((Border)v).BoxShadow[0].OffsetX : 0);
+        var bars = MotionWait.Record(row, visual => ((Border)visual).BoxShadow.Count > 0 ? ((Border)visual).BoxShadow[0].OffsetX : 0);
         window.MouseMove(Rows.Center(row, window));
         Settled(() =>
         {
@@ -106,7 +106,7 @@ public sealed class MotionStyleTests
     }
 
     static IEnumerable<Border> FocusRings(Window window) =>
-        window.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("focusRing"));
+        window.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("focusRing"));
 
     [AvaloniaFact]
     public void FocusRing_KeyboardOnly()
@@ -130,7 +130,7 @@ public sealed class MotionStyleTests
 
         second.Focus(NavigationMethod.Pointer);
         Dispatcher.UIThread.RunJobs();
-        Assert.DoesNotContain(FocusRings(window), r => r.IsEffectivelyVisible);
+        Assert.DoesNotContain(FocusRings(window), border => border.IsEffectivelyVisible);
     }
 
     [AvaloniaFact]
@@ -155,15 +155,15 @@ public sealed class MotionStyleTests
         panel.Children.Add(slider);
         Dispatcher.UIThread.RunJobs();
 
-        var frame = text.GetVisualDescendants().OfType<Border>().First(b => b.Name == "PART_BorderElement");
-        Assert.Contains(frame.Transitions!, t => t is BrushTransition { Property.Name: "BorderBrush" });
+        var frame = text.GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_BorderElement");
+        Assert.Contains(frame.Transitions!, transition => transition is BrushTransition { Property.Name: "BorderBrush" });
         var combo = new ComboBox { Width = 200 };
         panel.Children.Add(combo);
         Dispatcher.UIThread.RunJobs();
-        Assert.Contains(combo.GetVisualDescendants().OfType<Border>().First(b => b.Name == "Background").Transitions!, t => t is BrushTransition { Property.Name: "BorderBrush" });
-        Assert.Contains(check.GetVisualDescendants().OfType<Border>().First(b => b.Name == "NormalRectangle").Transitions!, t => t is BrushTransition { Property.Name: "Background" });
+        Assert.Contains(combo.GetVisualDescendants().OfType<Border>().First(border => border.Name == "Background").Transitions!, transition => transition is BrushTransition { Property.Name: "BorderBrush" });
+        Assert.Contains(check.GetVisualDescendants().OfType<Border>().First(border => border.Name == "NormalRectangle").Transitions!, transition => transition is BrushTransition { Property.Name: "Background" });
 
-        var glyph = check.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>().First(p => p.Name == "CheckGlyph");
+        var glyph = check.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>().First(path => path.Name == "CheckGlyph");
         Assert.True(Near(Expected("scale(0.4)"), Transform(glyph)));
         check.IsChecked = true;
         Settled(() => Assert.True(Near(Matrix.Identity, Transform(glyph)), "the check mark pops to full size"));
@@ -193,7 +193,7 @@ public sealed class MotionStyleTests
     }
 
     static ContentPresenter Presenter(Control control) =>
-        control.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
+        control.GetVisualDescendants().OfType<ContentPresenter>().First(contentPresenter => contentPresenter.Name == "PART_ContentPresenter");
 
     static double Bar(BoxShadows shadows) => shadows.Count > 0 && shadows[0].IsInset ? shadows[0].OffsetX : 0;
 

@@ -24,8 +24,8 @@ public sealed class DialogShapeTests
         {
             if (type.IsPublic || !(type.IsAbstract && type.IsSealed)) problems.Add($"{type.Name}: not an internal static class");
             var methods = type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
-                .Where(m => !m.IsSpecialName && !m.Name.Contains('<')).ToList();
-            if (methods.Count != 1 || methods[0].Name != "ShowAsync") problems.Add($"{type.Name}: methods {string.Join(", ", methods.Select(m => m.Name))}");
+                .Where(methodInfo => !methodInfo.IsSpecialName && !methodInfo.Name.Contains('<')).ToList();
+            if (methods.Count != 1 || methods[0].Name != "ShowAsync") problems.Add($"{type.Name}: methods {string.Join(", ", methods.Select(methodInfo => methodInfo.Name))}");
             else
             {
                 var show = methods[0];
@@ -42,8 +42,8 @@ public sealed class DialogShapeTests
     {
         var folder = Path.Combine(RepoPaths.ClientSource, "Dialogs");
         var withoutFrame = DialogCaseTable.FindDialogTypes()
-            .Where(t => !File.ReadAllText(Path.Combine(folder, t.Name + ".cs")).Contains("DialogFrame.ShowAsync(", StringComparison.Ordinal))
-            .Select(t => t.Name);
+            .Where(candidate => !File.ReadAllText(Path.Combine(folder, candidate.Name + ".cs")).Contains("DialogFrame.ShowAsync(", StringComparison.Ordinal))
+            .Select(candidate => candidate.Name);
         Assert.Empty(withoutFrame);
     }
 }

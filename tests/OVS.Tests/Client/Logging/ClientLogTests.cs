@@ -37,7 +37,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
             if (expected.All(text.Contains) || watch.ElapsedMilliseconds > 15_000) break;
             await Task.Delay(50);
         }
-        foreach (var e in expected) Assert.Contains(e, text);
+        foreach (var value in expected) Assert.Contains(value, text);
         return text;
     }
 
@@ -47,13 +47,13 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         using var identity = IdentityFile.LoadOrCreate(dir);
         var server = await TestServer.StartAsync(TestServer.Grant(identity, "Admin"), password: password);
         var ui = new TestDispatcher();
-        var vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, trustServers: true)));
-        return (server, ui, vm);
+        var viewModel = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, trustServers: true)));
+        return (server, ui, viewModel);
     }
 
-    static async Task StopAsync(TestServer server, TestDispatcher ui, MainViewModel vm)
+    static async Task StopAsync(TestServer server, TestDispatcher ui, MainViewModel viewModel)
     {
-        await Run(ui, () => vm.DisposeAsync().AsTask());
+        await Run(ui, () => viewModel.DisposeAsync().AsTask());
         ui.Dispose();
         await server.DisposeAsync();
     }
@@ -67,19 +67,19 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
     [Fact]
     public async Task Connect_Disconnect_Logged()
     {
-        var (server, ui, vm) = await StartAsync();
+        var (server, ui, viewModel) = await StartAsync();
         try
         {
-            await Run(ui, () => vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "", null, false)));
-            await Run(ui, () => vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
+            await Run(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "", null, false)));
+            await Run(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
             await using (await TestClient.ConnectAsync(server, "bert"))
                 await Eventually(null, "bert connected, channel 'Lobby'");
             await Eventually(() => Run(ui, () =>
             {
-                vm.Tick();
+                viewModel.Tick();
                 return Task.CompletedTask;
             }), "bert disconnected", "UDP now reachable");
-            await Run(ui, vm.Connection.DisconnectAsync);
+            await Run(ui, viewModel.Connection.DisconnectAsync);
 
             var log = await Eventually(null,
                 $"Connecting to 127.0.0.1:{server.Port} as anna",
@@ -92,22 +92,22 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         }
         finally
         {
-            await StopAsync(server, ui, vm);
+            await StopAsync(server, ui, viewModel);
         }
     }
 
     [Fact]
     public async Task OwnActions_Logged()
     {
-        var (server, ui, vm) = await StartAsync();
+        var (server, ui, viewModel) = await StartAsync();
         try
         {
-            await Run(ui, () => vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
-            await Run(ui, () => vm.Server!.SendAsync(new CreateChannel("Raid", "")));
+            await Run(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false)));
+            await Run(ui, () => viewModel.Server!.SendAsync(new CreateChannel("Raid", "")));
             await Eventually(null, "Channel 'Raid' created");
-            var raid = await ui.InvokeAsync(() => Task.FromResult(vm.Server!.Tree.Channels.Single(c => c.Name == "Raid").Id));
-            await Run(ui, () => vm.Server!.JoinAsync(raid));
-            await Run(ui, () => vm.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
+            var raid = await ui.InvokeAsync(() => Task.FromResult(viewModel.Server!.Tree.Channels.Single(channel => channel.Name == "Raid").Id));
+            await Run(ui, () => viewModel.Server!.JoinAsync(raid));
+            await Run(ui, () => viewModel.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
 
             await Eventually(null,
                 "Request r1: Create channel 'Raid'",
@@ -117,19 +117,19 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         }
         finally
         {
-            await StopAsync(server, ui, vm);
+            await StopAsync(server, ui, viewModel);
         }
     }
 
     [Fact]
     public async Task PasswordAndToken_NeverLogged()
     {
-        var (server, ui, vm) = await StartAsync(password: "Serverpasswort-4711");
+        var (server, ui, viewModel) = await StartAsync(password: "Serverpasswort-4711");
         try
         {
-            await Run(ui, () => vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", "Serverpasswort-4711", false)));
-            await Run(ui, () => vm.Server!.SendAsync(new RedeemAdminToken("Token-0815-geheim")));
-            await Run(ui, () => vm.Server!.SendAsync(new UpdateServerSettings("Testserver", "", "Neues-Passwort-42")));
+            await Run(ui, () => viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", "Serverpasswort-4711", false)));
+            await Run(ui, () => viewModel.Server!.SendAsync(new RedeemAdminToken("Token-0815-geheim")));
+            await Run(ui, () => viewModel.Server!.SendAsync(new UpdateServerSettings("Testserver", "", "Neues-Passwort-42")));
 
             var log = await Eventually(null, "with password", "Redeem admin token", "set password", "Server settings changed");
             Assert.DoesNotContain("Serverpasswort-4711", log);
@@ -138,7 +138,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
         }
         finally
         {
-            await StopAsync(server, ui, vm);
+            await StopAsync(server, ui, viewModel);
         }
     }
 
@@ -214,5 +214,5 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
 
     /// <summary>Only complete numbers count: the log may be read while a line is being written.</summary>
     static List<int> Rates(string log) =>
-        System.Text.RegularExpressions.Regex.Matches(log, @"Frames gesendet: (\d+)/s").Select(m => int.Parse(m.Groups[1].Value)).ToList();
+        System.Text.RegularExpressions.Regex.Matches(log, @"Frames gesendet: (\d+)/s").Select(match => int.Parse(match.Groups[1].Value)).ToList();
 }

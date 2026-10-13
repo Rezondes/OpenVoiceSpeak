@@ -15,15 +15,15 @@ namespace OVS.Tests.Client.Dialogs;
 /// </summary>
 public sealed class DialogButtonsTests
 {
-    public static TheoryData<string> CaseNames => [.. DialogCaseTable.All.Select(c => c.Name)];
+    public static TheoryData<string> CaseNames => [.. DialogCaseTable.All.Select(dialogCase => dialogCase.Name)];
 
-    public static TheoryData<string> EnterCaseNames => [.. DialogCaseTable.All.Where(c => c.EnterAccepts is not null).Select(c => c.Name)];
+    public static TheoryData<string> EnterCaseNames => [.. DialogCaseTable.All.Where(dialogCase => dialogCase.EnterAccepts is not null).Select(dialogCase => dialogCase.Name)];
 
     [Fact]
     public void DialogCaseTable_EveryDialogType_HasACase()
     {
-        var covered = DialogCaseTable.All.Select(c => c.Type).ToHashSet();
-        Assert.Empty(DialogCaseTable.FindDialogTypes().Where(t => !covered.Contains(t)).Select(t => t.Name));
+        var covered = DialogCaseTable.All.Select(dialogCase => dialogCase.Type).ToHashSet();
+        Assert.Empty(DialogCaseTable.FindDialogTypes().Where(candidate => !covered.Contains(candidate)).Select(candidate => candidate.Name));
     }
 
     [AvaloniaTheory]

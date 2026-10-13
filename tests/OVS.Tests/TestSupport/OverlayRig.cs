@@ -25,11 +25,11 @@ static class OverlayRig
 
     /// <summary>The answer buttons of the open card's bar, in the order they are laid out.</summary>
     public static List<Button> FindButtons(OverlayHost overlay) =>
-        overlay.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains(DialogFrame.AnswerClass)).ToList();
+        overlay.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains(DialogFrame.AnswerClass)).ToList();
 
     /// <summary>The default answer: the one in the accent colour, or red where it is risky.</summary>
     public static Button FindMainButton(OverlayHost overlay) =>
-        FindButtons(overlay).Single(b => b.Classes.Contains("danger") || b.Classes.Contains("accent"));
+        FindButtons(overlay).Single(button => button.Classes.Contains("danger") || button.Classes.Contains("accent"));
 
     public static string? ReadText(Button button) => button.Content as string;
 

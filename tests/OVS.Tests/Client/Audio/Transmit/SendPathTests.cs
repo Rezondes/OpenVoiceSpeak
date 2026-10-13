@@ -160,7 +160,7 @@ public class SendPathTests
         public int Frames(int count)
         {
             int before = Sent.Count;
-            for (int i = 0; i < count; i++)
+            for (int index = 0; index < count; index++)
             {
                 Pipeline.Feed(Signal(), AudioFormat.SampleRate);
                 Time.Advance(AudioFormat.FrameDuration);
@@ -266,7 +266,7 @@ public class SendPathTests
         using var rig = new TalkRig(300);
         rig.Engine.SelfTest = true;
         bool transmitted = false;
-        rig.Engine.TransmitChanged += t => transmitted |= t is not null;
+        rig.Engine.TransmitChanged += otherByte => transmitted |= otherByte is not null;
         await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Assert.Equal(2, rig.Frames(1)); // the decision says "to the own ears"
         await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
@@ -316,7 +316,7 @@ public class SendPathTests
     /// <summary>Package 135: the server's figure every 2 s on the rig's clock, as the main view model passes it on.</summary>
     static void ReportLoss(TalkRig rig, double percent, int times)
     {
-        for (int i = 0; i < times; i++)
+        for (int index = 0; index < times; index++)
         {
             rig.Engine.Loss.Report(new LossReport(100, (uint)percent));
             rig.Time.Advance(TimeSpan.FromSeconds(2));
@@ -397,10 +397,10 @@ public class SendPathTests
     static float[] Constant(float value) => Enumerable.Repeat(value, AudioFormat.FrameSamples).ToArray();
 
     /// <summary>Waits until the condition holds (at most 5 s): the audio and key threads may get their turn late on a busy machine.</summary>
-    internal static async Task Until(Func<bool> done, int ms = 5000)
+    internal static async Task Until(Func<bool> done, int milliseconds = 5000)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!done() && watch.ElapsedMilliseconds < ms) await Task.Delay(10);
+        while (!done() && watch.ElapsedMilliseconds < milliseconds) await Task.Delay(10);
     }
 
     /// <summary>Waits until the tone thread has fed frames through the gate, so a silence check that follows proves something.</summary>
@@ -427,7 +427,7 @@ public class SendPathTests
         var vad = new VoiceActivityDetector();
         Assert.False(vad.Process(Constant(0f)));
         Assert.True(vad.Process(Constant(0.1f))); // -20 dBFS
-        for (int i = 0; i < VoiceActivityDetector.HangoverFrames; i++) Assert.True(vad.Process(Constant(0.001f)), $"frame {i}");
+        for (int index = 0; index < VoiceActivityDetector.HangoverFrames; index++) Assert.True(vad.Process(Constant(0.001f)), $"frame {index}");
         Assert.False(vad.Process(Constant(0.001f)));
     }
 
@@ -442,8 +442,8 @@ public class SendPathTests
         var vad = new VoiceActivityDetector { ThresholdDb = -40 };
         Assert.False(vad.Process(AtDb(-42))); // between 0.7 × and the threshold: does not open
         Assert.True(vad.Process(AtDb(-30)));
-        for (int i = 0; i < 30; i++) Assert.True(vad.Process(AtDb(-42)), $"between, frame {i}"); // the end of a word: no hold counting
-        for (int i = 0; i < 9; i++) Assert.True(vad.Process(AtDb(-44)), $"hold, frame {i}"); // below 0.7 ×: 180 ms
+        for (int index = 0; index < 30; index++) Assert.True(vad.Process(AtDb(-42)), $"between, frame {index}"); // the end of a word: no hold counting
+        for (int index = 0; index < 9; index++) Assert.True(vad.Process(AtDb(-44)), $"hold, frame {index}"); // below 0.7 ×: 180 ms
         Assert.False(vad.Process(AtDb(-44)));
         Assert.False(vad.Process(AtDb(-42)));
     }
@@ -452,7 +452,7 @@ public class SendPathTests
     static bool FeedNoise(VoiceActivityDetector vad, Random random, float db, int frames)
     {
         bool opened = false;
-        for (int i = 0; i < frames; i++) opened |= vad.Process(VoiceFilterTests.Noise(random, db));
+        for (int index = 0; index < frames; index++) opened |= vad.Process(VoiceFilterTests.Noise(random, db));
         return opened;
     }
 
@@ -512,7 +512,7 @@ public class SendPathTests
         for (int frame = 0; frame < 150;)
         {
             foreach (var db in syllable) Assert.True(vad.Process(VoiceFilterTests.Noise(random, db)), $"frame {frame++}, {vad.ThresholdInUseDb:0.0} dBFS");
-            for (int i = 0; i < gapFrames; i++) Assert.True(vad.Process(VoiceFilterTests.Noise(random, -55)), $"gap frame {frame++}");
+            for (int index = 0; index < gapFrames; index++) Assert.True(vad.Process(VoiceFilterTests.Noise(random, -55)), $"gap frame {frame++}");
         }
     }
 
@@ -522,9 +522,9 @@ public class SendPathTests
     {
         var vad = new VoiceActivityDetector { Automatic = true, ThresholdDb = -60 };
         var random = new Random(3);
-        for (int i = 0; i < 15; i++)
+        for (int index = 0; index < 15; index++)
         {
-            Assert.True(vad.Process(VoiceFilterTests.Noise(random, -55)), $"frame {i}"); // -55 is above the manual -60
+            Assert.True(vad.Process(VoiceFilterTests.Noise(random, -55)), $"frame {index}"); // -55 is above the manual -60
             Assert.Equal(-60f, vad.ThresholdInUseDb);
         }
         vad.Process(VoiceFilterTests.Noise(random, -55));
@@ -567,25 +567,25 @@ public class SendPathTests
         int counter = 0;
         foreach (var size in new[] { 441, 1000, 3, 1500, 16 })
         {
-            ReadOnlySpan<float> chunk = Enumerable.Range(counter, size).Select(i => (float)i).ToArray();
+            ReadOnlySpan<float> chunk = Enumerable.Range(counter, size).Select(index => (float)index).ToArray();
             counter += size;
             while (chunker.Take(ref chunk)) frames.Add(chunker.Frame.ToArray()); // the frame buffer is reused
         }
         Assert.Equal(counter / AudioFormat.FrameSamples, frames.Count);
-        Assert.All(frames, f => Assert.Equal(AudioFormat.FrameSamples, f.Length));
-        Assert.Equal(Enumerable.Range(0, frames.Count * AudioFormat.FrameSamples).Select(i => (float)i), frames.SelectMany(f => f));
+        Assert.All(frames, samples => Assert.Equal(AudioFormat.FrameSamples, samples.Length));
+        Assert.Equal(Enumerable.Range(0, frames.Count * AudioFormat.FrameSamples).Select(index => (float)index), frames.SelectMany(samples => samples));
     }
 
     static float[] Sine(double frequency, int rate, double seconds, double amplitude = 0.5) =>
-        Enumerable.Range(0, (int)(rate * seconds)).Select(i => (float)(amplitude * Math.Sin(2 * Math.PI * frequency * i / rate))).ToArray();
+        Enumerable.Range(0, (int)(rate * seconds)).Select(index => (float)(amplitude * Math.Sin(2 * Math.PI * frequency * index / rate))).ToArray();
 
     /// <summary>Package 138: through the capture resampler in 10 ms chunks, as WASAPI delivers them.</summary>
     static float[] Resample(float[] input, int rate)
     {
         var resampler = new SincResampler(rate, AudioFormat.SampleRate);
         var output = new List<float>();
-        for (int i = 0; i < input.Length; i += rate / 100)
-            output.AddRange(resampler.Process(input.AsSpan(i, Math.Min(rate / 100, input.Length - i))));
+        for (int index = 0; index < input.Length; index += rate / 100)
+            output.AddRange(resampler.Process(input.AsSpan(index, Math.Min(rate / 100, input.Length - index))));
         return [.. output];
     }
 
@@ -593,12 +593,12 @@ public class SendPathTests
     static float[] ResampleLinear(float[] input, int rate)
     {
         var output = new float[(int)((long)input.Length * AudioFormat.SampleRate / rate)];
-        for (int j = 0; j < output.Length; j++)
+        for (int otherIndex = 0; otherIndex < output.Length; otherIndex++)
         {
-            double position = (double)j * rate / AudioFormat.SampleRate;
-            int i = (int)position;
-            float a = input[i], b = input[Math.Min(i + 1, input.Length - 1)];
-            output[j] = a + (b - a) * (float)(position - i);
+            double position = (double)otherIndex * rate / AudioFormat.SampleRate;
+            int index = (int)position;
+            float a = input[index], b = input[Math.Min(index + 1, input.Length - 1)];
+            output[otherIndex] = a + (b - a) * (float)(position - index);
         }
         return output;
     }
@@ -611,19 +611,19 @@ public class SendPathTests
         var steady = output.AsSpan(4800, 48 * 800); // past the start, a whole number of 1 kHz periods
         // the 1 kHz part, fitted by correlation, and what is left besides it
         double re = 0, im = 0;
-        for (int n = 0; n < steady.Length; n++)
+        for (int count = 0; count < steady.Length; count++)
         {
-            double w = 2 * Math.PI * 1000 * n / AudioFormat.SampleRate;
-            re += steady[n] * Math.Cos(w);
-            im += steady[n] * Math.Sin(w);
+            double w = 2 * Math.PI * 1000 * count / AudioFormat.SampleRate;
+            re += steady[count] * Math.Cos(w);
+            im += steady[count] * Math.Sin(w);
         }
         double amplitude = 2 * Math.Sqrt(re * re + im * im) / steady.Length, phase = Math.Atan2(re, im);
         Assert.InRange(20 * Math.Log10(amplitude / 0.5), -0.5, 0.5);
         double rest = 0;
-        for (int n = 0; n < steady.Length; n++)
+        for (int count = 0; count < steady.Length; count++)
         {
-            double fitted = amplitude * Math.Sin(2 * Math.PI * 1000 * n / AudioFormat.SampleRate + phase);
-            rest += (steady[n] - fitted) * (steady[n] - fitted);
+            double fitted = amplitude * Math.Sin(2 * Math.PI * 1000 * count / AudioFormat.SampleRate + phase);
+            rest += (steady[count] - fitted) * (steady[count] - fitted);
         }
         Assert.True(Math.Sqrt(rest / steady.Length) < 0.001 * amplitude, $"left besides 1 kHz: {Math.Sqrt(rest / steady.Length)}");
     }
@@ -631,22 +631,22 @@ public class SendPathTests
     /// <summary>Energy below <paramref name="below"/> Hz in a Blackman-Harris windowed stretch, in 5 Hz bins.</summary>
     static double EnergyBelow(ReadOnlySpan<float> samples, double below)
     {
-        int n = samples.Length;
-        var windowed = new double[n];
-        for (int i = 0; i < n; i++)
+        int count = samples.Length;
+        var windowed = new double[count];
+        for (int index = 0; index < count; index++)
         {
-            double x = 2 * Math.PI * i / (n - 1);
-            windowed[i] = samples[i] * (0.35875 - 0.48829 * Math.Cos(x) + 0.14128 * Math.Cos(2 * x) - 0.01168 * Math.Cos(3 * x));
+            double x = 2 * Math.PI * index / (count - 1);
+            windowed[index] = samples[index] * (0.35875 - 0.48829 * Math.Cos(x) + 0.14128 * Math.Cos(2 * x) - 0.01168 * Math.Cos(3 * x));
         }
         double energy = 0;
-        for (double f = 0; f < below; f += (double)AudioFormat.SampleRate / n)
+        for (double f = 0; f < below; f += (double)AudioFormat.SampleRate / count)
         {
             double re = 0, im = 0;
-            for (int i = 0; i < n; i++)
+            for (int index = 0; index < count; index++)
             {
-                double w = 2 * Math.PI * f * i / AudioFormat.SampleRate;
-                re += windowed[i] * Math.Cos(w);
-                im += windowed[i] * Math.Sin(w);
+                double w = 2 * Math.PI * f * index / AudioFormat.SampleRate;
+                re += windowed[index] * Math.Cos(w);
+                im += windowed[index] * Math.Sin(w);
             }
             energy += re * re + im * im;
         }
@@ -679,9 +679,9 @@ public class SendPathTests
         var resampler = new SincResampler(44_100, AudioFormat.SampleRate);
         int[] sizes = [441, 440, 1000, 3, 448, 1];
         long fed = 0, total = 0;
-        for (int i = 0; fed < 10 * 44_100; i++)
+        for (int index = 0; fed < 10 * 44_100; index++)
         {
-            int size = (int)Math.Min(sizes[i % sizes.Length], 10 * 44_100 - fed);
+            int size = (int)Math.Min(sizes[index % sizes.Length], 10 * 44_100 - fed);
             total += resampler.Process(new float[size]).Length;
             fed += size;
         }
@@ -704,12 +704,12 @@ public class SendPathTests
         int[] sizes = [441, 440, 448];
         int next = 0;
         void Chunk() => resampler.Process(input.AsSpan(0, sizes[next++ % sizes.Length]));
-        for (int i = 0; i < 200; i++) Chunk();
+        for (int index = 0; index < 200; index++) Chunk();
         var windows = new long[3];
         for (int w = 0; w < windows.Length; w++)
         {
             long before = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < 100; i++) Chunk();
+            for (int index = 0; index < 100; index++) Chunk();
             windows[w] = GC.GetAllocatedBytesForCurrentThread() - before;
         }
         Assert.Equal(0, windows.Min()); // one clean window: the runtime may allocate now and then (IdleCostTests)
@@ -724,10 +724,10 @@ public class SendPathTests
         return engine;
     }
 
-    static async Task<float> LoudestOutput(AudioEngine engine, int ms)
+    static async Task<float> LoudestOutput(AudioEngine engine, int milliseconds)
     {
         float loudest = -120;
-        for (int t = 0; t < ms; t += 20)
+        for (int t = 0; t < milliseconds; t += 20)
         {
             await Task.Delay(20);
             loudest = Math.Max(loudest, engine.LastOutputLevelDb);
@@ -848,15 +848,15 @@ public class SendPathTests
     public void InputGain_SoftClips()
     {
         var frame = new float[AudioFormat.FrameSamples];
-        for (int i = 0; i < frame.Length; i++) frame[i] = 0.8f * MathF.Sin(2 * MathF.PI * 220 * i / AudioFormat.SampleRate);
+        for (int index = 0; index < frame.Length; index++) frame[index] = 0.8f * MathF.Sin(2 * MathF.PI * 220 * index / AudioFormat.SampleRate);
         var raised = frame.Select(s => s * 2).ToArray();
         CapturePipeline.ApplyGain(frame, 2f);
-        for (int i = 0; i < frame.Length; i++)
+        for (int index = 0; index < frame.Length; index++)
         {
-            Assert.True(MathF.Abs(frame[i]) <= 1f, $"sample {i}: {frame[i]}");
-            Assert.Equal(MathF.Sign(raised[i]), MathF.Sign(frame[i]));
-            if (MathF.Abs(raised[i]) <= AutoGain.PeakLimit) Assert.Equal(raised[i], frame[i]); // below -3 dBFS: unchanged
-            else Assert.InRange(MathF.Abs(frame[i]), AutoGain.PeakLimit, MathF.Abs(raised[i])); // above: rounded off, never louder
+            Assert.True(MathF.Abs(frame[index]) <= 1f, $"sample {index}: {frame[index]}");
+            Assert.Equal(MathF.Sign(raised[index]), MathF.Sign(frame[index]));
+            if (MathF.Abs(raised[index]) <= AutoGain.PeakLimit) Assert.Equal(raised[index], frame[index]); // below -3 dBFS: unchanged
+            else Assert.InRange(MathF.Abs(frame[index]), AutoGain.PeakLimit, MathF.Abs(raised[index])); // above: rounded off, never louder
         }
         Assert.True(frame.Max() > 0.95f, $"peak {frame.Max()}"); // still loud: a soft clip, not a limiter at -3 dBFS
 
@@ -883,7 +883,7 @@ public class SendPathTests
         pipeline.ChooseTarget = _ => Ch; // as if the key is held through the pause
         var sizes = new List<int>();
         pipeline.FrameEncoded += (packet, _) => sizes.Add(packet.Length);
-        for (int i = 0; i < 50; i++) pipeline.Feed(Constant(0f), AudioFormat.SampleRate);
+        for (int index = 0; index < 50; index++) pipeline.Feed(Constant(0f), AudioFormat.SampleRate);
         Assert.Equal(51, sizes.Count); // the frame before the first one too
         Assert.All(sizes, size => Assert.True(size > 1, $"{size} byte packet"));
     }
@@ -905,8 +905,8 @@ public class SendPathTests
 
         async Task<(VoiceHeader Header, byte[] Plain, IPEndPoint From)> Receive()
         {
-            using var cts = new CancellationTokenSource(10_000);
-            var got = await server.ReceiveAsync(cts.Token);
+            using var cancelSource = new CancellationTokenSource(10_000);
+            var got = await server.ReceiveAsync(cancelSource.Token);
             Assert.True(serverCrypto.TryOpen(PacketDirection.ClientToServer, got.Buffer, out var header, out var plain));
             return (header, plain, got.RemoteEndPoint);
         }
@@ -920,14 +920,14 @@ public class SendPathTests
             Assert.Equal(uplink, client.UplinkLoss);
         }
         var frames = Enumerable.Range(0, 10).Select(_ => RandomNumberGenerator.GetBytes(40)).ToArray();
-        async Task<byte[]?> Send(int n, byte target = Ch)
+        async Task<byte[]?> Send(int count, byte target = Ch)
         {
-            client.SendVoice(frames[n], target);
+            client.SendVoice(frames[count], target);
             var (header, plain, _) = await Receive();
             Assert.Equal(PacketType.Voice, header.Type);
             Assert.True(RelayPayload.TryReadArrays(plain, out var seq, out var opus, out var copy));
-            Assert.Equal((uint)n, seq);
-            Assert.Equal(frames[n], opus);
+            Assert.Equal((uint)count, seq);
+            Assert.Equal(frames[count], opus);
             return copy;
         }
 
@@ -1108,7 +1108,7 @@ public class SendPathTests
     [Fact]
     public void DeviceWatcher_RegistersAndUnregisters()
     {
-        for (int i = 0; i < 3; i++)
+        for (int index = 0; index < 3; index++)
         {
             using var watcher = DeviceWatcher.Start(() => { });
         }
@@ -1116,15 +1116,15 @@ public class SendPathTests
 
     // ---- Package 142 (A151): music mode ----
 
-    /// <summary>Package 142: 20 ms of interleaved stereo, a tone per side, continuing its phase from frame <paramref name="n"/>.</summary>
-    static float[] StereoTones(int n, double left = 440, double right = 1000, float amplitude = 0.3f)
+    /// <summary>Package 142: 20 ms of interleaved stereo, a tone per side, continuing its phase from frame <paramref name="count"/>.</summary>
+    static float[] StereoTones(int count, double left = 440, double right = 1000, float amplitude = 0.3f)
     {
         var frame = new float[AudioFormat.StereoFrameSamples];
-        for (int i = 0; i < AudioFormat.FrameSamples; i++)
+        for (int index = 0; index < AudioFormat.FrameSamples; index++)
         {
-            double t = (double)(n * AudioFormat.FrameSamples + i) / AudioFormat.SampleRate;
-            frame[2 * i] = left > 0 ? amplitude * (float)Math.Sin(2 * Math.PI * left * t) : 0;
-            frame[2 * i + 1] = right > 0 ? amplitude * (float)Math.Sin(2 * Math.PI * right * t) : 0;
+            double t = (double)(count * AudioFormat.FrameSamples + index) / AudioFormat.SampleRate;
+            frame[2 * index] = left > 0 ? amplitude * (float)Math.Sin(2 * Math.PI * left * t) : 0;
+            frame[2 * index + 1] = right > 0 ? amplitude * (float)Math.Sin(2 * Math.PI * right * t) : 0;
         }
         return frame;
     }
@@ -1186,8 +1186,8 @@ public class SendPathTests
     public void MusicMode_StereoArrivesSeparated()
     {
         var rig = new MusicRig();
-        for (int n = 0; n < 60; n++) rig.Feed(StereoTones(n), 2);
-        Assert.All(rig.Packets, p => Assert.True(IsStereo(p)));
+        for (int count = 0; count < 60; count++) rig.Feed(StereoTones(count), 2);
+        Assert.All(rig.Packets, bytes => Assert.True(IsStereo(bytes)));
         var steady = rig.Heard.Skip(20 * AudioFormat.StereoFrameSamples).Take(30 * AudioFormat.StereoFrameSamples).ToList();
         Assert.Equal(30 * AudioFormat.StereoFrameSamples, steady.Count);
         double leftOwn = ToneIn(steady, 0, 440), leftOther = ToneIn(steady, 0, 1000);
@@ -1200,18 +1200,18 @@ public class SendPathTests
         // a lost stereo frame plays from the copy in the next packet (Package 136), or is made up; both in stereo
         var jb = new JitterBuffer();
         var reference = new VoiceDecoder();
-        for (int n = 0; n < 12; n++)
-            if (n is not 5 and not 9) jb.Push((uint)n, rig.Packets[n], false, 20.0 * n, n == 6 ? rig.Packets[5] : null);
-        for (int n = 0; n < 12; n++)
+        for (int count = 0; count < 12; count++)
+            if (count is not 5 and not 9) jb.Push((uint)count, rig.Packets[count], false, 20.0 * count, count == 6 ? rig.Packets[5] : null);
+        for (int count = 0; count < 12; count++)
         {
             var played = jb.Pull()!;
             Assert.Equal(AudioFormat.StereoFrameSamples, played.Length);
-            if (n < 9) Assert.Equal(reference.Decode(rig.Packets[n]), played); // 5 from its copy, in full
+            if (count < 9) Assert.Equal(reference.Decode(rig.Packets[count]), played); // 5 from its copy, in full
             else reference.Decode([]);
         }
         // review: music packets carry no FEC, so the frame lost without a copy counts as concealed, not rebuilt
         Assert.Equal((1, 1, 0, 1), (jb.Recovered, jb.Lost, jb.Rebuilt, jb.Concealed));
-        Assert.All(rig.Packets.Skip(1), p => Assert.False(VoiceDecoder.MayCarryFec(p)));
+        Assert.All(rig.Packets.Skip(1), bytes => Assert.False(VoiceDecoder.MayCarryFec(bytes)));
 
         // a 44.1 kHz stereo microphone: the resampler keeps the sides apart too
         var resampler = new SincResampler(44_100, AudioFormat.SampleRate, 2);
@@ -1219,10 +1219,10 @@ public class SendPathTests
         for (int chunk = 0; chunk < 50; chunk++)
         {
             var input = new float[2 * 441];
-            for (int i = 0; i < 441; i++)
+            for (int index = 0; index < 441; index++)
             {
-                double t = (chunk * 441 + i) / 44_100.0;
-                (input[2 * i], input[2 * i + 1]) = ((float)(0.3 * Math.Sin(2 * Math.PI * 440 * t)), (float)(0.3 * Math.Sin(2 * Math.PI * 1000 * t)));
+                double t = (chunk * 441 + index) / 44_100.0;
+                (input[2 * index], input[2 * index + 1]) = ((float)(0.3 * Math.Sin(2 * Math.PI * 440 * t)), (float)(0.3 * Math.Sin(2 * Math.PI * 1000 * t)));
             }
             resampled.AddRange(resampler.Process(input).ToArray());
         }
@@ -1234,12 +1234,12 @@ public class SendPathTests
 
         var loud = new MusicRig { Kbps = OVS.Shared.Protocol.ProtocolLimits.MaxBitrate };
         var random = new Random(142);
-        for (int n = 0; n < 50; n++)
+        for (int count = 0; count < 50; count++)
             loud.Feed(Enumerable.Range(0, AudioFormat.StereoFrameSamples).Select(_ => 0.5f * (2 * random.NextSingle() - 1)).ToArray(), 2);
-        for (int n = 1; n < loud.Packets.Count; n++)
+        for (int count = 1; count < loud.Packets.Count; count++)
         {
-            var payload = RelayPayload.Build((uint)n, loud.Packets[n], loud.Packets[n - 1]);
-            Assert.Equal(RelayPayload.HeaderSize + loud.Packets[n].Length + loud.Packets[n - 1].Length, payload.Length); // the copy rode along
+            var payload = RelayPayload.Build((uint)count, loud.Packets[count], loud.Packets[count - 1]);
+            Assert.Equal(RelayPayload.HeaderSize + loud.Packets[count].Length + loud.Packets[count - 1].Length, payload.Length); // the copy rode along
         }
     }
 
@@ -1253,9 +1253,9 @@ public class SendPathTests
     {
         var format = WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 2);
         float[] buffer = [];
-        float[] Chunk(StereoInput sides, int n, double left, double right, float amplitude = 0.3f)
+        float[] Chunk(StereoInput sides, int count, double left, double right, float amplitude = 0.3f)
         {
-            var frame = StereoTones(n, left, right, amplitude); // 20 ms, as WASAPI hands it over
+            var frame = StereoTones(count, left, right, amplitude); // 20 ms, as WASAPI hands it over
             var bytes = new byte[frame.Length * sizeof(float)];
             Buffer.BlockCopy(frame, 0, bytes, 0, bytes.Length);
             return SampleConversion.ReadStereo(bytes, bytes.Length, format, ref buffer, sides).ToArray();
@@ -1265,20 +1265,20 @@ public class SendPathTests
         foreach (var (side, amplitude) in new[] { (0, 0.3f), (1, 0.3f), (0, 0.0008f) }) // the last at about -65 dBFS
         {
             var guitar = new StereoInput();
-            for (int n = 0; n < window + 50; n++) // the window, then 1 s
+            for (int count = 0; count < window + 50; count++) // the window, then 1 s
             {
-                var stereo = Chunk(guitar, n, side == 0 ? 440 : 0, side == 1 ? 440 : 0, amplitude);
-                if (n < window - 1) continue; // stereo meanwhile: 6 dB quieter on one side only
-                for (int i = 0; i < AudioFormat.FrameSamples; i++) Assert.Equal(stereo[2 * i + side], stereo[2 * i + 1 - side]);
-                Assert.Equal(VoiceActivityDetector.LevelDb(StereoTones(n, 440, 0, amplitude), 2), VoiceActivityDetector.LevelDb(stereo), 0.01f);
+                var stereo = Chunk(guitar, count, side == 0 ? 440 : 0, side == 1 ? 440 : 0, amplitude);
+                if (count < window - 1) continue; // stereo meanwhile: 6 dB quieter on one side only
+                for (int index = 0; index < AudioFormat.FrameSamples; index++) Assert.Equal(stereo[2 * index + side], stereo[2 * index + 1 - side]);
+                Assert.Equal(VoiceActivityDetector.LevelDb(StereoTones(count, 440, 0, amplitude), 2), VoiceActivityDetector.LevelDb(stereo), 0.01f);
             }
         }
 
         // guitar on input 1 for 4 s, then a voice microphone (here a 1 kHz tone) joins on input 2 for 0.5 s
         var interface2i2 = new StereoInput();
-        for (int n = 0; n < 200; n++) Chunk(interface2i2, n, 440, 0);
+        for (int count = 0; count < 200; count++) Chunk(interface2i2, count, 440, 0);
         var joined = new List<float[]>();
-        for (int n = 200; n < 225; n++) joined.Add(Chunk(interface2i2, n, 440, 1000));
+        for (int count = 200; count < 225; count++) joined.Add(Chunk(interface2i2, count, 440, 1000));
         Assert.Null(interface2i2.OnlySide(StereoTones(225), AudioFormat.SampleRate));
         foreach (var frame in joined.Skip(10)) // from 200 ms on
         {
@@ -1288,16 +1288,16 @@ public class SendPathTests
 
         // the same after only 2 s alone (no one-sided decision yet): heard separately at once
         var early = new StereoInput();
-        for (int n = 0; n < 100; n++) Chunk(early, n, 440, 0);
+        for (int count = 0; count < 100; count++) Chunk(early, count, 440, 0);
         var stereoAgain = Chunk(early, 100, 440, 1000);
         Assert.True(ToneIn(stereoAgain, 1, 1000) > 0.25 && ToneIn(stereoAgain, 1, 440) < 0.01, "separated");
 
         var song = new StereoInput();
-        for (int n = 0; n < 60; n++) Chunk(song, n, 440, 1000); // over a second of real stereo
-        for (int n = 60; n < 60 + window / 2; n++) // then hard left for a while
+        for (int count = 0; count < 60; count++) Chunk(song, count, 440, 1000); // over a second of real stereo
+        for (int count = 60; count < 60 + window / 2; count++) // then hard left for a while
         {
-            var panned = Chunk(song, n, 440, 0);
-            Assert.All(Enumerable.Range(0, AudioFormat.FrameSamples), i => Assert.Equal(0f, panned[2 * i + 1]));
+            var panned = Chunk(song, count, 440, 0);
+            Assert.All(Enumerable.Range(0, AudioFormat.FrameSamples), index => Assert.Equal(0f, panned[2 * index + 1]));
         }
         var both = Chunk(song, 60 + window / 2, 440, 1000);
         Assert.True(ToneIn(both, 0, 1000) < 0.01 && ToneIn(both, 1, 440) < 0.01, "still separated");
@@ -1311,10 +1311,10 @@ public class SendPathTests
     public void MusicMode_LowBitrate_Mono()
     {
         var rig = new MusicRig { Kbps = 32 };
-        for (int n = 0; n < 30; n++) rig.Feed(StereoTones(n), 2);
-        Assert.All(rig.Packets, p => Assert.False(IsStereo(p)));
+        for (int count = 0; count < 30; count++) rig.Feed(StereoTones(count), 2);
+        Assert.All(rig.Packets, bytes => Assert.False(IsStereo(bytes)));
         var steady = rig.Heard.Skip(10 * AudioFormat.StereoFrameSamples).ToList();
-        for (int i = 0; i < steady.Count; i += 2) Assert.Equal(steady[i], steady[i + 1], 1e-3f);
+        for (int index = 0; index < steady.Count; index += 2) Assert.Equal(steady[index], steady[index + 1], 1e-3f);
         Assert.True(ToneIn(steady, 0, 440) > 0.1 && ToneIn(steady, 1, 1000) > 0.1, "both tones, downmixed");
 
         // the adapter raises it again and halves it: the same encoder goes stereo and back without a reset, and the
@@ -1323,10 +1323,10 @@ public class SendPathTests
         Assert.NotNull(encoder);
         int before = rig.Heard.Count;
         rig.Kbps = 64;
-        for (int n = 30; n < 50; n++) rig.Feed(StereoTones(n), 2);
+        for (int count = 30; count < 50; count++) rig.Feed(StereoTones(count), 2);
         Assert.True(IsStereo(rig.Packets[^1]));
         rig.Kbps = 32;
-        for (int n = 50; n < 70; n++) rig.Feed(StereoTones(n), 2);
+        for (int count = 50; count < 70; count++) rig.Feed(StereoTones(count), 2);
         Assert.False(IsStereo(rig.Packets[^1]));
         Assert.Same(encoder, rig.Pipeline.MusicEncoder);
         var across = rig.Heard.Skip(before).ToList();
@@ -1340,14 +1340,14 @@ public class SendPathTests
 
         var mono = new MusicRig { Kbps = 128 };
         mono.Feed(Constant(0.1f), 1); // a mono microphone
-        Assert.All(mono.Packets, p => Assert.False(IsStereo(p)));
+        Assert.All(mono.Packets, bytes => Assert.False(IsStereo(bytes)));
 
         var voice = new MusicRig { Kbps = 128 };
         voice.Pipeline.Music = false;
         voice.Feed(StereoTones(0), 2); // a stereo buffer while switching back: downmixed
         voice.Feed(Constant(0.1f), 1);
         Assert.Equal(3, voice.Packets.Count); // with the pre-roll frame
-        Assert.All(voice.Packets, p => Assert.False(IsStereo(p)));
+        Assert.All(voice.Packets, bytes => Assert.False(IsStereo(bytes)));
     }
 
     /// <summary>
@@ -1375,17 +1375,17 @@ public class SendPathTests
             return null;
         };
         var heard = new List<float>();
-        for (int i = 0; i < far.Length; i++)
+        for (int index = 0; index < far.Length; index++)
         {
-            if (i == 150) pipeline.Music = false; // back in voice mode
-            pipeline.Canceller.Render(far[i]);
+            if (index == 150) pipeline.Music = false; // back in voice mode
+            pipeline.Canceller.Render(far[index]);
             var mic = new float[AudioFormat.FrameSamples];
-            if (i >= delay)
-                for (int s = 0; s < mic.Length; s++) mic[s] = 0.5f * far[i - delay][s];
+            if (index >= delay)
+                for (int s = 0; s < mic.Length; s++) mic[s] = 0.5f * far[index - delay][s];
             heard.Add(VoiceActivityDetector.LevelDb(mic));
             pipeline.Feed(mic, AudioFormat.SampleRate);
         }
-        for (int i = 0; i < 150; i++) Assert.Equal(heard[i], levels[i], 0.01f); // untouched in music mode
+        for (int index = 0; index < 150; index++) Assert.Equal(heard[index], levels[index], 0.01f); // untouched in music mode
         double voiceIn = heard.Skip(250).Average(), voiceOut = levels.Skip(250).Average();
         Assert.True(voiceIn - voiceOut > 10, $"voice mode: {voiceIn:0.0} dBFS in, {voiceOut:0.0} dBFS out");
 
@@ -1393,10 +1393,10 @@ public class SendPathTests
         using var gain = CapturePipeline.Manual();
         (gain.AutoGain, gain.Music) = (true, true);
         gain.ChooseTarget = _ => null;
-        for (int n = 0; n < 150; n++) gain.Feed(Constant(0.01f), AudioFormat.SampleRate); // -40 dBFS
+        for (int count = 0; count < 150; count++) gain.Feed(Constant(0.01f), AudioFormat.SampleRate); // -40 dBFS
         Assert.Equal(-40f, gain.Vad.LastLevelDb, 0.01f);
         gain.Music = false;
-        for (int n = 0; n < 150; n++) gain.Feed(Constant(0.01f), AudioFormat.SampleRate);
+        for (int count = 0; count < 150; count++) gain.Feed(Constant(0.01f), AudioFormat.SampleRate);
         Assert.True(gain.Vad.LastLevelDb > -30, $"{gain.Vad.LastLevelDb} dBFS");
 
         using var keys = new KeyPoller(TimeProvider.System);
@@ -1424,7 +1424,7 @@ public class SendPathTests
         rig.Signal = () => StereoTones(n++);
         void Feed(int count)
         {
-            for (int i = 0; i < count; i++) rig.Pipeline.Feed(rig.Signal(), AudioFormat.SampleRate, 2);
+            for (int index = 0; index < count; index++) rig.Pipeline.Feed(rig.Signal(), AudioFormat.SampleRate, 2);
         }
 
         Feed(5);
@@ -1435,13 +1435,13 @@ public class SendPathTests
         await rig.Key(TalkRig.Ptt, false, KeyAction.PushToTalk);
         Feed(5);
         Assert.Equal(6, packets.Count);
-        Assert.All(packets, p => Assert.True(IsStereo(p)));
+        Assert.All(packets, bytes => Assert.True(IsStereo(bytes)));
 
         rig.Engine.SelfTest = true; // the own ears hear what a 64 kbps channel would send: stereo
         await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Feed(3);
         Assert.Equal(10, packets.Count);
-        Assert.All(packets.Skip(6), p => Assert.True(IsStereo(p)));
+        Assert.All(packets.Skip(6), bytes => Assert.True(IsStereo(bytes)));
 
         var vad = CapturePipeline.Manual();
         vad.Music = true;
@@ -1450,10 +1450,10 @@ public class SendPathTests
         vad.ChooseTarget = voice => voice ? Ch : null;
         vad.FrameEncoded += (_, _) => sent++;
         float amplitude = MathF.Pow(10, -27 / 20f); // -30 dBFS RMS on the left, silence on the right: -33 dB over both
-        for (int i = 0; i < 3; i++) vad.Feed(StereoTones(i, right: 0, amplitude: amplitude), AudioFormat.SampleRate, 2);
+        for (int index = 0; index < 3; index++) vad.Feed(StereoTones(index, right: 0, amplitude: amplitude), AudioFormat.SampleRate, 2);
         Assert.True(vad.Vad.LastLevelDb > -31, $"{vad.Vad.LastLevelDb} dBFS");
         Assert.Equal(4, sent);
-        for (int i = 0; i < 20; i++) vad.Feed(new float[AudioFormat.StereoFrameSamples], AudioFormat.SampleRate, 2);
+        for (int index = 0; index < 20; index++) vad.Feed(new float[AudioFormat.StereoFrameSamples], AudioFormat.SampleRate, 2);
         int closed = sent;
         vad.Feed(new float[AudioFormat.StereoFrameSamples], AudioFormat.SampleRate, 2);
         Assert.Equal(closed, sent); // silence closes it after the hold

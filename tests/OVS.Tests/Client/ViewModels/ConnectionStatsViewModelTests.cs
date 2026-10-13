@@ -28,7 +28,7 @@ public class ConnectionStatsViewModelTests
 
         var stats = ConnectionStats.CreateBlank();
         Assert.Equal((SignalRating.Unknown, 0, "-"), (stats.Rating, stats.Bars, stats.RoundTripText));
-        for (int i = 0; i < 40; i++) Sample(stats, 250); // far away, but steady
+        for (int index = 0; index < 40; index++) Sample(stats, 250); // far away, but steady
         Assert.Equal((SignalRating.Good, 4, 250.0), (stats.Rating, stats.Bars, stats.BaselineMs));
 
         foreach (var (above, rating, bars) in new[] { (69, SignalRating.Good, 4), (159, SignalRating.Fair, 3), (299, SignalRating.Poor, 2), (300, SignalRating.Bad, 1) })
@@ -38,7 +38,7 @@ public class ConnectionStatsViewModelTests
         }
         Assert.Equal(250.0, stats.BaselineMs);
 
-        for (int i = 0; i < 30; i++) Sample(stats, 600); // the line got slower for good: the baseline follows
+        for (int index = 0; index < 30; index++) Sample(stats, 600); // the line got slower for good: the baseline follows
         Assert.Equal((SignalRating.Good, 600.0), (stats.Rating, stats.BaselineMs));
 
         stats.Unreachable = true; // crossed out, no bars

@@ -13,12 +13,12 @@ public class SoundTests
     [Fact]
     public void Defaults_EveryEvent_ShortAudibleDistinct()
     {
-        var tones = Enum.GetValues<SoundEvent>().ToDictionary(e => e, SoundSynth.Render);
-        Assert.All(tones, t =>
+        var tones = Enum.GetValues<SoundEvent>().ToDictionary(soundEvent => soundEvent, SoundSynth.Render);
+        Assert.All(tones, pair =>
         {
-            Assert.InRange(t.Value.Length, AudioFormat.SampleRate / 20, AudioFormat.SampleRate); // 50 ms to 1 s
-            Assert.True(VoiceActivityDetector.LevelDb(t.Value) > -30, t.Key.ToString());
-            Assert.True(t.Value.Max(Math.Abs) <= 0.5f, t.Key.ToString()); // gentle, never at full scale
+            Assert.InRange(pair.Value.Length, AudioFormat.SampleRate / 20, AudioFormat.SampleRate); // 50 ms to 1 s
+            Assert.True(VoiceActivityDetector.LevelDb(pair.Value) > -30, pair.Key.ToString());
+            Assert.True(pair.Value.Max(Math.Abs) <= 0.5f, pair.Key.ToString()); // gentle, never at full scale
         });
         // Package 56: the three chat sounds share the tone of a private message by default, all others differ
         // Package 60: the own link tone sounds like the one for others by default
@@ -28,11 +28,11 @@ public class SoundTests
             [SoundEvent.PrivateMessage, SoundEvent.ServerMessage, SoundEvent.ChannelMessage], [SoundEvent.LinkVoice, SoundEvent.OwnLinkVoice],
             [SoundEvent.GroupChanged, SoundEvent.GroupChangedByMe],
         ];
-        foreach (var group in shared) Assert.All(group, e => Assert.Equal(tones[group[0]], tones[e]));
-        bool SameGroup(SoundEvent a, SoundEvent b) => shared.Any(g => g.Contains(a) && g.Contains(b));
-        foreach (var a in tones)
-            foreach (var b in tones.Where(b => b.Key > a.Key && !SameGroup(a.Key, b.Key)))
-                Assert.False(a.Value.SequenceEqual(b.Value), $"{a.Key} = {b.Key}");
+        foreach (var group in shared) Assert.All(group, soundEvent => Assert.Equal(tones[group[0]], tones[soundEvent]));
+        bool SameGroup(SoundEvent soundEvent, SoundEvent otherSoundEvent) => shared.Any(soundEvents => soundEvents.Contains(soundEvent) && soundEvents.Contains(otherSoundEvent));
+        foreach (var pair in tones)
+            foreach (var entry in tones.Where(b => b.Key > pair.Key && !SameGroup(pair.Key, b.Key)))
+                Assert.False(pair.Value.SequenceEqual(entry.Value), $"{pair.Key} = {entry.Key}");
         Assert.Same(tones[SoundEvent.MicOn], SoundSynth.Render(SoundEvent.MicOn)); // rendered once
         // Package 57: the link tone plays over speech, so it is short and softer than the others
         Assert.True(tones[SoundEvent.LinkVoice].Length <= AudioFormat.SampleRate / 10);
@@ -88,15 +88,15 @@ public class SoundTests
     public async Task TalkKeySounds_OffByDefault_PlayWhenOn()
     {
         SoundEvent[] talk = [SoundEvent.TalkKeyDown, SoundEvent.TalkKeyUp];
-        Assert.All(talk, e => Assert.Equal(0f, SoundPlayer.GainFor(new ClientSettings(), e)));
+        Assert.All(talk, soundEvent => Assert.Equal(0f, SoundPlayer.GainFor(new ClientSettings(), soundEvent)));
         var page = new OVS.Client.ViewModels.SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System);
-        var rows = page.SoundRows.Where(r => talk.Contains(r.Event)).ToList();
-        Assert.Equal(["Sprechtaste gedrückt", "Sprechtaste losgelassen"], rows.Select(r => r.Label));
-        Assert.All(rows, r => Assert.True(r.Muted));
+        var rows = page.SoundRows.Where(soundRow => talk.Contains(soundRow.Event)).ToList();
+        Assert.Equal(["Sprechtaste gedrückt", "Sprechtaste losgelassen"], rows.Select(soundRow => soundRow.Label));
+        Assert.All(rows, soundRow => Assert.True(soundRow.Muted));
         Assert.Empty(page.ToSettings(new ClientSettings()).Sounds); // off is the default: nothing stored
-        rows.ForEach(r => r.Muted = false);
+        rows.ForEach(soundRow => soundRow.Muted = false);
         var on = page.ToSettings(new ClientSettings());
-        Assert.All(talk, e => Assert.False(on.SoundFor(e).Muted));
+        Assert.All(talk, soundEvent => Assert.False(on.SoundFor(soundEvent).Muted));
         rows[0].ResetCommand.Execute(null); // back to the default: off again
         Assert.True(rows[0].Muted);
 

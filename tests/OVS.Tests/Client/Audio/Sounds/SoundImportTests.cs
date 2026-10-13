@@ -16,9 +16,9 @@ public sealed class SoundImportTests() : TempDirectoryTest("ovs-sounds-", quiet:
     {
         var path = Path.Combine(dir, name);
         using var writer = new WaveFileWriter(path, new WaveFormat(44100, 16, 2));
-        for (int i = 0; i < (int)(44100 * seconds); i++)
+        for (int index = 0; index < (int)(44100 * seconds); index++)
         {
-            short sample = (short)(8000 * Math.Sin(2 * Math.PI * 440 * i / 44100));
+            short sample = (short)(8000 * Math.Sin(2 * Math.PI * 440 * index / 44100));
             writer.WriteSample(sample / 32768f);
             writer.WriteSample(sample / 32768f);
         }

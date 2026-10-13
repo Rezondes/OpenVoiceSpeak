@@ -31,7 +31,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await a.SendAsync(new CreateChannel("Other", ""));
         other = (await a.WaitForAsync<ChannelAdded>()).Channel.Id;
         await c.SendAsync(new JoinChannel(other));
-        await c.WaitForAsync<UserUpdated>(u => u.User.SessionId == c.Id);
+        await c.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == c.Id);
 
         va = new TestVoice(a, server.VoiceEndPoint);
         vb = new TestVoice(b, server.VoiceEndPoint);
@@ -44,7 +44,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     /// </summary>
     static async Task<(VoiceHeader Header, byte[] Plain)?> SendUntilHeardAsync(TestVoice from, TestVoice to, byte target = VoiceHeader.TargetChannel)
     {
-        for (int i = 0; i < 5; i++)
+        for (int index = 0; index < 5; index++)
         {
             await from.SendAsync(PacketType.Voice, Opus, target);
             if (await to.ReceiveVoiceAsync(5000) is { } got) return got;
@@ -54,8 +54,8 @@ public sealed class VoiceRelayTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        foreach (var v in new[] { va, vb, vc }) v.Dispose();
-        foreach (var t in new[] { a, b, c }) await t.DisposeAsync();
+        foreach (var voice in new[] { va, vb, vc }) voice.Dispose();
+        foreach (var client in new[] { a, b, c }) await client.DisposeAsync();
         await server.DisposeAsync();
     }
 
@@ -157,7 +157,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await a.SendAsync(new LinkChannels(lobby, other));
         await c.WaitForAsync<ChannelsLinked>();
         await a.SendAsync(new EditChannel(lobby, "Lobby", "", 0, IsMuted: true));
-        await c.WaitForAsync<ChannelUpdated>(u => u.Channel.IsMuted);
+        await c.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.IsMuted);
         await va.HelloAsync();
         await vb.HelloAsync();
         await vc.HelloAsync();
@@ -169,7 +169,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         // lobby open again, now "other" is muted: link speech into it is heard there
         await a.SendAsync(new EditChannel(lobby, "Lobby", "", 0, IsMuted: false));
         await a.SendAsync(new EditChannel(other, "Other", "", 1, IsMuted: true));
-        await c.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == other && u.Channel.IsMuted);
+        await c.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.Id == other && channelUpdated.Channel.IsMuted);
         Assert.NotNull(await SendUntilHeardAsync(va, vc, VoiceHeader.TargetLinked));
     }
 
@@ -179,7 +179,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await va.HelloAsync();
         await vb.HelloAsync();
         await a.SendAsync(new SetSessionServerMute(b.Id, true));
-        await b.WaitForAsync<UserUpdated>(u => u.User.SessionId == b.Id && u.User.ServerMuted);
+        await b.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == b.Id && userUpdated.User.ServerMuted);
 
         await vb.SendAsync(PacketType.Voice, Opus);
         Assert.Null(await va.ReceiveVoiceAsync(400));
@@ -194,17 +194,17 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     {
         var time = new ManualTimeProvider(); // 20 ms per frame, as the sender's clock would run
         await using var own = await TestServer.StartAsync(time: time);
-        await using var x = await TestClient.ConnectAsync(own, "x");
-        await using var y = await TestClient.ConnectAsync(own, "y");
-        using var vx = new TestVoice(x, own.VoiceEndPoint);
-        using var vy = new TestVoice(y, own.VoiceEndPoint);
+        await using var client = await TestClient.ConnectAsync(own, "x");
+        await using var testClient = await TestClient.ConnectAsync(own, "y");
+        using var vx = new TestVoice(client, own.VoiceEndPoint);
+        using var vy = new TestVoice(testClient, own.VoiceEndPoint);
         await vx.HelloAsync();
         await vy.HelloAsync();
 
-        async Task Frame(uint n)
+        async Task Frame(uint number)
         {
             time.Advance(TimeSpan.FromMilliseconds(20));
-            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(n, Opus)));
+            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(number, Opus)));
             Assert.NotNull(await vy.ReceiveVoiceAsync()); // relayed, so the server has counted it
         }
         async Task<PingPayload> Ping(PingPayload ping)
@@ -216,18 +216,18 @@ public sealed class VoiceRelayTests : IAsyncLifetime
             return back;
         }
 
-        for (uint n = 0; n < 100; n++)
-            if (n % 10 != 5) await Frame(n); // every tenth lost on the way
+        for (uint number = 0; number < 100; number++)
+            if (number % 10 != 5) await Frame(number); // every tenth lost on the way
         Assert.Equal(new PingPayload(42, new LossReport(100, 10)), await Ping(new PingPayload(42, new LossReport(50, 5))));
-        Assert.Equal(new LossReport(50, 5), own.State.FindSession(x.Id)!.Voice.DownlinkLoss);
+        Assert.Equal(new LossReport(50, 5), own.State.FindSession(client.Id)!.Voice.DownlinkLoss);
 
         // a talk pause of 4 s (into the next window): the frame number goes on where it stopped, so nothing is missed
         time.Advance(TimeSpan.FromSeconds(4));
-        for (uint n = 100; n < 110; n++) await Frame(n);
+        for (uint number = 100; number < 110; number++) await Frame(number);
         Assert.Equal(new LossReport(100, 10), (await Ping(new PingPayload(7, default))).Loss); // the last full window
         time.Advance(TimeSpan.FromSeconds(5));
         Assert.Equal(new PingPayload(8, new LossReport(10, 0)), await Ping(new PingPayload(8, default)));
-        Assert.Equal(default, own.State.FindSession(x.Id)!.Voice.DownlinkLoss);
+        Assert.Equal(default, own.State.FindSession(client.Id)!.Voice.DownlinkLoss);
 
         // an empty ping (an older test client) is still answered, empty
         await vx.SendAsync(PacketType.Ping, []);
@@ -244,37 +244,37 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     {
         var time = new ManualTimeProvider();
         await using var own = await TestServer.StartAsync(time: time);
-        await using var x = await TestClient.ConnectAsync(own, "x");
-        await using var y = await TestClient.ConnectAsync(own, "y");
-        await using var z = await TestClient.ConnectAsync(own, "z");
+        await using var client = await TestClient.ConnectAsync(own, "x");
+        await using var testClient = await TestClient.ConnectAsync(own, "y");
+        await using var otherClient = await TestClient.ConnectAsync(own, "z");
         await using var w = await TestClient.ConnectAsync(own, "w");
-        using var vx = new TestVoice(x, own.VoiceEndPoint);
-        using var vy = new TestVoice(y, own.VoiceEndPoint);
-        using var vz = new TestVoice(z, own.VoiceEndPoint);
+        using var vx = new TestVoice(client, own.VoiceEndPoint);
+        using var vy = new TestVoice(testClient, own.VoiceEndPoint);
+        using var vz = new TestVoice(otherClient, own.VoiceEndPoint);
         using var vw = new TestVoice(w, own.VoiceEndPoint);
-        foreach (var v in new[] { vx, vy, vz, vw }) await v.HelloAsync();
+        foreach (var voice in new[] { vx, vy, vz, vw }) await voice.HelloAsync();
 
-        async Task Report(TestVoice v, LossReport downlink)
+        async Task Report(TestVoice voice, LossReport downlink)
         {
-            await v.SendAsync(PacketType.Ping, new PingPayload(0, downlink).Build());
-            Assert.NotNull(await v.ReceiveAsync());
+            await voice.SendAsync(PacketType.Ping, new PingPayload(0, downlink).Build());
+            Assert.NotNull(await voice.ReceiveAsync());
         }
         await Report(vy, new LossReport(100, 10)); // y on bad Wi-Fi
         await Report(vz, new LossReport(100, 1));  // z almost clean; w never reported a figure
 
         var f = Enumerable.Range(0, 6).Select(_ => RandomNumberGenerator.GetBytes(40)).ToArray();
-        async Task Send(uint n, byte[]? copy = null)
+        async Task Send(uint number, byte[]? copy = null)
         {
             time.Advance(TimeSpan.FromMilliseconds(20));
-            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(n, f[n], copy)));
+            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(number, f[number], copy)));
         }
-        static async Task Heard(TestVoice v, uint seq, byte[] opus, byte[]? copy)
+        static async Task Heard(TestVoice voice, uint seq, byte[] opus, byte[]? copy)
         {
-            var got = await v.ReceiveVoiceAsync();
+            var got = await voice.ReceiveVoiceAsync();
             Assert.NotNull(got);
-            Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var s, out var o, out var c));
+            Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var s, out var bytes, out var c));
             Assert.Equal(seq, s);
-            Assert.Equal(opus, o);
+            Assert.Equal(opus, bytes);
             Assert.Equal(copy, c);
         }
         async Task HeardSingle(uint seq)
@@ -296,7 +296,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await Heard(vy, 4, f[4], f[3]);
         await HeardSingle(3);
         await HeardSingle(4);
-        Assert.Equal(new LossReport(5, 1), own.State.FindSession(x.Id)!.Voice.Uplink.Report()); // a copy is no frame received
+        Assert.Equal(new LossReport(5, 1), own.State.FindSession(client.Id)!.Voice.Uplink.Report()); // a copy is no frame received
 
         await Report(vy, default); // a figure with nothing expected (a pause) changes nothing
         await Send(5);
@@ -331,45 +331,45 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     {
         var time = new ManualTimeProvider();
         await using var own = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"), time: time);
-        await using var x = await TestClient.ConnectAsync(own, "x", adminId);
-        await using var y = await TestClient.ConnectAsync(own, "y");
-        await using var z = await TestClient.ConnectAsync(own, "z");
+        await using var client = await TestClient.ConnectAsync(own, "x", adminId);
+        await using var testClient = await TestClient.ConnectAsync(own, "y");
+        await using var otherClient = await TestClient.ConnectAsync(own, "z");
         await using var cc = await TestClient.ConnectAsync(own, "c");
         await using var d = await TestClient.ConnectAsync(own, "d");
-        await x.SendAsync(new CreateChannel("Other", ""));
-        var otherId = (await x.WaitForAsync<ChannelAdded>()).Channel.Id;
+        await client.SendAsync(new CreateChannel("Other", ""));
+        var otherId = (await client.WaitForAsync<ChannelAdded>()).Channel.Id;
         foreach (var t in new[] { cc, d })
         {
             await t.SendAsync(new JoinChannel(otherId));
-            await t.WaitForAsync<UserUpdated>(u => u.User.SessionId == t.Id);
+            await t.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == t.Id);
         }
-        await x.SendAsync(new LinkChannels(x.Welcome.Snapshot.DefaultChannelId, otherId));
+        await client.SendAsync(new LinkChannels(client.Welcome.Snapshot.DefaultChannelId, otherId));
         await d.WaitForAsync<ChannelsLinked>();
-        using var vx = new TestVoice(x, own.VoiceEndPoint);
-        using var vy = new TestVoice(y, own.VoiceEndPoint);
-        using var vz = new TestVoice(z, own.VoiceEndPoint);
+        using var vx = new TestVoice(client, own.VoiceEndPoint);
+        using var vy = new TestVoice(testClient, own.VoiceEndPoint);
+        using var vz = new TestVoice(otherClient, own.VoiceEndPoint);
         using var vcc = new TestVoice(cc, own.VoiceEndPoint);
         using var vd = new TestVoice(d, own.VoiceEndPoint);
-        foreach (var v in new[] { vx, vy, vz, vcc, vd }) await v.HelloAsync();
-        foreach (var v in new[] { vy, vcc })
+        foreach (var voice in new[] { vx, vy, vz, vcc, vd }) await voice.HelloAsync();
+        foreach (var voice in new[] { vy, vcc })
         {
-            await v.SendAsync(PacketType.Ping, new PingPayload(0, new LossReport(100, 10)).Build());
-            Assert.NotNull(await v.ReceiveAsync());
+            await voice.SendAsync(PacketType.Ping, new PingPayload(0, new LossReport(100, 10)).Build());
+            Assert.NotNull(await voice.ReceiveAsync());
         }
 
         var f = Enumerable.Range(0, 60).Select(_ => RandomNumberGenerator.GetBytes(40)).ToArray();
-        async Task Send(uint n, byte target, byte[]? copy = null, int advanceMs = 20)
+        async Task Send(uint number, byte target, byte[]? copy = null, int advanceMs = 20)
         {
             time.Advance(TimeSpan.FromMilliseconds(advanceMs));
-            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(n, f[n], copy), target));
+            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(number, f[number], copy), target));
         }
-        static async Task Heard(TestVoice v, uint seq, byte[] opus, byte[]? copy)
+        static async Task Heard(TestVoice voice, uint seq, byte[] opus, byte[]? copy)
         {
-            var got = await v.ReceiveVoiceAsync();
+            var got = await voice.ReceiveVoiceAsync();
             Assert.NotNull(got);
-            Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var s, out var o, out var c));
+            Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var s, out var bytes, out var c));
             Assert.Equal(seq, s);
-            Assert.Equal(opus, o);
+            Assert.Equal(opus, bytes);
             Assert.Equal(copy, c);
         }
         const byte Ch = VoiceHeader.TargetChannel, Linked = VoiceHeader.TargetLinked;
@@ -378,7 +378,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await Send(1, Ch);
         await Heard(vy, 0, f[0], null);
         await Heard(vy, 1, f[1], f[0]);
-        foreach (uint n in new uint[] { 0, 1 }) await Heard(vz, n, f[n], null);
+        foreach (uint number in new uint[] { 0, 1 }) await Heard(vz, number, f[number], null);
         // frame 2 (for the lobby only) lost on the way in; frame 3 is linked and carries it: it reaches no one, alone or as copy
         await Send(3, Linked, f[2], 40);
         await Heard(vy, 3, f[3], null);
@@ -392,22 +392,22 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await Heard(vz, 4, f[4], null);
 
         // a frame sent while muted arrives but is relayed to no one, so it never travels later, alone or as copy
-        await x.SendAsync(new SetSelfState(true, false));
-        await x.WaitForAsync<UserUpdated>(u => u.User.SessionId == x.Id && u.User.SelfMuted);
+        await client.SendAsync(new SetSelfState(true, false));
+        await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id && userUpdated.User.SelfMuted);
         await Send(5, Linked, f[4]);
         await vx.SendAsync(PacketType.Ping, []); // handled while still muted
         Assert.NotNull(await vx.ReceiveAsync());
-        await x.SendAsync(new SetSelfState(false, false));
-        await x.WaitForAsync<UserUpdated>(u => u.User.SessionId == x.Id && !u.User.SelfMuted);
+        await client.SendAsync(new SetSelfState(false, false));
+        await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id && !userUpdated.User.SelfMuted);
         await Send(6, Linked, f[5]);
-        foreach (var v in new[] { vy, vz, vcc, vd }) await Heard(v, 6, f[6], null);
+        foreach (var voice in new[] { vy, vz, vcc, vd }) await Heard(voice, 6, f[6], null);
 
         // the end of the last talk spurt (7 sent, 8 lost) is no copy for the first frame 2 s later
         await Send(7, Linked, f[6]);
-        foreach (var v in new[] { vy, vcc }) await Heard(v, 7, f[7], f[6]);
-        foreach (var v in new[] { vz, vd }) await Heard(v, 7, f[7], null);
+        foreach (var voice in new[] { vy, vcc }) await Heard(voice, 7, f[7], f[6]);
+        foreach (var voice in new[] { vz, vd }) await Heard(voice, 7, f[7], null);
         await Send(9, Linked, f[8], 2000);
-        foreach (var v in new[] { vy, vz, vcc, vd }) await Heard(v, 9, f[9], null);
+        foreach (var voice in new[] { vy, vz, vcc, vd }) await Heard(voice, 9, f[9], null);
 
         // a recovered frame arriving late itself is not relayed twice
         await Send(10, Linked, f[9]);
@@ -415,18 +415,18 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await Send(11, Linked, null, 0);
         await vx.SendAsync(PacketType.Ping, []); // the answer shows the late 11 was handled before the clock moves on
         Assert.NotNull(await vx.ReceiveAsync());
-        foreach (uint n in new uint[] { 10, 11, 12 }) await Heard(vz, n, f[n], null);
+        foreach (uint number in new uint[] { 10, 11, 12 }) await Heard(vz, number, f[number], null);
         await Heard(vy, 10, f[10], f[9]);
         await Heard(vy, 12, f[12], f[11]);
         await Heard(vcc, 10, f[10], f[9]);
         await Heard(vcc, 12, f[12], f[11]);
-        foreach (uint n in new uint[] { 10, 11, 12 }) await Heard(vd, n, f[n], null);
+        foreach (uint number in new uint[] { 10, 11, 12 }) await Heard(vd, number, f[number], null);
 
         // a copy never crosses a move while talking: the frame before went to other listeners
         async Task Move(Guid to)
         {
-            await x.SendAsync(new JoinChannel(to));
-            await x.WaitForAsync<UserUpdated>(u => u.User.SessionId == x.Id && u.User.ChannelId == to);
+            await client.SendAsync(new JoinChannel(to));
+            await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id && userUpdated.User.ChannelId == to);
         }
         await Send(13, Ch);
         await Heard(vy, 13, f[13], null); // the target changed from linked
@@ -435,7 +435,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await Send(14, Ch, f[13]); // 13 went to the lobby: no copy in Other
         await Heard(vcc, 14, f[14], null);
         await Heard(vd, 14, f[14], null);
-        await Move(x.Welcome.Snapshot.DefaultChannelId);
+        await Move(client.Welcome.Snapshot.DefaultChannelId);
         await Send(16, Ch, f[15]); // 15 lost, the last frame relayed (14) went to Other: neither a copy nor a packet of its own here
         await Heard(vy, 16, f[16], null);
         await Heard(vz, 16, f[16], null);
@@ -443,11 +443,11 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         // a hostile sender skipping every other number with copies of the skipped ones: the extra packets come out of its
         // own budget (burst 10), so a listener without copies still gets 10 packets, not 19
         time.Advance(TimeSpan.FromSeconds(1));
-        for (uint n = 21; n < 40; n += 2)
+        for (uint number = 21; number < 40; number += 2)
         {
-            await Send(n, Linked, f[n - 1], 0); // no time passes: nothing refills the budget
-            if (n is > 21 and < 31) await Heard(vz, n - 1, f[n - 1], null); // recovered while tokens last
-            if (n <= 31) await Heard(vz, n, f[n], null); // 31 takes the last token, its extra packet finds none
+            await Send(number, Linked, f[number - 1], 0); // no time passes: nothing refills the budget
+            if (number is > 21 and < 31) await Heard(vz, number - 1, f[number - 1], null); // recovered while tokens last
+            if (number <= 31) await Heard(vz, number, f[number], null); // 31 takes the last token, its extra packet finds none
         }
         Assert.Null(await vz.ReceiveVoiceAsync(300)); // 33 to 39 over the budget
     }
@@ -471,7 +471,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     [Fact]
     public async Task Tcp_RoutingLikeUdp()
     {
-        foreach (var t in new[] { a, b, c }) await SwitchToTcpAsync(server, t);
+        foreach (var client in new[] { a, b, c }) await SwitchToTcpAsync(server, client);
 
         await SendTcpAsync(a, 0, Opus);
         await HeardTcp(b, a.Id, 0, Opus);
@@ -484,13 +484,13 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await HeardTcp(b, a.Id, 1, Opus, VoiceHeader.TargetLinked);
 
         await b.SendAsync(new SetSelfState(false, true));
-        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == b.Id && u.User.SelfDeafened);
+        await a.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == b.Id && userUpdated.User.SelfDeafened);
         await SendTcpAsync(a, 2, Opus, VoiceHeader.TargetLinked);
         await HeardTcp(c, a.Id, 2, Opus, VoiceHeader.TargetLinked);
         await b.AssertNoMessageAsync<VoiceDown>(); // deafened
 
         await a.SendAsync(new SetSessionServerMute(c.Id, true));
-        await c.WaitForAsync<UserUpdated>(u => u.User.SessionId == c.Id && u.User.ServerMuted);
+        await c.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == c.Id && userUpdated.User.ServerMuted);
         await SendTcpAsync(c, 0, Opus, VoiceHeader.TargetLinked);
         await a.AssertNoMessageAsync<VoiceDown>(); // server muted
         Assert.Equal(TimeSpan.FromMilliseconds(60), server.State.FindSession(a.Id)!.SpeechTime); // Package 70: relayed frames count
@@ -507,45 +507,45 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     {
         var time = new ManualTimeProvider();
         await using var own = await TestServer.StartAsync(time: time);
-        await using var x = await TestClient.ConnectAsync(own, "x");
-        await using var y = await TestClient.ConnectAsync(own, "y");
-        using var vx = new TestVoice(x, own.VoiceEndPoint);
+        await using var client = await TestClient.ConnectAsync(own, "x");
+        await using var testClient = await TestClient.ConnectAsync(own, "y");
+        using var vx = new TestVoice(client, own.VoiceEndPoint);
         await vx.HelloAsync();
-        await SwitchToTcpAsync(own, y);
+        await SwitchToTcpAsync(own, testClient);
         var f = Enumerable.Range(0, 6).Select(_ => RandomNumberGenerator.GetBytes(40)).ToArray();
-        async Task Send(uint n, byte[]? copy = null)
+        async Task Send(uint number, byte[]? copy = null)
         {
             time.Advance(TimeSpan.FromMilliseconds(20));
-            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(n, f[n], copy)));
+            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(number, f[number], copy)));
         }
 
         await Send(0);
-        await HeardTcp(y, x.Id, 0, f[0]);
+        await HeardTcp(testClient, client.Id, 0, f[0]);
         await Send(2, f[1]); // 1 lost on the way in
-        await HeardTcp(y, x.Id, 1, f[1]);
-        await HeardTcp(y, x.Id, 2, f[2]);
+        await HeardTcp(testClient, client.Id, 1, f[1]);
+        await HeardTcp(testClient, client.Id, 2, f[2]);
 
         var back = RandomNumberGenerator.GetBytes(60);
-        await SendTcpAsync(y, 7, back);
+        await SendTcpAsync(testClient, 7, back);
         var got = await vx.ReceiveVoiceAsync();
         Assert.NotNull(got);
-        Assert.Equal(y.Id, got.Value.Header.SessionId);
+        Assert.Equal(testClient.Id, got.Value.Header.SessionId);
         Assert.True(RelayPayload.TryReadArrays(got.Value.Plain, out var seq, out var opus, out var none));
         Assert.Equal(7u, seq);
         Assert.Equal(back, opus);
         Assert.Null(none);
 
-        using var vy = new TestVoice(y, own.VoiceEndPoint);
+        using var vy = new TestVoice(testClient, own.VoiceEndPoint);
         await vy.HelloAsync(); // UDP answers again, voice stays on TCP until the client uses it
         await Send(3);
-        await HeardTcp(y, x.Id, 3, f[3]);
+        await HeardTcp(testClient, client.Id, 3, f[3]);
         await vy.SendAsync(PacketType.Ping, []);
         Assert.NotNull(await vy.ReceiveAsync());
-        Assert.False(own.State.FindSession(y.Id)!.Voice.TcpVoice);
+        Assert.False(own.State.FindSession(testClient.Id)!.Voice.TcpVoice);
         await Send(4);
         Assert.True(RelayPayload.TryReadArrays((await vy.ReceiveVoiceAsync())!.Value.Plain, out seq, out _, out _));
         Assert.Equal(4u, seq);
-        await y.AssertNoMessageAsync<VoiceDown>();
+        await testClient.AssertNoMessageAsync<VoiceDown>();
     }
 
     /// <summary>Package 141: oversized, undecodable or wrongly addressed voice over TCP is dropped like a bad UDP payload, the connection stays.</summary>
@@ -615,13 +615,13 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         var garbage = stranger.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Ping, c.Id, 0, 0), []);
         var deadline = DateTime.UtcNow.AddSeconds(30); // ends as soon as the filter kicks in
         while (server.Voice.PreFilterDrops == 0 && DateTime.UtcNow < deadline)
-            for (int i = 0; i < 100; i++) await flood.SendAsync(garbage, server.VoiceEndPoint);
+            for (int index = 0; index < 100; index++) await flood.SendAsync(garbage, server.VoiceEndPoint);
         Assert.True(server.Voice.PreFilterDrops > 0);
 
         await va.SendAsync(PacketType.Ping, []); // the bound endpoint of a is not held up by the flood from its address
         Assert.NotNull(await va.ReceiveAsync());
         await a.SendAsync(new CreateChannel("Nach der Flut", ""));
-        await a.WaitForAsync<ChannelAdded>(m => m.Channel.Name == "Nach der Flut");
+        await a.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == "Nach der Flut");
     }
 
     /// <summary>Package 88: the budget of bad packets is per second of the server's clock; a new second on it lets a source reach decryption again.</summary>
@@ -630,17 +630,17 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     {
         var time = new ManualTimeProvider();
         await using var timed = await TestServer.StartAsync(time: time);
-        await using var x = await TestClient.ConnectAsync(timed, "x");
-        await using var y = await TestClient.ConnectAsync(timed, "y");
-        using var vx = new TestVoice(x, timed.VoiceEndPoint);
+        await using var client = await TestClient.ConnectAsync(timed, "x");
+        await using var testClient = await TestClient.ConnectAsync(timed, "y");
+        using var vx = new TestVoice(client, timed.VoiceEndPoint);
         await vx.HelloAsync();
         // y's live session id, sealed with a wrong key, from y's address: a valid header that fails only at decryption
         using var stranger = new VoiceCrypto(RandomNumberGenerator.GetBytes(32));
         using var flood = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
-        var garbage = stranger.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Ping, y.Id, 0, 0), []);
+        var garbage = stranger.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Ping, testClient.Id, 0, 0), []);
         async Task<long> DropsAfterAsync(int packets)
         {
-            for (int i = 0; i < packets; i++) await flood.SendAsync(garbage, timed.VoiceEndPoint);
+            for (int index = 0; index < packets; index++) await flood.SendAsync(garbage, timed.VoiceEndPoint);
             await vx.SendAsync(PacketType.Ping, []); // one receive loop: x's answer comes after the packets before it were handled
             Assert.NotNull(await vx.ReceiveAsync());
             return timed.Voice.PreFilterDrops;

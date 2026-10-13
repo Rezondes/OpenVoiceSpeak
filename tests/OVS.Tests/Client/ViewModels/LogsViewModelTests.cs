@@ -34,14 +34,14 @@ public class LogsViewModelTests
             [new UserInfo(1, "fp1", "ich", Lobby, false, false, false, perms, [])]);
         var sent = new List<Request>();
         ServerViewModel? server = null;
-        server = new ServerViewModel(Snapshots.Mirror(snapshot), r =>
+        server = new ServerViewModel(Snapshots.Mirror(snapshot), request =>
         {
-            sent.Add(r);
-            Message? answer = reply?.Invoke(r) ?? r switch
+            sent.Add(request);
+            Message? answer = reply?.Invoke(request) ?? request switch
             {
-                ListLogs => new LogList(r.RequestId, [ServerFile, RaidFile, OldServerFile, OldFile]),
+                ListLogs => new LogList(request.RequestId, [ServerFile, RaidFile, OldServerFile, OldFile]),
                 ReadLog read => Page(read),
-                SearchLogs => searchResult is { } found ? found with { RequestId = r.RequestId } : null, // answered under its id
+                SearchLogs => searchResult is { } found ? found with { RequestId = request.RequestId } : null, // answered under its id
                 _ => null,
             };
             if (answer is not null) server!.Apply(answer);
@@ -65,23 +65,23 @@ public class LogsViewModelTests
     public void FileFilter_TypeAndPeriod()
     {
         var (logs, _) = Create();
-        Assert.Equal([ServerFile.Id, RaidFile.Id, OldServerFile.Id, OldFile.Id], logs.Files.Select(f => f.Info.Id));
-        Assert.Equal(["Server", "Raid", "Server", "Alt"], logs.Files.Select(f => f.Title));
+        Assert.Equal([ServerFile.Id, RaidFile.Id, OldServerFile.Id, OldFile.Id], logs.Files.Select(logFile => logFile.Info.Id));
+        Assert.Equal(["Server", "Raid", "Server", "Alt"], logs.Files.Select(logFile => logFile.Title));
         Assert.Contains("MB", logs.Files[2].Details);
         // all, server, then every channel of the listing by name
-        Assert.Equal(["Alle Logs", "Server", "Alt", "Raid"], logs.Sources.Select(s => s.Label));
+        Assert.Equal(["Alle Logs", "Server", "Alt", "Raid"], logs.Sources.Select(choice => choice.Label));
 
         logs.SelectedSource = logs.Sources[1];
-        Assert.Equal([ServerFile.Id, OldServerFile.Id], logs.Files.Select(f => f.Info.Id));
-        logs.SelectedSource = logs.Sources.Single(s => s.Label == "Raid");
-        Assert.Equal([RaidFile.Id], logs.Files.Select(f => f.Info.Id));
+        Assert.Equal([ServerFile.Id, OldServerFile.Id], logs.Files.Select(logFile => logFile.Info.Id));
+        logs.SelectedSource = logs.Sources.Single(choice => choice.Label == "Raid");
+        Assert.Equal([RaidFile.Id], logs.Files.Select(logFile => logFile.Info.Id));
 
         // a period keeps the files that overlap it
         logs.SelectedSource = logs.Sources[0];
         logs.FromDate = new DateTime(2026, 1, 2);
-        Assert.Equal([ServerFile.Id, RaidFile.Id, OldServerFile.Id], logs.Files.Select(f => f.Info.Id));
+        Assert.Equal([ServerFile.Id, RaidFile.Id, OldServerFile.Id], logs.Files.Select(logFile => logFile.Info.Id));
         logs.ToDate = new DateTime(2026, 1, 6);
-        Assert.Equal([RaidFile.Id, OldServerFile.Id], logs.Files.Select(f => f.Info.Id));
+        Assert.Equal([RaidFile.Id, OldServerFile.Id], logs.Files.Select(logFile => logFile.Info.Id));
         Assert.Equal("2 von 4 Dateien", logs.FileCountText);
         logs.FromDate = new DateTime(2026, 2, 1);
         logs.ToDate = null;
@@ -133,9 +133,9 @@ public class LogsViewModelTests
         var (logs, _) = Create();
         logs.OpenCommand.Execute(logs.Files[0]);
         logs.LineFilter = "fehler";
-        Assert.Equal(Enumerable.Range(2001, 500).Where(n => n % 7 == 0), logs.Lines.Select(l => l.Number));
+        Assert.Equal(Enumerable.Range(2001, 500).Where(count => count % 7 == 0), logs.Lines.Select(logLine => logLine.Number));
         var line = logs.Lines[0];
-        Assert.Equal([("Zeile 2002 ", false), ("FEHLER", true), (" beim Senden", false)], line.Segments.Select(s => (s.Text, s.IsMatch)));
+        Assert.Equal([("Zeile 2002 ", false), ("FEHLER", true), (" beim Senden", false)], line.Segments.Select(logSegment => (logSegment.Text, logSegment.IsMatch)));
         Assert.True(logs.HasLines);
 
         logs.LineFilter = "gibt es nicht";
@@ -143,11 +143,11 @@ public class LogsViewModelTests
         Assert.False(logs.HasLines);
         logs.LineFilter = "";
         Assert.Equal(500, logs.Lines.Count);
-        Assert.Equal([("Zeile 2001 ok", false)], logs.Lines[0].Segments.Select(s => (s.Text, s.IsMatch)));
+        Assert.Equal([("Zeile 2001 ok", false)], logs.Lines[0].Segments.Select(logSegment => (logSegment.Text, logSegment.IsMatch)));
         // the filter stays when paging
         logs.LineFilter = "FEHLER";
         logs.OlderCommand.Execute(null);
-        Assert.All(logs.Lines, l => Assert.Contains("FEHLER", l.Text));
+        Assert.All(logs.Lines, logLine => Assert.Contains("FEHLER", logLine.Text));
     }
 
     [Fact]
@@ -175,7 +175,7 @@ public class LogsViewModelTests
         Assert.Equal(ServerFile.Id, logs.OpenFile?.Info.Id);
         Assert.Equal(1500, logs.SelectedLine?.Number);
         Assert.True(logs.SelectedLine!.IsTarget);
-        Assert.Single(logs.Lines, l => l.IsTarget);
+        Assert.Single(logs.Lines, logLine => logLine.IsTarget);
 
         logs.ClearSearchCommand.Execute(null);
         Assert.False(logs.ShowHits);
@@ -200,11 +200,11 @@ public class LogsViewModelTests
     {
         var (viewer, _) = Create();
         Assert.False(viewer.ShowDownload); // LogsView alone: no checkboxes, no download
-        Assert.All(viewer.Files, f => Assert.False(f.CanSelect));
+        Assert.All(viewer.Files, logFile => Assert.False(logFile.CanSelect));
 
         var (logs, _) = Create(perms: Permission.LogsView | Permission.LogsDownload);
         Assert.True(logs.ShowDownload);
-        Assert.All(logs.Files, f => Assert.True(f.CanSelect));
+        Assert.All(logs.Files, logFile => Assert.True(logFile.CanSelect));
         Assert.False(logs.CanDownload);
         logs.Files[0].IsSelected = true;
         Assert.True(logs.CanDownload);
@@ -216,17 +216,17 @@ public class LogsViewModelTests
         logs.FromDate = new DateTime(2026, 1, 2);
         logs.ToDate = new DateTime(2026, 1, 6);
         logs.SelectAllInPeriodCommand.Execute(null);
-        Assert.Equal([RaidFile.Id, OldServerFile.Id], logs.Files.Where(f => f.IsSelected).Select(f => f.Info.Id));
+        Assert.Equal([RaidFile.Id, OldServerFile.Id], logs.Files.Where(logFile => logFile.IsSelected).Select(logFile => logFile.Info.Id));
         logs.FromDate = logs.ToDate = null;
-        Assert.Equal([ServerFile.Id, RaidFile.Id, OldServerFile.Id], logs.Files.Where(f => f.IsSelected).Select(f => f.Info.Id));
+        Assert.Equal([ServerFile.Id, RaidFile.Id, OldServerFile.Id], logs.Files.Where(logFile => logFile.IsSelected).Select(logFile => logFile.Info.Id));
         logs.Apply(new LogList(null, [ServerFile, RaidFile, OldServerFile, OldFile]));
-        Assert.Equal(3, logs.Files.Count(f => f.IsSelected));
+        Assert.Equal(3, logs.Files.Count(logFile => logFile.IsSelected));
         Assert.True(logs.IsZipDownload);
         Assert.Equal("ovs-logs_2026-01-01_2026-01-10.zip", logs.DownloadName);
         Assert.Equal([ServerFile.Id, RaidFile.Id, OldServerFile.Id], logs.SelectedIds);
 
         logs.SelectNoneCommand.Execute(null);
-        Assert.DoesNotContain(logs.Files, f => f.IsSelected);
+        Assert.DoesNotContain(logs.Files, logFile => logFile.IsSelected);
         Assert.False(logs.CanDownload);
     }
 
@@ -238,10 +238,10 @@ public class LogsViewModelTests
         try
         {
             byte[] zip = [1, 2, 3];
-            var (logs, sent) = Create(perms: Permission.LogsView | Permission.LogsDownload, reply: r => r switch
+            var (logs, sent) = Create(perms: Permission.LogsView | Permission.LogsDownload, reply: request => request switch
             {
-                PrepareLogDownload => new LogDownloadReady(r.RequestId, "d1", "ovs-logs.zip", zip.Length),
-                DownloadLogChunk c => new LogChunk(r.RequestId, c.DownloadId, c.Offset, zip.Length, Convert.ToBase64String(zip), true),
+                PrepareLogDownload => new LogDownloadReady(request.RequestId, "d1", "ovs-logs.zip", zip.Length),
+                DownloadLogChunk downloadLogChunk => new LogChunk(request.RequestId, downloadLogChunk.DownloadId, downloadLogChunk.Offset, zip.Length, Convert.ToBase64String(zip), true),
                 _ => null,
             });
             logs.Files[0].IsSelected = logs.Files[1].IsSelected = true;
@@ -263,8 +263,8 @@ public class LogsViewModelTests
     public void FileList_FetchesAllPages()
     {
         LogFileInfo[] files = [ServerFile, RaidFile, OldServerFile, OldFile];
-        var (logs, sent) = Create(reply: r => r is ListLogs l ? new LogList(r.RequestId, files.Skip(l.Offset).Take(3).ToList(), l.Offset, files.Length) : null);
-        Assert.Equal([0, 3], sent.OfType<ListLogs>().Select(l => l.Offset));
+        var (logs, sent) = Create(reply: request => request is ListLogs listLogs ? new LogList(request.RequestId, files.Skip(listLogs.Offset).Take(3).ToList(), listLogs.Offset, files.Length) : null);
+        Assert.Equal([0, 3], sent.OfType<ListLogs>().Select(request => request.Offset));
         Assert.Equal(4, logs.Files.Count);
     }
 

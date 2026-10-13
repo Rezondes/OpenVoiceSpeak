@@ -79,10 +79,10 @@ public sealed class MotionCoverageTests
 
     // ---- the walk ----
 
-    sealed class Walk(MainWindow main, MainViewModel vm)
+    sealed class Walk(MainWindow main, MainViewModel viewModel)
     {
         public MainWindow Main { get; } = main;
-        public MainViewModel Vm { get; } = vm;
+        public MainViewModel Vm { get; } = viewModel;
         public ServerViewModel Server { get; set; } = null!;
         public List<Request> Sent { get; } = [];
         public AdminViewModel Admin => Vm.PageFlow.AdminPage!;
@@ -108,13 +108,13 @@ public sealed class MotionCoverageTests
         if (walks.TryGetValue(display, out var done)) return done;
         string dir = Directory.CreateTempSubdirectory("ovs-coverage-").FullName;
         new ClientSettings { Display = display }.Save(dir);
-        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
-        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
-        vm.Dialogs = OverlayDialogs.Create(main.Overlay, () => vm.Server?.Mirror.Groups);
+        var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
+        viewModel.Dialogs = OverlayDialogs.Create(main.Overlay, () => viewModel.Server?.Mirror.Groups);
         main.Show();
         Watch(200);
         Motion.Apply(main, display);
-        var walk = new Walk(main, vm);
+        var walk = new Walk(main, viewModel);
         var results = new List<Result>();
         foreach (var step in Steps(walk)) results.Add(Run(walk, step));
         main.Close();
@@ -128,14 +128,14 @@ public sealed class MotionCoverageTests
         return walks[display] = results;
     }
 
-    static Result Run(Walk w, Step step)
+    static Result Run(Walk walk, Step step)
     {
         if (step.Prepare is { } prepare)
         {
-            prepare(w);
-            Settle(w, watchLeast: false);
+            prepare(walk);
+            Settle(walk, watchLeast: false);
         }
-        var target = step.Look?.Invoke(w);
+        var target = step.Look?.Invoke(walk);
         var seen = new Dictionary<Visual, HashSet<string>>();
         void Look()
         {
@@ -148,19 +148,19 @@ public sealed class MotionCoverageTests
         }
         AnimationCounter.ResetStarted();
         Look();
-        step.Act(w);
-        Settle(w, Look);
+        step.Act(walk);
+        Settle(walk, Look);
         if (step.Undo is { } undo)
         {
-            undo(w);
-            Settle(w, watchLeast: false);
+            undo(walk);
+            Settle(walk, watchLeast: false);
         }
         // a style transition passes through values between its start and its end; a jump has two. Frames may come late
         // and miss a 120 ms transition's middle: a look that changed counts as well when the change ran through a
         // transition of the animated display (Motion.Fast or Motion.Normal long; Fluent's own are shorter, the
         // simplified display has none of these)
-        var movers = seen.Where(p => p.Value.Count >= 3 || p.Value.Count == 2 && HasMotionTransition(p.Key)).Select(p => $"{p.Key.GetType().Name} {string.Join(".", (p.Key as StyledElement)?.Classes ?? [])} {(p.Key as StyledElement)?.Name}").ToList();
-        return new Result(step.Name, AnimationCounter.Started, movers.Count > 0, State(w), string.Join("; ", movers.Take(5)));
+        var movers = seen.Where(pair => pair.Value.Count >= 3 || pair.Value.Count == 2 && HasMotionTransition(pair.Key)).Select(pair => $"{pair.Key.GetType().Name} {string.Join(".", (pair.Key as StyledElement)?.Classes ?? [])} {(pair.Key as StyledElement)?.Name}").ToList();
+        return new Result(step.Name, AnimationCounter.Started, movers.Count > 0, State(walk), string.Join("; ", movers.Take(5)));
     }
 
     /// <summary>
@@ -171,9 +171,9 @@ public sealed class MotionCoverageTests
     /// shows as another end state.
     /// </summary>
     /// <param name="watchLeast">False for what only prepares or sets back: no waiting state or transition to see there.</param>
-    static void Settle(Walk w, Action? look = null, bool watchLeast = true)
+    static void Settle(Walk walk, Action? look = null, bool watchLeast = true)
     {
-        bool animated = Motion.IsAnimated(w.Main);
+        bool animated = Motion.IsAnimated(walk.Main);
         int least = !watchLeast ? 0 : animated ? 160 : 20, hold = animated ? 25 : 10;
         var watch = Stopwatch.StartNew();
         string? last = null;
@@ -183,12 +183,12 @@ public sealed class MotionCoverageTests
             Frame();
             look?.Invoke();
             Thread.Sleep(1);
-            if (AnimationCounter.Running > w.Running || Rows(w).Any(r => r.Classes.Contains("entering") || r.Classes.Contains("leaving")))
+            if (AnimationCounter.Running > walk.Running || Rows(walk).Any(control => control.Classes.Contains("entering") || control.Classes.Contains("leaving")))
             {
                 last = null;
                 continue;
             }
-            var now = State(w);
+            var now = State(walk);
             if (now != last)
             {
                 last = now;
@@ -198,60 +198,60 @@ public sealed class MotionCoverageTests
         }
     }
 
-    static List<Control> Rows(Walk w) =>
-        w.Main.GetVisualDescendants().OfType<ItemsControl>().Where(ItemMotion.GetEnter).SelectMany(l => l.GetRealizedContainers()).ToList();
+    static List<Control> Rows(Walk walk) =>
+        walk.Main.GetVisualDescendants().OfType<ItemsControl>().Where(ItemMotion.GetEnter).SelectMany(itemsControl => itemsControl.GetRealizedContainers()).ToList();
 
     /// <summary>The mouse leaves the window: nothing is hovered, no tooltip waits to open.</summary>
-    static void Away(Walk w) => w.Main.MouseMove(new Point(-100, -100));
+    static void Away(Walk walk) => walk.Main.MouseMove(new Point(-100, -100));
 
     static bool HasMotionTransition(Visual visual) =>
-        visual.Transitions?.Any(t => t is Avalonia.Animation.TransitionBase { Duration: var d } && (d == Motion.Fast || d == Motion.Normal)) == true;
+        visual.Transitions?.Any(transition => transition is Avalonia.Animation.TransitionBase { Duration: var duration } && (duration == Motion.Fast || duration == Motion.Normal)) == true;
 
     static string Brush(IBrush? brush) => (brush as ISolidColorBrush)?.Color.ToString() ?? brush?.GetType().Name ?? "";
 
-    static string Looks(Visual v) => $"{v.RenderTransform?.Value}|{v.Opacity:F3}|" + v switch
+    static string Looks(Visual visual) => $"{visual.RenderTransform?.Value}|{visual.Opacity:F3}|" + visual switch
     {
-        Border b => $"{b.BoxShadow}|{Brush(b.Background)}|{Brush(b.BorderBrush)}",
-        ContentPresenter p => $"{p.BoxShadow}|{Brush(p.Background)}|{Brush(p.BorderBrush)}",
+        Border border => $"{border.BoxShadow}|{Brush(border.Background)}|{Brush(border.BorderBrush)}",
+        ContentPresenter contentPresenter => $"{contentPresenter.BoxShadow}|{Brush(contentPresenter.Background)}|{Brush(contentPresenter.BorderBrush)}",
         _ => "",
     };
 
     /// <summary>What counts after an action: the models, and that nothing of a movement is left on the screen.</summary>
-    static string State(Walk w)
+    static string State(Walk walk)
     {
-        var vm = w.Vm;
-        var main = w.Main;
+        var viewModel = walk.Vm;
+        var main = walk.Main;
         var text = new StringBuilder();
-        text.AppendLine($"page={vm.PageFlow.Page} connected={vm.IsConnected} connecting={vm.Connection.IsConnecting} status={vm.Status}");
+        text.AppendLine($"page={viewModel.PageFlow.Page} connected={viewModel.IsConnected} connecting={viewModel.Connection.IsConnecting} status={viewModel.Status}");
         var card = (Border)main.Overlay.Children[1];
         text.AppendLine($"dialog={main.Overlay.IsOpen}/{main.Overlay.IsVisible} card={card.Opacity:F2}/{card.RenderTransform?.Value.M11 ?? 1:F2} drawer={main.Classes.Contains("drawer")}");
-        text.AppendLine($"bookmarks={string.Join(",", vm.Bookmarks.Items.Select(tile => tile.Name))}");
-        if (vm.Server is { } server)
+        text.AppendLine($"bookmarks={string.Join(",", viewModel.Bookmarks.Items.Select(tile => tile.Name))}");
+        if (viewModel.Server is { } server)
         {
             foreach (var channel in server.Tree.Channels)
                 text.AppendLine($"{channel.Name}{(channel.IsLinked ? " linked" : "")}{(channel.IsCurrent ? " current" : "")} {channel.SlotText}: "
-                    + string.Join(",", channel.Users.Select(u => u.Nickname + (u.ServerMuted ? " muted" : ""))));
+                    + string.Join(",", channel.Users.Select(user => user.Nickname + (user.ServerMuted ? " muted" : ""))));
             text.AppendLine($"self muted={server.SelfState.SelfMuted} deafened={server.SelfState.SelfDeafened}");
         }
-        if (vm.Chat is { } chat) text.AppendLine($"chat tab={chat.Tabs.IndexOf(chat.Selected)} lines={chat.Selected.Entries.Count}");
-        if (vm.PageFlow.SettingsPage is { } page)
+        if (viewModel.Chat is { } chat) text.AppendLine($"chat tab={chat.Tabs.IndexOf(chat.Selected)} lines={chat.Selected.Entries.Count}");
+        if (viewModel.PageFlow.SettingsPage is { } page)
         {
-            var settings = page.ToSettings(vm.Settings);
+            var settings = page.ToSettings(viewModel.Settings);
             settings.Display = DisplayMode.Animated; // the one setting the two walks differ in
             text.AppendLine(JsonSerializer.Serialize(settings));
         }
-        if (vm.PageFlow.AdminPage is { } admin)
+        if (viewModel.PageFlow.AdminPage is { } admin)
         {
-            text.AppendLine($"admin tab={AdminTabs(w).SelectedIndex} groups={string.Join(",", admin.GroupList.Groups.Select(g => $"{g.Name} {(int)g.Permissions}"))} selected={admin.GroupList.SelectedGroup?.Name} "
+            text.AppendLine($"admin tab={AdminTabs(walk).SelectedIndex} groups={string.Join(",", admin.GroupList.Groups.Select(groupEdit => $"{groupEdit.Name} {(int)groupEdit.Permissions}"))} selected={admin.GroupList.SelectedGroup?.Name} "
                 + $"users={string.Join(",", admin.UsersAndBans.Users.Select(user => user.Nickname + (user.IsServerMuted ? " muted" : "")))} bans={admin.UsersAndBans.Bans.Count} backups={admin.BackupCard.Backups.Count} logo={admin.ServerIcon.HasIcon}");
-            text.AppendLine($"links pending={admin.Links.PendingText} selected={string.Join(",", admin.Links.Rows.Where(r => r.IsSelected).Select(r => r.Name))} "
+            text.AppendLine($"links pending={admin.Links.PendingText} selected={string.Join(",", admin.Links.Rows.Where(linkRow => linkRow.IsSelected).Select(linkRow => linkRow.Name))} "
                 + $"server settings={admin.ServerSettings.RemovePassword}/{admin.ServerSettings.LogRotateDaily}/{admin.ServerSettings.AutoRestart}");
             text.AppendLine($"logs hits={admin.Logs.ShowHits}/{admin.Logs.Hits.Count} open={admin.Logs.IsFileOpen} page={admin.Logs.Page} lines={admin.Logs.Lines.Count}");
         }
         // nothing of a movement is left: no picture, ghost or popup in the overlay, every list entry whole
-        var rows = Rows(w);
+        var rows = Rows(walk);
         text.AppendLine($"overlay={OverlayLayer.GetOverlayLayer(main)?.Children.Count} pictures={main.FindControl<Border>("PageGhost")!.IsVisible}/{main.FindControl<Border>("TreeGhost")!.IsVisible} "
-            + $"rows={rows.Count} unsettled={rows.Count(r => r.Opacity < 1 || r.Classes.Contains("entering") || r.Classes.Contains("leaving"))}");
+            + $"rows={rows.Count} unsettled={rows.Count(control => control.Opacity < 1 || control.Classes.Contains("entering") || control.Classes.Contains("leaving"))}");
         return text.ToString();
     }
 
@@ -264,25 +264,25 @@ public sealed class MotionCoverageTests
     static UserInfo Bert(Guid channel, bool serverMuted = false) =>
         new(3, "fp3", "bert", channel, false, false, serverMuted, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true);
 
-    static ChannelViewModel Channel(Walk w, string name) => w.Server.Tree.Channels.Single(c => c.Name == name);
-    static UserViewModel User(Walk w, string nickname) => w.Server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == nickname);
+    static ChannelViewModel Channel(Walk walk, string name) => walk.Server.Tree.Channels.Single(channel => channel.Name == name);
+    static UserViewModel User(Walk walk, string nickname) => walk.Server.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.Nickname == nickname);
 
-    static Border Row(Walk w, Func<object?, bool> of) =>
-        w.Main.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row") && b.ContextMenu is not null && of(b.DataContext));
+    static Border Row(Walk walk, Func<object?, bool> of) =>
+        walk.Main.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("row") && border.ContextMenu is not null && of(border.DataContext));
 
-    static Button BookmarkButton(Walk w) => w.Main.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("bookmark") && b.IsEffectivelyVisible);
+    static Button BookmarkButton(Walk walk) => walk.Main.GetVisualDescendants().OfType<Button>().First(button => button.Classes.Contains("bookmark") && button.IsEffectivelyVisible);
 
-    static AdminView AdminPage(Walk w) => w.Main.GetVisualDescendants().OfType<AdminView>().Single();
-    static TabControl AdminTabs(Walk w) => AdminPage(w).FindControl<TabControl>("Tabs")!;
-    static T Named<T>(Walk w, string name) where T : Control => AdminPage(w).FindControl<T>(name)!;
+    static AdminView AdminPage(Walk walk) => walk.Main.GetVisualDescendants().OfType<AdminView>().Single();
+    static TabControl AdminTabs(Walk walk) => AdminPage(walk).FindControl<TabControl>("Tabs")!;
+    static T Named<T>(Walk walk, string name) where T : Control => AdminPage(walk).FindControl<T>(name)!;
 
     /// <summary>A shown control of the administration (the selected tab's content).</summary>
-    static T Shown<T>(Walk w, Func<T, bool> which) where T : Control =>
-        AdminPage(w).GetVisualDescendants().OfType<T>().First(c => c.IsEffectivelyVisible && c.IsEffectivelyEnabled && which(c));
+    static T Shown<T>(Walk walk, Func<T, bool> which) where T : Control =>
+        AdminPage(walk).GetVisualDescendants().OfType<T>().First(c => c.IsEffectivelyVisible && c.IsEffectivelyEnabled && which(c));
 
-    static Button CommandButton(Walk w, System.Windows.Input.ICommand command) => Shown<Button>(w, b => b.Command == command);
+    static Button CommandButton(Walk walk, System.Windows.Input.ICommand command) => Shown<Button>(walk, button => button.Command == command);
 
-    static KnownUserViewModel Anna(Walk w) => w.Admin.UsersAndBans.Users.Single(u => u.Nickname == "anna");
+    static KnownUserViewModel Anna(Walk walk) => walk.Admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "anna");
 
     /// <summary>The id of the last request of that type: the server answers under it (answers to other ids reach nobody).</summary>
 
@@ -290,22 +290,22 @@ public sealed class MotionCoverageTests
     static KnownUserInfo KnownAnna(bool muted) => new("fp2", "anna", [WellKnownGroups.Guest], ServerMuted: muted, CanBeModeratedByMe: true);
     static LogFileInfo ServerLog => new("server-1", LogKind.Server, null, null, DateTimeOffset.Now.AddHours(-1), DateTimeOffset.Now, 100);
 
-    static Action<Walk> Show(Func<Walk, Control> control) => x =>
+    static Action<Walk> Show(Func<Walk, Control> control) => walk =>
     {
-        Away(x); // the mouse comes to it afresh, not by scrolling it under the pointer
-        control(x).BringIntoView();
+        Away(walk); // the mouse comes to it afresh, not by scrolling it under the pointer
+        control(walk).BringIntoView();
     };
 
     /// <summary>A drop-down opens and closes; the popup fades and slides (counted), its picture fades when it closes.</summary>
     static Step Drop(string name, Func<Walk, ComboBox> combo) =>
-        new($"open and close {name}", x => combo(x).IsDropDownOpen = true, null, Show(combo), x => combo(x).IsDropDownOpen = false);
+        new($"open and close {name}", walk => combo(walk).IsDropDownOpen = true, null, Show(combo), walk => combo(walk).IsDropDownOpen = false);
 
     /// <summary>A check box toggles (its mark pops or shrinks, a style), set back afterwards when <paramref name="back"/>.</summary>
     static Step Toggle(string name, Func<Walk, ToggleButton> box, bool back = false)
     {
         ToggleButton? shown = null; // the one toggled, also for the undo
-        return new(name, x => shown!.IsChecked = !shown.IsChecked, x => shown = box(x), Show(box),
-            back ? x => shown!.IsChecked = !shown.IsChecked : null);
+        return new(name, walk => shown!.IsChecked = !shown.IsChecked, walk => shown = box(walk), Show(box),
+            back ? walk => shown!.IsChecked = !shown.IsChecked : null);
     }
 
     /// <summary>
@@ -313,43 +313,43 @@ public sealed class MotionCoverageTests
     /// Fluent's own press tilt of the button itself is not watched, it belongs to the simplified look too).
     /// </summary>
     static Step Click(string name, Func<Walk, Button> button, Action<Walk>? then = null, Action<Walk>? prepare = null) =>
-        new(name, x =>
+        new(name, walk =>
         {
-            var at = TestSupport.Rows.Center(button(x), x.Main);
-            x.Main.MouseMove(at);
-            x.Main.MouseDown(at, MouseButton.Left);
-            x.Main.MouseUp(at, MouseButton.Left);
-            then?.Invoke(x);
-        }, x => button(x).Presenter, x =>
+            var at = TestSupport.Rows.Center(button(walk), walk.Main);
+            walk.Main.MouseMove(at);
+            walk.Main.MouseDown(at, MouseButton.Left);
+            walk.Main.MouseUp(at, MouseButton.Left);
+            then?.Invoke(walk);
+        }, walk => button(walk).Presenter, walk =>
         {
-            prepare?.Invoke(x);
-            Show(button)(x);
+            prepare?.Invoke(walk);
+            Show(button)(walk);
         }, Away);
 
     static IEnumerable<Step> Menu(string name, Func<Walk, Control> owner)
     {
-        yield return new($"open {name}", w => owner(w).ContextMenu!.Open(owner(w)));
-        yield return new($"close {name}", w => owner(w).ContextMenu!.Close());
+        yield return new($"open {name}", walk => owner(walk).ContextMenu!.Open(owner(walk)));
+        yield return new($"close {name}", walk => owner(walk).ContextMenu!.Close());
     }
 
     /// <summary>A dialog opens and is closed again without an answer (cancelled).</summary>
     static IEnumerable<Step> Dialog(string name, Action<Walk> open)
     {
         yield return new($"open the {name} dialog", open);
-        yield return new($"close the {name} dialog", w => w.Main.Overlay.Close());
+        yield return new($"close the {name} dialog", walk => walk.Main.Overlay.Close());
     }
 
     /// <summary>
     /// Every settings control once: check boxes and radio buttons toggle (and are set back), drop-downs open and close,
     /// sliders and buttons are hovered. Rows of a list (the sounds) count once per kind.
     /// </summary>
-    static IEnumerable<Step> SettingsControls(Walk w)
+    static IEnumerable<Step> SettingsControls(Walk walk)
     {
-        var view = w.Main.GetVisualDescendants().OfType<SettingsView>().Single();
+        var view = walk.Main.GetVisualDescendants().OfType<SettingsView>().Single();
         var all = view.GetVisualDescendants().OfType<Control>()
-            .Where(c => c is CheckBox or RadioButton or ComboBox or Slider && c.IsEffectivelyVisible && c.IsEffectivelyEnabled).ToList();
-        var controls = all.Where(c => c.DataContext is SettingsViewModel)
-            .Concat(all.Where(c => c.DataContext is not SettingsViewModel).GroupBy(c => (c.GetType(), c.DataContext?.GetType())).Select(g => g.First()))
+            .Where(control => control is CheckBox or RadioButton or ComboBox or Slider && control.IsEffectivelyVisible && control.IsEffectivelyEnabled).ToList();
+        var controls = all.Where(control => control.DataContext is SettingsViewModel)
+            .Concat(all.Where(control => control.DataContext is not SettingsViewModel).GroupBy(control => (control.GetType(), control.DataContext?.GetType())).Select(grouping => grouping.First()))
             .ToList();
         int index = 0;
         foreach (var control in controls)
@@ -362,7 +362,7 @@ public sealed class MotionCoverageTests
                     continue; // chosen back by the other one's undo
                 case RadioButton radio:
                     // its own group (Package 142: the transmission type is a second one)
-                    var before = radio.GetVisualParent()!.GetVisualChildren().OfType<RadioButton>().Single(r => r.IsChecked == true);
+                    var before = radio.GetVisualParent()!.GetVisualChildren().OfType<RadioButton>().Single(radioButton => radioButton.IsChecked == true);
                     yield return new(name, _ => radio.IsChecked = true, _ => radio, show, _ => before.IsChecked = true);
                     break;
                 case CheckBox check:
@@ -372,228 +372,228 @@ public sealed class MotionCoverageTests
                     yield return new(name, _ => combo.IsDropDownOpen = true, null, show, _ => combo.IsDropDownOpen = false);
                     break;
                 default: // a slider: its thumb grows under the mouse
-                    yield return new(name, x => x.Main.MouseMove(TestSupport.Rows.Center(control, x.Main)), _ => control, show, Away);
+                    yield return new(name, otherWalk => otherWalk.Main.MouseMove(TestSupport.Rows.Center(control, otherWalk.Main)), _ => control, show, Away);
                     break;
             }
         }
-        var cancel = view.GetVisualDescendants().OfType<Button>().First(b => b.Content is string text && text == Strings.Dlg_Cancel);
-        yield return new("settings: hover a button", x => x.Main.MouseMove(TestSupport.Rows.Center(cancel, x.Main)), _ => cancel, Show(_ => cancel), Away);
+        var cancel = view.GetVisualDescendants().OfType<Button>().First(button => button.Content is string text && text == Strings.Dlg_Cancel);
+        yield return new("settings: hover a button", otherWalk => otherWalk.Main.MouseMove(TestSupport.Rows.Center(cancel, otherWalk.Main)), _ => cancel, Show(_ => cancel), Away);
     }
 
     /// <summary>AC1: every user action, in the order a user could do them.</summary>
-    static IEnumerable<Step> Steps(Walk w)
+    static IEnumerable<Step> Steps(Walk otherWalk)
     {
         // ---- home ----
-        foreach (var s in Dialog("connect", x => _ = ConnectDialog.ShowAsync(x.Main.Overlay, x.Vm.Bookmarks.Saved))) yield return s;
-        foreach (var s in Dialog("server password", x => _ = ServerPasswordDialog.ShowAsync(x.Main.Overlay, "Gilde"))) yield return s;
-        foreach (var s in Dialog("certificate", x => _ = TofuDialog.ShowAsync(x.Main.Overlay, new TofuPrompt("gilde.example.org", 7000, "AB:CD:EF:01", TofuResult.Unknown))))
-            yield return s;
-        foreach (var s in Dialog("update offer", x => _ = UpdateOfferDialog.ShowAsync(x.Main.Overlay,
+        foreach (var step in Dialog("connect", walk => _ = ConnectDialog.ShowAsync(walk.Main.Overlay, walk.Vm.Bookmarks.Saved))) yield return step;
+        foreach (var step in Dialog("server password", walk => _ = ServerPasswordDialog.ShowAsync(walk.Main.Overlay, "Gilde"))) yield return step;
+        foreach (var step in Dialog("certificate", walk => _ = TofuDialog.ShowAsync(walk.Main.Overlay, new TofuPrompt("gilde.example.org", 7000, "AB:CD:EF:01", TofuResult.Unknown))))
+            yield return step;
+        foreach (var step in Dialog("update offer", walk => _ = UpdateOfferDialog.ShowAsync(walk.Main.Overlay,
             new UpdateOffer("9.9.9", "v9.9.9", "Neu", DateTimeOffset.Now, new Uri("https://example.org/ovs.exe"), new Uri("https://example.org/ovs.sha256")))))
-            yield return s;
-        yield return new("connect, and it fails", x =>
+            yield return step;
+        yield return new("connect, and it fails", walk =>
         {
-            x.Vm.Connection.IsConnecting = true;
+            walk.Vm.Connection.IsConnecting = true;
             Watch(150);
-            x.Vm.Status = "Verbindung fehlgeschlagen";
-            x.Vm.Connection.IsConnecting = false;
+            walk.Vm.Status = "Verbindung fehlgeschlagen";
+            walk.Vm.Connection.IsConnecting = false;
         });
-        yield return new("add a bookmark", x =>
+        yield return new("add a bookmark", walk =>
         {
-            var settings = x.Vm.Settings;
+            var settings = walk.Vm.Settings;
             settings.Bookmarks.Add(new Bookmark("Gilde", "gilde.example.org", 7000, "ich"));
-            x.Vm.ApplySettings(settings);
+            walk.Vm.ApplySettings(settings);
         });
-        foreach (var s in Menu("a bookmark's menu", BookmarkButton)) yield return s;
-        foreach (var s in Dialog("edit bookmark", x => _ = x.Vm.Bookmarks.EditAsync(x.Vm.Settings.Bookmarks[0]))) yield return s;
-        foreach (var s in Dialog("delete bookmark", x => _ = x.Vm.Bookmarks.DeleteAsync(x.Vm.Settings.Bookmarks[0]))) yield return s;
-        yield return new("remove a bookmark", x =>
+        foreach (var step in Menu("a bookmark's menu", BookmarkButton)) yield return step;
+        foreach (var step in Dialog("edit bookmark", walk => _ = walk.Vm.Bookmarks.EditAsync(walk.Vm.Settings.Bookmarks[0]))) yield return step;
+        foreach (var step in Dialog("delete bookmark", walk => _ = walk.Vm.Bookmarks.DeleteAsync(walk.Vm.Settings.Bookmarks[0]))) yield return step;
+        yield return new("remove a bookmark", walk =>
         {
-            var settings = x.Vm.Settings;
+            var settings = walk.Vm.Settings;
             settings.Bookmarks.Clear();
-            x.Vm.ApplySettings(settings);
+            walk.Vm.ApplySettings(settings);
         });
 
         // ---- settings ----
-        yield return new("open the settings", x => x.Vm.PageFlow.OpenSettings());
-        foreach (var s in SettingsControls(w)) yield return s;
-        foreach (var s in Dialog("key binding", x => x.Vm.PageFlow.SettingsPage!.AddKeyBindingCommand.Execute(null))) yield return s;
-        yield return new("close the settings", x => x.Vm.PageFlow.ClosePage());
+        yield return new("open the settings", walk => walk.Vm.PageFlow.OpenSettings());
+        foreach (var step in SettingsControls(otherWalk)) yield return step;
+        foreach (var step in Dialog("key binding", walk => walk.Vm.PageFlow.SettingsPage!.AddKeyBindingCommand.Execute(null))) yield return step;
+        yield return new("close the settings", walk => walk.Vm.PageFlow.ClosePage());
 
         // ---- connected: channels ----
-        yield return new("connect", x =>
+        yield return new("connect", walk =>
         {
-            x.Server = FakeServers.Admin(x.Sent, dialogs: x.Vm.Dialogs.Server);
-            x.Server.Post = a => Dispatcher.UIThread.Post(a); // as the main view model does: leaving rows go on the UI thread
-            MainViewModelSetup.ShowServer(x.Vm, x.Server);
+            walk.Server = FakeServers.Admin(walk.Sent, dialogs: walk.Vm.Dialogs.Server);
+            walk.Server.Post = action => Dispatcher.UIThread.Post(action); // as the main view model does: leaving rows go on the UI thread
+            MainViewModelSetup.ShowServer(walk.Vm, walk.Server);
         });
-        foreach (var s in Menu("a channel's menu", x => Row(x, d => d is ChannelViewModel { Name: "Lobby" }))) yield return s;
-        yield return new("join a channel", x => x.Server.Apply(new UserUpdated(Me(FakeServers.Raid))));
-        yield return new("switch the channel", x => x.Server.Apply(new UserUpdated(Me(FakeServers.Lobby))));
-        foreach (var s in Dialog("create channel", x => _ = Channel(x, "Lobby").CreateCommand.ExecuteAsync(null))) yield return s;
-        yield return new("create a channel", x => x.Server.Apply(new ChannelAdded(new ChannelInfo(Archive, "Archiv", "", 2))));
-        foreach (var s in Dialog("edit channel", x => _ = Channel(x, "Archiv").EditCommand.ExecuteAsync(null))) yield return s;
-        yield return new("edit a channel: rename it", x => x.Server.Apply(new ChannelUpdated(new ChannelInfo(Archive, "Altes Archiv", "Alte Sachen", 2))));
-        yield return new("edit a channel: mute it", x => x.Server.Apply(new ChannelUpdated(new ChannelInfo(Archive, "Altes Archiv", "Alte Sachen", 2, IsMuted: true))));
-        yield return new("edit a channel: limit its users", x => x.Server.Apply(new ChannelUpdated(new ChannelInfo(Archive, "Altes Archiv", "Alte Sachen", 2, true, MaxUsers: 5))));
-        yield return new("move a channel", x => x.Server.Apply(new ChannelUpdated(new ChannelInfo(Archive, "Altes Archiv", "Alte Sachen", -1, true, MaxUsers: 5))));
-        foreach (var s in Dialog("link channels", x => _ = Channel(x, "Altes Archiv").LinkCommand.ExecuteAsync(null))) yield return s;
-        yield return new("link channels", x => x.Server.Apply(new ChannelsLinked(Archive, FakeServers.Lobby)));
-        yield return new("unlink channels", x => x.Server.Apply(new ChannelsUnlinked(Archive, FakeServers.Lobby)));
-        foreach (var s in Dialog("channel password", x => _ = ChannelPasswordDialog.ShowAsync(x.Main.Overlay, "Raid"))) yield return s;
-        foreach (var s in Dialog("delete channel", x => _ = Channel(x, "Altes Archiv").DeleteCommand.ExecuteAsync(null))) yield return s;
-        yield return new("delete a channel", x => x.Server.Apply(new ChannelRemoved(Archive)));
+        foreach (var step in Menu("a channel's menu", walk => Row(walk, d => d is ChannelViewModel { Name: "Lobby" }))) yield return step;
+        yield return new("join a channel", walk => walk.Server.Apply(new UserUpdated(Me(FakeServers.Raid))));
+        yield return new("switch the channel", walk => walk.Server.Apply(new UserUpdated(Me(FakeServers.Lobby))));
+        foreach (var step in Dialog("create channel", walk => _ = Channel(walk, "Lobby").CreateCommand.ExecuteAsync(null))) yield return step;
+        yield return new("create a channel", walk => walk.Server.Apply(new ChannelAdded(new ChannelInfo(Archive, "Archiv", "", 2))));
+        foreach (var step in Dialog("edit channel", walk => _ = Channel(walk, "Archiv").EditCommand.ExecuteAsync(null))) yield return step;
+        yield return new("edit a channel: rename it", walk => walk.Server.Apply(new ChannelUpdated(new ChannelInfo(Archive, "Altes Archiv", "Alte Sachen", 2))));
+        yield return new("edit a channel: mute it", walk => walk.Server.Apply(new ChannelUpdated(new ChannelInfo(Archive, "Altes Archiv", "Alte Sachen", 2, IsMuted: true))));
+        yield return new("edit a channel: limit its users", walk => walk.Server.Apply(new ChannelUpdated(new ChannelInfo(Archive, "Altes Archiv", "Alte Sachen", 2, true, MaxUsers: 5))));
+        yield return new("move a channel", walk => walk.Server.Apply(new ChannelUpdated(new ChannelInfo(Archive, "Altes Archiv", "Alte Sachen", -1, true, MaxUsers: 5))));
+        foreach (var step in Dialog("link channels", walk => _ = Channel(walk, "Altes Archiv").LinkCommand.ExecuteAsync(null))) yield return step;
+        yield return new("link channels", walk => walk.Server.Apply(new ChannelsLinked(Archive, FakeServers.Lobby)));
+        yield return new("unlink channels", walk => walk.Server.Apply(new ChannelsUnlinked(Archive, FakeServers.Lobby)));
+        foreach (var step in Dialog("channel password", walk => _ = ChannelPasswordDialog.ShowAsync(walk.Main.Overlay, "Raid"))) yield return step;
+        foreach (var step in Dialog("delete channel", walk => _ = Channel(walk, "Altes Archiv").DeleteCommand.ExecuteAsync(null))) yield return step;
+        yield return new("delete a channel", walk => walk.Server.Apply(new ChannelRemoved(Archive)));
 
         // ---- connected: users ----
-        yield return new("someone joins", x => x.Server.Apply(new UserJoined(Bert(FakeServers.Lobby))));
-        foreach (var s in Menu("a user's menu", x => Row(x, d => d is UserViewModel { Nickname: "bert" }))) yield return s;
-        yield return new("move a user", x => x.Server.Apply(new UserUpdated(Bert(FakeServers.Raid))));
-        yield return new("mute a user", x =>
+        yield return new("someone joins", walk => walk.Server.Apply(new UserJoined(Bert(FakeServers.Lobby))));
+        foreach (var step in Menu("a user's menu", walk => Row(walk, d => d is UserViewModel { Nickname: "bert" }))) yield return step;
+        yield return new("move a user", walk => walk.Server.Apply(new UserUpdated(Bert(FakeServers.Raid))));
+        yield return new("mute a user", walk =>
         {
-            User(x, "bert").ToggleServerMuteCommand.Execute(null);
-            x.Server.Apply(new UserUpdated(Bert(FakeServers.Raid, serverMuted: true)));
+            User(walk, "bert").ToggleServerMuteCommand.Execute(null);
+            walk.Server.Apply(new UserUpdated(Bert(FakeServers.Raid, serverMuted: true)));
         });
-        yield return new("lift a user's mute", x =>
+        yield return new("lift a user's mute", walk =>
         {
-            User(x, "bert").ToggleServerMuteCommand.Execute(null);
-            x.Server.Apply(new UserUpdated(Bert(FakeServers.Raid)));
+            User(walk, "bert").ToggleServerMuteCommand.Execute(null);
+            walk.Server.Apply(new UserUpdated(Bert(FakeServers.Raid)));
         });
-        foreach (var s in Dialog("kick", x => _ = User(x, "bert").KickCommand.ExecuteAsync(null))) yield return s;
-        yield return new("kick a user", x => x.Server.Apply(new UserLeft(3)));
-        foreach (var s in Dialog("ban", x => _ = User(x, "anna").BanCommand.ExecuteAsync(null))) yield return s;
-        yield return new("ban a user", x => x.Server.Apply(new UserLeft(2)));
-        yield return new("mute oneself", x => x.Server.SelfState.ToggleMuteCommand.Execute(null));
-        yield return new("unmute oneself", x => x.Server.SelfState.ToggleMuteCommand.Execute(null));
-        yield return new("deafen oneself", x => x.Server.SelfState.ToggleDeafenCommand.Execute(null));
-        yield return new("undeafen oneself", x => x.Server.SelfState.ToggleDeafenCommand.Execute(null));
-        yield return new(Idle, _ => { }, x => x.Main, Away); // AC2: nothing moves by itself, so a count is not a stray
+        foreach (var step in Dialog("kick", walk => _ = User(walk, "bert").KickCommand.ExecuteAsync(null))) yield return step;
+        yield return new("kick a user", walk => walk.Server.Apply(new UserLeft(3)));
+        foreach (var step in Dialog("ban", walk => _ = User(walk, "anna").BanCommand.ExecuteAsync(null))) yield return step;
+        yield return new("ban a user", walk => walk.Server.Apply(new UserLeft(2)));
+        yield return new("mute oneself", walk => walk.Server.SelfState.ToggleMuteCommand.Execute(null));
+        yield return new("unmute oneself", walk => walk.Server.SelfState.ToggleMuteCommand.Execute(null));
+        yield return new("deafen oneself", walk => walk.Server.SelfState.ToggleDeafenCommand.Execute(null));
+        yield return new("undeafen oneself", walk => walk.Server.SelfState.ToggleDeafenCommand.Execute(null));
+        yield return new(Idle, _ => { }, walk => walk.Main, Away); // AC2: nothing moves by itself, so a count is not a stray
 
         // ---- chat ----
-        yield return new("send a chat message", x =>
+        yield return new("send a chat message", walk =>
         {
-            x.Vm.Chat!.Draft = "Hallo zusammen";
-            x.Vm.Chat.SendCommand.Execute(null);
+            walk.Vm.Chat!.Draft = "Hallo zusammen";
+            walk.Vm.Chat.SendCommand.Execute(null);
         });
-        yield return new("switch the chat tab", x => x.Vm.Chat!.Selected = x.Vm.Chat.Tabs[1]);
-        yield return new("switch the chat tab back", x => x.Vm.Chat!.Selected = x.Vm.Chat.Tabs[0]);
+        yield return new("switch the chat tab", walk => walk.Vm.Chat!.Selected = walk.Vm.Chat.Tabs[1]);
+        yield return new("switch the chat tab back", walk => walk.Vm.Chat!.Selected = walk.Vm.Chat.Tabs[0]);
 
         // ---- administration ----
-        yield return new("open the administration", x => _ = x.Vm.PageFlow.OpenAdminAsync());
-        yield return new("add a group", x => x.Admin.GroupList.NewGroupCommand.Execute(null));
-        yield return new("drop the new group", x => x.Admin.GroupList.DeleteGroupCommand.Execute(null));
+        yield return new("open the administration", walk => _ = walk.Vm.PageFlow.OpenAdminAsync());
+        yield return new("add a group", walk => walk.Admin.GroupList.NewGroupCommand.Execute(null));
+        yield return new("drop the new group", walk => walk.Admin.GroupList.DeleteGroupCommand.Execute(null));
         yield return new("create a group", walk => walk.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, FakeServers.ModeratorGroup])));
-        yield return new("choose a group", x => x.Admin.GroupList.SelectedGroup = x.Admin.GroupList.Groups.Single(g => g.Name == "Moderator"), x => Named<ListBox>(x, "GroupRows"));
-        yield return Toggle("toggle a group's right", x => Shown<CheckBox>(x, c => c.DataContext is PermissionToggleViewModel { Permission: Permission.UserMute }));
-        yield return Click("save a group", x => Named<Button>(x, "SaveGroupButton"), x =>
+        yield return new("choose a group", walk => walk.Admin.GroupList.SelectedGroup = walk.Admin.GroupList.Groups.Single(groupEdit => groupEdit.Name == "Moderator"), walk => Named<ListBox>(walk, "GroupRows"));
+        yield return Toggle("toggle a group's right", walk => Shown<CheckBox>(walk, checkBox => checkBox.DataContext is PermissionToggleViewModel { Permission: Permission.UserMute }));
+        yield return Click("save a group", walk => Named<Button>(walk, "SaveGroupButton"), walk =>
         {
             Watch(250); // busy until the server's groups come
-            x.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, FakeServers.ModeratorGroup with { Permissions = FakeServers.ModeratorGroup.Permissions | Permission.UserMute }]));
+            walk.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, FakeServers.ModeratorGroup with { Permissions = FakeServers.ModeratorGroup.Permissions | Permission.UserMute }]));
         });
-        yield return new("reorder groups", x =>
+        yield return new("reorder groups", walk =>
         {
-            x.Admin.GroupList.SelectedGroup = x.Admin.GroupList.Groups.Single(g => g.Name == "Moderator");
-            x.Admin.GroupList.MoveGroupUpCommand.Execute(null);
+            walk.Admin.GroupList.SelectedGroup = walk.Admin.GroupList.Groups.Single(groupEdit => groupEdit.Name == "Moderator");
+            walk.Admin.GroupList.MoveGroupUpCommand.Execute(null);
             Watch(250);
-            x.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.ModeratorGroup, FakeServers.AdminGroup])); // the server confirms the order
+            walk.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.ModeratorGroup, FakeServers.AdminGroup])); // the server confirms the order
         });
-        yield return new("delete a group", x =>
+        yield return new("delete a group", walk =>
         {
-            x.Admin.GroupList.SelectedGroup = x.Admin.GroupList.Groups.Single(g => g.Name == "Moderator");
-            _ = x.Admin.GroupList.DeleteGroupCommand.ExecuteAsync(null);
-            x.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup]));
+            walk.Admin.GroupList.SelectedGroup = walk.Admin.GroupList.Groups.Single(groupEdit => groupEdit.Name == "Moderator");
+            _ = walk.Admin.GroupList.DeleteGroupCommand.ExecuteAsync(null);
+            walk.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup]));
         });
 
-        yield return new("switch to the users", x => AdminTabs(x).SelectedIndex = 1);
-        yield return new("refresh the lists", x =>
+        yield return new("switch to the users", walk => AdminTabs(walk).SelectedIndex = 1);
+        yield return new("refresh the lists", walk =>
         {
-            _ = x.Admin.RefreshCommand.ExecuteAsync(null);
-            x.Server.Apply(new UserList(x.Sent.LastRequestId<ListUsers>(), [KnownMe, KnownAnna(muted: true)]));
-            x.Server.Apply(new LogList(x.Sent.LastRequestId<ListLogs>(), [ServerLog]));
+            _ = walk.Admin.RefreshCommand.ExecuteAsync(null);
+            walk.Server.Apply(new UserList(walk.Sent.LastRequestId<ListUsers>(), [KnownMe, KnownAnna(muted: true)]));
+            walk.Server.Apply(new LogList(walk.Sent.LastRequestId<ListLogs>(), [ServerLog]));
         });
-        foreach (var name in new[] { "StatusFilter", "GroupFilter", "SortOrder" }) yield return Drop($"the user list's {name}", x => Named<ComboBox>(x, name));
-        yield return new("lift a stored mute", x =>
+        foreach (var name in new[] { "StatusFilter", "GroupFilter", "SortOrder" }) yield return Drop($"the user list's {name}", walk => Named<ComboBox>(walk, name));
+        yield return new("lift a stored mute", walk =>
         {
-            Anna(x).LiftMuteCommand.Execute(null);
+            Anna(walk).LiftMuteCommand.Execute(null);
             Watch(250); // the card waits for a user list that shows it
-            x.Server.Apply(new UserList(x.Sent.LastRequestId<ListUsers>(), [KnownMe, KnownAnna(muted: false)]));
+            walk.Server.Apply(new UserList(walk.Sent.LastRequestId<ListUsers>(), [KnownMe, KnownAnna(muted: false)]));
         });
-        foreach (var s in Dialog("delete user", x => _ = Anna(x).DeleteCommand.ExecuteAsync(null))) yield return s;
-        yield return new("delete a user", x => x.Server.Apply(new UserList(x.Sent.LastRequestId<ListUsers>(), [KnownMe])));
+        foreach (var step in Dialog("delete user", walk => _ = Anna(walk).DeleteCommand.ExecuteAsync(null))) yield return step;
+        yield return new("delete a user", walk => walk.Server.Apply(new UserList(walk.Sent.LastRequestId<ListUsers>(), [KnownMe])));
 
-        yield return new("switch to the bans", x => AdminTabs(x).SelectedIndex = 2);
-        foreach (var name in new[] { "BanStatusFilter", "BanTypeFilter", "BanSortOrder" }) yield return Drop($"the ban list's {name}", x => Named<ComboBox>(x, name));
-        yield return new("ban list shows the ban", x => x.Server.Apply(new BanList(x.Sent.LastRequestId<ListBans>(), [new BanInfo(AnnasBan, "fp2", "anna", null, "Spam", "ich", null)])));
-        yield return new("unban a user", x =>
+        yield return new("switch to the bans", walk => AdminTabs(walk).SelectedIndex = 2);
+        foreach (var name in new[] { "BanStatusFilter", "BanTypeFilter", "BanSortOrder" }) yield return Drop($"the ban list's {name}", walk => Named<ComboBox>(walk, name));
+        yield return new("ban list shows the ban", walk => walk.Server.Apply(new BanList(walk.Sent.LastRequestId<ListBans>(), [new BanInfo(AnnasBan, "fp2", "anna", null, "Spam", "ich", null)])));
+        yield return new("unban a user", walk =>
         {
-            x.Admin.UsersAndBans.Bans.Single().UnbanCommand.Execute(null);
-            x.Server.Apply(new BanList(x.Sent.LastRequestId<Unban>(), []));
+            walk.Admin.UsersAndBans.Bans.Single().UnbanCommand.Execute(null);
+            walk.Server.Apply(new BanList(walk.Sent.LastRequestId<Unban>(), []));
         });
 
-        yield return new("switch to the links", x => AdminTabs(x).SelectedIndex = 3);
-        Func<Walk, ToggleButton> rowBox = x => Shown<CheckBox>(x, c => c.DataContext is LinkRowViewModel);
-        Func<Walk, ToggleButton> cellBox = x => Shown<CheckBox>(x, c => c.DataContext is LinkCellViewModel);
+        yield return new("switch to the links", walk => AdminTabs(walk).SelectedIndex = 3);
+        Func<Walk, ToggleButton> rowBox = walk => Shown<CheckBox>(walk, checkBox => checkBox.DataContext is LinkRowViewModel);
+        Func<Walk, ToggleButton> cellBox = walk => Shown<CheckBox>(walk, checkBox => checkBox.DataContext is LinkCellViewModel);
         yield return Toggle("select a channel in the link matrix", rowBox, back: true);
         yield return Toggle("change a link in the matrix", cellBox);
-        yield return Click("discard the link changes", x => CommandButton(x, x.Admin.Links.DiscardCommand));
+        yield return Click("discard the link changes", walk => CommandButton(walk, walk.Admin.Links.DiscardCommand));
         yield return Toggle("change a link in the matrix again", cellBox);
-        yield return Click("apply the link changes", x => Named<Button>(x, "ApplyLinksButton"), x =>
+        yield return Click("apply the link changes", walk => Named<Button>(walk, "ApplyLinksButton"), walk =>
         {
             Watch(250); // busy until the server's links match
-            x.Server.Apply(new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid));
+            walk.Server.Apply(new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid));
         });
 
-        yield return new("switch to the server", x => AdminTabs(x).SelectedIndex = 4, Prepare: x => x.Server.Apply(new ServerSettingsChanged(
-            x.Server.Mirror.Settings with { Limits = new ServerLimits(50, 30, true, false, new TimeOnly(4, 0)) }))); // with limits: all its check boxes
-        var serverBoxes = AdminPage(w).GetVisualDescendants().OfType<CheckBox>().Where(c => c.IsEffectivelyVisible && c.IsEffectivelyEnabled).ToList();
+        yield return new("switch to the server", walk => AdminTabs(walk).SelectedIndex = 4, Prepare: walk => walk.Server.Apply(new ServerSettingsChanged(
+            walk.Server.Mirror.Settings with { Limits = new ServerLimits(50, 30, true, false, new TimeOnly(4, 0)) }))); // with limits: all its check boxes
+        var serverBoxes = AdminPage(otherWalk).GetVisualDescendants().OfType<CheckBox>().Where(checkBox => checkBox.IsEffectivelyVisible && checkBox.IsEffectivelyEnabled).ToList();
         foreach (var box in serverBoxes)
             yield return Toggle($"server settings: {box.Content as string ?? box.Name}", _ => box, back: true);
-        yield return Click("save the server settings", x => CommandButton(x, x.Admin.ServerSettings.SaveCommand),
-            x => x.Server.Apply(new ServerSettingsChanged(x.Server.Mirror.Settings)));
-        yield return new("upload a logo", x =>
+        yield return Click("save the server settings", walk => CommandButton(walk, walk.Admin.ServerSettings.SaveCommand),
+            walk => walk.Server.Apply(new ServerSettingsChanged(walk.Server.Mirror.Settings)));
+        yield return new("upload a logo", walk =>
         {
             var png = TestImages.Encode(64, 64);
-            x.Admin.ServerIcon.UploadIcon(png, null);
+            walk.Admin.ServerIcon.UploadIcon(png, null);
             Watch(250); // the logo waits for the server
-            x.Server.Apply(new ServerSettingsChanged(x.Server.Mirror.Settings));
-            x.Server.IconPng = png;
+            walk.Server.Apply(new ServerSettingsChanged(walk.Server.Mirror.Settings));
+            walk.Server.IconPng = png;
         });
-        yield return new("create a backup", x =>
+        yield return new("create a backup", walk =>
         {
-            x.Admin.BackupCard.NewBackupCommand.Execute(null);
+            walk.Admin.BackupCard.NewBackupCommand.Execute(null);
             Watch(250); // the button waits for the server
-            x.Server.Apply(new BackupList(x.Sent.LastRequestId<CreateBackup>(), [new BackupInfo("backup-1.zip", DateTimeOffset.Now, 1024, "1.0")]));
+            walk.Server.Apply(new BackupList(walk.Sent.LastRequestId<CreateBackup>(), [new BackupInfo("backup-1.zip", DateTimeOffset.Now, 1024, "1.0")]));
         });
-        foreach (var s in Dialog("restore backup", x => _ = x.Admin.BackupCard.Backups.Single().RestoreCommand.ExecuteAsync(null))) yield return s;
-        foreach (var s in Dialog("backup download warning", x => _ = x.Admin.BackupCard.ConfirmDownloadAsync())) yield return s;
-        foreach (var s in Dialog("delete backup", x => _ = x.Admin.BackupCard.Backups.Single().DeleteCommand.ExecuteAsync(null))) yield return s;
-        yield return new("delete a backup", x => x.Server.Apply(new BackupList(x.Sent.LastRequestId<ListBackups>(), [])));
+        foreach (var step in Dialog("restore backup", walk => _ = walk.Admin.BackupCard.Backups.Single().RestoreCommand.ExecuteAsync(null))) yield return step;
+        foreach (var step in Dialog("backup download warning", walk => _ = walk.Admin.BackupCard.ConfirmDownloadAsync())) yield return step;
+        foreach (var step in Dialog("delete backup", walk => _ = walk.Admin.BackupCard.Backups.Single().DeleteCommand.ExecuteAsync(null))) yield return step;
+        yield return new("delete a backup", walk => walk.Server.Apply(new BackupList(walk.Sent.LastRequestId<ListBackups>(), [])));
 
-        yield return new("switch to the logs", x => AdminTabs(x).SelectedIndex = 5);
-        yield return Drop("the log source filter", x => Named<ComboBox>(x, "LogSourceFilter"));
-        yield return Click("search the logs", x => Named<Button>(x, "LogSearchButton"), x =>
+        yield return new("switch to the logs", walk => AdminTabs(walk).SelectedIndex = 5);
+        yield return Drop("the log source filter", walk => Named<ComboBox>(walk, "LogSourceFilter"));
+        yield return Click("search the logs", walk => Named<Button>(walk, "LogSearchButton"), walk =>
         {
             Watch(250); // the search waits for the server
-            x.Server.Apply(new LogSearchResult(x.Sent.LastRequestId<SearchLogs>(), [new LogHit("server-1", 1, "Start")], false, false));
-        }, x => x.Admin.Logs.SearchText = "Start");
-        yield return new("open a log file", x =>
+            walk.Server.Apply(new LogSearchResult(walk.Sent.LastRequestId<SearchLogs>(), [new LogHit("server-1", 1, "Start")], false, false));
+        }, walk => walk.Admin.Logs.SearchText = "Start");
+        yield return new("open a log file", walk =>
         {
-            x.Admin.Logs.SelectedFile = x.Admin.Logs.Files.Single();
-            x.Server.Apply(new LogPage(x.Sent.LastRequestId<ReadLog>(), "server-1", 1, 2, 1, ["Start", "Zeile 2"]));
+            walk.Admin.Logs.SelectedFile = walk.Admin.Logs.Files.Single();
+            walk.Server.Apply(new LogPage(walk.Sent.LastRequestId<ReadLog>(), "server-1", 1, 2, 1, ["Start", "Zeile 2"]));
         });
-        yield return new("turn the log page", x =>
+        yield return new("turn the log page", walk =>
         {
-            x.Admin.Logs.NewerCommand.Execute(null);
-            x.Server.Apply(new LogPage(x.Sent.LastRequestId<ReadLog>(), "server-1", 2, 2, 3, ["Zeile 3"]));
+            walk.Admin.Logs.NewerCommand.Execute(null);
+            walk.Server.Apply(new LogPage(walk.Sent.LastRequestId<ReadLog>(), "server-1", 2, 2, 3, ["Zeile 3"]));
         });
-        yield return new("close the administration", x => x.Vm.PageFlow.ClosePage());
+        yield return new("close the administration", walk => walk.Vm.PageFlow.ClosePage());
 
         // ---- narrow window: the drawer ----
-        yield return new("open the drawer", x => x.Main.GetVisualDescendants().OfType<Button>()
-            .Single(b => b.IsEffectivelyVisible && AutomationProperties.GetName(b) == Strings.Ui_ShowChannels)
-            .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent)), Prepare: x => x.Main.Width = 360);
-        yield return new("close the drawer", x => x.Main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null));
+        yield return new("open the drawer", walk => walk.Main.GetVisualDescendants().OfType<Button>()
+            .Single(button => button.IsEffectivelyVisible && AutomationProperties.GetName(button) == Strings.Ui_ShowChannels)
+            .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent)), Prepare: walk => walk.Main.Width = 360);
+        yield return new("close the drawer", walk => walk.Main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null));
 
-        yield return new("disconnect", x => MainViewModelSetup.ShowServer(x.Vm, null), Prepare: x => x.Main.Width = 1100);
+        yield return new("disconnect", walk => MainViewModelSetup.ShowServer(walk.Vm, null), Prepare: walk => walk.Main.Width = 1100);
     }
 
     // ---- the tests ----
@@ -607,11 +607,11 @@ public sealed class MotionCoverageTests
     {
         var animated = WalkThrough(DisplayMode.Animated);
         var simplified = WalkThrough(DisplayMode.Simplified);
-        Assert.Equal(simplified.Select(r => r.Name), animated.Select(r => r.Name));
+        Assert.Equal(simplified.Select(result => result.Name), animated.Select(result => result.Name));
         Assert.True(animated.Count > 60, $"the walk covers every action ({animated.Count})");
-        var idle = animated.Single(r => r.Name == Idle);
+        var idle = animated.Single(result => result.Name == Idle);
         Assert.True(idle.Started == 0 && !idle.Moved, $"nothing moves by itself ({idle.Started} started, moved: {idle.Movers})");
-        var still = animated.Where(r => r.Name != Idle && r.Started == 0 && !r.Moved).Select(r => r.Name).ToList();
+        var still = animated.Where(result => result.Name != Idle && result.Started == 0 && !result.Moved).Select(result => result.Name).ToList();
         Assert.True(still.Count == 0, "nothing moves for:\n" + string.Join("\n", still));
         var different = animated.Zip(simplified).Where(p => p.First.State != p.Second.State)
             .Select(p => $"{p.First.Name}:\n{p.First.State}--- simplified:\n{p.Second.State}").ToList();
@@ -623,7 +623,7 @@ public sealed class MotionCoverageTests
     public void EveryAction_NoNewAnimationInSimplifiedMode()
     {
         var simplified = WalkThrough(DisplayMode.Simplified);
-        Assert.Empty(simplified.Where(r => r.Started > 0 || r.Moved).Select(r => $"{r.Name}: {r.Started} started, moved: {r.Movers}"));
+        Assert.Empty(simplified.Where(result => result.Started > 0 || result.Moved).Select(result => $"{result.Name}: {result.Started} started, moved: {result.Movers}"));
     }
 
     /// <summary>
@@ -644,31 +644,31 @@ public sealed class MotionCoverageTests
     public void JoinLeaveStorm_EndsBounded(bool large)
     {
         string dir = Directory.CreateTempSubdirectory("ovs-storm-").FullName;
-        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
-        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
         main.Show();
         var server = large ? FakeServers.Large() : FakeServers.Crowded();
-        server.Post = a => Dispatcher.UIThread.Post(a); // as the main view model does: leaving rows go on the UI thread
-        MainViewModelSetup.ShowServer(vm, server);
+        server.Post = action => Dispatcher.UIThread.Post(action); // as the main view model does: leaving rows go on the UI thread
+        MainViewModelSetup.ShowServer(viewModel, server);
         Watch(800);
         Motion.Apply(main, DisplayMode.Animated);
         MotionWait.Connected(main); // under load connecting takes longer: the storm starts on a still tree
-        var before = server.Tree.Channels.ToDictionary(c => c.Name, c => string.Join(",", c.Users.Select(u => u.Nickname)));
+        var before = server.Tree.Channels.ToDictionary(channel => channel.Name, channel => string.Join(",", channel.Users.Select(user => user.Nickname)));
         var tree = main.FindControl<ItemsControl>("ChannelItems")!;
         int running = AnimationCounter.Running;
         AnimationCounter.ResetStarted();
 
         // 100 changes spread over 800 ms, with frames in between (as many as the machine manages)
-        var channels = server.Tree.Channels.Select(c => c.Id).ToList();
-        Message Change(int i) => i < 50
-            ? new UserJoined(new UserInfo((uint)(1000 + i), $"fp{1000 + i}", $"Gast{i}", channels[i % channels.Count], false, false, false,
+        var channels = server.Tree.Channels.Select(channel => channel.Id).ToList();
+        Message Change(int index) => index < 50
+            ? new UserJoined(new UserInfo((uint)(1000 + index), $"fp{1000 + index}", $"Gast{index}", channels[index % channels.Count], false, false, false,
                 Permission.None, [WellKnownGroups.Guest]))
-            : new UserLeft((uint)(1000 + i - 50)); // above the users already there
+            : new UserLeft((uint)(1000 + index - 50)); // above the users already there
         var storm = Stopwatch.StartNew();
-        for (int i = 0; i < 100;)
+        for (int index = 0; index < 100;)
         {
-            while (i < 100 && i * 8 <= storm.ElapsedMilliseconds) server.Apply(Change(i++));
-            if (i == 100) break; // the last change: the bound starts here
+            while (index < 100 && index * 8 <= storm.ElapsedMilliseconds) server.Apply(Change(index++));
+            if (index == 100) break; // the last change: the bound starts here
             Frame();
             Thread.Sleep(1);
         }
@@ -677,9 +677,9 @@ public sealed class MotionCoverageTests
 
         var bound = Motion.Slow + TimeSpan.FromMilliseconds(8 * ItemMotion.StaggerMs);
         bool Settled() => AnimationCounter.Running <= running
-            && server.Tree.Channels.All(c => before[c.Name] == string.Join(",", c.Users.Select(u => u.Nickname)))
-            && tree.GetVisualDescendants().OfType<ContentPresenter>().Where(p => p.DataContext is UserViewModel && p.Parent is Panel)
-                .All(p => p.Opacity == 1 && !p.Classes.Contains("entering") && !p.Classes.Contains("leaving"));
+            && server.Tree.Channels.All(channel => before[channel.Name] == string.Join(",", channel.Users.Select(user => user.Nickname)))
+            && tree.GetVisualDescendants().OfType<ContentPresenter>().Where(contentPresenter => contentPresenter.DataContext is UserViewModel && contentPresenter.Parent is Panel)
+                .All(contentPresenter => contentPresenter.Opacity == 1 && !contentPresenter.Classes.Contains("entering") && !contentPresenter.Classes.Contains("leaving"));
         var after = Stopwatch.StartNew();
         var gap = TimeSpan.Zero; // the longest time between two frames
         while (!Settled() && after.Elapsed < bound + TimeSpan.FromSeconds(5))

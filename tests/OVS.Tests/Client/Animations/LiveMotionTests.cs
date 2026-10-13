@@ -46,16 +46,16 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     }
 
     /// <param name="buildUp">Looks at every frame while the tree builds up after connecting.</param>
-    MainWindow Open(out MainViewModel vm, out ServerViewModel server, DisplayMode display = DisplayMode.Animated, Action? buildUp = null,
+    MainWindow Open(out MainViewModel viewModel, out ServerViewModel server, DisplayMode display = DisplayMode.Animated, Action? buildUp = null,
         TransmitMode mode = TransmitMode.PushToTalk)
     {
         new ClientSettings { Display = display, Mode = mode }.Save(dir);
-        vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
-        var main = opening = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var main = opening = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
         main.Show();
         MotionWait.Settle(200);
         Motion.Apply(main, display);
-        MainViewModelSetup.ShowServer(vm, server = FakeServers.Admin());
+        MainViewModelSetup.ShowServer(viewModel, server = FakeServers.Admin());
         var look = buildUp ?? (() => { });
         Watch(700, look); // the tree builds up
         // under load that takes longer: watched on until it is over, no test acts while it still moves
@@ -77,20 +77,20 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         return done();
     }, atLeast);
 
-    static double Turned(Visual v) => v.RenderTransform?.Value.M12 ?? 0;
+    static double Turned(Visual visual) => visual.RenderTransform?.Value.M12 ?? 0;
     static byte GlowAlpha(Border ring) => ring.BoxShadow.Count == 0 ? (byte)0 : ring.BoxShadow[0].Color.A;
 
     static Border OwnRing(MainWindow main) =>
-        main.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("ring") && b.DataContext is UserViewModel { IsSelf: true });
+        main.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("ring") && border.DataContext is UserViewModel { IsSelf: true });
 
     static PathIcon StateIcon(MainWindow main, uint session, string cls) =>
-        main.GetVisualDescendants().OfType<PathIcon>().First(i => LiveMotion.GetPop(i) && i.Classes.Contains(cls) && i.DataContext is UserViewModel u && u.SessionId == session);
+        main.GetVisualDescendants().OfType<PathIcon>().First(pathIcon => LiveMotion.GetPop(pathIcon) && pathIcon.Classes.Contains(cls) && pathIcon.DataContext is UserViewModel user && user.SessionId == session);
 
     static IEnumerable<PathIcon> Ghosts(MainWindow main) =>
-        main.GetVisualDescendants().OfType<PathIcon>().Where(i => i.Classes.Contains(LiveMotion.GhostClass));
+        main.GetVisualDescendants().OfType<PathIcon>().Where(pathIcon => pathIcon.Classes.Contains(LiveMotion.GhostClass));
 
     static TextBlock SlotCounter(MainWindow main, string channel) =>
-        main.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("channelCount") && t.DataContext is ChannelViewModel c && c.Name == channel);
+        main.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("channelCount") && textBlock.DataContext is ChannelViewModel channelViewModel && channelViewModel.Name == channel);
 
     static UserInfo Anna(bool serverMuted) =>
         new(2, "fp2", "anna", FakeServers.Raid, true, true, serverMuted, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true);
@@ -122,7 +122,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     [AvaloniaFact]
     public void Speaking_RingBreathesWhileSpeaking_StopsAfter()
     {
-        var main = Open(out var vm, out var server);
+        var main = Open(out var viewModel, out var server);
         var ring = OwnRing(main);
         Assert.Equal(0, GlowAlpha(ring));
 
@@ -144,7 +144,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         });
 
         // every step of the fade as it happens: under load one frame can outlast it
-        var glows = MotionWait.Record(ring, v => GlowAlpha((Border)v));
+        var glows = MotionWait.Record(ring, visual => GlowAlpha((Border)visual));
         server.Tree.SetSelfTransmitting(null);
         MotionWait.Eventually(() => Assert.Equal((1d, (byte)0), (MotionWait.Scale(ring.Child!), GlowAlpha(ring)))); // the loop stops with the speaking
         Assert.True(glows.Any(a => a is > 0 and < 0x99), "the glow fades out");
@@ -158,12 +158,12 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         server.Tree.SetSelfTransmitting(null);
 
         // the push-to-talk indicator pulses while sending
-        var transmit = main.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("transmit"));
-        vm.TransmitText = "Sendet";
+        var transmit = main.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("transmit"));
+        viewModel.TransmitText = "Sendet";
         double dim = 1;
         WatchUntil(() => dim < 0.8, () => dim = Math.Min(dim, transmit.Opacity));
         Assert.True(dim < 0.8, $"the indicator pulses ({dim})");
-        vm.TransmitText = "";
+        viewModel.TransmitText = "";
         MotionWait.Eventually(() => Assert.Equal(1, transmit.Opacity));
         main.Close();
     }
@@ -172,8 +172,8 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     public void MuteIcons_PopInOut()
     {
         bool popped = false;
-        var main = Open(out _, out var server, buildUp: () => popped |= opening is { } m && (Ghosts(m).Any()
-            || m.GetVisualDescendants().OfType<PathIcon>().Any(i => (LiveMotion.GetPop(i) || LiveMotion.GetTurn(i)) && (i.Opacity < 1 || MotionWait.Scale(i) != 1 || Turned(i) != 0))));
+        var main = Open(out _, out var server, buildUp: () => popped |= opening is { } mainWindow && (Ghosts(mainWindow).Any()
+            || mainWindow.GetVisualDescendants().OfType<PathIcon>().Any(pathIcon => (LiveMotion.GetPop(pathIcon) || LiveMotion.GetTurn(pathIcon)) && (pathIcon.Opacity < 1 || MotionWait.Scale(pathIcon) != 1 || Turned(pathIcon) != 0))));
         Assert.False(popped, "nothing pops while the tree is first built");
         var serverMuted = StateIcon(main, 2, "danger");
         Assert.True(serverMuted.IsEffectivelyVisible);
@@ -182,10 +182,10 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         // can outlast the whole pop
         var overlay = OverlayLayer.GetOverlayLayer(main)!;
         var copies = new List<(List<double> Opacity, List<double> Scale)>();
-        overlay.Children.CollectionChanged += (_, e) =>
+        overlay.Children.CollectionChanged += (_, args) =>
         {
-            foreach (var added in e.NewItems?.OfType<PathIcon>() ?? [])
-                if (added.Classes.Contains(LiveMotion.GhostClass)) copies.Add((MotionWait.Record(added, v => v.Opacity), MotionWait.Record(added, MotionWait.Scale)));
+            foreach (var added in args.NewItems?.OfType<PathIcon>() ?? [])
+                if (added.Classes.Contains(LiveMotion.GhostClass)) copies.Add((MotionWait.Record(added, visual => visual.Opacity), MotionWait.Record(added, MotionWait.Scale)));
         };
         server.Apply(new UserUpdated(Anna(serverMuted: false)));
         MotionWait.Until(() => copies.Count > 0 && !Ghosts(main).Any());
@@ -193,7 +193,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         Assert.True(copies.Any(c => c.Opacity.Any(o => o < 0.9) && c.Scale.Any(s => s < 0.95)), "a copy pops out where the icon was");
         Assert.Empty(Ghosts(main));
 
-        var fades = MotionWait.Record(serverMuted, v => v.Opacity);
+        var fades = MotionWait.Record(serverMuted, visual => visual.Opacity);
         var scales = MotionWait.Record(serverMuted, MotionWait.Scale);
         server.Apply(new UserUpdated(Anna(serverMuted: true)));
         MotionWait.Eventually(() =>
@@ -205,7 +205,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         // my own mute button flips its icon with a short rotation
         var micOff = main.GetVisualDescendants().OfType<PathIcon>().Where(LiveMotion.GetTurn).ElementAt(1);
         Assert.False(micOff.IsVisible);
-        var turns = MotionWait.Record(micOff, v => Math.Abs(Turned(v)));
+        var turns = MotionWait.Record(micOff, visual => Math.Abs(Turned(visual)));
         server.SelfState.SelfMuted = true;
         MotionWait.Eventually(() =>
         {
@@ -215,7 +215,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         });
 
         var deafened = main.GetVisualDescendants().OfType<PathIcon>().Where(LiveMotion.GetTurn).ElementAt(3);
-        turns = MotionWait.Record(deafened, v => Math.Abs(Turned(v)));
+        turns = MotionWait.Record(deafened, visual => Math.Abs(Turned(visual)));
         server.SelfState.SelfDeafened = true;
         MotionWait.Eventually(() =>
         {
@@ -327,23 +327,23 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     [AvaloniaFact]
     public void LevelMeter_SettingsOpenAtTheLevel()
     {
-        var main = Open(out var vm, out _, mode: TransmitMode.VoiceActivation);
-        vm.PageFlow.OpenSettings();
+        var main = Open(out var viewModel, out _, mode: TransmitMode.VoiceActivation);
+        viewModel.PageFlow.OpenSettings();
         MotionWait.Settle(500);
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in
-        var meter = main.GetVisualDescendants().OfType<ProgressBar>().Single(p => p.Minimum == -60 && p.Maximum == -10);
+        var meter = main.GetVisualDescendants().OfType<ProgressBar>().Single(progressBar => progressBar.Minimum == -60 && progressBar.Maximum == -10);
         Assert.True(meter.IsEffectivelyVisible);
         Assert.Equal(-60, meter.Value);
-        vm.PageFlow.ClosePage();
+        viewModel.PageFlow.ClosePage();
         MotionWait.Settle(600); // the hidden meter loses its model
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible);
 
-        vm.PageFlow.OpenSettings(); // the new model's level is -60 as well
+        viewModel.PageFlow.OpenSettings(); // the new model's level is -60 as well
         double high = -60;
         Watch(400, () => high = Math.Max(high, meter.Value));
         Assert.True(high <= -59.9, $"the meter starts at the level, no sweep from full ({high})");
 
-        vm.PageFlow.SettingsPage!.InputLevelDb = -30;
+        viewModel.PageFlow.SettingsPage!.InputLevelDb = -30;
         MotionWait.Settle(300);
         LiveMotion.SetLevel(meter, double.NaN); // no level: it keeps what it shows
         MotionWait.Eventually(() => Assert.Equal(-30, meter.Value, 1));
@@ -375,7 +375,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         Assert.True(faded < 1, "the spinner fades in");
         Assert.True(sweepHigh - sweepLow > 60, "the arc grows and shrinks while it turns");
 
-        var backs = MotionWait.Record(presenter.Child!, v => v.Opacity); // as it happens: under load one frame can outlast the fade
+        var backs = MotionWait.Record(presenter.Child!, visual => visual.Opacity); // as it happens: under load one frame can outlast the fade
         spinner.IsVisible = false;
         icon.IsVisible = true;
         MotionWait.Eventually(() =>
@@ -391,24 +391,24 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     [AvaloniaFact]
     public void Idle_NoRunningLoops()
     {
-        var main = Open(out var vm, out var server);
+        var main = Open(out var viewModel, out var server);
         server.Tree.SetSelfTransmitting(0); // a loop that ran ends with its state
-        vm.TransmitText = "Sendet";
+        viewModel.TransmitText = "Sendet";
         MotionWait.Settle(300);
         server.Tree.SetSelfTransmitting(null);
-        vm.TransmitText = "";
-        _ = vm.PageFlow.OpenAdminAsync();
+        viewModel.TransmitText = "";
+        _ = viewModel.PageFlow.OpenAdminAsync();
         MotionWait.Settle(300);
-        vm.PageFlow.AdminPage!.GroupList.GroupReorder.Start(); // waits for an answer that never comes: a spinner in the administration
-        vm.PageFlow.AdminPage.GroupList.GroupSave.Start();
+        viewModel.PageFlow.AdminPage!.GroupList.GroupReorder.Start(); // waits for an answer that never comes: a spinner in the administration
+        viewModel.PageFlow.AdminPage.GroupList.GroupSave.Start();
         MotionWait.Settle(400);
         MotionWait.Eventually(() => Assert.Contains(main.GetVisualDescendants().OfType<BusySpinner>(),
-            b => b.Classes.Contains(BusySpinner.TurningClass) && b.FindAncestorOfType<AdminView>() is not null));
-        vm.PageFlow.ClosePage();
+            busySpinner => busySpinner.Classes.Contains(BusySpinner.TurningClass) && busySpinner.FindAncestorOfType<AdminView>() is not null));
+        viewModel.PageFlow.ClosePage();
         MotionWait.Settle(800);
 
         // nobody speaks, nothing is busy: nothing on the screen changes from frame to frame
-        static string State(Visual v) => $"{v.RenderTransform?.Value}|{v.Opacity}|{v.OpacityMask}|{(v as Arc)?.SweepAngle}|{(v as Border)?.BoxShadow}";
+        static string State(Visual visual) => $"{visual.RenderTransform?.Value}|{visual.Opacity}|{visual.OpacityMask}|{(visual as Arc)?.SweepAngle}|{(visual as Border)?.BoxShadow}";
         // under load the page change and the fades take longer: first until nothing has changed for 300 ms (a loop that
         // never stops does not get there, and fails below)
         string Screen() => string.Join("\n", main.GetVisualDescendants().Select(State));
@@ -419,15 +419,15 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
             return Screen() == was;
         });
         var visuals = main.GetVisualDescendants().ToList();
-        Assert.Contains(visuals, v => v is BusySpinner { IsVisible: false }); // hidden spinners do not turn
-        Assert.Contains(visuals, v => v is BusySpinner { IsVisible: true, IsEffectivelyVisible: false }); // nor those in a hidden page
-        Assert.DoesNotContain(visuals, v => v is BusySpinner b && b.Classes.Contains(BusySpinner.TurningClass));
+        Assert.Contains(visuals, visual => visual is BusySpinner { IsVisible: false }); // hidden spinners do not turn
+        Assert.Contains(visuals, visual => visual is BusySpinner { IsVisible: true, IsEffectivelyVisible: false }); // nor those in a hidden page
+        Assert.DoesNotContain(visuals, visual => visual is BusySpinner busySpinner && busySpinner.Classes.Contains(BusySpinner.TurningClass));
         var before = visuals.Select(State).ToList();
         var changed = new HashSet<string>();
         Watch(1000, () =>
         {
-            for (int i = 0; i < visuals.Count; i++)
-                if (State(visuals[i]) != before[i]) changed.Add($"{visuals[i].GetType().Name} {string.Join(".", (visuals[i] as StyledElement)?.Classes ?? [])}");
+            for (int index = 0; index < visuals.Count; index++)
+                if (State(visuals[index]) != before[index]) changed.Add($"{visuals[index].GetType().Name} {string.Join(".", (visuals[index] as StyledElement)?.Classes ?? [])}");
         });
         Assert.Empty(changed);
         main.Close();
@@ -436,11 +436,11 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     [AvaloniaFact]
     public void Simplified_AsToday()
     {
-        var main = Open(out var vm, out var server, DisplayMode.Simplified);
+        var main = Open(out var viewModel, out var server, DisplayMode.Simplified);
         var ring = OwnRing(main);
         server.Tree.SetSelfTransmitting(0);
-        var transmit = main.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("transmit"));
-        vm.TransmitText = "Sendet";
+        var transmit = main.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("transmit"));
+        viewModel.TransmitText = "Sendet";
         double high = 1, dim = 1;
         Watch(600, () =>
         {

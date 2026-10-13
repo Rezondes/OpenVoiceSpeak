@@ -12,15 +12,15 @@ public sealed class LogJobQueueTests : IDisposable
 
     public void Dispose()
     {
-        foreach (var e in events) e.Set(); // lets every blocked job end
-        foreach (var e in events) e.Dispose();
+        foreach (var manualResetEventSlim in events) manualResetEventSlim.Set(); // lets every blocked job end
+        foreach (var manualResetEventSlim in events) manualResetEventSlim.Dispose();
     }
 
     ManualResetEventSlim NewEvent()
     {
-        var e = new ManualResetEventSlim();
-        events.Add(e);
-        return e;
+        var manualResetEventSlim = new ManualResetEventSlim();
+        events.Add(manualResetEventSlim);
+        return manualResetEventSlim;
     }
 
     /// <summary>Queues a job that signals once it runs and then waits for its release.</summary>
@@ -39,7 +39,7 @@ public sealed class LogJobQueueTests : IDisposable
     ManualResetEventSlim FillBehindOneJob()
     {
         var lastRan = NewEvent();
-        for (int i = 1; i < ServerTuning.MaxQueuedLogJobs - 1; i++) Assert.True(queue.TryQueue(() => { }));
+        for (int index = 1; index < ServerTuning.MaxQueuedLogJobs - 1; index++) Assert.True(queue.TryQueue(() => { }));
         Assert.True(queue.TryQueue(lastRan.Set));
         return lastRan;
     }

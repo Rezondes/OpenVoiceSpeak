@@ -18,7 +18,7 @@ public sealed class AdminTokenGuessLimitTests
 
     void Fail(int times)
     {
-        for (int i = 0; i < times; i++) limit.RecordFailure(Source, Now);
+        for (int index = 0; index < times; index++) limit.RecordFailure(Source, Now);
     }
 
     [Fact]

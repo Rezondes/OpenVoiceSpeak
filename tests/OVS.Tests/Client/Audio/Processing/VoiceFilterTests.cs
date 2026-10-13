@@ -18,7 +18,7 @@ public class VoiceFilterTests
     {
         float peak = MathF.Pow(10, rmsDb / 20) * MathF.Sqrt(3); // uniform noise: RMS = peak / sqrt(3)
         var frame = new float[Frame];
-        for (int i = 0; i < frame.Length; i++) frame[i] = peak * (2 * random.NextSingle() - 1);
+        for (int index = 0; index < frame.Length; index++) frame[index] = peak * (2 * random.NextSingle() - 1);
         return frame;
     }
 
@@ -27,7 +27,7 @@ public class VoiceFilterTests
     {
         float peak = MathF.Pow(10, rmsDb / 20) * MathF.Sqrt(2);
         var frame = new float[Frame];
-        for (int i = 0; i < frame.Length; i++, position++) frame[i] = peak * MathF.Sin(2 * MathF.PI * hz * position / AudioFormat.SampleRate);
+        for (int index = 0; index < frame.Length; index++, position++) frame[index] = peak * MathF.Sin(2 * MathF.PI * hz * position / AudioFormat.SampleRate);
         return frame;
     }
 
@@ -55,7 +55,7 @@ public class VoiceFilterTests
         public float[] Next(float rmsDb)
         {
             var frame = new float[Frame];
-            for (int i = 0; i < frame.Length; i++)
+            for (int index = 0; index < frame.Length; index++)
             {
                 float white = 2 * random.NextSingle() - 1;
                 b[0] = 0.99886f * b[0] + white * 0.0555179f;
@@ -64,11 +64,11 @@ public class VoiceFilterTests
                 b[3] = 0.86650f * b[3] + white * 0.3104856f;
                 b[4] = 0.55000f * b[4] + white * 0.5329522f;
                 b[5] = -0.7616f * b[5] - white * 0.0168980f;
-                frame[i] = b[0] + b[1] + b[2] + b[3] + b[4] + b[5] + b[6] + white * 0.5362f;
+                frame[index] = b[0] + b[1] + b[2] + b[3] + b[4] + b[5] + b[6] + white * 0.5362f;
                 b[6] = white * 0.115926f;
             }
             float scale = MathF.Pow(10, rmsDb / 20) / MathF.Pow(10, VoiceActivityDetector.LevelDb(frame) / 20);
-            for (int i = 0; i < frame.Length; i++) frame[i] *= scale;
+            for (int index = 0; index < frame.Length; index++) frame[index] *= scale;
             return frame;
         }
     }
@@ -84,7 +84,7 @@ public class VoiceFilterTests
             return null;
         };
         var noise = new PinkNoise(123);
-        for (int i = 0; i < 150; i++) pipeline.Feed(noise.Next(-35), AudioFormat.SampleRate);
+        for (int index = 0; index < 150; index++) pipeline.Feed(noise.Next(-35), AudioFormat.SampleRate);
         return seen;
     }
 
@@ -116,11 +116,11 @@ public class VoiceFilterTests
         var gain = new AutoGain();
         int position = 0;
         float last = -120;
-        for (int i = 0; i < 150; i++)
+        for (int index = 0; index < 150; index++)
         {
             var frame = Sine(ref position, -40);
             gain.Process(frame);
-            Assert.True(Peak(frame) <= AutoGain.PeakLimit + 1e-4f, $"frame {i}: peak {Peak(frame)}");
+            Assert.True(Peak(frame) <= AutoGain.PeakLimit + 1e-4f, $"frame {index}: peak {Peak(frame)}");
             last = VoiceActivityDetector.LevelDb(frame);
         }
         Assert.InRange(last, -20.5f, -19.5f); // to -20 dBFS (Package 127: +20 dB is below the +30 dB cap)
@@ -134,13 +134,13 @@ public class VoiceFilterTests
         // silence and room noise (below -45 dBFS, also with noise suppression off): the gain does not grow
         var silent = new AutoGain();
         var random = new Random(7);
-        for (int i = 0; i < 150; i++) silent.Process(i % 3 == 0 ? new float[Frame] : Noise(random, i % 3 == 1 ? -60 : -47));
+        for (int index = 0; index < 150; index++) silent.Process(index % 3 == 0 ? new float[Frame] : Noise(random, index % 3 == 1 ? -60 : -47));
         Assert.Equal(0f, silent.GainDb);
 
         // loud: -10 dBFS is not raised, the samples stay as they are
         var loud = new AutoGain();
         position = 0;
-        for (int i = 0; i < 150; i++)
+        for (int index = 0; index < 150; index++)
         {
             var frame = Sine(ref position, -10);
             var before = (float[])frame.Clone();
@@ -157,7 +157,7 @@ public class VoiceFilterTests
         using var pipeline = Pipeline(noiseSuppression: false);
         pipeline.AutoGain = true;
         int position = 0;
-        for (int i = 0; i < 150; i++) pipeline.Feed(Sine(ref position, -40), AudioFormat.SampleRate);
+        for (int index = 0; index < 150; index++) pipeline.Feed(Sine(ref position, -40), AudioFormat.SampleRate);
         Assert.InRange(pipeline.Vad.LastLevelDb, -20.5f, -19.5f); // raised
         pipeline.AutoGain = false;
         pipeline.AutoGain = true;
@@ -175,22 +175,22 @@ public class VoiceFilterTests
     {
         var samples = new float[frames * Frame];
         double phase = 0;
-        for (int i = 0; i < samples.Length; i++)
+        for (int index = 0; index < samples.Length; index++)
         {
-            double t = (double)i / AudioFormat.SampleRate;
+            double t = (double)index / AudioFormat.SampleRate;
             phase += 2 * Math.PI * (pitch + 40 * Math.Sin(2 * Math.PI * 0.7 * t)) / AudioFormat.SampleRate;
             double sum = 0;
-            for (int k = 1; k <= 8; k++) sum += Math.Sin(k * phase) / k;
+            for (int thirdIndex = 1; thirdIndex <= 8; thirdIndex++) sum += Math.Sin(thirdIndex * phase) / thirdIndex;
             double inSyllable = (t + offset) % 0.25; // 200 ms syllable, 50 ms gap
             double envelope = inSyllable >= 0.2 ? 0 : Math.Min(1, Math.Min(inSyllable, 0.2 - inSyllable) / 0.05);
-            samples[i] = (float)(sum * envelope);
+            samples[index] = (float)(sum * envelope);
         }
         var result = samples.Chunk(Frame).ToArray();
         var voiced = result.Where(f => VoiceActivityDetector.LevelDb(f) > -100).ToArray();
         double rms = Math.Sqrt(voiced.Average(f => f.Average(s => (double)s * s)));
         float scale = MathF.Pow(10, rmsDb / 20) / (float)rms;
         foreach (var frame in result)
-            for (int i = 0; i < frame.Length; i++) frame[i] *= scale;
+            for (int index = 0; index < frame.Length; index++) frame[index] *= scale;
         return result;
     }
 
@@ -228,7 +228,7 @@ public class VoiceFilterTests
         Assert.InRange(raised, -23f, -17f);
 
         var floor = SpeechLevel(RunWithAutoGain(noiseSuppression: false, Voice(-50, 250)));
-        var before = SpeechLevel(Voice(-50, 250).Select(f => VoiceActivityDetector.LevelDb(f)).ToList());
+        var before = SpeechLevel(Voice(-50, 250).Select(samples => VoiceActivityDetector.LevelDb(samples)).ToList());
         Assert.Equal(before, floor, 0.01f); // untouched
 
         var louder = SpeechLevel(RunWithAutoGain(noiseSuppression: false, Voice(-40, 250)));
@@ -250,7 +250,7 @@ public class VoiceFilterTests
             Assert.True(suppressor is not null, error);
             var gain = new AutoGain();
             var pink = new PinkNoise(seed);
-            for (int i = 0; i < 250; i++)
+            for (int index = 0; index < 250; index++)
             {
                 var frame = pink.Next(db);
                 gain.Process(frame, suppressor.Process(frame));
@@ -262,7 +262,7 @@ public class VoiceFilterTests
 
         var rated = new AutoGain();
         var floorOnly = new AutoGain();
-        for (int i = 0; i < 250; i++)
+        for (int index = 0; index < 250; index++)
         {
             var frame = noise.Next(-40);
             floorOnly.Process((float[])frame.Clone());
@@ -289,11 +289,11 @@ public class VoiceFilterTests
         Assert.Equal(30f, AutoGain.MaxGainDb);
         var gain = new AutoGain();
         int position = 0;
-        for (int i = 0; i < 500; i++)
+        for (int index = 0; index < 500; index++)
         {
             var frame = Sine(ref position, -70);
             gain.Process(frame, 1f);
-            Assert.True(gain.GainDb <= AutoGain.MaxGainDb, $"frame {i}: {gain.GainDb} dB");
+            Assert.True(gain.GainDb <= AutoGain.MaxGainDb, $"frame {index}: {gain.GainDb} dB");
         }
         Assert.Equal(AutoGain.MaxGainDb, gain.GainDb, 2);
 
@@ -329,21 +329,21 @@ public class VoiceFilterTests
         var vad = new VoiceActivityDetector { Automatic = true }; // Package 129: the noise floor tracker too
         var random = new Random(1);
         var frames = Enumerable.Range(0, 110).Select(_ => Noise(random, -30)).ToArray();
-        for (int i = 0; i < 20; i++) // warm-up: JIT and first calls (Package 129: past the learning 0.3 s)
+        for (int index = 0; index < 20; index++) // warm-up: JIT and first calls (Package 129: past the learning 0.3 s)
         {
-            canceller.Render(frames[i]);
-            canceller.Process(frames[i]);
-            gain.Process(frames[i], suppressor.Process(frames[i]));
-            vad.Process(frames[i]);
+            canceller.Render(frames[index]);
+            canceller.Process(frames[index]);
+            gain.Process(frames[index], suppressor.Process(frames[index]));
+            vad.Process(frames[index]);
         }
         long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 20; i < 110; i++)
+        for (int index = 20; index < 110; index++)
         {
-            canceller.Render(frames[i]);
-            canceller.Process(frames[i]);
-            CapturePipeline.ApplyGain(frames[i], 2f); // Package 127: the soft clip too
-            gain.Process(frames[i], suppressor.Process(frames[i]));
-            vad.Process(frames[i]);
+            canceller.Render(frames[index]);
+            canceller.Process(frames[index]);
+            CapturePipeline.ApplyGain(frames[index], 2f); // Package 127: the soft clip too
+            gain.Process(frames[index], suppressor.Process(frames[index]));
+            vad.Process(frames[index]);
         }
         Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
     }
@@ -409,7 +409,7 @@ public class VoiceFilterTests
     /// <summary>The level of frames together, from their levels (all frames are 20 ms).</summary>
     static double EnergyDb(IEnumerable<float> levels) => 10 * Math.Log10(levels.Average(db => Math.Pow(10, db / 10)));
 
-    static double EnergyDb(IEnumerable<float[]> frames) => EnergyDb(frames.Select(f => VoiceActivityDetector.LevelDb(f)));
+    static double EnergyDb(IEnumerable<float[]> frames) => EnergyDb(frames.Select(samples => VoiceActivityDetector.LevelDb(samples)));
 
     /// <summary>
     /// AC2: the far end (a voice at -20 dBFS) played and coming back 60 ms later at -6 dB is at least 25 dB quieter in the
@@ -425,19 +425,19 @@ public class VoiceFilterTests
         var sent = new List<float>();
         using (var pipeline = EchoPipeline(sent))
         {
-            for (int i = 0; i < total; i++)
+            for (int index = 0; index < total; index++)
             {
-                pipeline.Canceller!.Render(far[i]); // played now (the playback thread)
+                pipeline.Canceller!.Render(far[index]); // played now (the playback thread)
                 var mic = new float[Frame];
-                if (i >= delayFrames)
-                    for (int s = 0; s < Frame; s++) mic[s] = 0.5f * far[i - delayFrames][s]; // -6 dB, 60 ms later
-                if (i >= adapt + echoOnly)
-                    for (int s = 0; s < Frame; s++) mic[s] += near[i][s];
+                if (index >= delayFrames)
+                    for (int s = 0; s < Frame; s++) mic[s] = 0.5f * far[index - delayFrames][s]; // -6 dB, 60 ms later
+                if (index >= adapt + echoOnly)
+                    for (int s = 0; s < Frame; s++) mic[s] += near[index][s];
                 pipeline.Feed(mic, AudioFormat.SampleRate);
             }
         }
         Assert.Equal(total, sent.Count);
-        var echoIn = Enumerable.Range(adapt, echoOnly).Select(i => far[i - delayFrames]).ToList();
+        var echoIn = Enumerable.Range(adapt, echoOnly).Select(index => far[index - delayFrames]).ToList();
         double reduction = EnergyDb(echoIn) - 6 - EnergyDb(sent.Skip(adapt).Take(echoOnly));
         Assert.True(reduction >= 25, $"echo reduced by {reduction:0.0} dB");
 

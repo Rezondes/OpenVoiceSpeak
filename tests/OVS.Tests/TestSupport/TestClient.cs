@@ -60,16 +60,16 @@ public sealed class TestClient : IAsyncDisposable
         bool badSignature = false, byte[]? certHash = null, bool pump = true)
     {
         // Generous: the server answers under its state lock, which a debounced save on a slow CI disk can hold for seconds.
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        await writer.WriteAsync(new ClientHello(version, nickname, Convert.ToBase64String(Identity.PublicKey), password), cts.Token);
-        var first = await reader.ReadAsync(cts.Token) ?? throw new EndOfStreamException();
+        using var cancelSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await writer.WriteAsync(new ClientHello(version, nickname, Convert.ToBase64String(Identity.PublicKey), password), cancelSource.Token);
+        var first = await reader.ReadAsync(cancelSource.Token) ?? throw new EndOfStreamException();
         if (first is not Challenge challenge) return first;
 
         var signature = Identity.Sign(ClientIdentity.ProofData(Convert.FromBase64String(challenge.Nonce), certHash ?? ServerCertHash));
         if (badSignature) signature[^1] ^= 0xFF;
-        await writer.WriteAsync(new ClientProof(Convert.ToBase64String(signature)), cts.Token);
+        await writer.WriteAsync(new ClientProof(Convert.ToBase64String(signature)), cancelSource.Token);
 
-        var result = await reader.ReadAsync(cts.Token) ?? throw new EndOfStreamException();
+        var result = await reader.ReadAsync(cancelSource.Token) ?? throw new EndOfStreamException();
         if (result is Welcome welcome)
         {
             Welcome = welcome;
@@ -81,10 +81,10 @@ public sealed class TestClient : IAsyncDisposable
     /// <summary>Reads one frame without the pump (for pre-handshake tests). Null means closed.</summary>
     public async Task<Message?> ReadRawAsync(int timeoutMs = 10000)
     {
-        using var cts = new CancellationTokenSource(timeoutMs);
+        using var cancelSource = new CancellationTokenSource(timeoutMs);
         try
         {
-            return await reader.ReadAsync(cts.Token);
+            return await reader.ReadAsync(cancelSource.Token);
         }
         catch (IOException)
         {
@@ -98,7 +98,7 @@ public sealed class TestClient : IAsyncDisposable
         {
             while (await reader.ReadAsync() is { } message) await inbox.Writer.WriteAsync(message);
         }
-        catch (Exception e) when (e is IOException or ObjectDisposedException or ProtocolException)
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException or ProtocolException)
         {
         }
         finally
@@ -123,10 +123,10 @@ public sealed class TestClient : IAsyncDisposable
     /// <param name="timeoutMs">Generous like WaitForAsync: callers use it to wait for the next message, not to time anything.</param>
     public async Task<Message?> NextAsync(int timeoutMs = 10000)
     {
-        using var cts = new CancellationTokenSource(timeoutMs);
+        using var cancelSource = new CancellationTokenSource(timeoutMs);
         try
         {
-            return await inbox.Reader.ReadAsync(cts.Token);
+            return await inbox.Reader.ReadAsync(cancelSource.Token);
         }
         catch (ChannelClosedException)
         {
@@ -143,40 +143,40 @@ public sealed class TestClient : IAsyncDisposable
         {
             int left = (int)(deadline - DateTime.UtcNow).TotalMilliseconds;
             if (left <= 0) throw new TimeoutException($"No {typeof(T).Name} within {timeoutMs} ms");
-            Message? m;
+            Message? message;
             try
             {
-                m = await NextAsync(left);
+                message = await NextAsync(left);
             }
             catch (OperationCanceledException)
             {
                 throw new TimeoutException($"No {typeof(T).Name} within {timeoutMs} ms");
             }
-            if (m is null) throw new EndOfStreamException($"Closed while waiting for {typeof(T).Name}");
-            if (m is T t && (match?.Invoke(t) ?? true)) return t;
+            if (message is null) throw new EndOfStreamException($"Closed while waiting for {typeof(T).Name}");
+            if (message is T t && (match?.Invoke(t) ?? true)) return t;
         }
     }
 
-    public Task<Error> ErrorAsync(string requestId) => WaitForAsync<Error>(e => e.RequestId == requestId);
+    public Task<Error> ErrorAsync(string requestId) => WaitForAsync<Error>(error => error.RequestId == requestId);
 
-    public async Task AssertNoMessageAsync<T>(int ms = 300) where T : Message
+    public async Task AssertNoMessageAsync<T>(int milliseconds = 300) where T : Message
     {
-        var deadline = DateTime.UtcNow.AddMilliseconds(ms);
+        var deadline = DateTime.UtcNow.AddMilliseconds(milliseconds);
         while (true)
         {
             int left = (int)(deadline - DateTime.UtcNow).TotalMilliseconds;
             if (left <= 0) return;
-            Message? m;
+            Message? message;
             try
             {
-                m = await NextAsync(left);
+                message = await NextAsync(left);
             }
             catch (OperationCanceledException)
             {
                 return;
             }
-            if (m is null) return;
-            Assert.False(m is T, $"Unexpected {m}");
+            if (message is null) return;
+            Assert.False(message is T, $"Unexpected {message}");
         }
     }
 

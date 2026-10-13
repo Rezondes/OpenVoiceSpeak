@@ -49,7 +49,7 @@ public sealed class ClientFileFixtureTests() : TempDirectoryTest("ovs-fixture-",
         Assert.Equal(WithLf(original), WithLf(File.ReadAllBytes(Path.Combine(dir, ClientSettings.FileName))));
     }
 
-    static byte[] WithLf(byte[] text) => [.. text.Where((b, i) => !(b == '\r' && i + 1 < text.Length && text[i + 1] == '\n'))];
+    static byte[] WithLf(byte[] text) => [.. text.Where((b, index) => !(b == '\r' && index + 1 < text.Length && text[index + 1] == '\n'))];
 
     [Theory]
     [MemberData(nameof(PersistedFixtures.Versions), MemberType = typeof(PersistedFixtures))]
@@ -64,7 +64,7 @@ public sealed class ClientFileFixtureTests() : TempDirectoryTest("ovs-fixture-",
         Assert.Equal(TofuResult.Unknown, known.Check("127.0.0.1", 9001, SecondPin));
     }
 
-    static string[] Order(ClientSettings s) => [.. s.Bookmarks.Select(b => b.Name), .. s.KeyBindings.Select(b => $"{b.Action}")];
+    static string[] Order(ClientSettings clientSettings) => [.. clientSettings.Bookmarks.Select(bookmark => bookmark.Name), .. clientSettings.KeyBindings.Select(keyBinding => $"{keyBinding.Action}")];
 
     /// <summary>
     /// What the fixture generator stored. The release wrote no settings version and none of the later keys, so its file

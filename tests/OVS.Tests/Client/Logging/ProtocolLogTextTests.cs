@@ -150,15 +150,15 @@ public sealed class ProtocolLogTextTests
         typeof(LogList), typeof(LogPage), typeof(LogSearchResult), typeof(LogDownloadReady), typeof(LogChunk), // log administration and its transfer chunks
     ];
 
-    static IEnumerable<Type> Concrete<T>() => typeof(Message).Assembly.GetTypes().Where(t => !t.IsAbstract && typeof(T).IsAssignableFrom(t));
+    static IEnumerable<Type> Concrete<T>() => typeof(Message).Assembly.GetTypes().Where(candidate => !candidate.IsAbstract && typeof(T).IsAssignableFrom(candidate));
 
-    public static TheoryData<string> RequestTypeNames => new(Concrete<Request>().Select(t => t.Name).Order(StringComparer.Ordinal));
+    public static TheoryData<string> RequestTypeNames => new(Concrete<Request>().Select(candidate => candidate.Name).Order(StringComparer.Ordinal));
 
     [Theory]
     [MemberData(nameof(RequestTypeNames))]
     public void Describe_EveryRequestType_OwnTextUnlessTypeNameOnly(string typeName)
     {
-        var type = Concrete<Request>().Single(t => t.Name == typeName);
+        var type = Concrete<Request>().Single(candidate => candidate.Name == typeName);
         var text = ProtocolLogText.Describe(RequestSamples.Factories[type]() with { RequestId = "r" }, Mirror());
         if (TypeNameOnlyRequests.Contains(type)) Assert.Equal($"Request r: {typeName}", text);
         else Assert.NotEqual($"Request r: {typeName}", text);
@@ -167,10 +167,10 @@ public sealed class ProtocolLogTextTests
     [Fact]
     public void Describe_EveryServerMessageType_DescribedOrTypeNameOnly()
     {
-        var all = Concrete<Message>().Where(t => !typeof(Request).IsAssignableFrom(t)).ToHashSet();
+        var all = Concrete<Message>().Where(candidate => !typeof(Request).IsAssignableFrom(candidate)).ToHashSet();
         var described = Deltas.Select(row => row[0].GetType()).Append(typeof(Error)).ToHashSet(); // Error: Describe_ErrorMessage_LoggedOnlyWithDetail
         Assert.Empty(described.Intersect(TypeNameOnlyMessages));
-        Assert.Equal(all.Select(t => t.Name).Order(StringComparer.Ordinal), described.Union(TypeNameOnlyMessages).Select(t => t.Name).Order(StringComparer.Ordinal));
+        Assert.Equal(all.Select(candidate => candidate.Name).Order(StringComparer.Ordinal), described.Union(TypeNameOnlyMessages).Select(candidate => candidate.Name).Order(StringComparer.Ordinal));
         foreach (var type in TypeNameOnlyMessages) // the fallback reads nothing of the message, so an empty instance is enough
             Assert.Equal(type.Name, ProtocolLogText.Describe((Message)RuntimeHelpers.GetUninitializedObject(type), Mirror()));
     }

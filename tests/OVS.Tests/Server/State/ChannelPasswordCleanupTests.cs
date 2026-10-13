@@ -14,7 +14,7 @@ public sealed class ChannelPasswordCleanupTests : IDisposable
 {
     static readonly Guid Secret = Guid.NewGuid();
 
-    readonly StateHarness harness = new(d => d.Channels.Add(
+    readonly StateHarness harness = new(serverData => serverData.Channels.Add(
         new ChannelRecord { Id = Secret, Name = "Geheim", Order = 1, StoredPassword = StoredPassword.Create("richtig") }));
 
     public void Dispose() => harness.Dispose();
@@ -25,7 +25,7 @@ public sealed class ChannelPasswordCleanupTests : IDisposable
     {
         var guest = harness.Admit("gast");
         harness.Handle(guest, new JoinChannel(Secret, "falsch") { RequestId = "j" });
-        Assert.Contains(StateHarness.Drain(guest), m => m is Error { Code: ReasonCodes.WrongChannelPassword });
+        Assert.Contains(StateHarness.Drain(guest), message => message is Error { Code: ReasonCodes.WrongChannelPassword });
         return guest;
     }
 

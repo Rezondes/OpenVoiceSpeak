@@ -72,7 +72,7 @@ public sealed class LossyUdpRelay : IDisposable
     /// <summary>How many packets of this type the client sent so far.</summary>
     public int Count(PacketType type)
     {
-        lock (sent) return sent.Count(t => t == type);
+        lock (sent) return sent.Count(packetType => packetType == type);
     }
 
     /// <summary>Package 133: the n-th voice packet goes when the share dropped so far would fall below the percentage.</summary>
@@ -137,7 +137,7 @@ public sealed class LossyUdpRelay : IDisposable
             {
                 return await udp.ReceiveAsync(cts.Token);
             }
-            catch (Exception e) when (e is OperationCanceledException or ObjectDisposedException)
+            catch (Exception exception) when (exception is OperationCanceledException or ObjectDisposedException)
             {
                 return null;
             }
@@ -154,7 +154,7 @@ public sealed class LossyUdpRelay : IDisposable
         {
             await send();
         }
-        catch (Exception e) when (e is SocketException or ObjectDisposedException)
+        catch (Exception exception) when (exception is SocketException or ObjectDisposedException)
         {
         }
     }

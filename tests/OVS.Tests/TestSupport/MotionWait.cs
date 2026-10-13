@@ -38,13 +38,13 @@ static class MotionWait
     }
 
     /// <summary>
-    /// Lets the clock run until <paramref name="done"/> holds, at most <paramref name="ms"/>; then goes on either way (a
+    /// Lets the clock run until <paramref name="done"/> holds, at most <paramref name="milliseconds"/>; then goes on either way (a
     /// caller that needs it checks it, a caller with a condition that never holds just waits).
     /// </summary>
-    public static void WaitFor(Func<bool> done, int ms)
+    public static void WaitFor(Func<bool> done, int milliseconds)
     {
         var watch = Stopwatch.StartNew();
-        while (!done() && watch.ElapsedMilliseconds < ms)
+        while (!done() && watch.ElapsedMilliseconds < milliseconds)
         {
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
@@ -98,17 +98,17 @@ static class MotionWait
             if (transform is TransformGroup group)
             {
                 foreach (var child in group.Children) Track(child);
-                group.Children.CollectionChanged += (_, e) =>
+                group.Children.CollectionChanged += (_, args) =>
                 {
-                    foreach (var added in e.NewItems?.OfType<AvaloniaObject>() ?? []) Track(added);
+                    foreach (var added in args.NewItems?.OfType<AvaloniaObject>() ?? []) Track(added);
                 };
             }
             transform.PropertyChanged += (_, _) => seen.Add(value(visual));
         }
         if (visual.RenderTransform is AvaloniaObject now) Track(now);
-        visual.PropertyChanged += (_, e) =>
+        visual.PropertyChanged += (_, args) =>
         {
-            if (e.Property == Visual.RenderTransformProperty && e.NewValue is AvaloniaObject transform) Track(transform);
+            if (args.Property == Visual.RenderTransformProperty && args.NewValue is AvaloniaObject transform) Track(transform);
             seen.Add(value(visual));
         };
         return seen;
@@ -129,7 +129,7 @@ static class MotionWait
         var host = main.FindControl<Panel>("PageHost")!;
         return !main.FindControl<Border>("PageGhost")!.IsVisible && !main.FindControl<Border>("TreeGhost")!.IsVisible
             && main.FindControl<Border>("ServerHeader")!.Opacity == 1 && host.Opacity == 1 && (host.RenderTransform?.Value.M32 ?? 0) == 0
-            && main.FindControl<ItemsControl>("ChannelItems")!.GetRealizedContainers().All(r => r.Opacity == 1 && !r.Classes.Contains("entering"));
+            && main.FindControl<ItemsControl>("ChannelItems")!.GetRealizedContainers().All(control => control.Opacity == 1 && !control.Classes.Contains("entering"));
     }
 
     /// <summary>

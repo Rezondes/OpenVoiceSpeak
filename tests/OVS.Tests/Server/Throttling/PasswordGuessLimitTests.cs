@@ -20,7 +20,7 @@ public sealed class PasswordGuessLimitTests
 
     void Fail(int times, IPAddress? source = null)
     {
-        for (int i = 0; i < times; i++) limit.RecordFailure(source ?? Source, Now);
+        for (int index = 0; index < times; index++) limit.RecordFailure(source ?? Source, Now);
     }
 
     [Theory]

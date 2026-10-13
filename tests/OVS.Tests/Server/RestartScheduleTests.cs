@@ -32,7 +32,7 @@ public sealed class RestartScheduleTests
         var time = new ManualTimeProvider();
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"), time: time);
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
         var lines = new ConcurrentQueue<string>();
         var logs = new ServerLogWriter(server.DataDir, 0, time, lines.Enqueue);
         using var stop = new CancellationTokenSource();
@@ -43,16 +43,16 @@ public sealed class RestartScheduleTests
         async Task LoggedAsync(string text, int count)
         {
             var deadline = DateTime.UtcNow.AddSeconds(10);
-            while (lines.Count(l => l.Contains(text)) < count && DateTime.UtcNow < deadline) await Task.Delay(20);
-            Assert.Equal(count, lines.Count(l => l.Contains(text)));
+            while (lines.Count(line => line.Contains(text)) < count && DateTime.UtcNow < deadline) await Task.Delay(20);
+            Assert.Equal(count, lines.Count(line => line.Contains(text)));
         }
         const string Scheduled = "Automatischer Neustart täglich um";
 
         async Task SetAsync(bool on, TimeSpan fromNow)
         {
             var at = TimeOnly.FromDateTime(time.GetLocalNow().DateTime + fromNow);
-            await a.SendAsync(new UpdateServerSettings("S", "", null, new ServerLimits(50, 30, true, on, at)));
-            await a.WaitForAsync<ServerSettingsChanged>();
+            await client.SendAsync(new UpdateServerSettings("S", "", null, new ServerLimits(50, 30, true, on, at)));
+            await client.WaitForAsync<ServerSettingsChanged>();
         }
 
         await SetAsync(true, TimeSpan.FromMinutes(10));

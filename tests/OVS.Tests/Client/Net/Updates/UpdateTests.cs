@@ -75,7 +75,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         var exe = Path.Combine(dir, "OVS.Client.exe");
         File.WriteAllText(exe, "alt");
         var restarted = new List<string>();
-        var http = new FakeHttp(r => r.RequestUri!.AbsolutePath.EndsWith(".sha256")
+        var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256")
             ? FakeHttp.Bytes(Encoding.ASCII.GetBytes($"{hash}  OVS.Client.exe\n"))
             : exeFails ? new HttpResponseMessage(HttpStatusCode.InternalServerError) : FakeHttp.Bytes(served));
         return (new UpdateInstaller(new HttpClient(http), exe, restarted.Add), exe, restarted);
@@ -128,14 +128,14 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         var reports = new List<UpdateProgress>();
         Assert.Null(await installer.InstallAsync(Offer, reports.Add));
 
-        var loading = reports.TakeWhile(r => r.Phase == UpdatePhase.Downloading).ToList();
+        var loading = reports.TakeWhile(updateProgress => updateProgress.Phase == UpdatePhase.Downloading).ToList();
         Assert.True(loading.Count > 1, $"{loading.Count} Meldungen");
-        Assert.All(loading, r => Assert.Equal(neu.Length, r.Total));
-        Assert.Equal(loading.Select(r => r.Bytes).Order(), loading.Select(r => r.Bytes));
+        Assert.All(loading, updateProgress => Assert.Equal(neu.Length, updateProgress.Total));
+        Assert.Equal(loading.Select(updateProgress => updateProgress.Bytes).Order(), loading.Select(updateProgress => updateProgress.Bytes));
         Assert.Equal(neu.Length, loading[^1].Bytes);
         Assert.Equal(100, loading[^1].Percent);
         Assert.False(loading[^1].IsIndeterminate);
-        Assert.Equal([UpdatePhase.Verifying, UpdatePhase.Starting], reports.Skip(loading.Count).Select(r => r.Phase));
+        Assert.Equal([UpdatePhase.Verifying, UpdatePhase.Starting], reports.Skip(loading.Count).Select(updateProgress => updateProgress.Phase));
     }
 
     [Fact]
@@ -144,15 +144,15 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         var neu = Encoding.ASCII.GetBytes("neu ohne Laenge");
         var exe = Path.Combine(dir, "OVS.Client.exe");
         File.WriteAllText(exe, "alt");
-        var http = new FakeHttp(r => r.RequestUri!.AbsolutePath.EndsWith(".sha256")
+        var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256")
             ? FakeHttp.Bytes(Encoding.ASCII.GetBytes(Sha(neu)))
             : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new Unseekable(neu)) });
         var reports = new List<UpdateProgress>();
         Assert.Null(await new UpdateInstaller(new HttpClient(http), exe, _ => { }).InstallAsync(Offer, reports.Add));
 
-        var loading = reports.Where(r => r.Phase == UpdatePhase.Downloading).ToList();
+        var loading = reports.Where(updateProgress => updateProgress.Phase == UpdatePhase.Downloading).ToList();
         Assert.NotEmpty(loading);
-        Assert.All(loading, r => Assert.Null(r.Total));
+        Assert.All(loading, updateProgress => Assert.Null(updateProgress.Total));
         Assert.True(loading[^1].IsIndeterminate);
         Assert.Equal(neu.Length, loading[^1].Bytes);
         Assert.Equal("neu ohne Laenge", File.ReadAllText(exe));
@@ -167,7 +167,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         var neu = Encoding.ASCII.GetBytes("neu");
         var exe = Path.Combine(dir, "OVS.Client.exe");
         File.WriteAllText(exe, "alt");
-        var http = new FakeHttp(r => FakeHttp.Bytes(r.RequestUri!.AbsolutePath.EndsWith(".sha256") ? Encoding.ASCII.GetBytes(Sha(neu)) : neu));
+        var http = new FakeHttp(httpRequestMessage => FakeHttp.Bytes(httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256") ? Encoding.ASCII.GetBytes(Sha(neu)) : neu));
         var installer = new UpdateInstaller(new HttpClient(http), exe, _ => throw new FileNotFoundException("System.Diagnostics.Process fehlt"));
 
         var result = await installer.InstallAsync(Offer);

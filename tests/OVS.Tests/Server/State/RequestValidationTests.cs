@@ -19,7 +19,7 @@ public sealed class RequestValidationTests
     static async Task<(TestServer Server, TestClient Admin)> StartWithAdminAsync(Action<ServerData>? seed = null)
     {
         var admin = ClientIdentity.Create();
-        var server = await TestServer.StartAsync(d => { TestServer.Grant(admin, "Admin")(d); seed?.Invoke(d); });
+        var server = await TestServer.StartAsync(serverData => { TestServer.Grant(admin, "Admin")(serverData); seed?.Invoke(serverData); });
         return (server, await TestClient.ConnectAsync(server, "chef", admin));
     }
 
@@ -46,12 +46,12 @@ public sealed class RequestValidationTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
 
         await admin.SendRawAsync(json.Replace("{lobby}", admin.Welcome.Snapshot.DefaultChannelId.ToString()));
         Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("x")).Code);
         await AssertStillAnsweredAsync(admin);
-        Assert.DoesNotContain(server.Log, l => l.Contains("Fehler bei Anfrage")); // checked, not caught
+        Assert.DoesNotContain(server.Log, line => line.Contains("Fehler bei Anfrage")); // checked, not caught
     }
 
     [Fact]
@@ -59,21 +59,21 @@ public sealed class RequestValidationTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
-        server.State.BeforeRequest = r =>
+        await using var client = admin;
+        server.State.BeforeRequest = request =>
         {
-            if (r is CreateChannel) throw new InvalidOperationException("Testfehler");
+            if (request is CreateChannel) throw new InvalidOperationException("Testfehler");
         };
 
         await admin.SendAsync(new CreateChannel("Raid", "") { RequestId = "c" });
         Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("c")).Code);
         await AssertStillAnsweredAsync(admin);
-        Assert.Contains(server.Log, l => l.Contains("Fehler bei Anfrage CreateChannel") && l.Contains("Testfehler"));
+        Assert.Contains(server.Log, line => line.Contains("Fehler bei Anfrage CreateChannel") && line.Contains("Testfehler"));
 
         // the lock is free and the state usable
         server.State.BeforeRequest = null;
         await admin.SendAsync(new CreateChannel("Raid", ""));
-        await admin.WaitForAsync<ChannelAdded>(c => c.Channel.Name == "Raid");
+        await admin.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == "Raid");
     }
 
     // A frame that is a JSON object but no valid request reaches the state without a request of its own.
@@ -98,7 +98,7 @@ public sealed class RequestValidationTests
         using var harness = new StateHarness();
         var anna = harness.Admit("anna");
         var hooked = new List<string?>();
-        harness.State.BeforeRequest = r => hooked.Add(r.RequestId);
+        harness.State.BeforeRequest = request => hooked.Add(request.RequestId);
 
         harness.State.HandleMalformed(anna, "kaputt", "Unbekannter Typ");
         harness.Handle(anna, new JoinChannel(Guid.NewGuid()) { RequestId = "echt" });
@@ -137,7 +137,7 @@ public sealed class RequestValidationTests
     {
         using var harness = new StateHarness();
         var anna = harness.Admit("anna");
-        for (int i = 0; i < ServerTuning.RequestBurst; i++) harness.Handle(anna, new JoinChannel(Guid.NewGuid()));
+        for (int index = 0; index < ServerTuning.RequestBurst; index++) harness.Handle(anna, new JoinChannel(Guid.NewGuid()));
         StateHarness.Drain(anna);
 
         harness.State.HandleMalformed(anna, "r", "Unbekannter Typ");
@@ -150,7 +150,7 @@ public sealed class RequestValidationTests
     {
         using var harness = new StateHarness();
         var anna = harness.Admit("anna");
-        for (int i = 0; i < ServerTuning.RequestBurst; i++) harness.Handle(anna, new JoinChannel(Guid.NewGuid()));
+        for (int index = 0; index < ServerTuning.RequestBurst; index++) harness.Handle(anna, new JoinChannel(Guid.NewGuid()));
         StateHarness.Drain(anna);
 
         harness.Handle(anna, new CreateChannel("Raid", null!) { RequestId = "r" });
@@ -169,7 +169,7 @@ public sealed class RequestValidationTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var testClient = admin;
 
         var client = await TestClient.OpenAsync(server.Port);
         await using (client)
@@ -199,12 +199,12 @@ public sealed class RequestValidationTests
     public async Task Nickname_OfflineUserNameTaken_NormalizedCompare()
     {
         var owner = ClientIdentity.Create();
-        var (server, admin) = await StartWithAdminAsync(d => d.Users.Add(new UserRecord
+        var (server, admin) = await StartWithAdminAsync(serverData => serverData.Users.Add(new UserRecord
         {
             Fingerprint = owner.Fingerprint, LastNickname = "Boss", GroupIds = [WellKnownGroups.Guest],
         }));
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
 
         // the offline owner's name is not free for a new identity, in any case or compatibility form
         foreach (var name in new[] { "Boss", "boss", "\uFF42\uFF4F\uFF53\uFF53" }) // the last one fullwidth
@@ -227,16 +227,16 @@ public sealed class RequestValidationTests
     public async Task Nickname_StoredTwice_ReservedForLatestLogin()
     {
         var now = DateTimeOffset.UtcNow;
-        ClientIdentity a = ClientIdentity.Create(), b = ClientIdentity.Create(), never = ClientIdentity.Create(),
+        ClientIdentity clientIdentity = ClientIdentity.Create(), otherClientIdentity = ClientIdentity.Create(), never = ClientIdentity.Create(),
             neverMax = ClientIdentity.Create(), oldMax = ClientIdentity.Create();
         UserRecord Record(ClientIdentity id, string name, DateTimeOffset? lastLogin, DateTimeOffset firstSeen) => new()
         {
             Fingerprint = id.Fingerprint, LastNickname = name, GroupIds = [WellKnownGroups.Guest], LastLogin = lastLogin, FirstSeen = firstSeen,
         };
-        var (server, admin) = await StartWithAdminAsync(d => d.Users.AddRange(
+        var (server, admin) = await StartWithAdminAsync(serverData => serverData.Users.AddRange(
         [
-            Record(a, "Steven", now.AddDays(-1), now.AddDays(-30)),
-            Record(b, "Steven", now, now.AddDays(-2)),
+            Record(clientIdentity, "Steven", now.AddDays(-1), now.AddDays(-30)),
+            Record(otherClientIdentity, "Steven", now, now.AddDays(-2)),
             Record(never, "steven", null, now.AddDays(-60)),
             Record(neverMax, "Max", null, now.AddDays(-60)),
             Record(oldMax, "Max", now.AddDays(-60), now.AddDays(-60)),
@@ -251,8 +251,8 @@ public sealed class RequestValidationTests
                 Assert.Equal(ReasonCodes.NicknameTaken, Assert.IsType<Rejected>(await client.HandshakeAsync(name, pump: false)).Code);
         }
 
-        await using (await TestClient.ConnectAsync(server, "Steven", b)) { }
-        await Refused(a, "Steven");
+        await using (await TestClient.ConnectAsync(server, "Steven", otherClientIdentity)) { }
+        await Refused(clientIdentity, "Steven");
         await Refused(null, "Steven");
         await Refused(never, "Steven"); // without a login it counts as the oldest
 
@@ -265,7 +265,7 @@ public sealed class RequestValidationTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
 
         await admin.SendAsync(new UpdateServerSettings("Testserver", "Zeile 1\r\nZeile 2", null));
         Assert.Equal("Zeile 1\nZeile 2", (await admin.WaitForAsync<ServerSettingsChanged>()).Settings.WelcomeText);
@@ -274,16 +274,16 @@ public sealed class RequestValidationTests
         await admin.SendAsync(new SendChat(ChatTarget.Server, null, "a\nb \U0001F468\u200D\U0001F469")); // a ZWJ emoji is fine in texts
         Assert.Equal("a\nb \U0001F468\u200D\U0001F469", (await admin.WaitForAsync<ChatMessage>()).Text);
 
-        int n = 0;
+        int count = 0;
         foreach (var bad in new[] { "a\u0007b", "a\u0085b", "a\u202Eb", "a\u200Fb", "a\u2028b", "a\rb", "a\tb" })
         {
-            await admin.SendAsync(new UpdateServerSettings("Testserver", bad, null) { RequestId = $"w{n}" });
-            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"w{n}")).Code);
-            await admin.SendAsync(new CreateChannel($"Kanal {n}", bad) { RequestId = $"d{n}" });
-            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"d{n}")).Code);
-            await admin.SendAsync(new SendChat(ChatTarget.Channel, null, bad) { RequestId = $"c{n}" });
-            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"c{n}")).Code);
-            n++;
+            await admin.SendAsync(new UpdateServerSettings("Testserver", bad, null) { RequestId = $"w{count}" });
+            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"w{count}")).Code);
+            await admin.SendAsync(new CreateChannel($"Kanal {count}", bad) { RequestId = $"d{count}" });
+            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"d{count}")).Code);
+            await admin.SendAsync(new SendChat(ChatTarget.Channel, null, bad) { RequestId = $"c{count}" });
+            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"c{count}")).Code);
+            count++;
         }
         await admin.AssertNoMessageAsync<ChatMessage>();
         await admin.AssertNoMessageAsync<ChannelAdded>();
@@ -293,10 +293,10 @@ public sealed class RequestValidationTests
     public async Task ChannelOrder_NoOverflow_PasswordLength()
     {
         var far = Guid.NewGuid();
-        var (server, admin) = await StartWithAdminAsync(d => d.Channels.Add(new ChannelRecord { Id = far, Name = "Fern", Order = int.MaxValue }));
+        var (server, admin) = await StartWithAdminAsync(serverData => serverData.Channels.Add(new ChannelRecord { Id = far, Name = "Fern", Order = int.MaxValue }));
         await using var _ = server;
-        await using var a = admin;
-        var lobby = admin.Welcome.Snapshot.Channels.Single(c => c.Id == admin.Welcome.Snapshot.DefaultChannelId);
+        await using var client = admin;
+        var lobby = admin.Welcome.Snapshot.Channels.Single(channel => channel.Id == admin.Welcome.Snapshot.DefaultChannelId);
 
         // EditChannel keeps the order, that only changes through ReorderChannels
         await admin.SendAsync(new EditChannel(lobby.Id, "Lobby", "", int.MaxValue - 5));
@@ -326,12 +326,12 @@ public sealed class RequestValidationTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
 
-        for (int i = 0; i <= ServerTuning.ChatBurst; i++)
+        for (int index = 0; index <= ServerTuning.ChatBurst; index++)
         {
-            await admin.SendRawAsync($$"""{"type":"sendChat","requestId":"t{{i}}","target":7,"toSessionId":null,"text":"hallo"}""");
-            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"t{i}")).Code);
+            await admin.SendRawAsync($$"""{"type":"sendChat","requestId":"t{{index}}","target":7,"toSessionId":null,"text":"hallo"}""");
+            Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync($"t{index}")).Code);
         }
 
         // none of them counted against the chat limit

@@ -44,7 +44,7 @@ public sealed class PopupMotionTests
         try
         {
             // every value as it happens: under load one frame can outlast the whole fade
-            var fades = MotionWait.Record(content, v => v.Opacity);
+            var fades = MotionWait.Record(content, visual => visual.Opacity);
             var slides = MotionWait.Record(content, MotionWait.OffsetY);
             int running = AnimationCounter.Running;
             popup.IsOpen = true;

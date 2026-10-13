@@ -16,9 +16,9 @@ public sealed class BackupArchiveTests() : TempDirectoryTest("ovs-archive-", qui
     static Dictionary<string, byte[]> Entries(string path)
     {
         using var zip = ZipFile.OpenRead(path);
-        return zip.Entries.ToDictionary(e => e.FullName, e =>
+        return zip.Entries.ToDictionary(zipArchiveEntry => zipArchiveEntry.FullName, zipArchiveEntry =>
         {
-            using var stream = e.Open();
+            using var stream = zipArchiveEntry.Open();
             using var copy = new MemoryStream();
             stream.CopyTo(copy);
             return copy.ToArray();
@@ -28,7 +28,7 @@ public sealed class BackupArchiveTests() : TempDirectoryTest("ovs-archive-", qui
     static string[] EntryNames(string path)
     {
         using var zip = ZipFile.OpenRead(path);
-        return [.. zip.Entries.Select(e => e.FullName)];
+        return [.. zip.Entries.Select(zipArchiveEntry => zipArchiveEntry.FullName)];
     }
 
     static void WriteZip(string path, Dictionary<string, byte[]> entries)

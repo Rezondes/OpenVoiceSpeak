@@ -74,9 +74,9 @@ sealed class ConnectSeam(string profileDir, TimeProvider time)
         {
             return failure();
         }
-        catch (Exception e)
+        catch (Exception exception)
         {
-            return e;
+            return exception;
         }
     }
 

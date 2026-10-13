@@ -42,7 +42,7 @@ public class LossAdapterTests
         var adapter = new LossAdapter(time, 64);
         void Every2s(LossReport loss, int times)
         {
-            for (int i = 0; i < times; i++)
+            for (int index = 0; index < times; index++)
             {
                 time.Advance(Ping);
                 adapter.Report(loss);
@@ -114,7 +114,7 @@ public class LossAdapterTests
             adapter.Report(Loss(percent));
         }
 
-        for (int i = 0; i < 4; i++) Figure(20, 2);
+        for (int index = 0; index < 4; index++) Figure(20, 2);
         Assert.Equal(32, adapter.BitrateKbps);
         Figure(0, 2); // a clean streak begins
         Figure(0, 20); // the next figure only after an outage
@@ -147,7 +147,7 @@ public class LossAdapterTests
         var adapter = new LossAdapter(time, 64);
         adapter.SetCeiling(96); // not lowered: follows the edit
         Assert.Equal(96, adapter.BitrateKbps);
-        for (int i = 0; i < 4; i++)
+        for (int index = 0; index < 4; index++)
         {
             time.Advance(Ping);
             adapter.Report(Loss(20));
@@ -157,7 +157,7 @@ public class LossAdapterTests
         Assert.Equal(48, adapter.BitrateKbps);
         adapter.SetCeiling(32); // down below it: the new value
         Assert.Equal(32, adapter.BitrateKbps);
-        for (int i = 0; i < 6; i++)
+        for (int index = 0; index < 6; index++)
         {
             time.Advance(Ping);
             adapter.Report(Loss(0));

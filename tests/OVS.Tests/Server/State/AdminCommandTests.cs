@@ -42,26 +42,26 @@ public class AdminCommandTests
     public async Task Redeem_BroadcastsNewPermissions_ThenTokenInvalid()
     {
         await using var server = await TestServer.StartAsync();
-        await using var a = await TestClient.ConnectAsync(server);
-        await using var b = await TestClient.ConnectAsync(server);
+        await using var client = await TestClient.ConnectAsync(server);
+        await using var testClient = await TestClient.ConnectAsync(server);
 
-        await a.SendAsync(new RedeemAdminToken(server.State.PendingAdminToken!));
-        var update = await b.WaitForAsync<UserUpdated>(u => u.User.SessionId == a.Id);
+        await client.SendAsync(new RedeemAdminToken(server.State.PendingAdminToken!));
+        var update = await testClient.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id);
         Assert.Equal(Permission.None, update.User.Permissions); // Package 92: others' rights stay with the server
         Assert.Contains(PermissionRules.AdminGroupId, update.User.GroupIds);
-        Assert.Equal(Permission.All, (await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == a.Id)).User.Permissions);
+        Assert.Equal(Permission.All, (await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id)).User.Permissions);
 
-        await b.SendAsync(new RedeemAdminToken("egal") { RequestId = "t" });
-        Assert.Equal(ReasonCodes.InvalidToken, (await b.ErrorAsync("t")).Code);
+        await testClient.SendAsync(new RedeemAdminToken("egal") { RequestId = "t" });
+        Assert.Equal(ReasonCodes.InvalidToken, (await testClient.ErrorAsync("t")).Code);
     }
 
     [Fact]
     public async Task Redeem_WrongToken_InvalidToken()
     {
         await using var server = await TestServer.StartAsync();
-        await using var a = await TestClient.ConnectAsync(server);
-        await a.SendAsync(new RedeemAdminToken("falsch") { RequestId = "t" });
-        Assert.Equal(ReasonCodes.InvalidToken, (await a.ErrorAsync("t")).Code);
+        await using var client = await TestClient.ConnectAsync(server);
+        await client.SendAsync(new RedeemAdminToken("falsch") { RequestId = "t" });
+        Assert.Equal(ReasonCodes.InvalidToken, (await client.ErrorAsync("t")).Code);
         Assert.NotNull(server.State.PendingAdminToken);
     }
 
@@ -70,14 +70,14 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
-        await using var g = await TestClient.ConnectAsync(server);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
+        await using var testClient = await TestClient.ConnectAsync(server);
 
-        await a.SendAsync(new CreateGroup("Team", Permission.Speak | Permission.SpeakLinked));
-        var changed = await a.WaitForAsync<GroupsChanged>();
-        Assert.Contains(changed.Groups, x => x.Name == "Team" && x.Permissions == (Permission.Speak | Permission.SpeakLinked));
+        await client.SendAsync(new CreateGroup("Team", Permission.Speak | Permission.SpeakLinked));
+        var changed = await client.WaitForAsync<GroupsChanged>();
+        Assert.Contains(changed.Groups, groupInfo => groupInfo.Name == "Team" && groupInfo.Permissions == (Permission.Speak | Permission.SpeakLinked));
         // Package 92: everyone hears of it, the rights only reach GroupsView holders
-        Assert.Contains((await g.WaitForAsync<GroupsChanged>()).Groups, x => x.Name == "Team" && x.Permissions == Permission.None);
+        Assert.Contains((await testClient.WaitForAsync<GroupsChanged>()).Groups, groupInfo => groupInfo.Name == "Team" && groupInfo.Permissions == Permission.None);
     }
 
     [Fact]
@@ -85,13 +85,13 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
-        await using var g = await TestClient.ConnectAsync(server);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
+        await using var testClient = await TestClient.ConnectAsync(server);
 
-        await a.SendAsync(new UpdateGroup(PermissionRules.GuestGroupId, "Gast", Permission.Speak | Permission.SpeakLinked));
-        var groups = await a.WaitForAsync<GroupsChanged>(); // Package 92: the rights only reach GroupsView holders
-        Assert.Equal(Permission.Speak | Permission.SpeakLinked, groups.Groups.Single(x => x.Id == PermissionRules.GuestGroupId).Permissions);
-        var update = await g.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id); // the own entry keeps the full rights
+        await client.SendAsync(new UpdateGroup(PermissionRules.GuestGroupId, "Gast", Permission.Speak | Permission.SpeakLinked));
+        var groups = await client.WaitForAsync<GroupsChanged>(); // Package 92: the rights only reach GroupsView holders
+        Assert.Equal(Permission.Speak | Permission.SpeakLinked, groups.Groups.Single(groupInfo => groupInfo.Id == PermissionRules.GuestGroupId).Permissions);
+        var update = await testClient.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == testClient.Id); // the own entry keeps the full rights
         Assert.Equal(Permission.Speak | Permission.SpeakLinked, update.User.Permissions);
     }
 
@@ -99,18 +99,18 @@ public class AdminCommandTests
     public async Task CreateGroup_GrantingUnownedPermission_PermissionDenied()
     {
         var manager = ClientIdentity.Create();
-        await using var server = await TestServer.StartAsync(d =>
+        await using var server = await TestServer.StartAsync(serverData =>
         {
-            d.Groups.Add(new GroupRecord(Guid.NewGuid(), "Verwalter", Permission.GroupsCreate | Permission.Speak));
-            TestServer.Grant(manager, "Verwalter")(d);
+            serverData.Groups.Add(new GroupRecord(Guid.NewGuid(), "Verwalter", Permission.GroupsCreate | Permission.Speak));
+            TestServer.Grant(manager, "Verwalter")(serverData);
         });
-        await using var v = await TestClient.ConnectAsync(server, identity: manager);
+        await using var client = await TestClient.ConnectAsync(server, identity: manager);
 
-        await v.SendAsync(new CreateGroup("Hack", Permission.UserBan) { RequestId = "g" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await v.ErrorAsync("g")).Code);
+        await client.SendAsync(new CreateGroup("Hack", Permission.UserBan) { RequestId = "g" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await client.ErrorAsync("g")).Code);
 
-        await v.SendAsync(new CreateGroup("Ok", Permission.Speak));
-        await v.WaitForAsync<GroupsChanged>();
+        await client.SendAsync(new CreateGroup("Ok", Permission.Speak));
+        await client.WaitForAsync<GroupsChanged>();
     }
 
     [Theory]
@@ -121,25 +121,25 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
-        await a.SendAsync(new CreateGroup(name, Permission.Speak) { RequestId = "g" });
-        Assert.Equal(code, (await a.ErrorAsync("g")).Code);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
+        await client.SendAsync(new CreateGroup(name, Permission.Speak) { RequestId = "g" });
+        Assert.Equal(code, (await client.ErrorAsync("g")).Code);
     }
 
     [Fact]
     public async Task Assign_GroupStrongerThanActor_PermissionDenied()
     {
         var assigner = ClientIdentity.Create();
-        await using var server = await TestServer.StartAsync(d =>
+        await using var server = await TestServer.StartAsync(serverData =>
         {
-            d.Groups.Add(new GroupRecord(Guid.NewGuid(), "Zuweiser", Permission.GroupsAssign | Permission.Speak));
-            TestServer.Grant(assigner, "Zuweiser")(d);
+            serverData.Groups.Add(new GroupRecord(Guid.NewGuid(), "Zuweiser", Permission.GroupsAssign | Permission.Speak));
+            TestServer.Grant(assigner, "Zuweiser")(serverData);
         });
-        await using var z = await TestClient.ConnectAsync(server, identity: assigner);
-        var modGroup = z.Welcome.Snapshot.Groups.Single(g => g.Name == "Moderator").Id;
+        await using var client = await TestClient.ConnectAsync(server, identity: assigner);
+        var modGroup = client.Welcome.Snapshot.Groups.Single(groupInfo => groupInfo.Name == "Moderator").Id;
 
-        await z.SendAsync(new AssignGroup(assigner.Fingerprint, modGroup) { RequestId = "a" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await z.ErrorAsync("a")).Code);
+        await client.SendAsync(new AssignGroup(assigner.Fingerprint, modGroup) { RequestId = "a" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await client.ErrorAsync("a")).Code);
     }
 
     [Fact]
@@ -147,17 +147,17 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         var modGroup = Guid.Empty;
-        await using var server = await TestServer.StartAsync(d =>
+        await using var server = await TestServer.StartAsync(serverData =>
         {
-            TestServer.Grant(admin, "Admin")(d);
-            modGroup = d.Groups.Single(g => g.Name == "Moderator").Id;
-            d.Users.Add(new UserRecord { Fingerprint = "offline", LastNickname = "Otto", GroupIds = [PermissionRules.GuestGroupId, modGroup] });
+            TestServer.Grant(admin, "Admin")(serverData);
+            modGroup = serverData.Groups.Single(groupRecord => groupRecord.Name == "Moderator").Id;
+            serverData.Users.Add(new UserRecord { Fingerprint = "offline", LastNickname = "Otto", GroupIds = [PermissionRules.GuestGroupId, modGroup] });
         });
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
 
-        await a.SendAsync(new UnassignGroup("offline", modGroup));
-        await a.SendAsync(new ListUsers { RequestId = "l" });
-        var otto = (await a.WaitForAsync<UserList>(l => l.RequestId == "l")).Users.Single(u => u.Fingerprint == "offline");
+        await client.SendAsync(new UnassignGroup("offline", modGroup));
+        await client.SendAsync(new ListUsers { RequestId = "l" });
+        var otto = (await client.WaitForAsync<UserList>(userList => userList.RequestId == "l")).Users.Single(knownUser => knownUser.Fingerprint == "offline");
         Assert.Equal("Otto", otto.LastNickname);
         Assert.Equal([PermissionRules.GuestGroupId], otto.GroupIds);
     }
@@ -167,12 +167,12 @@ public class AdminCommandTests
     {
         var server = await TestServer.StartAsync();
         var id = ClientIdentity.Create();
-        await using (var a = await TestClient.ConnectAsync(server, "anna", id))
+        await using (var client = await TestClient.ConnectAsync(server, "anna", id))
         {
-            await a.SendAsync(new RedeemAdminToken(server.State.PendingAdminToken!));
-            await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == a.Id && u.User.Permissions == Permission.All);
-            await a.SendAsync(new UpdateServerSettings("S", "", "geheim"));
-            await a.WaitForAsync<ServerSettingsChanged>();
+            await client.SendAsync(new RedeemAdminToken(server.State.PendingAdminToken!));
+            await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id && userUpdated.User.Permissions == Permission.All);
+            await client.SendAsync(new UpdateServerSettings("S", "", "geheim"));
+            await client.WaitForAsync<ServerSettingsChanged>();
         }
         server = await server.RestartAsync();
         await using var _ = server;
@@ -180,7 +180,7 @@ public class AdminCommandTests
         Assert.Null(server.State.PendingAdminToken); // an admin exists now
         await using var again = await TestClient.OpenAsync(server.Port, id);
         var welcome = Assert.IsType<Welcome>(await again.HandshakeAsync("anna", "geheim"));
-        Assert.Equal(Permission.All, welcome.Snapshot.Users.Single(u => u.SessionId == welcome.SessionId).Permissions);
+        Assert.Equal(Permission.All, welcome.Snapshot.Users.Single(user => user.SessionId == welcome.SessionId).Permissions);
         Assert.DoesNotContain("geheim", File.ReadAllText(Path.Combine(server.DataDir, "server-data.json")));
     }
 
@@ -192,16 +192,16 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
 
-        Request r = action switch
+        Request request = action switch
         {
             "updateAdmin" => new UpdateGroup(PermissionRules.AdminGroupId, "Admin", Permission.Speak),
             "deleteAdmin" => new DeleteGroup(PermissionRules.AdminGroupId),
             _ => new DeleteGroup(PermissionRules.GuestGroupId),
         };
-        await a.SendAsync(r with { RequestId = "p" });
-        Assert.Equal(ReasonCodes.ProtectedGroup, (await a.ErrorAsync("p")).Code);
+        await client.SendAsync(request with { RequestId = "p" });
+        Assert.Equal(ReasonCodes.ProtectedGroup, (await client.ErrorAsync("p")).Code);
     }
 
     [Fact]
@@ -209,18 +209,18 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         var mod = ClientIdentity.Create();
-        await using var server = await TestServer.StartAsync(d =>
+        await using var server = await TestServer.StartAsync(serverData =>
         {
-            TestServer.Grant(admin, "Admin")(d);
-            TestServer.Grant(mod, "Moderator")(d);
+            TestServer.Grant(admin, "Admin")(serverData);
+            TestServer.Grant(mod, "Moderator")(serverData);
         });
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
-        await using var m = await TestClient.ConnectAsync(server, identity: mod);
-        var modGroup = a.Welcome.Snapshot.Groups.Single(g => g.Name == "Moderator").Id;
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
+        await using var testClient = await TestClient.ConnectAsync(server, identity: mod);
+        var modGroup = client.Welcome.Snapshot.Groups.Single(groupInfo => groupInfo.Name == "Moderator").Id;
 
-        await a.SendAsync(new DeleteGroup(modGroup));
+        await client.SendAsync(new DeleteGroup(modGroup));
         // the update that takes the group away (another one for the moderator may come first under load)
-        var update = await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == m.Id && !u.User.GroupIds.Contains(modGroup));
+        var update = await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == testClient.Id && !userUpdated.User.GroupIds.Contains(modGroup));
         Assert.DoesNotContain(modGroup, update.User.GroupIds);
         Assert.Equal(Permission.None, update.User.Permissions);
     }
@@ -229,25 +229,25 @@ public class AdminCommandTests
     public async Task Assign_OfflineUser_Persisted_AndListed()
     {
         var admin = ClientIdentity.Create();
-        await using var server = await TestServer.StartAsync(d =>
+        await using var server = await TestServer.StartAsync(serverData =>
         {
-            TestServer.Grant(admin, "Admin")(d);
-            d.Users.Add(new UserRecord { Fingerprint = "offline", LastNickname = "Otto", GroupIds = [PermissionRules.GuestGroupId] });
+            TestServer.Grant(admin, "Admin")(serverData);
+            serverData.Users.Add(new UserRecord { Fingerprint = "offline", LastNickname = "Otto", GroupIds = [PermissionRules.GuestGroupId] });
         });
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
-        var modGroup = a.Welcome.Snapshot.Groups.Single(g => g.Name == "Moderator").Id;
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
+        var modGroup = client.Welcome.Snapshot.Groups.Single(groupInfo => groupInfo.Name == "Moderator").Id;
 
-        await a.SendAsync(new AssignGroup("offline", modGroup));
-        await a.SendAsync(new ListUsers { RequestId = "l" });
-        var list = await a.WaitForAsync<UserList>(l => l.RequestId == "l");
-        Assert.Contains(modGroup, list.Users.Single(u => u.Fingerprint == "offline").GroupIds);
+        await client.SendAsync(new AssignGroup("offline", modGroup));
+        await client.SendAsync(new ListUsers { RequestId = "l" });
+        var list = await client.WaitForAsync<UserList>(userList => userList.RequestId == "l");
+        Assert.Contains(modGroup, list.Users.Single(knownUser => knownUser.Fingerprint == "offline").GroupIds);
 
         var restarted = await server.RestartAsync();
         await using var _ = restarted;
         await using var a2 = await TestClient.ConnectAsync(restarted, identity: admin);
         await a2.SendAsync(new ListUsers { RequestId = "l2" });
-        list = await a2.WaitForAsync<UserList>(l => l.RequestId == "l2");
-        Assert.Contains(modGroup, list.Users.Single(u => u.Fingerprint == "offline").GroupIds);
+        list = await a2.WaitForAsync<UserList>(userList => userList.RequestId == "l2");
+        Assert.Contains(modGroup, list.Users.Single(knownUser => knownUser.Fingerprint == "offline").GroupIds);
     }
 
     [Fact]
@@ -255,10 +255,10 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
 
-        await a.SendAsync(new UnassignGroup(admin.Fingerprint, PermissionRules.AdminGroupId) { RequestId = "u" });
-        Assert.Equal(ReasonCodes.LastAdmin, (await a.ErrorAsync("u")).Code);
+        await client.SendAsync(new UnassignGroup(admin.Fingerprint, PermissionRules.AdminGroupId) { RequestId = "u" });
+        Assert.Equal(ReasonCodes.LastAdmin, (await client.ErrorAsync("u")).Code);
     }
 
     [Fact]
@@ -267,38 +267,38 @@ public class AdminCommandTests
         // Package 84: the group must be within the actor's rights and the target weaker than the actor
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, "admin", admin);
-        await using var z = await TestClient.ConnectAsync(server, "zuteiler");
+        await using var client = await TestClient.ConnectAsync(server, "admin", admin);
+        await using var testClient = await TestClient.ConnectAsync(server, "zuteiler");
         await using var mod = await TestClient.ConnectAsync(server, "mod");
         await using var guest = await TestClient.ConnectAsync(server, "gast");
-        var modGroup = a.Welcome.Snapshot.Groups.Single(g => g.Name == "Moderator").Id;
-        await a.SendAsync(new CreateGroup("Zuteiler", PermissionRules.GuestPermissions | Permission.GroupsAssign));
-        var assigner = (await a.WaitForAsync<GroupsChanged>()).Groups.Single(g => g.Name == "Zuteiler").Id;
-        await a.SendAsync(new AssignGroup(z.Identity.Fingerprint, assigner));
-        await a.SendAsync(new AssignGroup(mod.Identity.Fingerprint, modGroup));
-        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == mod.Id);
+        var modGroup = client.Welcome.Snapshot.Groups.Single(groupInfo => groupInfo.Name == "Moderator").Id;
+        await client.SendAsync(new CreateGroup("Zuteiler", PermissionRules.GuestPermissions | Permission.GroupsAssign));
+        var assigner = (await client.WaitForAsync<GroupsChanged>()).Groups.Single(groupInfo => groupInfo.Name == "Zuteiler").Id;
+        await client.SendAsync(new AssignGroup(testClient.Identity.Fingerprint, assigner));
+        await client.SendAsync(new AssignGroup(mod.Identity.Fingerprint, modGroup));
+        await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == mod.Id);
 
-        await z.SendAsync(new UnassignGroup(mod.Identity.Fingerprint, PermissionRules.GuestGroupId) { RequestId = "stronger" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await z.ErrorAsync("stronger")).Code);
-        await z.SendAsync(new AssignGroup(mod.Identity.Fingerprint, assigner) { RequestId = "strongerAssign" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await z.ErrorAsync("strongerAssign")).Code);
+        await testClient.SendAsync(new UnassignGroup(mod.Identity.Fingerprint, PermissionRules.GuestGroupId) { RequestId = "stronger" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await testClient.ErrorAsync("stronger")).Code);
+        await testClient.SendAsync(new AssignGroup(mod.Identity.Fingerprint, assigner) { RequestId = "strongerAssign" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await testClient.ErrorAsync("strongerAssign")).Code);
 
         // a plain guest is weaker: allowed
-        await z.SendAsync(new AssignGroup(guest.Identity.Fingerprint, assigner));
+        await testClient.SendAsync(new AssignGroup(guest.Identity.Fingerprint, assigner));
         Assert.Equal(PermissionRules.GuestPermissions | Permission.GroupsAssign,
-            (await guest.WaitForAsync<UserUpdated>(u => u.User.SessionId == guest.Id)).User.Permissions); // Package 92: seen in the own entry
-        await a.SendAsync(new ListUsers { RequestId = "l" });
-        var users = (await a.WaitForAsync<UserList>(l => l.RequestId == "l")).Users;
-        Assert.Equal([PermissionRules.GuestGroupId, modGroup], users.Single(u => u.Fingerprint == mod.Identity.Fingerprint).GroupIds);
+            (await guest.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == guest.Id)).User.Permissions); // Package 92: seen in the own entry
+        await client.SendAsync(new ListUsers { RequestId = "l" });
+        var users = (await client.WaitForAsync<UserList>(userList => userList.RequestId == "l")).Users;
+        Assert.Equal([PermissionRules.GuestGroupId, modGroup], users.Single(knownUser => knownUser.Fingerprint == mod.Identity.Fingerprint).GroupIds);
     }
 
     [Fact]
     public async Task ListUsers_WithoutGroupsAssign_PermissionDenied()
     {
         await using var server = await TestServer.StartAsync();
-        await using var g = await TestClient.ConnectAsync(server);
-        await g.SendAsync(new ListUsers { RequestId = "l" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await g.ErrorAsync("l")).Code);
+        await using var client = await TestClient.ConnectAsync(server);
+        await client.SendAsync(new ListUsers { RequestId = "l" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await client.ErrorAsync("l")).Code);
     }
 
     [Fact]
@@ -306,10 +306,10 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
 
-        await a.SendAsync(new UpdateServerSettings("Neu", "Hallo", "pw"));
-        var changed = await a.WaitForAsync<ServerSettingsChanged>();
+        await client.SendAsync(new UpdateServerSettings("Neu", "Hallo", "pw"));
+        var changed = await client.WaitForAsync<ServerSettingsChanged>();
         Assert.Equal(new ServerSettingsInfo("Neu", "Hallo", true), changed.Settings with { Limits = null });
 
         await using var without = await TestClient.OpenAsync(server.Port);
@@ -318,10 +318,10 @@ public class AdminCommandTests
         Assert.IsType<Welcome>(await with.HandshakeAsync("y", "pw"));
 
         // null keeps the password, "" removes it
-        await a.SendAsync(new UpdateServerSettings("Neu", "Hallo", null));
-        Assert.True((await a.WaitForAsync<ServerSettingsChanged>()).Settings.HasPassword);
-        await a.SendAsync(new UpdateServerSettings("Neu", "Hallo", ""));
-        Assert.False((await a.WaitForAsync<ServerSettingsChanged>()).Settings.HasPassword);
+        await client.SendAsync(new UpdateServerSettings("Neu", "Hallo", null));
+        Assert.True((await client.WaitForAsync<ServerSettingsChanged>()).Settings.HasPassword);
+        await client.SendAsync(new UpdateServerSettings("Neu", "Hallo", ""));
+        Assert.False((await client.WaitForAsync<ServerSettingsChanged>()).Settings.HasPassword);
     }
 
     [Theory]
@@ -331,10 +331,10 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
 
-        await a.SendAsync(new UpdateServerSettings(name, welcome == "LONG" ? new string('x', 501) : welcome, null) { RequestId = "s" });
-        Assert.Equal(code, (await a.ErrorAsync("s")).Code);
+        await client.SendAsync(new UpdateServerSettings(name, welcome == "LONG" ? new string('x', 501) : welcome, null) { RequestId = "s" });
+        Assert.Equal(code, (await client.ErrorAsync("s")).Code);
     }
 
     // ---- Package 69: limits, logs and restart ----
@@ -346,27 +346,27 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
-        await using var g = await TestClient.ConnectAsync(server);
-        Assert.Equal(new ServerLimits(50, 30, true, false, new TimeOnly(4, 0)), a.Welcome.Snapshot.Settings.Limits);
-        Assert.Null(g.Welcome.Snapshot.Settings.Limits); // only for those with the right
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
+        await using var testClient = await TestClient.ConnectAsync(server);
+        Assert.Equal(new ServerLimits(50, 30, true, false, new TimeOnly(4, 0)), client.Welcome.Snapshot.Settings.Limits);
+        Assert.Null(testClient.Welcome.Snapshot.Settings.Limits); // only for those with the right
 
-        await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { MaxUsers = 0 }) { RequestId = "1" });
-        var error = await a.ErrorAsync("1");
+        await client.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { MaxUsers = 0 }) { RequestId = "1" });
+        var error = await client.ErrorAsync("1");
         Assert.Equal((ReasonCodes.InvalidValue, "Max users: 1 to 100000."), (error.Code, error.Detail));
-        await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { LogDays = 5000 }) { RequestId = "2" });
-        error = await a.ErrorAsync("2");
+        await client.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits with { LogDays = 5000 }) { RequestId = "2" });
+        error = await client.ErrorAsync("2");
         Assert.Equal((ReasonCodes.InvalidValue, "Keep logs: 0 to 3650 days."), (error.Code, error.Detail));
-        await a.SendAsync(new UpdateServerSettings("Neu", "", new string('p', 129), NewLimits) { RequestId = "3" });
-        error = await a.ErrorAsync("3");
+        await client.SendAsync(new UpdateServerSettings("Neu", "", new string('p', 129), NewLimits) { RequestId = "3" });
+        error = await client.ErrorAsync("3");
         Assert.Equal((ReasonCodes.InvalidValue, "Ein Passwort hat höchstens 128 Zeichen."), (error.Code, error.Detail));
         var store = new DataStore(Path.Combine(server.DataDir, DataStore.FileName));
         var unchanged = store.LoadOrCreate(() => throw new InvalidOperationException()).Settings;
         Assert.Equal(("Testserver", 50, 30), (unchanged.Name, unchanged.MaxUsers, unchanged.LogDays)); // nothing half applied
 
-        await a.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits));
-        Assert.Equal(NewLimits, (await a.WaitForAsync<ServerSettingsChanged>()).Settings.Limits);
-        var seen = await g.WaitForAsync<ServerSettingsChanged>();
+        await client.SendAsync(new UpdateServerSettings("Neu", "", null, NewLimits));
+        Assert.Equal(NewLimits, (await client.WaitForAsync<ServerSettingsChanged>()).Settings.Limits);
+        var seen = await testClient.WaitForAsync<ServerSettingsChanged>();
         Assert.Equal("Neu", seen.Settings.Name);
         Assert.Null(seen.Settings.Limits);
         var saved = store.LoadOrCreate(() => throw new InvalidOperationException()).Settings;
@@ -379,12 +379,12 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
-        await using var b = await TestClient.ConnectAsync(server);
-        await using var c = await TestClient.ConnectAsync(server);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
+        await using var testClient = await TestClient.ConnectAsync(server);
+        await using var otherClient = await TestClient.ConnectAsync(server);
 
-        await a.SendAsync(new UpdateServerSettings("S", "", null, NewLimits with { MaxUsers = 2 }));
-        await a.WaitForAsync<ServerSettingsChanged>();
+        await client.SendAsync(new UpdateServerSettings("S", "", null, NewLimits with { MaxUsers = 2 }));
+        await client.WaitForAsync<ServerSettingsChanged>();
         Assert.Equal(3, server.State.SessionCount);
 
         await using var d = await TestClient.OpenAsync(server.Port);
@@ -398,19 +398,19 @@ public class AdminCommandTests
         var admin = ClientIdentity.Create();
         var guest = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
-        await using var g = await TestClient.ConnectAsync(server, identity: guest);
-        await a.SendAsync(new AssignGroup(guest.Fingerprint, PermissionRules.AdminGroupId));
-        Assert.NotNull((await g.WaitForAsync<ServerSettingsChanged>()).Settings.Limits);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
+        await using var testClient = await TestClient.ConnectAsync(server, identity: guest);
+        await client.SendAsync(new AssignGroup(guest.Fingerprint, PermissionRules.AdminGroupId));
+        Assert.NotNull((await testClient.WaitForAsync<ServerSettingsChanged>()).Settings.Limits);
     }
 
     [Fact]
     public async Task UpdateSettings_AsGuest_PermissionDenied()
     {
         await using var server = await TestServer.StartAsync();
-        await using var g = await TestClient.ConnectAsync(server);
-        await g.SendAsync(new UpdateServerSettings("x", "", null) { RequestId = "s" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await g.ErrorAsync("s")).Code);
+        await using var client = await TestClient.ConnectAsync(server);
+        await client.SendAsync(new UpdateServerSettings("x", "", null) { RequestId = "s" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await client.ErrorAsync("s")).Code);
     }
 
     [Fact]
@@ -418,18 +418,18 @@ public class AdminCommandTests
     {
         var admin = ClientIdentity.Create();
         var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using (var a = await TestClient.ConnectAsync(server, identity: admin))
+        await using (var client = await TestClient.ConnectAsync(server, identity: admin))
         {
-            await a.SendAsync(new CreateGroup("Team", Permission.Speak));
-            await a.WaitForAsync<GroupsChanged>();
-            await a.SendAsync(new UpdateServerSettings("Umbenannt", "", null));
-            await a.WaitForAsync<ServerSettingsChanged>();
+            await client.SendAsync(new CreateGroup("Team", Permission.Speak));
+            await client.WaitForAsync<GroupsChanged>();
+            await client.SendAsync(new UpdateServerSettings("Umbenannt", "", null));
+            await client.WaitForAsync<ServerSettingsChanged>();
         }
         server = await server.RestartAsync();
         await using var _ = server;
-        await using var b = await TestClient.ConnectAsync(server);
-        Assert.Contains(b.Welcome.Snapshot.Groups, g => g.Name == "Team");
-        Assert.Equal("Umbenannt", b.Welcome.Snapshot.Settings.Name);
+        await using var testClient = await TestClient.ConnectAsync(server);
+        Assert.Contains(testClient.Welcome.Snapshot.Groups, groupInfo => groupInfo.Name == "Team");
+        Assert.Equal("Umbenannt", testClient.Welcome.Snapshot.Settings.Name);
     }
 
     // ---- Package 37: group order ----
@@ -438,10 +438,10 @@ public class AdminCommandTests
     {
         var adminId = ClientIdentity.Create();
         var modId = ClientIdentity.Create();
-        var server = await TestServer.StartAsync(d =>
+        var server = await TestServer.StartAsync(serverData =>
         {
-            TestServer.Grant(adminId, "Admin")(d);
-            TestServer.Grant(modId, "Moderator")(d);
+            TestServer.Grant(adminId, "Admin")(serverData);
+            TestServer.Grant(modId, "Moderator")(serverData);
         });
         return (server, await TestClient.ConnectAsync(server, "admin", adminId), await TestClient.ConnectAsync(server, "mod", modId),
             await TestClient.ConnectAsync(server, "gast"));
@@ -455,15 +455,15 @@ public class AdminCommandTests
         await using var _a = admin;
         await using var _m = mod;
         await using var _g = guest;
-        var ids = admin.Welcome.Snapshot.Groups.Select(g => g.Id).Reverse().ToList();
+        var ids = admin.Welcome.Snapshot.Groups.Select(groupInfo => groupInfo.Id).Reverse().ToList();
 
         await admin.SendAsync(new ReorderGroups(ids));
         var changed = await guest.WaitForAsync<GroupsChanged>();
-        Assert.Equal(ids, changed.Groups.Select(g => g.Id));
-        Assert.Contains(server.Log, l => l.Contains("Gruppen umsortiert von admin"));
+        Assert.Equal(ids, changed.Groups.Select(groupInfo => groupInfo.Id));
+        Assert.Contains(server.Log, line => line.Contains("Gruppen umsortiert von admin"));
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
-        Assert.Equal(ids, late.Welcome.Snapshot.Groups.Select(g => g.Id));
+        Assert.Equal(ids, late.Welcome.Snapshot.Groups.Select(groupInfo => groupInfo.Id));
 
         await mod.SendAsync(new KickSession(admin.Id, "") { RequestId = "k" }); // the moderator still cannot touch the admin
         Assert.Equal(ReasonCodes.PermissionDenied, (await mod.ErrorAsync("k")).Code);
@@ -477,7 +477,7 @@ public class AdminCommandTests
         await using var _a = admin;
         await using var _m = mod;
         await using var _g = guest;
-        var ids = admin.Welcome.Snapshot.Groups.Select(g => g.Id).ToList();
+        var ids = admin.Welcome.Snapshot.Groups.Select(groupInfo => groupInfo.Id).ToList();
 
         await admin.SendAsync(new ReorderGroups(ids.Skip(1).ToList()) { RequestId = "fehlt" });
         Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("fehlt")).Code);
@@ -492,24 +492,24 @@ public class AdminCommandTests
         var viewer = ClientIdentity.Create();
         var guest = ClientIdentity.Create();
         var time = new ManualTimeProvider();
-        await using var server = await TestServer.StartAsync(d =>
+        await using var server = await TestServer.StartAsync(serverData =>
         {
-            d.Groups.Add(new GroupRecord(Guid.NewGuid(), "Leser", Permission.UsersView));
-            TestServer.Grant(viewer, "Leser")(d);
-            d.Users.Add(new UserRecord { Fingerprint = guest.Fingerprint, LastNickname = "gast", GroupIds = [PermissionRules.GuestGroupId] });
-            d.Users.Add(new UserRecord { Fingerprint = "frei", LastNickname = "Frei", GroupIds = [PermissionRules.GuestGroupId] });
-            d.Bans.Add(new BanRecord { Id = Guid.NewGuid(), Fingerprint = guest.Fingerprint, Nickname = "gast", Reason = "aktiv", CreatedBy = "mod" });
-            d.Bans.Add(new BanRecord { Id = Guid.NewGuid(), Fingerprint = guest.Fingerprint, Nickname = "gast", Reason = "kurz", CreatedBy = "mod",
+            serverData.Groups.Add(new GroupRecord(Guid.NewGuid(), "Leser", Permission.UsersView));
+            TestServer.Grant(viewer, "Leser")(serverData);
+            serverData.Users.Add(new UserRecord { Fingerprint = guest.Fingerprint, LastNickname = "gast", GroupIds = [PermissionRules.GuestGroupId] });
+            serverData.Users.Add(new UserRecord { Fingerprint = "frei", LastNickname = "Frei", GroupIds = [PermissionRules.GuestGroupId] });
+            serverData.Bans.Add(new BanRecord { Id = Guid.NewGuid(), Fingerprint = guest.Fingerprint, Nickname = "gast", Reason = "aktiv", CreatedBy = "mod" });
+            serverData.Bans.Add(new BanRecord { Id = Guid.NewGuid(), Fingerprint = guest.Fingerprint, Nickname = "gast", Reason = "kurz", CreatedBy = "mod",
                 ExpiresAt = time.GetUtcNow().AddMinutes(5) });
         }, time: time);
         time.Advance(TimeSpan.FromMinutes(10)); // the short ban has run out
-        await using var v = await TestClient.ConnectAsync(server, identity: viewer);
+        await using var client = await TestClient.ConnectAsync(server, identity: viewer);
 
-        await v.SendAsync(new ListUsers { RequestId = "l" });
-        var users = (await v.WaitForAsync<UserList>(l => l.RequestId == "l")).Users;
-        var ban = Assert.Single(users.Single(u => u.Fingerprint == guest.Fingerprint).Bans!);
+        await client.SendAsync(new ListUsers { RequestId = "l" });
+        var users = (await client.WaitForAsync<UserList>(userList => userList.RequestId == "l")).Users;
+        var ban = Assert.Single(users.Single(knownUser => knownUser.Fingerprint == guest.Fingerprint).Bans!);
         Assert.Equal(("aktiv", "mod", (DateTimeOffset?)null), (ban.Reason, ban.CreatedBy, ban.ExpiresAt));
-        Assert.Empty(users.Single(u => u.Fingerprint == "frei").Bans ?? []);
+        Assert.Empty(users.Single(knownUser => knownUser.Fingerprint == "frei").Bans ?? []);
     }
 
     // ---- Package 76: one right per request ----
@@ -547,36 +547,36 @@ public class AdminCommandTests
     {
         var actor = ClientIdentity.Create();
         var target = ClientIdentity.Create();
-        await using var server = await TestServer.StartAsync(d =>
+        await using var server = await TestServer.StartAsync(serverData =>
         {
-            TestServer.Grant(ClientIdentity.Create(), "Admin")(d); // someone else is admin, so no token is pending
-            d.Groups.Add(new GroupRecord(Guid.NewGuid(), "Tester", rights));
-            TestServer.Grant(actor, "Tester")(d);
+            TestServer.Grant(ClientIdentity.Create(), "Admin")(serverData); // someone else is admin, so no token is pending
+            serverData.Groups.Add(new GroupRecord(Guid.NewGuid(), "Tester", rights));
+            TestServer.Grant(actor, "Tester")(serverData);
         });
-        await using var a = await TestClient.ConnectAsync(server, "tester", actor);
-        await using var t = await TestClient.ConnectAsync(server, "ziel", target);
-        var groups = a.Welcome.Snapshot.Groups;
-        var mod = groups.Single(g => g.Name == "Moderator").Id;
-        Request r = action switch
+        await using var client = await TestClient.ConnectAsync(server, "tester", actor);
+        await using var testClient = await TestClient.ConnectAsync(server, "ziel", target);
+        var groups = client.Welcome.Snapshot.Groups;
+        var mod = groups.Single(groupInfo => groupInfo.Name == "Moderator").Id;
+        Request request = action switch
         {
             "listUsers" => new ListUsers(),
             "listBans" => new ListBans(),
-            "ban" => new BanSession(t.Id, "x", null, false),
+            "ban" => new BanSession(testClient.Id, "x", null, false),
             "unban" => new Unban(Guid.NewGuid()),
-            "kick" => new KickSession(t.Id, "x"),
+            "kick" => new KickSession(testClient.Id, "x"),
             "assign" => new AssignGroup(target.Fingerprint, mod),
             "unassign" => new UnassignGroup(target.Fingerprint, PermissionRules.GuestGroupId),
             "createGroup" => new CreateGroup("Neu", Permission.Speak),
             "updateGroup" => new UpdateGroup(PermissionRules.GuestGroupId, "Gast", Permission.Speak),
-            "reorderGroups" => new ReorderGroups(groups.Select(g => g.Id).Reverse().ToList()),
+            "reorderGroups" => new ReorderGroups(groups.Select(groupInfo => groupInfo.Id).Reverse().ToList()),
             "deleteGroup" => new DeleteGroup(mod),
             "banUser" => new BanKnownUser(target.Fingerprint, "x", null, false),
             "deleteUser" => new DeleteKnownUser(target.Fingerprint),
             _ => throw new ArgumentOutOfRangeException(nameof(action)),
         };
-        await a.SendAsync(r with { RequestId = "r" });
-        await a.SendAsync(new RedeemAdminToken("falsch") { RequestId = "probe" });
-        var error = await a.WaitForAsync<Error>(e => e.RequestId is "r" or "probe");
+        await client.SendAsync(request with { RequestId = "r" });
+        await client.SendAsync(new RedeemAdminToken("falsch") { RequestId = "probe" });
+        var error = await client.WaitForAsync<Error>(otherError => otherError.RequestId is "r" or "probe");
         return error.RequestId == "r" ? error.Code : null;
     }
 
@@ -584,22 +584,22 @@ public class AdminCommandTests
     public async Task GroupsCreateOnly_CannotEditOrDelete()
     {
         var creator = ClientIdentity.Create();
-        await using var server = await TestServer.StartAsync(d =>
+        await using var server = await TestServer.StartAsync(serverData =>
         {
-            d.Groups.Add(new GroupRecord(Guid.NewGuid(), "Anleger", Permission.GroupsCreate | Permission.Speak));
-            TestServer.Grant(creator, "Anleger")(d);
+            serverData.Groups.Add(new GroupRecord(Guid.NewGuid(), "Anleger", Permission.GroupsCreate | Permission.Speak));
+            TestServer.Grant(creator, "Anleger")(serverData);
         });
-        await using var c = await TestClient.ConnectAsync(server, identity: creator);
-        var ids = c.Welcome.Snapshot.Groups.Select(g => g.Id).ToList();
+        await using var client = await TestClient.ConnectAsync(server, identity: creator);
+        var ids = client.Welcome.Snapshot.Groups.Select(groupInfo => groupInfo.Id).ToList();
 
-        await c.SendAsync(new CreateGroup("Neu", Permission.Speak));
-        var created = (await c.WaitForAsync<GroupsChanged>()).Groups.Single(g => g.Name == "Neu");
+        await client.SendAsync(new CreateGroup("Neu", Permission.Speak));
+        var created = (await client.WaitForAsync<GroupsChanged>()).Groups.Single(groupInfo => groupInfo.Name == "Neu");
 
-        await c.SendAsync(new UpdateGroup(created.Id, "Anders", Permission.Speak) { RequestId = "u" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await c.ErrorAsync("u")).Code);
-        await c.SendAsync(new DeleteGroup(created.Id) { RequestId = "d" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await c.ErrorAsync("d")).Code);
-        await c.SendAsync(new ReorderGroups([.. ids.Append(created.Id).Reverse()]) { RequestId = "o" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await c.ErrorAsync("o")).Code);
+        await client.SendAsync(new UpdateGroup(created.Id, "Anders", Permission.Speak) { RequestId = "u" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await client.ErrorAsync("u")).Code);
+        await client.SendAsync(new DeleteGroup(created.Id) { RequestId = "d" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await client.ErrorAsync("d")).Code);
+        await client.SendAsync(new ReorderGroups([.. ids.Append(created.Id).Reverse()]) { RequestId = "o" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await client.ErrorAsync("o")).Code);
     }
 }

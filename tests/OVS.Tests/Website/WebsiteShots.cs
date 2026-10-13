@@ -51,15 +51,15 @@ public sealed class WebsiteShots
     /// </summary>
     static void Shows(TopLevel window, string text, bool part = false) =>
         Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(),
-            t => (part ? t.Text?.Contains(text) == true : t.Text == text) && OnScreen(t, window));
+            textBlock => (part ? textBlock.Text?.Contains(text) == true : textBlock.Text == text) && OnScreen(textBlock, window));
 
     static bool OnScreen(Visual visual, TopLevel window)
     {
         if (!visual.IsEffectivelyVisible || visual.TranslatePoint(default, window) is not { } at) return false;
         var rect = new Rect(at, visual.Bounds.Size);
         if (!new Rect(window.ClientSize).Contains(rect.Center)) return false;
-        return visual.GetVisualAncestors().OfType<ScrollViewer>().All(s =>
-            s.TranslatePoint(default, window) is { } corner && new Rect(corner, s.Bounds.Size).Contains(rect.Center));
+        return visual.GetVisualAncestors().OfType<ScrollViewer>().All(scrollViewer =>
+            scrollViewer.TranslatePoint(default, window) is { } corner && new Rect(corner, scrollViewer.Bounds.Size).Contains(rect.Center));
     }
 
     /// <summary>Scrolls the page so <paramref name="target"/> starts <paramref name="above"/> px below the top of what shows.</summary>
@@ -76,11 +76,11 @@ public sealed class WebsiteShots
         using var scene = new WebsiteScene(lang, theme);
         var showcase = scene.Connect();
         showcase.FillRaidChat();
-        var s = showcase.Server;
-        s.Apply(showcase.Say(ShowcaseServer.Mara, showcase.T("Hast du kurz Zeit für die Aufstellung?", "Got a minute for the line-up?"), 4, to: ShowcaseServer.Self));
-        s.Apply(showcase.Say(ShowcaseServer.Self, showcase.T("Klar, ich schreibe dir gleich.", "Sure, writing you in a second."), 5, to: ShowcaseServer.Mara));
-        s.Apply(showcase.Say(ShowcaseServer.Mara, showcase.T("Jonas als Heiler, Lea vorne?", "Jonas as healer, Lea up front?"), 6, to: ShowcaseServer.Self));
-        s.Apply(showcase.Say(ShowcaseServer.Jonas, showcase.T("Wer bringt das Essen mit?", "Who brings the food?"), 7, ShowcaseServer.Raid));
+        var server = showcase.Server;
+        server.Apply(showcase.Say(ShowcaseServer.Mara, showcase.T("Hast du kurz Zeit für die Aufstellung?", "Got a minute for the line-up?"), 4, to: ShowcaseServer.Self));
+        server.Apply(showcase.Say(ShowcaseServer.Self, showcase.T("Klar, ich schreibe dir gleich.", "Sure, writing you in a second."), 5, to: ShowcaseServer.Mara));
+        server.Apply(showcase.Say(ShowcaseServer.Mara, showcase.T("Jonas als Heiler, Lea vorne?", "Jonas as healer, Lea up front?"), 6, to: ShowcaseServer.Self));
+        server.Apply(showcase.Say(ShowcaseServer.Jonas, showcase.T("Wer bringt das Essen mit?", "Who brings the food?"), 7, ShowcaseServer.Raid));
         scene.Vm.Chat!.OpenPrivate("fp02");
         ShotWriter.Settle(600);
         Shows(scene.Window, "@Mara");
@@ -91,11 +91,11 @@ public sealed class WebsiteShots
     [ShotVariants]
     public void Start(string lang, string theme)
     {
-        using var scene = new WebsiteScene(lang, theme, settings: s =>
+        using var scene = new WebsiteScene(lang, theme, settings: clientSettings =>
         {
-            s.Bookmarks.Add(new Bookmark("Gilde Nordlicht", "voice.example.org", 7000, "Steffi"));
-            s.Bookmarks.Add(new Bookmark(lang == "en" ? "Friday crew" : "Freitagsrunde", "friends.example.org", 7000, "Steffi"));
-            s.Bookmarks.Add(new Bookmark(lang == "en" ? "Club" : "Verein", "club.example.org", 7010, "Steffi"));
+            clientSettings.Bookmarks.Add(new Bookmark("Gilde Nordlicht", "voice.example.org", 7000, "Steffi"));
+            clientSettings.Bookmarks.Add(new Bookmark(lang == "en" ? "Friday crew" : "Freitagsrunde", "friends.example.org", 7000, "Steffi"));
+            clientSettings.Bookmarks.Add(new Bookmark(lang == "en" ? "Club" : "Verein", "club.example.org", 7010, "Steffi"));
         });
         _ = ConnectDialog.ShowAsync(scene.Window.Overlay, scene.Vm.Bookmarks.Saved, scene.Vm.Settings.Bookmarks[0]);
         ShotWriter.Settle(600);
@@ -109,7 +109,7 @@ public sealed class WebsiteShots
         ShotWriter.Settle(700);
         scene.Vm.PageFlow.SettingsPage!.InputLevelDb = -16;
         var page = scene.Window.GetVisualDescendants().OfType<SettingsView>().Single();
-        var title = page.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == section);
+        var title = page.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Text == section);
         if (toBottom)
         {
             // the section ends at the bottom of what shows (the version below it changes with every build)
@@ -126,7 +126,7 @@ public sealed class WebsiteShots
     [ShotVariants]
     public void SettingsAudio(string lang, string theme)
     {
-        using var scene = new WebsiteScene(lang, theme, 760, s => s.Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation);
+        using var scene = new WebsiteScene(lang, theme, 760, clientSettings => clientSettings.Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation);
         scene.Connect();
         OpenSettings(scene, Strings.Ui_VolumeSection);
         Shows(scene.Window, Strings.Ui_TransmitSection);
@@ -141,7 +141,7 @@ public sealed class WebsiteShots
         scene.Connect();
         OpenSettings(scene, Strings.Ui_AppearanceSection, toBottom: true);
         Shows(scene.Window, Strings.Ui_AppearanceSection);
-        Assert.DoesNotContain(scene.Window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text?.Contains(" dev.") == true && OnScreen(t, scene.Window));
+        Assert.DoesNotContain(scene.Window.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text?.Contains(" dev.") == true && OnScreen(textBlock, scene.Window));
         scene.Save(Folder, "settings-look");
     }
 
@@ -153,9 +153,9 @@ public sealed class WebsiteShots
         var showcase = scene.Connect();
         showcase.FillRaidChat();
         scene.Vm.Chat!.Selected = scene.Vm.Chat.ChannelTab;
-        var mara = scene.Vm.Server!.Tree.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == ShowcaseServer.Mara);
+        var mara = scene.Vm.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == ShowcaseServer.Mara);
         mara.VolumePercent = 140;
-        var row = scene.Window.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row") && b.DataContext == mara);
+        var row = scene.Window.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("row") && border.DataContext == mara);
         row.ContextMenu!.Placement = PlacementMode.RightEdgeAlignedTop;
         row.ContextMenu.Open(row);
         ShotWriter.Settle(600);
@@ -173,7 +173,7 @@ public sealed class WebsiteShots
         _ = ChannelDialogView.ShowAsync(scene.Window.Overlay, new ChannelEdit(officers.Name, showcase.T("Nur für die Planung", "Planning only"), false, 8,
             [ShowcaseServer.Moderator], HasPassword: true), ChannelDialogMode.Edit, showcase.Server.Mirror.Groups);
         ShotWriter.Settle(400);
-        var password = scene.Window.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == Strings.Dlg_ChannelPassword);
+        var password = scene.Window.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Text == Strings.Dlg_ChannelPassword);
         password.GetVisualAncestors().OfType<ScrollViewer>().First().ScrollToEnd();
         ShotWriter.Settle(300);
         Shows(scene.Window, Strings.Dlg_GroupLock);
@@ -203,7 +203,7 @@ public sealed class WebsiteShots
         using (scene)
         {
             var admin = scene.Vm.PageFlow.AdminPage!;
-            admin.GroupList.SelectedGroup = admin.GroupList.Groups.Single(g => g.Id == OVS.Shared.Permissions.WellKnownGroups.Admin);
+            admin.GroupList.SelectedGroup = admin.GroupList.Groups.Single(groupEdit => groupEdit.Id == OVS.Shared.Permissions.WellKnownGroups.Admin);
             ShotWriter.Settle(500);
             Shows(scene.Window, Strings.Ui_AdminGroupFixed);
             scene.Save(Folder, "admin-groups");
@@ -260,7 +260,7 @@ public sealed class WebsiteShots
         using (scene)
         {
             var page = scene.Window.GetVisualDescendants().OfType<AdminView>().Single();
-            var title = page.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == Strings.Ui_Backups && t.IsEffectivelyVisible);
+            var title = page.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Text == Strings.Ui_Backups && textBlock.IsEffectivelyVisible);
             ScrollTo(title, 260);
             ShotWriter.Settle(500);
             Shows(scene.Window, Strings.Ui_Backups);
@@ -280,7 +280,7 @@ public sealed class WebsiteShots
             logs.SearchText = "Mara";
             logs.SearchCommand.Execute(null);
             ShotWriter.Settle(400);
-            logs.SelectedFile = logs.Files.First(f => f.Info.Id == ShowcaseServer.RaidLog);
+            logs.SelectedFile = logs.Files.First(logFile => logFile.Info.Id == ShowcaseServer.RaidLog);
             ShotWriter.Settle(600);
             Shows(scene.Window, "19:49:00 Mara", part: true);
             scene.Save(Folder, "admin-logs");
@@ -301,19 +301,19 @@ public sealed class WebsiteShots
         showcase.FillRaidChat();
         scene.Vm.Chat!.Selected = scene.Vm.Chat.ChannelTab;
         ShotWriter.Settle(800); // the poster is the first frame: nothing half faded in
-        var s = showcase.Server;
+        var server = showcase.Server;
         ShotWriter.Record(scene.Window, Clip("clip-switch", scene), 5000, 0,
-            (400, () => _ = s.JoinAsync(ShowcaseServer.Strategy)),
-            (1900, () => s.Apply(new UserUpdated(s.Mirror.Users[ShowcaseServer.Jonas] with { ChannelId = ShowcaseServer.Training }))),
+            (400, () => _ = server.JoinAsync(ShowcaseServer.Strategy)),
+            (1900, () => server.Apply(new UserUpdated(server.Mirror.Users[ShowcaseServer.Jonas] with { ChannelId = ShowcaseServer.Training }))),
             (3200, () => showcase.Speak()),
-            (3900, () => _ = s.JoinAsync(ShowcaseServer.Raid)));
+            (3900, () => _ = server.JoinAsync(ShowcaseServer.Raid)));
     }
 
     [AvaloniaTheory]
     [ShotVariants]
     public void ClipConnect(string lang, string theme)
     {
-        using var scene = new WebsiteScene(lang, theme, settings: s => s.Bookmarks.Add(new Bookmark("Gilde Nordlicht", "voice.example.org", 7000, "Steffi")));
+        using var scene = new WebsiteScene(lang, theme, settings: clientSettings => clientSettings.Bookmarks.Add(new Bookmark("Gilde Nordlicht", "voice.example.org", 7000, "Steffi")));
         var showcase = new ShowcaseServer(scene.English);
         ShotWriter.Record(scene.Window, Clip("clip-connect", scene), 4500, 0,
             (600, () => MainViewModelSetup.ShowServer(scene.Vm, showcase.Server)),

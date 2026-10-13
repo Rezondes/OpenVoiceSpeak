@@ -13,13 +13,13 @@ public class AudioEngineSettingsTests
     /// <summary>The capture settings: each one's change (away from the default), where the pipeline holds it, and the value it holds then.</summary>
     static readonly Dictionary<string, (Action<ClientSettings> Change, Func<CapturePipeline, object> Read, object Value)> CaptureReadouts = new()
     {
-        [nameof(ClientSettings.InputGain)] = (s => s.InputGain = 0.5f, p => p.Gain, 0.5f),
-        [nameof(ClientSettings.VadThresholdDb)] = (s => s.VadThresholdDb = -25f, p => p.Vad.ThresholdDb, -25f),
-        [nameof(ClientSettings.VadAutomatic)] = (s => s.VadAutomatic = false, p => p.Vad.Automatic, false),
-        [nameof(ClientSettings.NoiseSuppression)] = (s => s.NoiseSuppression = false, p => p.NoiseSuppression, false),
-        [nameof(ClientSettings.AutoGain)] = (s => s.AutoGain = false, p => p.AutoGain, false),
-        [nameof(ClientSettings.EchoCancellation)] = (s => s.EchoCancellation = false, p => p.EchoCancellation, false),
-        [nameof(ClientSettings.AudioContent)] = (s => s.AudioContent = AudioContent.Music, p => p.Music, true),
+        [nameof(ClientSettings.InputGain)] = (clientSettings => clientSettings.InputGain = 0.5f, capturePipeline => capturePipeline.Gain, 0.5f),
+        [nameof(ClientSettings.VadThresholdDb)] = (clientSettings => clientSettings.VadThresholdDb = -25f, capturePipeline => capturePipeline.Vad.ThresholdDb, -25f),
+        [nameof(ClientSettings.VadAutomatic)] = (clientSettings => clientSettings.VadAutomatic = false, capturePipeline => capturePipeline.Vad.Automatic, false),
+        [nameof(ClientSettings.NoiseSuppression)] = (clientSettings => clientSettings.NoiseSuppression = false, capturePipeline => capturePipeline.NoiseSuppression, false),
+        [nameof(ClientSettings.AutoGain)] = (clientSettings => clientSettings.AutoGain = false, capturePipeline => capturePipeline.AutoGain, false),
+        [nameof(ClientSettings.EchoCancellation)] = (clientSettings => clientSettings.EchoCancellation = false, capturePipeline => capturePipeline.EchoCancellation, false),
+        [nameof(ClientSettings.AudioContent)] = (clientSettings => clientSettings.AudioContent = AudioContent.Music, capturePipeline => capturePipeline.Music, true),
     };
 
     /// <summary>
@@ -28,9 +28,9 @@ public class AudioEngineSettingsTests
     /// </summary>
     static readonly Dictionary<string, (Action<ClientSettings> Change, Func<AudioEngine, KeyPoller, object> Read, Func<ClientSettings, object> Value)> EngineReadouts = new()
     {
-        [nameof(ClientSettings.Mode)] = (s => s.Mode = TransmitMode.VoiceActivation, (e, _) => e.Mode, s => s.Mode),
-        [nameof(ClientSettings.OutputVolume)] = (s => s.OutputVolume = 0.3f, (e, _) => e.Mixer.Volume, s => s.OutputVolume),
-        [nameof(ClientSettings.PttReleaseDelayMs)] = (s => s.PttReleaseDelayMs = 300, (_, k) => k.ReleaseDelay, s => TimeSpan.FromMilliseconds(s.PttReleaseDelayMs)),
+        [nameof(ClientSettings.Mode)] = (clientSettings => clientSettings.Mode = TransmitMode.VoiceActivation, (audioEngine, _) => audioEngine.Mode, clientSettings => clientSettings.Mode),
+        [nameof(ClientSettings.OutputVolume)] = (clientSettings => clientSettings.OutputVolume = 0.3f, (audioEngine, _) => audioEngine.Mixer.Volume, clientSettings => clientSettings.OutputVolume),
+        [nameof(ClientSettings.PttReleaseDelayMs)] = (clientSettings => clientSettings.PttReleaseDelayMs = 300, (_, keyPoller) => keyPoller.ReleaseDelay, clientSettings => TimeSpan.FromMilliseconds(clientSettings.PttReleaseDelayMs)),
     };
 
     /// <summary>
@@ -54,7 +54,7 @@ public class AudioEngineSettingsTests
     public void ClientSettings_EveryProperty_IsClassifiedOnce()
     {
         var properties = typeof(ClientSettings).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.SetMethod is { IsPublic: true }).Select(p => p.Name).Order().ToList();
+            .Where(propertyInfo => propertyInfo.SetMethod is { IsPublic: true }).Select(propertyInfo => propertyInfo.Name).Order().ToList();
         var placed = CaptureReadouts.Keys.Concat(EngineReadouts.Keys).Concat(NotApplied).Order().ToList();
         Assert.Equal(properties, placed); // a name twice would show here too
     }

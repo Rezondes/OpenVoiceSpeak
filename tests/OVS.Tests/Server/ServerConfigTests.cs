@@ -18,7 +18,7 @@ public sealed class ServerConfigTests : IDisposable
     {
         var map = vars.ToDictionary(v => v.Key, v => v.Value);
         map["OVS_DATA_DIR"] = dir;
-        return k => map.GetValueOrDefault(k);
+        return key => map.GetValueOrDefault(key);
     }
 
     void WriteFile(string json)
@@ -30,38 +30,38 @@ public sealed class ServerConfigTests : IDisposable
     [Fact]
     public void Load_NoEnvNoFile_UsesDefaults()
     {
-        var cfg = ServerConfig.Load(Env());
-        Assert.Equal(7000, cfg.Port);
-        Assert.Equal(50, cfg.MaxUsers);
-        Assert.Equal("OpenVoiceSpeak Server", cfg.ServerName);
-        Assert.Equal("", cfg.Password);
-        Assert.Equal(Path.GetFullPath(dir), cfg.DataDir);
+        var config = ServerConfig.Load(Env());
+        Assert.Equal(7000, config.Port);
+        Assert.Equal(50, config.MaxUsers);
+        Assert.Equal("OpenVoiceSpeak Server", config.ServerName);
+        Assert.Equal("", config.Password);
+        Assert.Equal(Path.GetFullPath(dir), config.DataDir);
     }
 
     [Fact]
     public void Load_DefaultDataDir_IsData()
     {
-        var cfg = ServerConfig.Load(_ => null);
-        Assert.Equal(Path.GetFullPath("data"), cfg.DataDir);
+        var config = ServerConfig.Load(_ => null);
+        Assert.Equal(Path.GetFullPath("data"), config.DataDir);
     }
 
     [Fact]
     public void Load_FileValues_AreUsed()
     {
         WriteFile("""{"port":7100,"maxUsers":10,"serverName":"Datei"}""");
-        var cfg = ServerConfig.Load(Env());
-        Assert.Equal(7100, cfg.Port);
-        Assert.Equal(10, cfg.MaxUsers);
-        Assert.Equal("Datei", cfg.ServerName);
+        var config = ServerConfig.Load(Env());
+        Assert.Equal(7100, config.Port);
+        Assert.Equal(10, config.MaxUsers);
+        Assert.Equal("Datei", config.ServerName);
     }
 
     [Fact]
     public void Load_EnvOverridesFile()
     {
         WriteFile("""{"port":7100}""");
-        var cfg = ServerConfig.Load(Env(("OVS_PORT", "7200"), ("OVS_PASSWORD", "geheim")));
-        Assert.Equal(7200, cfg.Port);
-        Assert.Equal("geheim", cfg.Password);
+        var config = ServerConfig.Load(Env(("OVS_PORT", "7200"), ("OVS_PASSWORD", "geheim")));
+        Assert.Equal(7200, config.Port);
+        Assert.Equal("geheim", config.Password);
     }
 
     [Theory]
@@ -72,8 +72,8 @@ public sealed class ServerConfigTests : IDisposable
     [InlineData("OVS_SERVER_NAME", "   ")]
     public void Load_InvalidValue_ThrowsNamingVariable(string key, string value)
     {
-        var e = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env((key, value))));
-        Assert.Contains(key, e.Message);
+        var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env((key, value))));
+        Assert.Contains(key, exception.Message);
     }
 
     [Theory]
@@ -81,8 +81,8 @@ public sealed class ServerConfigTests : IDisposable
     [InlineData("abc")]
     public void Load_InvalidLogDays_Throws(string value)
     {
-        var e = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env(("OVS_LOG_DAYS", value))));
-        Assert.Contains("OVS_LOG_DAYS", e.Message);
+        var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env(("OVS_LOG_DAYS", value))));
+        Assert.Contains("OVS_LOG_DAYS", exception.Message);
     }
 
     [Fact]
@@ -106,9 +106,9 @@ public sealed class ServerConfigTests : IDisposable
     public void Load_AutoRestartAndLogRotation_FromFile_EnvWins()
     {
         WriteFile("""{"autoRestart":true,"autoRestartTime":"05:15:00","logRotateDaily":false}""");
-        var cfg = ServerConfig.Load(Env());
-        Assert.Equal(new TimeOnly(5, 15, 0), cfg.AutoRestartAt);
-        Assert.False(cfg.LogRotateDaily);
+        var config = ServerConfig.Load(Env());
+        Assert.Equal(new TimeOnly(5, 15, 0), config.AutoRestartAt);
+        Assert.False(config.LogRotateDaily);
         Assert.True(ServerConfig.Load(Env(("OVS_LOG_ROTATE_DAILY", "1"))).LogRotateDaily);
     }
 
@@ -122,8 +122,8 @@ public sealed class ServerConfigTests : IDisposable
     [InlineData("OVS_LOG_ROTATE_DAILY", "vielleicht")]
     public void Load_InvalidRestartOrRotation_Throws(string key, string value)
     {
-        var e = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env((key, value))));
-        Assert.Contains(key, e.Message);
+        var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env((key, value))));
+        Assert.Contains(key, exception.Message);
     }
 
     [Fact]
@@ -138,8 +138,8 @@ public sealed class ServerConfigTests : IDisposable
     {
         WriteFile("""{"port":7100}""");
         using var locked = new FileStream(Path.Combine(dir, ServerConfig.FileName), FileMode.Open, FileAccess.Read, FileShare.None);
-        var e = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
-        Assert.Contains(ServerConfig.FileName, e.Message);
+        var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
+        Assert.Contains(ServerConfig.FileName, exception.Message);
     }
 
     [Fact]
@@ -148,8 +148,8 @@ public sealed class ServerConfigTests : IDisposable
         File.WriteAllText(dir, "kein Verzeichnis");
         try
         {
-            var e = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
-            Assert.Contains("OVS_DATA_DIR", e.Message);
+            var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
+            Assert.Contains("OVS_DATA_DIR", exception.Message);
         }
         finally
         {
@@ -161,8 +161,8 @@ public sealed class ServerConfigTests : IDisposable
     public void Load_CorruptConfigFile_ThrowsNamingFile()
     {
         WriteFile("{ kaputt");
-        var e = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
-        Assert.Contains(ServerConfig.FileName, e.Message);
+        var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env()));
+        Assert.Contains(ServerConfig.FileName, exception.Message);
     }
 
     /// <summary>Package 69: after the first start the values live in server-data.json; a differing variable is only noted.</summary>
@@ -173,14 +173,14 @@ public sealed class ServerConfigTests : IDisposable
         var logs = new ServerLogWriter(dir, 0, TimeProvider.System, lines.Add);
         var first = ServerConfig.Load(Env(("OVS_MAX_USERS", "20"), ("OVS_LOG_DAYS", "7")));
         _ = new ServerState(first, TimeProvider.System, logs, ServerStores.Open(first, TimeProvider.System));
-        Assert.DoesNotContain(lines, l => l.Contains("OVS_"));
+        Assert.DoesNotContain(lines, line => line.Contains("OVS_"));
 
         WriteFile("""{"autoRestart":true}""");
         var config = ServerConfig.Load(Env(("OVS_MAX_USERS", "99"), ("OVS_LOG_DAYS", "7")));
         _ = new ServerState(config, TimeProvider.System, logs, ServerStores.Open(config, TimeProvider.System));
-        Assert.Contains(lines, l => l.Contains("OVS_MAX_USERS") && l.Contains("99") && l.Contains("20"));
-        Assert.Contains(lines, l => l.Contains("OVS_AUTO_RESTART"));
-        Assert.DoesNotContain(lines, l => l.Contains("OVS_LOG_DAYS")); // same as stored
-        Assert.DoesNotContain(lines, l => l.Contains("OVS_LOG_ROTATE_DAILY")); // not set at all
+        Assert.Contains(lines, line => line.Contains("OVS_MAX_USERS") && line.Contains("99") && line.Contains("20"));
+        Assert.Contains(lines, line => line.Contains("OVS_AUTO_RESTART"));
+        Assert.DoesNotContain(lines, line => line.Contains("OVS_LOG_DAYS")); // same as stored
+        Assert.DoesNotContain(lines, line => line.Contains("OVS_LOG_ROTATE_DAILY")); // not set at all
     }
 }

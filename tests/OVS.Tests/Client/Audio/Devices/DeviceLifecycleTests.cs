@@ -219,7 +219,7 @@ public sealed class DeviceLifecycleTests : IDisposable
     {
         micWanted = true;
         devices.SyncCaptureAndReport();
-        for (int i = 0; i < 3; i++) Break(AudioDirection.Input);
+        for (int index = 0; index < 3; index++) Break(AudioDirection.Input);
         Assert.Equal(3, hardware.Counts.Mics); // two reopens, then given up with a notice
         Assert.Single(Notices);
 
@@ -435,7 +435,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         micWanted = true;
         devices.SyncCaptureAndReport();
 
-        for (int i = 0; i < 4; i++)
+        for (int index = 0; index < 4; index++)
         {
             time.Advance(TimeSpan.FromSeconds(11)); // the reopened stream ran longer than 10 s
             Break(AudioDirection.Input);
@@ -450,7 +450,7 @@ public sealed class DeviceLifecycleTests : IDisposable
     {
         micWanted = true;
         devices.SyncCaptureAndReport();
-        for (int i = 0; i < 3; i++) Break(AudioDirection.Input); // given up on the default
+        for (int index = 0; index < 3; index++) Break(AudioDirection.Input); // given up on the default
         hardware.DefaultMic = "usb-mic";
         Change();
         Assert.Equal(("usb-mic", 4), (hardware.Open.Mic, hardware.Counts.Mics));
@@ -484,7 +484,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         hardware.StartFails = true;
         devices.OpenSpeakerAndReport(); // the first failure
 
-        for (int i = 0; i < 4; i++) Change(); // two more tries, then none
+        for (int index = 0; index < 4; index++) Change(); // two more tries, then none
 
         var failed = string.Format(Strings.Audio_SpeakerFailed, "device cannot start");
         Assert.Equal([failed, failed, failed], Notices);

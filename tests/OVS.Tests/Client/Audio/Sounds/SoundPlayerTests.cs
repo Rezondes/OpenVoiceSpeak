@@ -30,14 +30,14 @@ public class SoundPlayerTests
     {
         var frame = new float[2 * samples];
         queue.MixInto(frame);
-        return [.. Enumerable.Range(0, samples).Select(i => frame[2 * i])];
+        return [.. Enumerable.Range(0, samples).Select(index => frame[2 * index])];
     }
 
     static void AssertSamples(IEnumerable<float> expected, float[] actual)
     {
         float[] wanted = [.. expected];
         Assert.Equal(wanted.Length, actual.Length);
-        for (int i = 0; i < wanted.Length; i++) Assert.Equal(wanted[i], actual[i], Precision);
+        for (int index = 0; index < wanted.Length; index++) Assert.Equal(wanted[index], actual[index], Precision);
     }
 
     /// <summary>Package 48: the sound's own volume times the overall one; muted or all off is silent.</summary>
@@ -192,8 +192,8 @@ public class SoundPlayerTests
     public void Recent_MoreThanTwentyPlayed_KeepsTheLastTwentyInOrder()
     {
         var player = Create();
-        var audible = Enum.GetValues<SoundEvent>().Where(e => SoundPlayer.GainFor(settings, e) > 0).ToArray();
-        var played = Enumerable.Range(0, 25).Select(i => audible[i % audible.Length]).ToList();
+        var audible = Enum.GetValues<SoundEvent>().Where(soundEvent => SoundPlayer.GainFor(settings, soundEvent) > 0).ToArray();
+        var played = Enumerable.Range(0, 25).Select(index => audible[index % audible.Length]).ToList();
 
         foreach (var sound in played) player.Play(sound);
 

@@ -37,7 +37,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
 
         public OverlayLayer Overlay => OverlayLayer.GetOverlayLayer(Main)!;
 
-        public Border? Preview => Overlay.Children.OfType<Border>().SingleOrDefault(b => b.Classes.Contains("dragPreview"));
+        public Border? Preview => Overlay.Children.OfType<Border>().SingleOrDefault(border => border.Classes.Contains("dragPreview"));
 
         public bool Lit(string channel) => ChannelRow(channel).Classes.Contains(UserDrag.TargetClass);
 
@@ -58,12 +58,12 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
     Tree Open(ServerViewModel? server = null, List<Request>? sent = null)
     {
         sent ??= [];
-        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
-        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
         main.Show();
-        MainViewModelSetup.ShowServer(vm, server ?? FakeServers.Admin(sent));
+        MainViewModelSetup.ShowServer(viewModel, server ?? FakeServers.Admin(sent));
         MotionWait.Until(() => MotionWait.IsConnected(main), atLeast: 100);
-        return new Tree(main, vm.Server!, sent);
+        return new Tree(main, viewModel.Server!, sent);
     }
 
     static void Release(Tree tree, Point at)
@@ -76,7 +76,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
     static bool Landed(Tree tree, string nickname)
     {
         // until the next layout the new row may not exist yet, the old one folds meanwhile
-        var rows = tree.Main.GetVisualDescendants().OfType<ContentPresenter>().Where(c => c.DataContext is UserViewModel u && u.Nickname == nickname).ToList();
+        var rows = tree.Main.GetVisualDescendants().OfType<ContentPresenter>().Where(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname).ToList();
         return rows is [{ Opacity: 1 } row] && !row.Classes.Contains("entering") && !row.Classes.Contains("leaving");
     }
 
@@ -111,7 +111,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
 
         // every flight picture put in the overlay from now on, not only one a frame finds there
         int flights = 0;
-        tree.Overlay.Children.CollectionChanged += (_, e) => flights += e.NewItems?.OfType<Border>().Count(b => b.Classes.Contains(FlyGhost.GhostClass)) ?? 0;
+        tree.Overlay.Children.CollectionChanged += (_, args) => flights += args.NewItems?.OfType<Border>().Count(border => border.Classes.Contains(FlyGhost.GhostClass)) ?? 0;
         Release(tree, end);
         Assert.Equal(new MoveUser(2, FakeServers.Lobby), tree.Sent.OfType<MoveUser>().Single() with { RequestId = null });
         Assert.Null(tree.Preview);
@@ -176,7 +176,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
         var end = tree.Drag("anna", "Lobby");
         Assert.NotNull(tree.Preview);
         tree.Server.Apply(new UserLeft(2));
-        MotionWait.Until(() => !tree.Main.GetVisualDescendants().OfType<ContentPresenter>().Any(c => c.DataContext is UserViewModel { Nickname: "anna" }));
+        MotionWait.Until(() => !tree.Main.GetVisualDescendants().OfType<ContentPresenter>().Any(contentPresenter => contentPresenter.DataContext is UserViewModel { Nickname: "anna" }));
         tree.Main.MouseMove(end + new Point(0, 2), Tree.Held);
         Dispatcher.UIThread.RunJobs();
         Assert.Null(tree.Preview); // her row has left the tree: nothing is dragged any more
@@ -224,7 +224,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
         var server = FakeServers.Admin(sent);
         server.Apply(new UserJoined(new UserInfo(3, "fp3", "bert", FakeServers.Raid, false, false, false, Permission.None, [WellKnownGroups.Guest])));
         var tree = Open(server, sent);
-        Assert.False(server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "bert").CanDrag);
+        Assert.False(server.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.Nickname == "bert").CanDrag);
         var end = tree.Drag("bert", "Lobby");
         Assert.Null(tree.Preview);
         Assert.False(tree.Lit("Lobby"));
@@ -234,7 +234,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
         var me = server.Mirror.Users[1];
         server.Apply(new UserUpdated(me with { Permissions = me.Permissions & ~Permission.UserMove }));
         tree = Open(server, sent);
-        Assert.False(server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").CanDrag);
+        Assert.False(server.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.Nickname == "anna").CanDrag);
         end = tree.Drag("anna", "Lobby");
         Assert.Null(tree.Preview); // neither a user drag nor a channel drag from a user row
         Release(tree, end);

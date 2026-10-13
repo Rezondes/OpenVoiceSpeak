@@ -18,7 +18,7 @@ public sealed class ChannelPasswordGuessLimitTests
     int Fail(int times, uint session = 1, Guid? channel = null)
     {
         int count = 0;
-        for (int i = 0; i < times; i++) count = limit.RecordFailure(session, channel ?? Channel, Now);
+        for (int index = 0; index < times; index++) count = limit.RecordFailure(session, channel ?? Channel, Now);
         return count;
     }
 
@@ -31,8 +31,8 @@ public sealed class ChannelPasswordGuessLimitTests
     [Fact]
     public void RecordFailure_EachFailure_ReturnsItsNumber()
     {
-        for (int i = 1; i <= ServerTuning.ChannelPasswordFailures; i++)
-            Assert.Equal(i, limit.RecordFailure(1, Channel, Now));
+        for (int index = 1; index <= ServerTuning.ChannelPasswordFailures; index++)
+            Assert.Equal(index, limit.RecordFailure(1, Channel, Now));
     }
 
     [Fact]

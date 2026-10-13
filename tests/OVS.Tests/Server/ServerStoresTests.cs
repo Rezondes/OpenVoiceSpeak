@@ -63,7 +63,7 @@ public sealed class ServerStoresTests() : TempDirectoryTest("ovs-stores-", quiet
         Assert.NotNull(stores.IconStore.Hash);
         Assert.Equal(Path.Combine(dir, BackupStore.FolderName), stores.BackupStore.Folder);
         Assert.Equal(Path.Combine(dir, BackupStore.FolderName, UploadFolder.Prefix + UploadId), stores.UploadFolder.PreparePath(UploadId));
-        Assert.Equal([LogId], stores.LogReader.List().Select(f => f.Id));
+        Assert.Equal([LogId], stores.LogReader.List().Select(logFile => logFile.Id));
         var (export, _) = stores.LogExporter.Export(DownloadId, [LogId], new Dictionary<Guid, string>());
         Assert.Equal(Path.Combine(dir, LogExporter.ExportFolder, DownloadId + ".log"), export!.Path);
     }

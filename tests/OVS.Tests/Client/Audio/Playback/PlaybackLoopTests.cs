@@ -47,11 +47,11 @@ public sealed class PlaybackLoopTests : IDisposable
     /// <summary>A loud voice from <paramref name="speaker"/>, arriving at once; three frames are enough to play at the first mix.</summary>
     void Talk(uint speaker, int frames = 3)
     {
-        for (uint n = 0; n < frames; n++)
+        for (uint number = 0; number < frames; number++)
         {
-            var sine = Enumerable.Range((int)n * AudioFormat.FrameSamples, AudioFormat.FrameSamples)
-                .Select(i => 0.5f * MathF.Sin(2 * MathF.PI * 440 * i / AudioFormat.SampleRate)).ToArray();
-            mixer.Push(speaker, n, encoder.Encode(sine), viaLink: false);
+            var sine = Enumerable.Range((int)number * AudioFormat.FrameSamples, AudioFormat.FrameSamples)
+                .Select(index => 0.5f * MathF.Sin(2 * MathF.PI * 440 * index / AudioFormat.SampleRate)).ToArray();
+            mixer.Push(speaker, number, encoder.Encode(sine), viaLink: false);
         }
     }
 

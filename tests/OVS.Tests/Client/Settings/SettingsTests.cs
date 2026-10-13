@@ -27,20 +27,20 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void Missing_GivesDefaults()
     {
-        var s = ClientSettings.Load(dir, out var warning);
+        var clientSettings = ClientSettings.Load(dir, out var warning);
         Assert.Null(warning);
-        Assert.Equal(TransmitMode.PushToTalk, s.Mode);
-        Assert.Equal(-40f, s.VadThresholdDb);
-        Assert.Empty(s.Bookmarks);
+        Assert.Equal(TransmitMode.PushToTalk, clientSettings.Mode);
+        Assert.Equal(-40f, clientSettings.VadThresholdDb);
+        Assert.Empty(clientSettings.Bookmarks);
     }
 
     /// <summary>Package 39: the password is stored DPAPI-protected, never as plain text.</summary>
     [Fact]
     public void Password_Protected_RoundTrip_NoPlainTextInFile()
     {
-        var s = new ClientSettings();
-        s.Bookmarks.Add(new Bookmark("Gilde", "voice.example.org", 7000, "ich", PasswordProtector.Protect("streng-geheim")));
-        s.Save(dir);
+        var clientSettings = new ClientSettings();
+        clientSettings.Bookmarks.Add(new Bookmark("Gilde", "voice.example.org", 7000, "ich", PasswordProtector.Protect("streng-geheim")));
+        clientSettings.Save(dir);
         Assert.DoesNotContain("streng-geheim", File.ReadAllText(Path.Combine(dir, ClientSettings.FileName)));
 
         var loaded = ClientSettings.Load(dir, out _).Bookmarks.Single();
@@ -63,11 +63,11 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void Sounds_GlobalSettings_RoundTrip()
     {
-        var vm = Vm(new ClientSettings());
-        Assert.Equal((false, 80.0), (vm.AllSoundsOff, Math.Round(vm.SoundVolumePercent)));
-        vm.AllSoundsOff = true;
-        vm.SoundVolumePercent = 150; // clamped
-        var saved = vm.ToSettings(new ClientSettings());
+        var settings = Vm(new ClientSettings());
+        Assert.Equal((false, 80.0), (settings.AllSoundsOff, Math.Round(settings.SoundVolumePercent)));
+        settings.AllSoundsOff = true;
+        settings.SoundVolumePercent = 150; // clamped
+        var saved = settings.ToSettings(new ClientSettings());
         saved.Save(dir);
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal((false, 1f), (loaded.SoundsEnabled, loaded.SoundVolume));
@@ -80,17 +80,17 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var wav = Path.Combine(dir, "eigener.wav");
         using (var writer = new NAudio.Wave.WaveFileWriter(wav, NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(48000, 1)))
             writer.WriteSamples(Enumerable.Repeat(0.2f, 4800).ToArray(), 0, 4800);
-        var vm = Vm(new ClientSettings());
-        vm.ImportSound = (path, sound) => SoundImport.Prepare(path, dir, sound);
-        Assert.Equal(Enum.GetValues<SoundEvent>().Length, vm.SoundRows.Count);
-        Assert.Equal("Standardton", vm.SoundRows[0].SourceText);
+        var settings = Vm(new ClientSettings());
+        settings.ImportSound = (path, sound) => SoundImport.Prepare(path, dir, sound);
+        Assert.Equal(Enum.GetValues<SoundEvent>().Length, settings.SoundRows.Count);
+        Assert.Equal("Standardton", settings.SoundRows[0].SourceText);
 
-        var joined = vm.SoundRows.Single(r => r.Event == SoundEvent.UserJoined);
+        var joined = settings.SoundRows.Single(soundRow => soundRow.Event == SoundEvent.UserJoined);
         joined.Import(wav);
         joined.VolumePercent = 50;
-        vm.SoundRows.Single(r => r.Event == SoundEvent.UserLeft).Muted = true;
+        settings.SoundRows.Single(soundRow => soundRow.Event == SoundEvent.UserLeft).Muted = true;
         Assert.Equal("Eigene Datei", joined.SourceText);
-        var saved = vm.ToSettings(new ClientSettings());
+        var saved = settings.ToSettings(new ClientSettings());
         Assert.Equal(2, saved.Sounds.Count); // only what differs from the default
         saved.Save(dir);
         var loaded = ClientSettings.Load(dir, out _);
@@ -100,7 +100,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.True(File.Exists(copy));
 
         var again = Vm(loaded);
-        again.SoundRows.Single(r => r.Event == SoundEvent.UserJoined).ResetCommand.Execute(null);
+        again.SoundRows.Single(soundRow => soundRow.Event == SoundEvent.UserJoined).ResetCommand.Execute(null);
         var reset = again.ToSettings(loaded);
         Assert.Null(reset.SoundFor(SoundEvent.UserJoined).File);
         new SoundLibrary(dir, _ => { }).CleanUp(reset); // what saving the settings does
@@ -111,12 +111,12 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void UserVolumes_RoundTrip_OnlyNonDefault_Clamped()
     {
-        var s = new ClientSettings();
-        s.SetVolume("fpA", 1.5f);
-        s.SetVolume("fpB", 1f);
-        s.SetVolume("fpD", 0f);
-        s.UserVolumes["fpC"] = 7f; // e.g. edited by hand
-        s.Clamp().Save(dir);
+        var clientSettings = new ClientSettings();
+        clientSettings.SetVolume("fpA", 1.5f);
+        clientSettings.SetVolume("fpB", 1f);
+        clientSettings.SetVolume("fpD", 0f);
+        clientSettings.UserVolumes["fpC"] = 7f; // e.g. edited by hand
+        clientSettings.Clamp().Save(dir);
         var json = File.ReadAllText(Path.Combine(dir, ClientSettings.FileName));
         Assert.DoesNotContain("fpB", json);
 
@@ -135,12 +135,12 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void Sounds_ChatRows_Independent()
     {
-        var vm = Vm(new ClientSettings());
-        var rows = vm.SoundRows.ToDictionary(r => r.Event);
+        var settings = Vm(new ClientSettings());
+        var rows = settings.SoundRows.ToDictionary(soundRow => soundRow.Event);
         Assert.Equal(("Nachricht in Allgemein", "Nachricht im Channel"), (rows[SoundEvent.ServerMessage].Label, rows[SoundEvent.ChannelMessage].Label));
         rows[SoundEvent.ServerMessage].Muted = true;
         rows[SoundEvent.ChannelMessage].VolumePercent = 40;
-        var saved = vm.ToSettings(new ClientSettings());
+        var saved = settings.ToSettings(new ClientSettings());
         Assert.Equal(0f, SoundPlayer.GainFor(saved, SoundEvent.ServerMessage));
         Assert.Equal(saved.SoundVolume * 0.4f, SoundPlayer.GainFor(saved, SoundEvent.ChannelMessage), 3);
         Assert.Equal(saved.SoundVolume, SoundPlayer.GainFor(saved, SoundEvent.PrivateMessage), 3);
@@ -150,11 +150,11 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void Sounds_LinkRows_Independent()
     {
-        var vm = Vm(new ClientSettings());
-        var rows = vm.SoundRows.ToDictionary(r => r.Event);
+        var settings = Vm(new ClientSettings());
+        var rows = settings.SoundRows.ToDictionary(soundRow => soundRow.Event);
         Assert.Equal(("Sprache über Link", "Eigene Sprache über Link"), (rows[SoundEvent.LinkVoice].Label, rows[SoundEvent.OwnLinkVoice].Label));
         rows[SoundEvent.OwnLinkVoice].Muted = true;
-        var saved = vm.ToSettings(new ClientSettings());
+        var saved = settings.ToSettings(new ClientSettings());
         Assert.Equal(0f, SoundPlayer.GainFor(saved, SoundEvent.OwnLinkVoice));
         Assert.Equal(saved.SoundVolume, SoundPlayer.GainFor(saved, SoundEvent.LinkVoice), 3);
     }
@@ -163,12 +163,12 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void Sounds_GroupRows_Independent()
     {
-        var vm = Vm(new ClientSettings());
-        var rows = vm.SoundRows.ToDictionary(r => r.Event);
+        var settings = Vm(new ClientSettings());
+        var rows = settings.SoundRows.ToDictionary(soundRow => soundRow.Event);
         Assert.Equal(("Eigene Gruppe geändert", "Gruppe vergeben oder entzogen"), (rows[SoundEvent.GroupChanged].Label, rows[SoundEvent.GroupChangedByMe].Label));
         rows[SoundEvent.GroupChanged].Muted = true;
         rows[SoundEvent.GroupChangedByMe].VolumePercent = 30;
-        var saved = vm.ToSettings(new ClientSettings());
+        var saved = settings.ToSettings(new ClientSettings());
         Assert.Equal(0f, SoundPlayer.GainFor(saved, SoundEvent.GroupChanged));
         Assert.Equal(saved.SoundVolume * 0.3f, SoundPlayer.GainFor(saved, SoundEvent.GroupChangedByMe), 3);
     }
@@ -179,16 +179,16 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         new ClientSettings { Language = OVS.Client.Localization.AppLanguage.English }.Save(dir);
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal(OVS.Client.Localization.AppLanguage.English, loaded.Language);
-        var vm = Vm(loaded);
-        Assert.Equal("English", vm.SelectedLanguage.Label);
-        vm.SelectedLanguage = SettingsViewModel.Languages.First(); // "Wie Windows"
-        Assert.Equal(OVS.Client.Localization.AppLanguage.System, vm.ToSettings(loaded).Language);
+        var settings = Vm(loaded);
+        Assert.Equal("English", settings.SelectedLanguage.Label);
+        settings.SelectedLanguage = SettingsViewModel.Languages.First(); // "Wie Windows"
+        Assert.Equal(OVS.Client.Localization.AppLanguage.System, settings.ToSettings(loaded).Language);
     }
 
     [Fact]
     public void FullSettings_RoundTrip_IncludingBookmarks()
     {
-        var s = new ClientSettings
+        var clientSettings = new ClientSettings
         {
             Bookmarks = [new Bookmark("Clan", "voice.example.org", 7000, "anna")],
             InputDeviceId = "in",
@@ -203,12 +203,12 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
             ],
             VadThresholdDb = -30,
         };
-        s.Save(dir);
+        clientSettings.Save(dir);
         var loaded = ClientSettings.Load(dir, out _);
-        Assert.Equal(s.Bookmarks, loaded.Bookmarks);
-        Assert.Equal((s.InputDeviceId, s.OutputDeviceId, s.InputGain, s.OutputVolume, s.Mode, s.VadThresholdDb),
+        Assert.Equal(clientSettings.Bookmarks, loaded.Bookmarks);
+        Assert.Equal((clientSettings.InputDeviceId, clientSettings.OutputDeviceId, clientSettings.InputGain, clientSettings.OutputVolume, clientSettings.Mode, clientSettings.VadThresholdDb),
             (loaded.InputDeviceId, loaded.OutputDeviceId, loaded.InputGain, loaded.OutputVolume, loaded.Mode, loaded.VadThresholdDb));
-        Assert.Equal(s.KeyBindings, loaded.KeyBindings);
+        Assert.Equal(clientSettings.KeyBindings, loaded.KeyBindings);
     }
 
     [Fact]
@@ -216,17 +216,17 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     {
         var path = Path.Combine(dir, ClientSettings.FileName);
         File.WriteAllText(path, "{ kaputt");
-        var s = ClientSettings.Load(dir, out var warning);
+        var clientSettings = ClientSettings.Load(dir, out var warning);
         Assert.NotNull(warning);
-        Assert.Equal(TransmitMode.PushToTalk, s.Mode);
+        Assert.Equal(TransmitMode.PushToTalk, clientSettings.Mode);
         Assert.Equal("{ kaputt", File.ReadAllText(path + ".bak"));
     }
 
     [Fact]
     public void Clamp_OutOfRange()
     {
-        var s = new ClientSettings { InputGain = 5, OutputVolume = -1, VadThresholdDb = 0 }.Clamp();
-        Assert.Equal((2f, 0f, -10f), (s.InputGain, s.OutputVolume, s.VadThresholdDb));
+        var clientSettings = new ClientSettings { InputGain = 5, OutputVolume = -1, VadThresholdDb = 0 }.Clamp();
+        Assert.Equal((2f, 0f, -10f), (clientSettings.InputGain, clientSettings.OutputVolume, clientSettings.VadThresholdDb));
         Assert.Equal(2f, new ClientSettings { OutputVolume = 5 }.Clamp().OutputVolume); // Package 55: up to 200 %
     }
 
@@ -235,19 +235,19 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     public void OutputVolume_UpTo200_RoundTrip_Clamped()
     {
         Assert.Equal(1f, ClientSettings.Load(dir, out _).OutputVolume);
-        var vm = Vm(new ClientSettings());
-        Assert.Equal(100, vm.OutputVolumePercent);
-        vm.OutputVolumePercent = 200;
-        Assert.Equal(200, vm.OutputVolumePercent);
-        vm.ToSettings(new ClientSettings()).Save(dir);
+        var settings = Vm(new ClientSettings());
+        Assert.Equal(100, settings.OutputVolumePercent);
+        settings.OutputVolumePercent = 200;
+        Assert.Equal(200, settings.OutputVolumePercent);
+        settings.ToSettings(new ClientSettings()).Save(dir);
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal(2f, loaded.OutputVolume);
         Assert.Equal(200, Vm(loaded).OutputVolumePercent);
-        vm.OutputVolumePercent = 250;
-        Assert.Equal(200, vm.OutputVolumePercent);
+        settings.OutputVolumePercent = 250;
+        Assert.Equal(200, settings.OutputVolumePercent);
     }
 
-    static SettingsViewModel Vm(ClientSettings? s = null, params AudioDevice[] inputs) => new(s ?? new ClientSettings(), inputs, [], TimeProvider.System);
+    static SettingsViewModel Vm(ClientSettings? clientSettings = null, params AudioDevice[] inputs) => new(clientSettings ?? new ClientSettings(), inputs, [], TimeProvider.System);
 
     /// <summary>Package 29: a new profile starts without any key.</summary>
     [Fact]
@@ -269,11 +269,11 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     public void Load_OldFileWithPttKeys_KeepsThem()
     {
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{"mode":"PushToTalk","pttKey":5,"linkPttKey":6}""");
-        var s = ClientSettings.Load(dir, out _);
-        Assert.Equal(new KeyChord(VirtualKeys.XButton1), s.ChordFor(KeyAction.PushToTalk));
-        Assert.Equal(new KeyChord(VirtualKeys.XButton2), s.ChordFor(KeyAction.LinkPushToTalk));
+        var clientSettings = ClientSettings.Load(dir, out _);
+        Assert.Equal(new KeyChord(VirtualKeys.XButton1), clientSettings.ChordFor(KeyAction.PushToTalk));
+        Assert.Equal(new KeyChord(VirtualKeys.XButton2), clientSettings.ChordFor(KeyAction.LinkPushToTalk));
 
-        s.Save(dir);
+        clientSettings.Save(dir);
         var json = File.ReadAllText(Path.Combine(dir, ClientSettings.FileName));
         Assert.DoesNotContain("pttKey", json); // the old fields are read once, never written again
         Assert.Equal(2, ClientSettings.Load(dir, out _).KeyBindings.Count);
@@ -282,11 +282,11 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     // ---- Package 41: a free list of key bindings ----
 
     /// <summary>A settings page whose overlay answers with the next binding from the queue.</summary>
-    static SettingsViewModel ListVm(Queue<KeyBinding?> answers, ClientSettings? s = null)
+    static SettingsViewModel ListVm(Queue<KeyBinding?> answers, ClientSettings? clientSettings = null)
     {
-        var vm = Vm(s);
-        vm.EditKeyBinding = (_, _) => Task.FromResult(answers.Dequeue());
-        return vm;
+        var settings = Vm(clientSettings);
+        settings.EditKeyBinding = (_, _) => Task.FromResult(answers.Dequeue());
+        return settings;
     }
 
     static KeyBinding Bind(KeyAction action, int key) => new(action, new KeyChord(key));
@@ -295,65 +295,65 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     public async Task KeyList_StartsEmpty_AddEditRemove()
     {
         var answers = new Queue<KeyBinding?>([Bind(KeyAction.PushToMute, VirtualKeys.XButton1), null, Bind(KeyAction.ToggleMute, 0x70)]);
-        var vm = ListVm(answers);
-        await vm.AddKeyBindingCommand.ExecuteAsync(null);
-        Assert.Equal("Push-to-Mute (stumm, solange gedrückt)", vm.KeyBindings.Single().Label);
-        await vm.AddKeyBindingCommand.ExecuteAsync(null); // cancelled: nothing added
-        Assert.Single(vm.KeyBindings);
+        var settings = ListVm(answers);
+        await settings.AddKeyBindingCommand.ExecuteAsync(null);
+        Assert.Equal("Push-to-Mute (stumm, solange gedrückt)", settings.KeyBindings.Single().Label);
+        await settings.AddKeyBindingCommand.ExecuteAsync(null); // cancelled: nothing added
+        Assert.Single(settings.KeyBindings);
 
-        await vm.KeyBindings[0].EditCommand.ExecuteAsync(null);
-        Assert.Equal(Bind(KeyAction.ToggleMute, 0x70), vm.KeyBindings[0].Binding);
-        Assert.Equal("F1", vm.KeyBindings[0].ChordName);
+        await settings.KeyBindings[0].EditCommand.ExecuteAsync(null);
+        Assert.Equal(Bind(KeyAction.ToggleMute, 0x70), settings.KeyBindings[0].Binding);
+        Assert.Equal("F1", settings.KeyBindings[0].ChordName);
 
-        vm.KeyBindings[0].RemoveCommand.Execute(null);
-        Assert.Empty(vm.ToSettings(new ClientSettings()).KeyBindings);
+        settings.KeyBindings[0].RemoveCommand.Execute(null);
+        Assert.Empty(settings.ToSettings(new ClientSettings()).KeyBindings);
     }
 
     [Fact]
     public async Task KeyList_SameActionTwoKeys_Saves()
     {
-        var vm = ListVm(new([Bind(KeyAction.PushToMute, VirtualKeys.XButton1), Bind(KeyAction.PushToMute, VirtualKeys.XButton2)]));
-        await vm.AddKeyBindingCommand.ExecuteAsync(null);
-        await vm.AddKeyBindingCommand.ExecuteAsync(null);
-        Assert.True(vm.CanSave);
-        Assert.Equal(2, vm.ToSettings(new ClientSettings()).KeyBindings.Count(b => b.Action == KeyAction.PushToMute));
+        var settings = ListVm(new([Bind(KeyAction.PushToMute, VirtualKeys.XButton1), Bind(KeyAction.PushToMute, VirtualKeys.XButton2)]));
+        await settings.AddKeyBindingCommand.ExecuteAsync(null);
+        await settings.AddKeyBindingCommand.ExecuteAsync(null);
+        Assert.True(settings.CanSave);
+        Assert.Equal(2, settings.ToSettings(new ClientSettings()).KeyBindings.Count(keyBinding => keyBinding.Action == KeyAction.PushToMute));
     }
 
     [Fact]
     public async Task KeyList_SameKeyTwoActions_BlocksSave()
     {
-        var vm = ListVm(new([Bind(KeyAction.PushToTalk, 0x70), Bind(KeyAction.ToggleDeafen, 0x70), Bind(KeyAction.PushToTalk, 0x70)]));
-        await vm.AddKeyBindingCommand.ExecuteAsync(null);
-        await vm.AddKeyBindingCommand.ExecuteAsync(null);
-        Assert.False(vm.CanSave);
-        Assert.Contains("liegen auf derselben Taste", vm.Error);
+        var settings = ListVm(new([Bind(KeyAction.PushToTalk, 0x70), Bind(KeyAction.ToggleDeafen, 0x70), Bind(KeyAction.PushToTalk, 0x70)]));
+        await settings.AddKeyBindingCommand.ExecuteAsync(null);
+        await settings.AddKeyBindingCommand.ExecuteAsync(null);
+        Assert.False(settings.CanSave);
+        Assert.Contains("liegen auf derselben Taste", settings.Error);
         bool? closed = null;
-        vm.CloseRequested += ok => closed = ok;
-        vm.SaveCommand.Execute(null);
+        settings.CloseRequested += ok => closed = ok;
+        settings.SaveCommand.Execute(null);
         Assert.Null(closed);
 
-        vm.KeyBindings[1].RemoveCommand.Execute(null);
-        Assert.True(vm.CanSave);
-        await vm.AddKeyBindingCommand.ExecuteAsync(null); // the very same line twice
-        Assert.Contains("doppelt", vm.Error);
+        settings.KeyBindings[1].RemoveCommand.Execute(null);
+        Assert.True(settings.CanSave);
+        await settings.AddKeyBindingCommand.ExecuteAsync(null); // the very same line twice
+        Assert.Contains("doppelt", settings.Error);
     }
 
     [Fact]
     public void KeyList_ExistingProfile_ShownAsList()
     {
-        var s = new ClientSettings { KeyBindings = [Bind(KeyAction.PushToTalk, VirtualKeys.XButton1), Bind(KeyAction.LinkPushToTalk, VirtualKeys.XButton2)] };
-        var vm = Vm(s);
-        Assert.Equal(["Maustaste 4", "Maustaste 5"], vm.KeyBindings.Select(b => b.ChordName));
-        Assert.Equal(s.KeyBindings, vm.ToSettings(new ClientSettings()).KeyBindings);
+        var clientSettings = new ClientSettings { KeyBindings = [Bind(KeyAction.PushToTalk, VirtualKeys.XButton1), Bind(KeyAction.LinkPushToTalk, VirtualKeys.XButton2)] };
+        var settings = Vm(clientSettings);
+        Assert.Equal(["Maustaste 4", "Maustaste 5"], settings.KeyBindings.Select(keyBinding => keyBinding.ChordName));
+        Assert.Equal(clientSettings.KeyBindings, settings.ToSettings(new ClientSettings()).KeyBindings);
     }
 
     [Fact]
     public void MissingDevice_FallbackWithHint()
     {
-        var vm = Vm(new ClientSettings { InputDeviceId = "weg" }, new AudioDevice("da", "Headset"));
-        Assert.NotNull(vm.DeviceHint);
-        Assert.Null(vm.SelectedInput.Id);
-        Assert.Equal(["Standardgerät", "Headset"], vm.Inputs.Select(i => i.Name));
+        var settings = Vm(new ClientSettings { InputDeviceId = "weg" }, new AudioDevice("da", "Headset"));
+        Assert.NotNull(settings.DeviceHint);
+        Assert.Null(settings.SelectedInput.Id);
+        Assert.Equal(["Standardgerät", "Headset"], settings.Inputs.Select(audioDeviceOption => audioDeviceOption.Name));
 
         var ok = Vm(new ClientSettings { InputDeviceId = "da" }, new AudioDevice("da", "Headset"));
         Assert.Null(ok.DeviceHint);
@@ -364,17 +364,17 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void Devices_LoadedLater_HintOnlyIfReallyMissing_KeepsUserChoice()
     {
-        var vm = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg", OutputDeviceId = "box" }, null, null, TimeProvider.System);
-        Assert.Equal(["Standardgerät", "Geräte werden geladen ..."], vm.Inputs.Select(i => i.Name));
-        Assert.Equal(("weg", "box"), (vm.SelectedInput.Id, vm.SelectedOutput.Id));
-        Assert.Null(vm.DeviceHint);
-        Assert.Equal(("weg", "box"), (vm.ToSettings(new ClientSettings()).InputDeviceId, vm.ToSettings(new ClientSettings()).OutputDeviceId)); // saving early keeps them
+        var settings = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg", OutputDeviceId = "box" }, null, null, TimeProvider.System);
+        Assert.Equal(["Standardgerät", "Geräte werden geladen ..."], settings.Inputs.Select(audioDeviceOption => audioDeviceOption.Name));
+        Assert.Equal(("weg", "box"), (settings.SelectedInput.Id, settings.SelectedOutput.Id));
+        Assert.Null(settings.DeviceHint);
+        Assert.Equal(("weg", "box"), (settings.ToSettings(new ClientSettings()).InputDeviceId, settings.ToSettings(new ClientSettings()).OutputDeviceId)); // saving early keeps them
 
-        vm.ShowDevices([new AudioDevice("da", "Headset")], [new AudioDevice("box", "Lautsprecher")]);
-        Assert.Equal(["Standardgerät", "Headset"], vm.Inputs.Select(i => i.Name));
-        Assert.Null(vm.SelectedInput.Id); // "weg" is really gone
-        Assert.Equal("box", vm.SelectedOutput.Id);
-        Assert.NotNull(vm.DeviceHint);
+        settings.ShowDevices([new AudioDevice("da", "Headset")], [new AudioDevice("box", "Lautsprecher")]);
+        Assert.Equal(["Standardgerät", "Headset"], settings.Inputs.Select(audioDeviceOption => audioDeviceOption.Name));
+        Assert.Null(settings.SelectedInput.Id); // "weg" is really gone
+        Assert.Equal("box", settings.SelectedOutput.Id);
+        Assert.NotNull(settings.DeviceHint);
 
         var chosen = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg" }, null, null, TimeProvider.System);
         chosen.SelectedInput = chosen.Inputs[0]; // the user picks "Standard" while loading
@@ -394,17 +394,17 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     {
         var fresh = ClientSettings.Load(dir, out _);
         Assert.Equal((1f, false), (fresh.BackgroundOpacity, fresh.BlurBackground));
-        var vm = Vm(fresh);
-        Assert.Equal((100d, false), (vm.BackgroundOpacityPercent, vm.BlurBackground));
-        vm.BackgroundOpacityPercent = 40;
-        vm.BlurBackground = true;
-        vm.ToSettings(fresh).Save(dir);
+        var settings = Vm(fresh);
+        Assert.Equal((100d, false), (settings.BackgroundOpacityPercent, settings.BlurBackground));
+        settings.BackgroundOpacityPercent = 40;
+        settings.BlurBackground = true;
+        settings.ToSettings(fresh).Save(dir);
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal((0.4f, true), (loaded.BackgroundOpacity, loaded.BlurBackground));
         Assert.Equal(1f, new ClientSettings { BackgroundOpacity = 3 }.Clamp().BackgroundOpacity);
         Assert.Equal(0f, new ClientSettings { BackgroundOpacity = -1 }.Clamp().BackgroundOpacity);
-        vm.BackgroundOpacityPercent = 150;
-        Assert.Equal(100, vm.BackgroundOpacityPercent);
+        settings.BackgroundOpacityPercent = 150;
+        Assert.Equal(100, settings.BackgroundOpacityPercent);
     }
 
     /// <summary>Package 99 (A114): animated by default, also for a settings file from before; "Vereinfacht" survives a restart.</summary>
@@ -414,10 +414,10 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal(DisplayMode.Animated, new ClientSettings().Display);
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
         Assert.Equal(DisplayMode.Animated, ClientSettings.Load(dir, out _).Display);
-        var vm = Vm(new ClientSettings());
-        Assert.Equal(DisplayMode.Animated, vm.SelectedDisplay.Value);
-        vm.SelectedDisplay = SettingsViewModel.Displays.Single(d => d.Value == DisplayMode.Simplified);
-        vm.ToSettings(new ClientSettings()).Save(dir);
+        var settings = Vm(new ClientSettings());
+        Assert.Equal(DisplayMode.Animated, settings.SelectedDisplay.Value);
+        settings.SelectedDisplay = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified);
+        settings.ToSettings(new ClientSettings()).Save(dir);
         Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
         Assert.Equal(DisplayMode.Simplified, Vm(ClientSettings.Load(dir, out _)).SelectedDisplay.Value);
     }
@@ -430,11 +430,11 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
         var old = ClientSettings.Load(dir, out _);
         Assert.Equal((true, true), (old.NoiseSuppression, old.AutoGain));
-        var vm = Vm(old);
-        Assert.Equal((true, true), (vm.NoiseSuppression, vm.AutoGain));
-        vm.NoiseSuppression = false;
-        vm.AutoGain = false;
-        vm.ToSettings(old).Save(dir);
+        var settings = Vm(old);
+        Assert.Equal((true, true), (settings.NoiseSuppression, settings.AutoGain));
+        settings.NoiseSuppression = false;
+        settings.AutoGain = false;
+        settings.ToSettings(old).Save(dir);
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal((false, false), (loaded.NoiseSuppression, loaded.AutoGain));
         Assert.Equal((false, false), (Vm(loaded).NoiseSuppression, Vm(loaded).AutoGain));
@@ -527,31 +527,31 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [AvaloniaFact]
     public void VadAuto_LiveAndSliderDisabled()
     {
-        var vm = Vm(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40 });
+        var settings = Vm(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40 });
         var live = new List<ClientSettings>();
-        vm.LivePreview = live.Add;
-        var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = vm } };
+        settings.LivePreview = live.Add;
+        var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = settings } };
         window.Show();
         Dispatcher.UIThread.RunJobs();
-        var slider = window.GetVisualDescendants().OfType<Slider>().Single(s => AutomationProperties.GetName(s) == Strings.Ui_ThresholdName);
-        Assert.True(vm.VadAutomatic);
+        var slider = window.GetVisualDescendants().OfType<Slider>().Single(otherSlider => AutomationProperties.GetName(otherSlider) == Strings.Ui_ThresholdName);
+        Assert.True(settings.VadAutomatic);
         Assert.False(slider.IsEnabled);
 
-        vm.ThresholdInUseDb = -47; // what the engine reports
-        vm.InputLevelDb = -45;
+        settings.ThresholdInUseDb = -47; // what the engine reports
+        settings.InputLevelDb = -45;
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(-47, slider.Value);
-        Assert.True(vm.IsAboveThreshold); // above the threshold in use, below the manual -40
+        Assert.True(settings.IsAboveThreshold); // above the threshold in use, below the manual -40
 
-        vm.VadAutomatic = false;
+        settings.VadAutomatic = false;
         Dispatcher.UIThread.RunJobs();
         Assert.False(live[^1].VadAutomatic);
         Assert.True(slider.IsEnabled);
         Assert.Equal(-40, slider.Value);
-        Assert.False(vm.IsAboveThreshold);
+        Assert.False(settings.IsAboveThreshold);
         slider.Value = -50; // dragged
-        Assert.Equal(-50, vm.VadThresholdDb);
-        Assert.False(vm.ToSettings(new ClientSettings()).VadAutomatic);
+        Assert.Equal(-50, settings.VadThresholdDb);
+        Assert.False(settings.ToSettings(new ClientSettings()).VadAutomatic);
         window.Close();
 
         using var keys = new KeyPoller(TimeProvider.System); // the engine takes the switch without restarting the microphone
@@ -583,25 +583,25 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal(300, loaded.PttReleaseDelayMs);
 
-        var vm = Vm(loaded);
+        var settings = Vm(loaded);
         var live = new List<ClientSettings>();
-        vm.LivePreview = live.Add;
-        var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = vm } };
+        settings.LivePreview = live.Add;
+        var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = settings } };
         window.Show();
         Dispatcher.UIThread.RunJobs();
-        var slider = window.GetVisualDescendants().OfType<Slider>().Single(s => AutomationProperties.GetName(s) == Strings.Ui_PttReleaseDelay);
+        var slider = window.GetVisualDescendants().OfType<Slider>().Single(otherSlider => AutomationProperties.GetName(otherSlider) == Strings.Ui_PttReleaseDelay);
         Assert.True(slider.IsEffectivelyVisible);
         Assert.Equal(300, slider.Value);
         slider.Value = 500; // dragged
         Assert.Equal(500, live[^1].PttReleaseDelayMs);
-        Assert.Equal(500, vm.ToSettings(loaded).PttReleaseDelayMs);
-        Assert.Equal(loaded.SettingsVersion, vm.ToSettings(loaded).SettingsVersion);
-        vm.PttReleaseDelayMs = 2500;
-        Assert.Equal(2000, vm.PttReleaseDelayMs);
-        vm.VoiceActivation = true;
+        Assert.Equal(500, settings.ToSettings(loaded).PttReleaseDelayMs);
+        Assert.Equal(loaded.SettingsVersion, settings.ToSettings(loaded).SettingsVersion);
+        settings.PttReleaseDelayMs = 2500;
+        Assert.Equal(2000, settings.PttReleaseDelayMs);
+        settings.VoiceActivation = true;
         Dispatcher.UIThread.RunJobs();
         Assert.False(slider.IsEffectivelyVisible); // nothing it would act on
-        vm.KeyBindings.Add(new KeyBindingViewModel(new KeyBinding(KeyAction.LinkPushToTalk, new KeyChord(0x71)), vm));
+        settings.KeyBindings.Add(new KeyBindingViewModel(new KeyBinding(KeyAction.LinkPushToTalk, new KeyChord(0x71)), settings));
         Dispatcher.UIThread.RunJobs();
         Assert.True(slider.IsEffectivelyVisible); // link push-to-talk works with voice activation too
         window.Close();
@@ -618,16 +618,16 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void Volume_SliderValueStored()
     {
-        var vm = Vm(new ClientSettings());
-        vm.OutputVolumePercent = 150;
-        var s = vm.ToSettings(new ClientSettings());
-        s.SetVolume("fpA", 1.5f);
-        s.Save(dir);
+        var settings = Vm(new ClientSettings());
+        settings.OutputVolumePercent = 150;
+        var clientSettings = settings.ToSettings(new ClientSettings());
+        clientSettings.SetVolume("fpA", 1.5f);
+        clientSettings.Save(dir);
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal((1.5f, 1.5f), (loaded.OutputVolume, loaded.VolumeFor("fpA")));
         Assert.Equal(150, Vm(loaded).OutputVolumePercent, 3);
-        vm.OutputVolumePercent = 250;
-        Assert.Equal(200, vm.OutputVolumePercent);
+        settings.OutputVolumePercent = 250;
+        Assert.Equal(200, settings.OutputVolumePercent);
     }
 
     /// <summary>
@@ -642,14 +642,14 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
         var old = ClientSettings.Load(dir, out _);
         Assert.True(old.EchoCancellation);
-        var vm = Vm(old);
-        Assert.True(vm.EchoCancellation);
+        var settings = Vm(old);
+        Assert.True(settings.EchoCancellation);
         var live = new List<ClientSettings>();
-        vm.LivePreview = live.Add;
-        vm.EchoCancellation = false;
+        settings.LivePreview = live.Add;
+        settings.EchoCancellation = false;
         Assert.False(live[^1].EchoCancellation);
-        Assert.True(vm.HasChanges);
-        vm.ToSettings(old).Save(dir);
+        Assert.True(settings.HasChanges);
+        settings.ToSettings(old).Save(dir);
         Assert.False(ClientSettings.Load(dir, out _).EchoCancellation);
 
         using var keys = new KeyPoller(TimeProvider.System);
@@ -689,30 +689,30 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var old = ClientSettings.Load(dir, out _);
         Assert.Equal(AudioContent.Voice, old.AudioContent);
 
-        var vm = Vm(old);
+        var settings = Vm(old);
         var live = new List<ClientSettings>();
-        vm.LivePreview = live.Add;
-        var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = vm } };
+        settings.LivePreview = live.Add;
+        var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = settings } };
         window.Show();
         Dispatcher.UIThread.RunJobs();
         var radios = window.GetVisualDescendants().OfType<RadioButton>().ToList();
-        var voice = radios.Single(r => r.Content as string == Strings.Ui_TransmissionVoice);
-        var music = radios.Single(r => r.Content as string == Strings.Ui_TransmissionMusic);
+        var voice = radios.Single(radioButton => radioButton.Content as string == Strings.Ui_TransmissionVoice);
+        var music = radios.Single(radioButton => radioButton.Content as string == Strings.Ui_TransmissionMusic);
         var filters = window.GetVisualDescendants().OfType<CheckBox>()
-            .Where(c => c.Content as string is { } text && (text == Strings.Ui_NoiseSuppression || text == Strings.Ui_AutoGain || text == Strings.Ui_EchoCancellation)).ToList();
+            .Where(checkBox => checkBox.Content as string is { } text && (text == Strings.Ui_NoiseSuppression || text == Strings.Ui_AutoGain || text == Strings.Ui_EchoCancellation)).ToList();
         Assert.Equal(3, filters.Count);
         Assert.True(voice.IsChecked);
         Assert.All(filters, f => Assert.True(f.IsEffectivelyEnabled));
 
         music.IsChecked = true; // clicked
         Dispatcher.UIThread.RunJobs();
-        Assert.True(vm.IsMusic);
+        Assert.True(settings.IsMusic);
         Assert.Equal(AudioContent.Music, live[^1].AudioContent);
-        Assert.True(vm.HasChanges);
+        Assert.True(settings.HasChanges);
         Assert.All(filters, f => Assert.False(f.IsEffectivelyEnabled));
         Assert.All(filters, f => Assert.True(f.IsChecked)); // still on for speech
         window.Close();
-        vm.ToSettings(old).Save(dir);
+        settings.ToSettings(old).Save(dir);
         Assert.Equal(AudioContent.Music, ClientSettings.Load(dir, out _).AudioContent);
 
         using var keys = new KeyPoller(TimeProvider.System);
@@ -732,19 +732,19 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void VoiceFilters_LivePreviewAndCancel()
     {
-        var vm = Vm(new ClientSettings());
+        var settings = Vm(new ClientSettings());
         var live = new List<ClientSettings>();
-        vm.LivePreview = live.Add;
-        vm.NoiseSuppression = false;
+        settings.LivePreview = live.Add;
+        settings.NoiseSuppression = false;
         Assert.False(live[^1].NoiseSuppression);
-        Assert.True(vm.HasChanges);
-        vm.AutoGain = false;
+        Assert.True(settings.HasChanges);
+        settings.AutoGain = false;
         Assert.False(live[^1].AutoGain);
         Assert.False(live[^1].NoiseSuppression); // every preview carries all values
-        vm.NoiseSuppression = true;
-        vm.AutoGain = true;
+        settings.NoiseSuppression = true;
+        settings.AutoGain = true;
         Assert.Equal((true, true), (live[^1].NoiseSuppression, live[^1].AutoGain));
-        Assert.False(vm.HasChanges);
+        Assert.False(settings.HasChanges);
         // "Abbrechen" applies the saved settings to the engine again (MainViewModel.CloseSettings), see SendPathTests
     }
 
@@ -752,31 +752,31 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void Display_ChoicesHaveNamesAndHints()
     {
-        Assert.Equal([DisplayMode.Animated, DisplayMode.Simplified], SettingsViewModel.Displays.Select(d => d.Value));
-        Assert.All(SettingsViewModel.Displays, d => Assert.False(string.IsNullOrWhiteSpace(d.Name) || string.IsNullOrWhiteSpace(d.Hint)));
+        Assert.Equal([DisplayMode.Animated, DisplayMode.Simplified], SettingsViewModel.Displays.Select(displayOption => displayOption.Value));
+        Assert.All(SettingsViewModel.Displays, displayOption => Assert.False(string.IsNullOrWhiteSpace(displayOption.Name) || string.IsNullOrWhiteSpace(displayOption.Hint)));
     }
 
     /// <summary>Package 53: the sliders are heard at once, not only after "Speichern".</summary>
     [Fact]
     public void Sliders_ApplyLive()
     {
-        var vm = Vm(new ClientSettings());
+        var settings = Vm(new ClientSettings());
         var live = new List<ClientSettings>();
-        vm.LivePreview = live.Add;
-        vm.InputGainPercent = 50;
+        settings.LivePreview = live.Add;
+        settings.InputGainPercent = 50;
         Assert.Equal(0.5f, live[^1].InputGain);
-        vm.OutputVolumePercent = 30;
+        settings.OutputVolumePercent = 30;
         Assert.Equal(0.3f, live[^1].OutputVolume, 3);
-        vm.VadThresholdDb = -25;
+        settings.VadThresholdDb = -25;
         Assert.Equal(-25f, live[^1].VadThresholdDb);
-        vm.VoiceActivation = true;
+        settings.VoiceActivation = true;
         Assert.Equal(TransmitMode.VoiceActivation, live[^1].Mode);
         Assert.Equal(0.5f, live[^1].InputGain); // every preview carries all values
-        vm.BackgroundOpacityPercent = 30; // Package 61: the background is seen at once as well
+        settings.BackgroundOpacityPercent = 30; // Package 61: the background is seen at once as well
         Assert.Equal(0.3f, live[^1].BackgroundOpacity, 3);
-        vm.BlurBackground = true;
+        settings.BlurBackground = true;
         Assert.True(live[^1].BlurBackground);
-        vm.SelectedDisplay = SettingsViewModel.Displays.Single(d => d.Value == DisplayMode.Simplified); // Package 99
+        settings.SelectedDisplay = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified); // Package 99
         Assert.Equal(DisplayMode.Simplified, live[^1].Display);
     }
 
@@ -784,21 +784,21 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void PttHint_OnlyForPushToTalkWithoutKey()
     {
-        var vm = Vm(new ClientSettings());
+        var settings = Vm(new ClientSettings());
         var changes = new List<string?>();
-        vm.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
-        Assert.True(vm.ShowPttHint);
-        vm.VoiceActivation = true;
-        Assert.False(vm.ShowPttHint);
-        vm.VoiceActivation = false;
-        Assert.True(vm.ShowPttHint);
-        var ptt = new KeyBindingViewModel(new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton1)), vm);
-        vm.KeyBindings.Add(ptt);
-        Assert.False(vm.ShowPttHint);
-        vm.KeyBindings.Remove(ptt);
-        vm.KeyBindings.Add(new KeyBindingViewModel(new KeyBinding(KeyAction.ToggleMute, new KeyChord(0x4D)), vm));
-        Assert.True(vm.ShowPttHint); // another key does not help
-        Assert.True(changes.Count(c => c == nameof(SettingsViewModel.ShowPttHint)) >= 4);
+        settings.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+        Assert.True(settings.ShowPttHint);
+        settings.VoiceActivation = true;
+        Assert.False(settings.ShowPttHint);
+        settings.VoiceActivation = false;
+        Assert.True(settings.ShowPttHint);
+        var ptt = new KeyBindingViewModel(new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton1)), settings);
+        settings.KeyBindings.Add(ptt);
+        Assert.False(settings.ShowPttHint);
+        settings.KeyBindings.Remove(ptt);
+        settings.KeyBindings.Add(new KeyBindingViewModel(new KeyBinding(KeyAction.ToggleMute, new KeyChord(0x4D)), settings));
+        Assert.True(settings.ShowPttHint); // another key does not help
+        Assert.True(changes.Count(text => text == nameof(SettingsViewModel.ShowPttHint)) >= 4);
     }
 
     /// <summary>The key dialog captures through the chord capture the page was given (the key poller's in the app).</summary>
@@ -806,21 +806,21 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     public async Task AddKeyBinding_CaptureGiven_DialogGetsItsChord()
     {
         var chord = new KeyChord(0x70, ChordModifiers.Ctrl);
-        var vm = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System, () => Task.FromResult(chord));
+        var settings = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System, () => Task.FromResult(chord));
         KeyChord? captured = null;
-        vm.EditKeyBinding = async (_, capture) => { captured = await capture(KeyAction.ToggleMute); return null; };
-        await vm.AddKeyBindingCommand.ExecuteAsync(null);
+        settings.EditKeyBinding = async (_, capture) => { captured = await capture(KeyAction.ToggleMute); return null; };
+        await settings.AddKeyBindingCommand.ExecuteAsync(null);
         Assert.Equal(chord, captured);
     }
 
     [Fact]
     public async Task AddKeyBinding_NoCapture_DialogGetsNoChord()
     {
-        var vm = Vm();
+        var settings = Vm();
         bool asked = false;
         KeyChord? captured = new(0x70);
-        vm.EditKeyBinding = async (_, capture) => { asked = true; captured = await capture(KeyAction.ToggleMute); return null; };
-        await vm.AddKeyBindingCommand.ExecuteAsync(null);
+        settings.EditKeyBinding = async (_, capture) => { asked = true; captured = await capture(KeyAction.ToggleMute); return null; };
+        await settings.AddKeyBindingCommand.ExecuteAsync(null);
         Assert.True(asked);
         Assert.Null(captured);
     }
@@ -828,18 +828,18 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public async Task SetPttKey_OpensDialogWithPushToTalk()
     {
-        var vm = Vm(new ClientSettings());
+        var settings = Vm(new ClientSettings());
         KeyBinding? shown = null;
-        vm.EditKeyBinding = (current, _) =>
+        settings.EditKeyBinding = (current, _) =>
         {
             shown = current;
             return Task.FromResult<KeyBinding?>(new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.RControl)));
         };
-        await vm.SetPttKeyCommand.ExecuteAsync(null);
+        await settings.SetPttKeyCommand.ExecuteAsync(null);
         Assert.Equal(KeyAction.PushToTalk, shown!.Action);
         Assert.Equal(0, shown.Chord.Key); // no key yet: the user presses one
-        Assert.Equal([new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.RControl))], vm.KeyBindings.Select(b => b.Binding));
-        Assert.False(vm.ShowPttHint);
+        Assert.Equal([new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.RControl))], settings.KeyBindings.Select(keyBinding => keyBinding.Binding));
+        Assert.False(settings.ShowPttHint);
     }
 
     /// <summary>
@@ -849,16 +849,16 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [AvaloniaFact]
     public void SelfTest_SpaceAsPttKey_DoesNotToggleButton()
     {
-        static (Window Window, SettingsViewModel Vm) Focused(ClientSettings s)
+        static (Window Window, SettingsViewModel Vm) Focused(ClientSettings clientSettings)
         {
-            var vm = Vm(s);
-            var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = vm } };
+            var settings = Vm(clientSettings);
+            var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = settings } };
             window.Show();
             Dispatcher.UIThread.RunJobs();
-            var button = window.GetVisualDescendants().OfType<Button>().Single(b => b.Command == vm.ToggleSelfTestCommand);
-            vm.IsSelfTesting = true;
+            var button = window.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Command == settings.ToggleSelfTestCommand);
+            settings.IsSelfTesting = true;
             Assert.True(button.Focus());
-            return (window, vm);
+            return (window, settings);
         }
         static void Press(Window window, Key key, PhysicalKey physical)
         {
@@ -867,14 +867,14 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
             Dispatcher.UIThread.RunJobs();
         }
 
-        var (bound, vm) = Focused(new ClientSettings
+        var (bound, viewModel) = Focused(new ClientSettings
         {
             KeyBindings = [Bind(KeyAction.PushToTalk, 0x20), Bind(KeyAction.LinkPushToTalk, 0x0D)],
         });
         Press(bound, Key.Space, PhysicalKey.Space);
-        Assert.True(vm.IsSelfTesting);
+        Assert.True(viewModel.IsSelfTesting);
         Press(bound, Key.Enter, PhysicalKey.Enter); // checked on its own: two toggles would cancel out
-        Assert.True(vm.IsSelfTesting);
+        Assert.True(viewModel.IsSelfTesting);
         bound.Close();
 
         var (unbound, plain) = Focused(new ClientSettings());
@@ -886,20 +886,20 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public void LevelMeter_MarksThreshold()
     {
-        var vm = Vm(new ClientSettings { VadThresholdDb = -40, VadAutomatic = false }); // Package 129: the manual threshold
-        vm.InputLevelDb = -30;
-        Assert.True(vm.IsAboveThreshold);
-        vm.VadThresholdDb = -20;
-        Assert.False(vm.IsAboveThreshold);
+        var settings = Vm(new ClientSettings { VadThresholdDb = -40, VadAutomatic = false }); // Package 129: the manual threshold
+        settings.InputLevelDb = -30;
+        Assert.True(settings.IsAboveThreshold);
+        settings.VadThresholdDb = -20;
+        Assert.False(settings.IsAboveThreshold);
     }
 
     [Fact]
     public void ToSettings_KeepsBookmarks_MapsMode()
     {
         var basis = new ClientSettings { Bookmarks = [new Bookmark("a", "h", 1, "n")] };
-        var vm = Vm(basis);
-        vm.VoiceActivation = true;
-        var result = vm.ToSettings(basis);
+        var settings = Vm(basis);
+        settings.VoiceActivation = true;
+        var result = settings.ToSettings(basis);
         Assert.Same(basis.Bookmarks, result.Bookmarks);
         Assert.Equal(TransmitMode.VoiceActivation, result.Mode);
     }
@@ -912,21 +912,21 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var loaded = ClientSettings.Load(dir, out _);
         Assert.Equal(AppTheme.Dark, loaded.Theme);
 
-        var vm = Vm(loaded);
-        Assert.Equal(AppTheme.Dark, vm.SelectedTheme.Value);
-        vm.SelectedTheme = SettingsViewModel.Themes.Single(t => t.Value == AppTheme.Light);
-        Assert.Equal(AppTheme.Light, vm.ToSettings(loaded).Theme);
+        var settings = Vm(loaded);
+        Assert.Equal(AppTheme.Dark, settings.SelectedTheme.Value);
+        settings.SelectedTheme = SettingsViewModel.Themes.Single(choice => choice.Value == AppTheme.Light);
+        Assert.Equal(AppTheme.Light, settings.ToSettings(loaded).Theme);
     }
 
     [Fact]
     public void PushToTalkRadio_IsTheOppositeOfVoiceActivation()
     {
-        var vm = Vm(new ClientSettings());
-        Assert.True(vm.IsPushToTalk);
-        vm.IsPushToTalk = false;
-        Assert.True(vm.VoiceActivation);
-        vm.VoiceActivation = false;
-        Assert.True(vm.IsPushToTalk);
+        var settings = Vm(new ClientSettings());
+        Assert.True(settings.IsPushToTalk);
+        settings.IsPushToTalk = false;
+        Assert.True(settings.VoiceActivation);
+        settings.VoiceActivation = false;
+        Assert.True(settings.IsPushToTalk);
     }
 
     [Fact]
@@ -941,29 +941,29 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     public async Task Save_BusyWhileDevicesRestart()
     {
         var time = new OVS.Tests.TestSupport.ManualTimeProvider();
-        var vm = new SettingsViewModel(new ClientSettings(), [], [], time: time);
+        var settings = new SettingsViewModel(new ClientSettings(), [], [], time: time);
         var restart = new TaskCompletionSource();
-        vm.ApplySaved = () => restart.Task;
+        settings.ApplySaved = () => restart.Task;
         bool? closed = null;
-        vm.CloseRequested += ok => closed = ok;
-        var saving = vm.SaveCommand.ExecuteAsync(null);
+        settings.CloseRequested += ok => closed = ok;
+        var saving = settings.SaveCommand.ExecuteAsync(null);
         time.Advance(PendingActionViewModel.ShowAfter);
-        Assert.True(vm.Saving.IsBusy);
+        Assert.True(settings.Saving.IsBusy);
         Assert.Null(closed);
         restart.SetResult();
         await saving;
-        Assert.False(vm.Saving.IsBusy);
+        Assert.False(settings.Saving.IsBusy);
         Assert.True(closed);
 
         var check = new TaskCompletionSource<string>();
-        vm.CheckNow = () => check.Task;
-        var checking = vm.CheckUpdatesCommand.ExecuteAsync(null);
+        settings.CheckNow = () => check.Task;
+        var checking = settings.CheckUpdatesCommand.ExecuteAsync(null);
         time.Advance(PendingActionViewModel.ShowAfter);
-        Assert.True(vm.Checking.IsBusy);
+        Assert.True(settings.Checking.IsBusy);
         check.SetResult("Aktuell");
         await checking;
-        Assert.False(vm.Checking.IsBusy);
-        Assert.Equal("Aktuell", vm.UpdateStatus);
+        Assert.False(settings.Checking.IsBusy);
+        Assert.Equal("Aktuell", settings.UpdateStatus);
     }
 
     [Fact]

@@ -14,8 +14,8 @@ public class LogoTests
         var bytes = File.ReadAllBytes(Path.Combine(RepoPaths.ClientSource, "Assets", "ovs.ico"));
         int count = BitConverter.ToUInt16(bytes, 4);
         return Enumerable.Range(0, count).ToDictionary(
-            i => bytes[6 + i * 16] is 0 ? 256 : bytes[6 + i * 16],
-            i => bytes.AsSpan(BitConverter.ToInt32(bytes, 6 + i * 16 + 12), BitConverter.ToInt32(bytes, 6 + i * 16 + 8)).ToArray());
+            index => bytes[6 + index * 16] is 0 ? 256 : bytes[6 + index * 16],
+            index => bytes.AsSpan(BitConverter.ToInt32(bytes, 6 + index * 16 + 12), BitConverter.ToInt32(bytes, 6 + index * 16 + 8)).ToArray());
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public class LogoTests
         var bytes = File.ReadAllBytes(Path.Combine(RepoPaths.ClientSource, "Assets", "ovs.ico"));
         Assert.Equal(1, BitConverter.ToUInt16(bytes, 2));
         int count = BitConverter.ToUInt16(bytes, 4);
-        var sizes = Enumerable.Range(0, count).Select(i => bytes[6 + i * 16] is 0 ? 256 : bytes[6 + i * 16]).Order().ToList();
+        var sizes = Enumerable.Range(0, count).Select(index => bytes[6 + index * 16] is 0 ? 256 : bytes[6 + index * 16]).Order().ToList();
         Assert.Equal([16, 20, 24, 32, 48, 64, 256], sizes);
     }
 
@@ -41,7 +41,7 @@ public class LogoTests
     [Fact]
     public void IcoFrames_ShowWave()
     {
-        foreach (var (size, png) in IcoFrames().Where(f => f.Key >= 48))
+        foreach (var (size, png) in IcoFrames().Where(pair => pair.Key >= 48))
         {
             using var bitmap = SKBitmap.Decode(png);
             Assert.Equal(size, bitmap.Width);
@@ -100,9 +100,9 @@ public class LogoTests
         for (int y = 0; y < 64; y++)
         for (int x = 0; x < 64; x++)
         {
-            SKColor a = expected.GetPixel(x, y), b = actual.GetPixel(x, y);
-            var diff = Math.Max(Math.Max(Math.Abs(a.Red - b.Red), Math.Abs(a.Green - b.Green)), Math.Max(Math.Abs(a.Blue - b.Blue), Math.Abs(a.Alpha - b.Alpha)));
-            Assert.True(diff <= 8, $"({x},{y}): {a} vs {b}");
+            SKColor skColor = expected.GetPixel(x, y), otherSkColor = actual.GetPixel(x, y);
+            var diff = Math.Max(Math.Max(Math.Abs(skColor.Red - otherSkColor.Red), Math.Abs(skColor.Green - otherSkColor.Green)), Math.Max(Math.Abs(skColor.Blue - otherSkColor.Blue), Math.Abs(skColor.Alpha - otherSkColor.Alpha)));
+            Assert.True(diff <= 8, $"({x},{y}): {skColor} vs {otherSkColor}");
         }
     }
 

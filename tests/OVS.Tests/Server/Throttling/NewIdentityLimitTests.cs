@@ -20,7 +20,7 @@ public sealed class NewIdentityLimitTests
 
     void Fill(IPAddress? source = null)
     {
-        for (int i = 0; i < ServerTuning.NewIdentitiesPerHour; i++) Assert.True(Count(source));
+        for (int index = 0; index < ServerTuning.NewIdentitiesPerHour; index++) Assert.True(Count(source));
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public sealed class NewIdentityLimitTests
     {
         Assert.True(Count());
         time.Advance(ServerTuning.NewIdentityWindow / 2);
-        for (int i = 1; i < ServerTuning.NewIdentitiesPerHour; i++) Assert.True(Count()); // later ones do not move the window
+        for (int index = 1; index < ServerTuning.NewIdentitiesPerHour; index++) Assert.True(Count()); // later ones do not move the window
         Assert.False(Count());
         time.Advance(ServerTuning.NewIdentityWindow / 2);
         Assert.True(Count());

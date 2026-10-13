@@ -23,22 +23,22 @@ namespace OVS.Tests.Server.State;
 public sealed class DispatchTests
 {
     static IEnumerable<Type> RequestTypes() =>
-        typeof(Request).Assembly.GetTypes().Where(t => t.IsSubclassOf(typeof(Request)) && !t.IsAbstract).OrderBy(t => t.Name, StringComparer.Ordinal);
+        typeof(Request).Assembly.GetTypes().Where(candidate => candidate.IsSubclassOf(typeof(Request)) && !candidate.IsAbstract).OrderBy(candidate => candidate.Name, StringComparer.Ordinal);
 
-    public static TheoryData<string> RequestTypeNames => new(RequestTypes().Select(t => t.Name));
+    public static TheoryData<string> RequestTypeNames => new(RequestTypes().Select(candidate => candidate.Name));
 
     [Fact]
     public void RoutesAndFactories_EveryRequestType_ExactlyOneEntryEach()
     {
-        Assert.Equal(RequestTypes().Select(t => t.Name), ServerState.Routes.Keys.Select(t => t.Name).Order(StringComparer.Ordinal));
-        Assert.Equal(RequestTypes().Select(t => t.Name), Factories.Keys.Select(t => t.Name).Order(StringComparer.Ordinal));
+        Assert.Equal(RequestTypes().Select(candidate => candidate.Name), ServerState.Routes.Keys.Select(candidate => candidate.Name).Order(StringComparer.Ordinal));
+        Assert.Equal(RequestTypes().Select(candidate => candidate.Name), Factories.Keys.Select(candidate => candidate.Name).Order(StringComparer.Ordinal));
     }
 
     [Theory]
     [MemberData(nameof(RequestTypeNames))]
     public void Handle_EveryRequestType_ReachesItsHandler(string typeName)
     {
-        var type = RequestTypes().Single(t => t.Name == typeName);
+        var type = RequestTypes().Single(candidate => candidate.Name == typeName);
         Assert.True(Factories.TryGetValue(type, out var create), $"No factory entry for {typeName}");
         var request = create() with { RequestId = "r" };
         Assert.Null(RequestShape.Problem(request)); // a malformed request would be answered before the dispatch
@@ -50,8 +50,8 @@ public sealed class DispatchTests
         harness.Handle(session, request);
 
         var answers = StateHarness.Drain(session);
-        Assert.DoesNotContain(answers, m => m is Error { Code: ReasonCodes.UnknownRequest });
-        Assert.DoesNotContain(answers, m => m is Error { Code: ReasonCodes.RateLimited }); // not stopped by the request budget before its handler
+        Assert.DoesNotContain(answers, message => message is Error { Code: ReasonCodes.UnknownRequest });
+        Assert.DoesNotContain(answers, message => message is Error { Code: ReasonCodes.RateLimited }); // not stopped by the request budget before its handler
     }
 
     /// <summary>Transfers (one chunk per answer) are exempt from the request budget; every other request counts.</summary>
@@ -64,12 +64,12 @@ public sealed class DispatchTests
         foreach (var type in RequestTypes())
         {
             var session = harness.Admit("anna", anna);
-            for (int i = 0; i < ServerTuning.RequestBurst; i++) harness.Handle(session, new JoinChannel(Unknown));
+            for (int index = 0; index < ServerTuning.RequestBurst; index++) harness.Handle(session, new JoinChannel(Unknown));
             StateHarness.Drain(session);
 
             harness.Handle(session, Factories[type]() with { RequestId = "r" });
 
-            if (!StateHarness.Drain(session).Any(m => m is Error { RequestId: "r", Code: ReasonCodes.RateLimited })) passed.Add(type.Name);
+            if (!StateHarness.Drain(session).Any(message => message is Error { RequestId: "r", Code: ReasonCodes.RateLimited })) passed.Add(type.Name);
             harness.State.Remove(session);
         }
         Assert.Equal(["DownloadBackup", "DownloadLogChunk", "UploadBackupChunk"], passed);

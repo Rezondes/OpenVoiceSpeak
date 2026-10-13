@@ -168,7 +168,7 @@ public sealed class DialogFrameTests
             sending.Fail("abgelehnt");
             Dispatcher.UIThread.RunJobs();
             Assert.True(overlay.IsOpen);
-            Assert.Contains(overlay.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "abgelehnt" && t.IsVisible);
+            Assert.Contains(overlay.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == "abgelehnt" && textBlock.IsVisible);
             OverlayRig.Click(ok); // sent again
             sending.Done();
             Dispatcher.UIThread.RunJobs();

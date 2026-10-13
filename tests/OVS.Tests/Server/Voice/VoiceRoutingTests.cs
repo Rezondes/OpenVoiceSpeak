@@ -32,7 +32,7 @@ public class VoiceRoutingTests
         };
 
     static uint[] Route(Session sender, byte target, params Session[] others) =>
-        VoiceRouting.Recipients([sender, .. others], sender, target, Linked).Select(s => s.Id).Order().ToArray();
+        VoiceRouting.Recipients([sender, .. others], sender, target, Linked).Select(session => session.Id).Order().ToArray();
 
     /// <summary>Package 34: in a muted channel nobody is heard, not even an admin via link.</summary>
     [Theory]
@@ -52,7 +52,7 @@ public class VoiceRoutingTests
     {
         var sender = S(1, B, tcp: tcp);
         var heard = VoiceRouting.Recipients([sender, S(2, A, tcp: tcp), S(3, B, tcp: tcp)], sender, VoiceHeader.TargetLinked, Linked, ch => ch == A);
-        Assert.Equal([2u, 3u], heard.Select(s => s.Id).Order());
+        Assert.Equal([2u, 3u], heard.Select(session => session.Id).Order());
     }
 
     [Theory]
@@ -123,7 +123,7 @@ public class VoiceRoutingTests
         var time = new ManualTimeProvider();
         var limiter = new RateLimiter(time);
         int accepted = 0;
-        for (int i = 0; i < 100; i++)
+        for (int index = 0; index < 100; index++)
         {
             if (limiter.TryTake()) accepted++;
             time.Advance(TimeSpan.FromMilliseconds(10));

@@ -41,14 +41,14 @@ public class AdminViewModelTests
             [new UserInfo(1, "fp1", "ich", Lobby, false, false, false, selfPerms, groupIds ?? [])]);
         var sent = new List<Request>();
         ServerViewModel? server = null;
-        server = new ServerViewModel(Snapshots.Mirror(snapshot), r =>
+        server = new ServerViewModel(Snapshots.Mirror(snapshot), request =>
         {
             // A coalesced list request comes from the pool (a delay on the manual clock): sending and its answer are one
             // step under the lock, so a test that saw the request (Sent) also sees its answer applied.
             lock (sent)
             {
-                sent.Add(r);
-                if (reply?.Invoke(r) is { } answer) server!.Apply(answer);
+                sent.Add(request);
+                if (reply?.Invoke(request) is { } answer) server!.Apply(answer);
             }
             return Task.CompletedTask;
         }, new ManualTimeProvider());
@@ -58,7 +58,7 @@ public class AdminViewModelTests
         bool Assignable(P group) => selfPerms.Has(P.GroupsAssign) && group.IsSubsetOf(selfPerms);
     }
 
-    static GroupEditViewModel Group(AdminViewModel vm, string name) => vm.GroupList.Groups.Single(g => g.Name == name);
+    static GroupEditViewModel Group(AdminViewModel admin, string name) => admin.GroupList.Groups.Single(groupEdit => groupEdit.Name == name);
 
     /// <summary>
     /// Waits until that many user lists were asked for, at most 10 s by the clock: a request held back by the one-second
@@ -92,10 +92,10 @@ public class AdminViewModelTests
     [InlineData(P.GroupsManage | P.GroupsCreate | P.GroupsDelete | P.UserBan | P.UserKick | P.UserDelete, false, false, false, false, false)]
     public async Task Tabs_VisibleByPermission(P perms, bool groups, bool users, bool bans, bool server, bool logs)
     {
-        var (vm, serverVm, sent) = Create(perms);
-        Assert.Equal((groups, users, bans, server, logs), (vm.ShowGroups, vm.ShowUsers, vm.ShowBans, vm.ShowServer, vm.ShowLogs));
+        var (admin, serverVm, sent) = Create(perms);
+        Assert.Equal((groups, users, bans, server, logs), (admin.ShowGroups, admin.ShowUsers, admin.ShowBans, admin.ShowServer, admin.ShowLogs));
         Assert.Equal(groups || users || bans || server || logs, serverVm.CanAdminister);
-        await vm.RequestListsAsync();
+        await admin.RequestListsAsync();
         Assert.Equal(logs, sent.OfType<ListLogs>().Any());
     }
 
@@ -104,13 +104,13 @@ public class AdminViewModelTests
     {
         var (view, server, _) = Create(P.UsersView | P.BansView | P.Speak);
         view.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)])); // weaker, no right to act
-        Assert.All(Assert.Single(view.UsersAndBans.Users).Toggles, t => Assert.False(t.IsEnabled));
+        Assert.All(Assert.Single(view.UsersAndBans.Users).Toggles, groupAssignment => Assert.False(groupAssignment.IsEnabled));
         view.UsersAndBans.Apply(new BanList("b", [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null)]));
         Assert.False(Assert.Single(view.UsersAndBans.Bans).UnbanCommand.CanExecute(null));
 
         var (act, actServer, _) = Create(P.UsersView | P.BansView | P.GroupsAssign | P.UserBan | P.Speak);
         act.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
-        Assert.True(Assert.Single(act.UsersAndBans.Users).Toggles.Single(t => t.Name == "Gast").IsEnabled);
+        Assert.True(Assert.Single(act.UsersAndBans.Users).Toggles.Single(groupAssignment => groupAssignment.Name == "Gast").IsEnabled);
         act.UsersAndBans.Apply(new BanList("b", [new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null)]));
         Assert.True(Assert.Single(act.UsersAndBans.Bans).UnbanCommand.CanExecute(null));
     }
@@ -118,23 +118,23 @@ public class AdminViewModelTests
     [Fact]
     public async Task RequestLists_OnlyAllowedOnes()
     {
-        var (vm, _, sent) = Create(P.BansView | P.GroupsAssign);
-        await vm.RequestListsAsync();
+        var (admin, _, sent) = Create(P.BansView | P.GroupsAssign);
+        await admin.RequestListsAsync();
         Assert.IsType<ListBans>(Assert.Single(sent));
     }
 
     [Fact]
     public async Task AssignGroup_SendsRequest_DisablesHigherGroups()
     {
-        var (vm, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak);
-        vm.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
+        var (admin, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak);
+        admin.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
 
-        var user = Assert.Single(vm.UsersAndBans.Users);
-        var guest = user.Toggles.Single(t => t.Name == "Gast");
+        var user = Assert.Single(admin.UsersAndBans.Users);
+        var guest = user.Toggles.Single(groupAssignment => groupAssignment.Name == "Gast");
         Assert.True(guest.IsChecked);
         Assert.True(guest.IsEnabled);
-        Assert.False(user.Toggles.Single(t => t.Name == "Admin").IsEnabled);
-        Assert.False(user.Toggles.Single(t => t.Name == "Moderator").IsEnabled);
+        Assert.False(user.Toggles.Single(groupAssignment => groupAssignment.Name == "Admin").IsEnabled);
+        Assert.False(user.Toggles.Single(groupAssignment => groupAssignment.Name == "Moderator").IsEnabled);
 
         guest.IsChecked = false; // what the checkbox does before running its command
         await guest.ToggleCommand.ExecuteAsync(null);
@@ -149,18 +149,18 @@ public class AdminViewModelTests
     [Fact]
     public void GroupToggles_WithoutGroupsView_FollowServerFlags()
     {
-        var (vm, server, _) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
+        var (admin, server, _) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
         server.Apply(new GroupsChanged(
         [
             new GroupInfo(WellKnownGroups.Guest, "Gast", P.None, true),
             new GroupInfo(ModGroup, "Moderator", P.None, false),
             new GroupInfo(WellKnownGroups.Admin, "Admin", P.None, false),
         ]));
-        vm.UsersAndBans.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true }, Known("fpA", "Anna", [WellKnownGroups.Admin])]));
-        var xaver = vm.UsersAndBans.Users.Single(u => u.Nickname == "Xaver");
-        Assert.Equal([true, false, false], xaver.Toggles.Select(t => t.IsEnabled));
-        Assert.All(vm.UsersAndBans.Users.Single(u => u.Nickname == "Anna").Toggles, t => Assert.False(t.IsEnabled)); // stronger: nothing
-        Assert.False(vm.ShowGroups);
+        admin.UsersAndBans.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true }, Known("fpA", "Anna", [WellKnownGroups.Admin])]));
+        var xaver = admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Xaver");
+        Assert.Equal([true, false, false], xaver.Toggles.Select(groupAssignment => groupAssignment.IsEnabled));
+        Assert.All(admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Anna").Toggles, groupAssignment => Assert.False(groupAssignment.IsEnabled)); // stronger: nothing
+        Assert.False(admin.ShowGroups);
     }
 
     /// <summary>Package 92 (AC3): the list's rank flags were judged by the old rights; new own or group rights ask for it again.</summary>
@@ -186,26 +186,26 @@ public class AdminViewModelTests
     [Fact]
     public async Task AssignGroup_SoundWhenListConfirms_NotOnError()
     {
-        var (vm, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
+        var (admin, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
         var heard = new List<OVS.Client.Audio.Sounds.SoundEvent>();
         server.SoundRequested += heard.Add;
-        vm.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
+        admin.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])]));
 
-        var mod = Assert.Single(vm.UsersAndBans.Users).Toggles.Single(t => t.Name == "Moderator");
+        var mod = Assert.Single(admin.UsersAndBans.Users).Toggles.Single(groupAssignment => groupAssignment.Name == "Moderator");
         mod.IsChecked = true;
         await mod.ToggleCommand.ExecuteAsync(null);
-        vm.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])])); // an older answer: not yet
+        admin.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest])])); // an older answer: not yet
         Assert.Empty(heard);
-        vm.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])]));
+        admin.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])]));
         Assert.Equal([OVS.Client.Audio.Sounds.SoundEvent.GroupChangedByMe], heard);
-        vm.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])])); // only once
+        admin.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest, ModGroup])])); // only once
         Assert.Single(heard);
 
-        var guest = Assert.Single(vm.UsersAndBans.Users).Toggles.Single(t => t.Name == "Gast");
+        var guest = Assert.Single(admin.UsersAndBans.Users).Toggles.Single(groupAssignment => groupAssignment.Name == "Gast");
         guest.IsChecked = false;
         await guest.ToggleCommand.ExecuteAsync(null);
         server.Apply(new Error(sent.OfType<UnassignGroup>().Single().RequestId, ReasonCodes.LastAdmin));
-        vm.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [ModGroup])])); // even if it changed some other way
+        admin.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [ModGroup])])); // even if it changed some other way
         Assert.Single(heard);
     }
 
@@ -217,25 +217,25 @@ public class AdminViewModelTests
     [InlineData(P.ServerConfig, false)]
     public async Task RequestListsAsync_ByRights_AsksForTheBackupListOnlyWithBackupsManage(P perms, bool asks)
     {
-        var (vm, _, sent) = Create(perms);
+        var (admin, _, sent) = Create(perms);
 
-        await HangGuard.Bound(vm.RequestListsAsync());
+        await HangGuard.Bound(admin.RequestListsAsync());
 
-        Assert.Equal(asks, sent.Any(r => r is ListBackups));
+        Assert.Equal(asks, sent.Any(request => request is ListBackups));
     }
 
     /// <summary>The page tells the backup card about every state change (the card itself: BackupCardViewModelTests).</summary>
     [Fact]
     public void OnServerStateChanged_AdminGroupLeft_BackupRowsLoseRestoreAndUploadRestore()
     {
-        var (vm, server, _) = Create(P.All, groupIds: [WellKnownGroups.Admin]);
-        vm.BackupCard.Apply(new BackupList("r", [new BackupInfo("2026-02-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 2, 1, 10, 0, 0, TimeSpan.Zero), 800, "dev.0000")]));
-        Assert.True(vm.BackupCard.Backups[0].CanRestore);
+        var (admin, server, _) = Create(P.All, groupIds: [WellKnownGroups.Admin]);
+        admin.BackupCard.Apply(new BackupList("r", [new BackupInfo("2026-02-01_10-00-00.ovsbackup", new DateTimeOffset(2026, 2, 1, 10, 0, 0, TimeSpan.Zero), 800, "dev.0000")]));
+        Assert.True(admin.BackupCard.Backups[0].CanRestore);
 
         server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", Lobby, false, false, false, P.All, [])));
 
-        Assert.False(vm.BackupCard.CanUploadRestore);
-        Assert.False(vm.BackupCard.Backups[0].CanRestore);
+        Assert.False(admin.BackupCard.CanUploadRestore);
+        Assert.False(admin.BackupCard.Backups[0].CanRestore);
     }
 
     /// <summary>The page tells the groups tab about every state change (the tab itself: GroupListViewModelTests).</summary>
@@ -263,9 +263,9 @@ public class AdminViewModelTests
     [InlineData(P.ServerConfig, false, true)]
     public void ServerTab_OneCardRight_ShowsTheTabAndOnlyThatCard(P perms, bool backups, bool settings)
     {
-        var (vm, _, _) = Create(perms);
+        var (admin, _, _) = Create(perms);
 
-        Assert.Equal((true, backups, settings), (vm.ShowServer, vm.ShowBackups, vm.ShowServerSettings));
+        Assert.Equal((true, backups, settings), (admin.ShowServer, admin.ShowBackups, admin.ShowServerSettings));
     }
 
     // ---- Package 80: ban overview with details, history, search and filter ----
@@ -276,16 +276,16 @@ public class AdminViewModelTests
         new(Guid.NewGuid(), fp ?? "fp" + nick, nick, ip, reason, by, expires, created, created is null ? null : "fpMod", minutes,
             liftedAt, liftedBy, attempts, lastAttempt, lastIp);
 
-    static string Local(DateTimeOffset t) => t.ToLocalTime().ToString("g");
+    static string Local(DateTimeOffset time) => time.ToLocalTime().ToString("g");
 
-    static void ShowAllBans(AdminViewModel vm) => vm.UsersAndBans.SelectedBanStatusFilter = vm.UsersAndBans.BanStatusFilters.Single(f => f.Value == BanStatusFilter.All);
+    static void ShowAllBans(AdminViewModel admin) => admin.UsersAndBans.SelectedBanStatusFilter = admin.UsersAndBans.BanStatusFilters.Single(choice => choice.Value == BanStatusFilter.All);
 
     [Fact]
     public void BanCards_ShowAllDetails_UnknownForMissing()
     {
-        var (vm, server, _) = Create(P.BansView);
+        var (admin, server, _) = Create(P.BansView);
         var now = server.Time.GetUtcNow();
-        vm.UsersAndBans.Apply(new BanList("r",
+        admin.UsersAndBans.Apply(new BanList("r",
         [
             BanOf("Troll", now.AddMinutes(90), "10.0.0.9", "Spam", created: now.AddMinutes(-30), minutes: 120, attempts: 3,
                 lastAttempt: now.AddMinutes(-5), lastIp: "10.0.0.8", fp: "abcdef0123456789abcdef"),
@@ -293,28 +293,28 @@ public class AdminViewModelTests
             BanOf("Lisa", created: now.AddDays(-1), liftedAt: now.AddHours(-2), liftedBy: "admin"),
             BanOf("Emil", now.AddMinutes(-1), created: now.AddMinutes(-61), minutes: 60),
         ]));
-        ShowAllBans(vm);
+        ShowAllBans(admin);
 
-        var t = vm.UsersAndBans.Bans.Single(b => b.Nickname == "Troll");
-        Assert.Equal(("abcdef0123456789", "abcdef0123456789abcdef"), (t.ShortFingerprint, t.Fingerprint));
-        Assert.Equal((true, "10.0.0.9"), (t.HasIp, t.Ip));
-        Assert.Equal("Spam", t.ReasonText);
-        Assert.Equal(("mod", "fpMod", Local(now.AddMinutes(-30))), (t.CreatedBy, t.CreatedByFingerprintText, t.CreatedAtText));
-        Assert.Equal(("2 h", Local(now.AddMinutes(90))), (t.DurationText, t.EndText));
-        Assert.Equal((true, "1 h 30 min"), (t.HasRemaining, t.RemainingText));
-        Assert.Equal((BanStatus.Active, "aktiv"), (t.Status, t.StatusText));
-        Assert.Equal($"3, zuletzt {Local(now.AddMinutes(-5))} von 10.0.0.8", t.AttemptsText);
+        var ban = admin.UsersAndBans.Bans.Single(banViewModel => banViewModel.Nickname == "Troll");
+        Assert.Equal(("abcdef0123456789", "abcdef0123456789abcdef"), (ban.ShortFingerprint, ban.Fingerprint));
+        Assert.Equal((true, "10.0.0.9"), (ban.HasIp, ban.Ip));
+        Assert.Equal("Spam", ban.ReasonText);
+        Assert.Equal(("mod", "fpMod", Local(now.AddMinutes(-30))), (ban.CreatedBy, ban.CreatedByFingerprintText, ban.CreatedAtText));
+        Assert.Equal(("2 h", Local(now.AddMinutes(90))), (ban.DurationText, ban.EndText));
+        Assert.Equal((true, "1 h 30 min"), (ban.HasRemaining, ban.RemainingText));
+        Assert.Equal((BanStatus.Active, "aktiv"), (ban.Status, ban.StatusText));
+        Assert.Equal($"3, zuletzt {Local(now.AddMinutes(-5))} von 10.0.0.8", ban.AttemptsText);
 
-        var o = vm.UsersAndBans.Bans.Single(b => b.Nickname == "Otto");
-        Assert.Equal(("unbekannt", "unbekannt", "unbekannt"), (o.CreatedAtText, o.CreatedByFingerprintText, o.DurationText));
-        Assert.Equal((false, "ohne Grund", "keine"), (o.HasIp, o.ReasonText, o.AttemptsText));
-        Assert.Equal((BanStatus.Active, Local(now.AddDays(2))), (o.Status, o.EndText));
+        var otherBan = admin.UsersAndBans.Bans.Single(banViewModel => banViewModel.Nickname == "Otto");
+        Assert.Equal(("unbekannt", "unbekannt", "unbekannt"), (otherBan.CreatedAtText, otherBan.CreatedByFingerprintText, otherBan.DurationText));
+        Assert.Equal((false, "ohne Grund", "keine"), (otherBan.HasIp, otherBan.ReasonText, otherBan.AttemptsText));
+        Assert.Equal((BanStatus.Active, Local(now.AddDays(2))), (otherBan.Status, otherBan.EndText));
 
-        var l = vm.UsersAndBans.Bans.Single(b => b.Nickname == "Lisa");
+        var l = admin.UsersAndBans.Bans.Single(banViewModel => banViewModel.Nickname == "Lisa");
         Assert.Equal((BanStatus.Lifted, $"aufgehoben von admin am {Local(now.AddHours(-2))}"), (l.Status, l.StatusText));
         Assert.Equal(("dauerhaft", "dauerhaft", false), (l.DurationText, l.EndText, l.HasRemaining));
 
-        var e = vm.UsersAndBans.Bans.Single(b => b.Nickname == "Emil");
+        var e = admin.UsersAndBans.Bans.Single(banViewModel => banViewModel.Nickname == "Emil");
         Assert.Equal((BanStatus.Expired, "abgelaufen", "1 h", false), (e.Status, e.StatusText, e.DurationText, e.HasRemaining));
     }
 
@@ -329,24 +329,24 @@ public class AdminViewModelTests
     [InlineData("gibtsnicht", "")]
     public void BanSearch_MatchesAllTextFields(string search, string expected)
     {
-        var (vm, server, _) = Create(P.BansView);
+        var (admin, server, _) = Create(P.BansView);
         var now = server.Time.GetUtcNow();
-        vm.UsersAndBans.Apply(new BanList("r",
+        admin.UsersAndBans.Apply(new BanList("r",
         [
             BanOf("Troll", ip: "10.0.0.9", reason: "Werbung", fp: "ffabc12ff", created: now),
             BanOf("Lisa", by: "Chef", liftedAt: now, liftedBy: "Aufheber", created: now.AddDays(-1)),
         ]));
-        ShowAllBans(vm);
-        vm.UsersAndBans.BanSearchText = search;
-        Assert.Equal(expected, string.Join(",", vm.UsersAndBans.Bans.Select(b => b.Nickname).Order()));
+        ShowAllBans(admin);
+        admin.UsersAndBans.BanSearchText = search;
+        Assert.Equal(expected, string.Join(",", admin.UsersAndBans.Bans.Select(ban => ban.Nickname).Order()));
     }
 
     [Fact]
     public void BanFilter_StatusType_Sort_Count()
     {
-        var (vm, server, _) = Create(P.BansView);
+        var (admin, server, _) = Create(P.BansView);
         var now = server.Time.GetUtcNow();
-        vm.UsersAndBans.Apply(new BanList("r",
+        admin.UsersAndBans.Apply(new BanList("r",
         [
             BanOf("Anna", created: now.AddDays(-1), attempts: 5),
             BanOf("bert", now.AddHours(1), "10.0.0.2", created: now.AddHours(-2), minutes: 180),
@@ -354,35 +354,35 @@ public class AdminViewModelTests
             BanOf("Dino", now.AddHours(5), created: now.AddMinutes(-10), minutes: 315, liftedAt: now, liftedBy: "admin", attempts: 9),
             BanOf("Emil", now.AddMinutes(30)), // old: no creation time
         ]));
-        string Names() => string.Join(",", vm.UsersAndBans.Bans.Select(b => b.Nickname));
+        string Names() => string.Join(",", admin.UsersAndBans.Bans.Select(ban => ban.Nickname));
 
         Assert.Equal((BanStatusFilter.Active, BanTypeFilter.All, BanSortOrder.Newest),
-            (vm.UsersAndBans.SelectedBanStatusFilter.Value, vm.UsersAndBans.SelectedBanTypeFilter.Value, vm.UsersAndBans.SelectedBanSortOrder.Value));
+            (admin.UsersAndBans.SelectedBanStatusFilter.Value, admin.UsersAndBans.SelectedBanTypeFilter.Value, admin.UsersAndBans.SelectedBanSortOrder.Value));
         Assert.Equal("bert,Anna,Emil", Names()); // active only, newest first, unknown creation last
-        Assert.Equal("3 von 5 Bans", vm.UsersAndBans.BanCountText);
-        vm.UsersAndBans.SelectedBanStatusFilter = vm.UsersAndBans.BanStatusFilters.Single(f => f.Value == BanStatusFilter.Expired);
+        Assert.Equal("3 von 5 Bans", admin.UsersAndBans.BanCountText);
+        admin.UsersAndBans.SelectedBanStatusFilter = admin.UsersAndBans.BanStatusFilters.Single(choice => choice.Value == BanStatusFilter.Expired);
         Assert.Equal("Cleo", Names());
-        vm.UsersAndBans.SelectedBanStatusFilter = vm.UsersAndBans.BanStatusFilters.Single(f => f.Value == BanStatusFilter.Lifted);
+        admin.UsersAndBans.SelectedBanStatusFilter = admin.UsersAndBans.BanStatusFilters.Single(choice => choice.Value == BanStatusFilter.Lifted);
         Assert.Equal("Dino", Names());
-        Assert.Equal("1 von 5 Bans", vm.UsersAndBans.BanCountText);
-        ShowAllBans(vm);
+        Assert.Equal("1 von 5 Bans", admin.UsersAndBans.BanCountText);
+        ShowAllBans(admin);
         Assert.Equal("Dino,bert,Anna,Cleo,Emil", Names());
 
-        vm.UsersAndBans.SelectedBanTypeFilter = vm.UsersAndBans.BanTypeFilters.Single(f => f.Value == BanTypeFilter.Permanent);
+        admin.UsersAndBans.SelectedBanTypeFilter = admin.UsersAndBans.BanTypeFilters.Single(choice => choice.Value == BanTypeFilter.Permanent);
         Assert.Equal("Anna", Names());
-        vm.UsersAndBans.SelectedBanTypeFilter = vm.UsersAndBans.BanTypeFilters.Single(f => f.Value == BanTypeFilter.Temporary);
+        admin.UsersAndBans.SelectedBanTypeFilter = admin.UsersAndBans.BanTypeFilters.Single(choice => choice.Value == BanTypeFilter.Temporary);
         Assert.Equal("Dino,bert,Cleo,Emil", Names());
-        vm.UsersAndBans.SelectedBanTypeFilter = vm.UsersAndBans.BanTypeFilters.Single(f => f.Value == BanTypeFilter.WithIp);
+        admin.UsersAndBans.SelectedBanTypeFilter = admin.UsersAndBans.BanTypeFilters.Single(choice => choice.Value == BanTypeFilter.WithIp);
         Assert.Equal("bert", Names());
-        vm.UsersAndBans.SelectedBanTypeFilter = vm.UsersAndBans.BanTypeFilters[0];
+        admin.UsersAndBans.SelectedBanTypeFilter = admin.UsersAndBans.BanTypeFilters[0];
 
-        vm.UsersAndBans.SelectedBanSortOrder = vm.UsersAndBans.BanSortOrders.Single(s => s.Value == BanSortOrder.EndingSoonest);
+        admin.UsersAndBans.SelectedBanSortOrder = admin.UsersAndBans.BanSortOrders.Single(choice => choice.Value == BanSortOrder.EndingSoonest);
         Assert.Equal("Cleo,Emil,bert,Dino,Anna", Names()); // permanent last
-        vm.UsersAndBans.SelectedBanSortOrder = vm.UsersAndBans.BanSortOrders.Single(s => s.Value == BanSortOrder.MostAttempts);
+        admin.UsersAndBans.SelectedBanSortOrder = admin.UsersAndBans.BanSortOrders.Single(choice => choice.Value == BanSortOrder.MostAttempts);
         Assert.Equal("Dino,Anna,Cleo,bert,Emil", Names());
-        vm.UsersAndBans.SelectedBanSortOrder = vm.UsersAndBans.BanSortOrders.Single(s => s.Value == BanSortOrder.Name);
+        admin.UsersAndBans.SelectedBanSortOrder = admin.UsersAndBans.BanSortOrders.Single(choice => choice.Value == BanSortOrder.Name);
         Assert.Equal("Anna,bert,Cleo,Dino,Emil", Names());
-        Assert.Equal("5 von 5 Bans", vm.UsersAndBans.BanCountText);
+        Assert.Equal("5 von 5 Bans", admin.UsersAndBans.BanCountText);
     }
 
     [Fact]
@@ -399,23 +399,23 @@ public class AdminViewModelTests
         ];
         view.UsersAndBans.Apply(new BanList("r", bans));
         ShowAllBans(view);
-        Assert.All(view.UsersAndBans.Bans, b => Assert.False(b.CanUnban)); // read-only without UserBan
-        Assert.All(view.UsersAndBans.Bans, b => Assert.False(b.UnbanCommand.CanExecute(null)));
+        Assert.All(view.UsersAndBans.Bans, ban => Assert.False(ban.CanUnban)); // read-only without UserBan
+        Assert.All(view.UsersAndBans.Bans, ban => Assert.False(ban.UnbanCommand.CanExecute(null)));
 
-        var (vm, server, sent) = Create(P.BansView | P.UserBan);
-        vm.UsersAndBans.Apply(new BanList("r", bans));
-        ShowAllBans(vm);
-        Assert.Equal(["Anna", "bert"], vm.UsersAndBans.Bans.Where(b => b.CanUnban).Select(b => b.Nickname).Order());
-        Assert.False(vm.UsersAndBans.Bans.Single(b => b.Nickname == "Dino").UnbanCommand.CanExecute(null));
+        var (admin, server, sent) = Create(P.BansView | P.UserBan);
+        admin.UsersAndBans.Apply(new BanList("r", bans));
+        ShowAllBans(admin);
+        Assert.Equal(["Anna", "bert"], admin.UsersAndBans.Bans.Where(ban => ban.CanUnban).Select(ban => ban.Nickname).Order());
+        Assert.False(admin.UsersAndBans.Bans.Single(ban => ban.Nickname == "Dino").UnbanCommand.CanExecute(null));
 
-        vm.UsersAndBans.BanSearchText = "bert";
-        vm.UsersAndBans.SelectedBanSortOrder = vm.UsersAndBans.BanSortOrders.Single(s => s.Value == BanSortOrder.Name);
-        vm.UsersAndBans.Bans.Single().UnbanCommand.Execute(null);
+        admin.UsersAndBans.BanSearchText = "bert";
+        admin.UsersAndBans.SelectedBanSortOrder = admin.UsersAndBans.BanSortOrders.Single(choice => choice.Value == BanSortOrder.Name);
+        admin.UsersAndBans.Bans.Single().UnbanCommand.Execute(null);
         Assert.Equal(new Unban(bans[1].Id), sent.OfType<Unban>().Single() with { RequestId = null });
 
-        vm.UsersAndBans.Apply(new BanList("u", [.. bans[..1], bans[1] with { LiftedAt = now, LiftedBy = "ich" }, .. bans[2..]]));
-        Assert.Equal(("bert", BanStatusFilter.All, BanSortOrder.Name), (vm.UsersAndBans.BanSearchText, vm.UsersAndBans.SelectedBanStatusFilter.Value, vm.UsersAndBans.SelectedBanSortOrder.Value));
-        var bert = Assert.Single(vm.UsersAndBans.Bans);
+        admin.UsersAndBans.Apply(new BanList("u", [.. bans[..1], bans[1] with { LiftedAt = now, LiftedBy = "ich" }, .. bans[2..]]));
+        Assert.Equal(("bert", BanStatusFilter.All, BanSortOrder.Name), (admin.UsersAndBans.BanSearchText, admin.UsersAndBans.SelectedBanStatusFilter.Value, admin.UsersAndBans.SelectedBanSortOrder.Value));
+        var bert = Assert.Single(admin.UsersAndBans.Bans);
         Assert.Equal((BanStatus.Lifted, false), (bert.Status, bert.CanUnban));
     }
 
@@ -433,37 +433,37 @@ public class AdminViewModelTests
     [Fact]
     public void UserDetails_FromKnownUserInfo()
     {
-        var (vm, server, _) = Create(P.UsersView | P.GroupsAssign | P.Speak);
+        var (admin, server, _) = Create(P.UsersView | P.GroupsAssign | P.Speak);
         var ban = new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "Spam", "mod", T0.AddDays(2));
         server.Apply(new UserJoined(Online(2, "fpX0123456789abcdef", "Xaver")));
-        vm.UsersAndBans.Apply(new UserList("r",
+        admin.UsersAndBans.Apply(new UserList("r",
         [
             Known("fpX0123456789abcdef", "Xaver", [WellKnownGroups.Guest, ModGroup], previous: ["Xav", "X"], bans: [ban]),
             new KnownUserInfo("fpOld", "Otto", [WellKnownGroups.Guest]), // saved before Package 70
         ]));
 
-        var x = vm.UsersAndBans.Users.Single(u => u.Nickname == "Xaver");
-        Assert.True(x.IsOnline);
-        Assert.Equal(["Gast", "Moderator"], x.Toggles.Where(t => t.IsChecked).Select(t => t.Name));
-        Assert.Equal(T0.AddDays(-30).ToLocalTime().ToString("g"), x.FirstSeenText);
-        Assert.Equal(T0.ToLocalTime().ToString("g"), x.LastLoginText);
-        Assert.Equal("3", x.LoginCountText);
-        Assert.Equal("1 h 30 min", x.OnlineTimeText);
-        Assert.Equal("1 min 15 s", x.SpeechTimeText);
-        Assert.Equal("12", x.ChatMessagesText);
-        Assert.Equal("10.0.0.7", x.LastIpText);
-        Assert.Equal("Xav, X", x.PreviousNicknamesText);
-        Assert.Equal("fpX0123456789abc", x.ShortFingerprint);
-        Assert.Equal("fpX0123456789abcdef", x.Fingerprint);
-        Assert.True(x.IsBanned);
-        Assert.Contains("Spam", x.BanText);
-        Assert.Contains(T0.AddDays(2).ToLocalTime().ToString("dd.MM.yyyy HH:mm"), x.BanText);
+        var knownUser = admin.UsersAndBans.Users.Single(knownUserViewModel => knownUserViewModel.Nickname == "Xaver");
+        Assert.True(knownUser.IsOnline);
+        Assert.Equal(["Gast", "Moderator"], knownUser.Toggles.Where(groupAssignment => groupAssignment.IsChecked).Select(groupAssignment => groupAssignment.Name));
+        Assert.Equal(T0.AddDays(-30).ToLocalTime().ToString("g"), knownUser.FirstSeenText);
+        Assert.Equal(T0.ToLocalTime().ToString("g"), knownUser.LastLoginText);
+        Assert.Equal("3", knownUser.LoginCountText);
+        Assert.Equal("1 h 30 min", knownUser.OnlineTimeText);
+        Assert.Equal("1 min 15 s", knownUser.SpeechTimeText);
+        Assert.Equal("12", knownUser.ChatMessagesText);
+        Assert.Equal("10.0.0.7", knownUser.LastIpText);
+        Assert.Equal("Xav, X", knownUser.PreviousNicknamesText);
+        Assert.Equal("fpX0123456789abc", knownUser.ShortFingerprint);
+        Assert.Equal("fpX0123456789abcdef", knownUser.Fingerprint);
+        Assert.True(knownUser.IsBanned);
+        Assert.Contains("Spam", knownUser.BanText);
+        Assert.Contains(T0.AddDays(2).ToLocalTime().ToString("dd.MM.yyyy HH:mm"), knownUser.BanText);
 
-        var otto = vm.UsersAndBans.Users.Single(u => u.Nickname == "Otto");
+        var otto = admin.UsersAndBans.Users.Single(knownUserViewModel => knownUserViewModel.Nickname == "Otto");
         Assert.False(otto.IsOnline);
         Assert.False(otto.IsBanned);
         Assert.All(new[] { otto.FirstSeenText, otto.LastLoginText, otto.LoginCountText, otto.OnlineTimeText, otto.SpeechTimeText,
-            otto.ChatMessagesText, otto.LastIpText, otto.PreviousNicknamesText }, t => Assert.Equal("unbekannt", t));
+            otto.ChatMessagesText, otto.LastIpText, otto.PreviousNicknamesText }, text => Assert.Equal("unbekannt", text));
     }
 
     [Theory]
@@ -475,96 +475,96 @@ public class AdminViewModelTests
     [InlineData("gibtsnicht", "")]
     public void Search_MatchesNicknamePreviousFingerprintIp(string search, string expected)
     {
-        var (vm, server, _) = Create(P.UsersView);
-        vm.UsersAndBans.Apply(new UserList("r",
+        var (admin, server, _) = Create(P.UsersView);
+        admin.UsersAndBans.Apply(new UserList("r",
         [
             Known("ffff0000", "Xaver", previous: ["Altname"], ip: "10.0.0.7"),
             Known("00AB12cd", "Berta", ip: "192.168.1.20"),
         ]));
-        vm.UsersAndBans.SearchText = search;
-        Assert.Equal(expected, string.Join(",", vm.UsersAndBans.Users.Select(u => u.Nickname)));
+        admin.UsersAndBans.SearchText = search;
+        Assert.Equal(expected, string.Join(",", admin.UsersAndBans.Users.Select(knownUser => knownUser.Nickname)));
     }
 
     [Fact]
     public void Filter_StatusGroup_Sort_Count()
     {
-        var (vm, server, _) = Create(P.UsersView);
+        var (admin, server, _) = Create(P.UsersView);
         var ban = new BanInfo(Guid.NewGuid(), "fpC", "Cora", null, "", "mod", null);
         server.Apply(new UserJoined(Online(2, "fpB", "Bert")));
-        vm.UsersAndBans.Apply(new UserList("r",
+        admin.UsersAndBans.Apply(new UserList("r",
         [
             Known("fpA", "anton", lastLogin: T0.AddDays(-1), online: TimeSpan.FromHours(5)),
             Known("fpB", "Bert", [WellKnownGroups.Guest, ModGroup], lastLogin: T0, online: TimeSpan.FromHours(1)),
             Known("fpC", "Cora", lastLogin: T0.AddDays(-5), online: TimeSpan.FromHours(9), bans: [ban]),
             new KnownUserInfo("fpD", "Dora", [WellKnownGroups.Guest]),
         ]));
-        string Names() => string.Join(",", vm.UsersAndBans.Users.Select(u => u.Nickname));
+        string Names() => string.Join(",", admin.UsersAndBans.Users.Select(knownUser => knownUser.Nickname));
 
         Assert.Equal("anton,Bert,Cora,Dora", Names()); // by name, case-insensitive
-        Assert.Equal("4 von 4 Nutzern", vm.UsersAndBans.UserCountText);
+        Assert.Equal("4 von 4 Nutzern", admin.UsersAndBans.UserCountText);
 
-        vm.UsersAndBans.SelectedStatusFilter = vm.UsersAndBans.StatusFilters.Single(f => f.Value == UserStatusFilter.Online);
+        admin.UsersAndBans.SelectedStatusFilter = admin.UsersAndBans.StatusFilters.Single(choice => choice.Value == UserStatusFilter.Online);
         Assert.Equal("Bert", Names());
-        vm.UsersAndBans.SelectedStatusFilter = vm.UsersAndBans.StatusFilters.Single(f => f.Value == UserStatusFilter.Offline);
+        admin.UsersAndBans.SelectedStatusFilter = admin.UsersAndBans.StatusFilters.Single(choice => choice.Value == UserStatusFilter.Offline);
         Assert.Equal("anton,Cora,Dora", Names());
-        vm.UsersAndBans.SelectedStatusFilter = vm.UsersAndBans.StatusFilters.Single(f => f.Value == UserStatusFilter.Banned);
+        admin.UsersAndBans.SelectedStatusFilter = admin.UsersAndBans.StatusFilters.Single(choice => choice.Value == UserStatusFilter.Banned);
         Assert.Equal("Cora", Names());
-        Assert.Equal("1 von 4 Nutzern", vm.UsersAndBans.UserCountText);
-        vm.UsersAndBans.SelectedStatusFilter = vm.UsersAndBans.StatusFilters[0];
+        Assert.Equal("1 von 4 Nutzern", admin.UsersAndBans.UserCountText);
+        admin.UsersAndBans.SelectedStatusFilter = admin.UsersAndBans.StatusFilters[0];
 
-        Assert.Equal(["Alle Gruppen", "Gast", "Moderator", "Admin"], vm.UsersAndBans.GroupFilters.Select(f => f.Label));
-        vm.UsersAndBans.SelectedGroupFilter = vm.UsersAndBans.GroupFilters.Single(f => f.Label == "Moderator");
+        Assert.Equal(["Alle Gruppen", "Gast", "Moderator", "Admin"], admin.UsersAndBans.GroupFilters.Select(choice => choice.Label));
+        admin.UsersAndBans.SelectedGroupFilter = admin.UsersAndBans.GroupFilters.Single(choice => choice.Label == "Moderator");
         Assert.Equal("Bert", Names());
-        vm.UsersAndBans.SelectedGroupFilter = vm.UsersAndBans.GroupFilters[0];
+        admin.UsersAndBans.SelectedGroupFilter = admin.UsersAndBans.GroupFilters[0];
 
-        vm.UsersAndBans.SelectedSortOrder = vm.UsersAndBans.SortOrders.Single(s => s.Value == UserSortOrder.LastLogin);
+        admin.UsersAndBans.SelectedSortOrder = admin.UsersAndBans.SortOrders.Single(choice => choice.Value == UserSortOrder.LastLogin);
         Assert.Equal("Bert,anton,Cora,Dora", Names()); // newest first, never logged in last
-        vm.UsersAndBans.SelectedSortOrder = vm.UsersAndBans.SortOrders.Single(s => s.Value == UserSortOrder.OnlineTime);
+        admin.UsersAndBans.SelectedSortOrder = admin.UsersAndBans.SortOrders.Single(choice => choice.Value == UserSortOrder.OnlineTime);
         Assert.Equal("Cora,anton,Bert,Dora", Names());
     }
 
     [Fact]
     public void UsersViewOnly_SearchWorks_TogglesLocked()
     {
-        var (vm, server, _) = Create(P.UsersView);
-        Assert.True(vm.ShowUsers);
-        vm.UsersAndBans.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta")]));
-        vm.UsersAndBans.SearchText = "ber";
-        var berta = Assert.Single(vm.UsersAndBans.Users);
+        var (admin, server, _) = Create(P.UsersView);
+        Assert.True(admin.ShowUsers);
+        admin.UsersAndBans.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta")]));
+        admin.UsersAndBans.SearchText = "ber";
+        var berta = Assert.Single(admin.UsersAndBans.Users);
         Assert.Equal("10.0.0.7", berta.LastIpText);
-        Assert.All(berta.Toggles, t => Assert.False(t.IsEnabled));
-        Assert.True(berta.Toggles.Single(t => t.Name == "Gast").IsChecked);
+        Assert.All(berta.Toggles, groupAssignment => Assert.False(groupAssignment.IsEnabled));
+        Assert.True(berta.Toggles.Single(groupAssignment => groupAssignment.Name == "Gast").IsChecked);
     }
 
     [Fact]
     public async Task UserJoins_ListRefreshed_FilterKept()
     {
-        var (vm, server, sent) = Create(P.UsersView);
+        var (admin, server, sent) = Create(P.UsersView);
         var time = (ManualTimeProvider)server.Time;
-        vm.UsersAndBans.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta")]));
-        vm.UsersAndBans.SearchText = "ber";
-        vm.UsersAndBans.SelectedStatusFilter = vm.UsersAndBans.StatusFilters.Single(f => f.Value == UserStatusFilter.Online);
-        Assert.Empty(vm.UsersAndBans.Users);
+        admin.UsersAndBans.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta")]));
+        admin.UsersAndBans.SearchText = "ber";
+        admin.UsersAndBans.SelectedStatusFilter = admin.UsersAndBans.StatusFilters.Single(choice => choice.Value == UserStatusFilter.Online);
+        Assert.Empty(admin.UsersAndBans.Users);
 
         server.Apply(new UserJoined(Online(2, "fpB", "Berta")));
-        Assert.Equal("Berta", Assert.Single(vm.UsersAndBans.Users).Nickname); // online at once, from the live state
+        Assert.Equal("Berta", Assert.Single(admin.UsersAndBans.Users).Nickname); // online at once, from the live state
         Assert.Single(sent.OfType<ListUsers>()); // and the stored data is asked for again
 
         server.Apply(new UserJoined(Online(3, "fpC", "Carl")));
         server.Apply(new UserLeft(2));
         Assert.Single(sent.OfType<ListUsers>()); // at most once per second
-        Assert.Empty(vm.UsersAndBans.Users);
+        Assert.Empty(admin.UsersAndBans.Users);
         server.Apply(new UserList(sent.OfType<ListUsers>().Single().RequestId, [Known("fpA", "Anton"), Known("fpB", "Berta")])); // and one at a time
         time.Advance(TimeSpan.FromSeconds(1));
         await ListUsersSent(sent, 2);
         Assert.Equal(2, sent.OfType<ListUsers>().Count());
 
-        vm.UsersAndBans.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta"), Known("fpC", "Carla")]));
-        Assert.Equal("ber", vm.UsersAndBans.SearchText);
-        Assert.Equal(UserStatusFilter.Online, vm.UsersAndBans.SelectedStatusFilter.Value);
-        Assert.Empty(vm.UsersAndBans.Users);
-        vm.UsersAndBans.SelectedStatusFilter = vm.UsersAndBans.StatusFilters[0];
-        Assert.Equal("Berta", Assert.Single(vm.UsersAndBans.Users).Nickname);
+        admin.UsersAndBans.Apply(new UserList("r", [Known("fpA", "Anton"), Known("fpB", "Berta"), Known("fpC", "Carla")]));
+        Assert.Equal("ber", admin.UsersAndBans.SearchText);
+        Assert.Equal(UserStatusFilter.Online, admin.UsersAndBans.SelectedStatusFilter.Value);
+        Assert.Empty(admin.UsersAndBans.Users);
+        admin.UsersAndBans.SelectedStatusFilter = admin.UsersAndBans.StatusFilters[0];
+        Assert.Equal("Berta", Assert.Single(admin.UsersAndBans.Users).Nickname);
     }
 
     // ---- Package 72: ban, unban and delete from the user card ----
@@ -585,9 +585,9 @@ public class AdminViewModelTests
                 },
             },
         };
-        var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserDelete | P.Speak, dialogs: dialogs);
-        vm.UsersAndBans.Apply(new UserList("r", [Known("fpX", "Xaver")]));
-        var user = Assert.Single(vm.UsersAndBans.Users);
+        var (admin, server, sent) = Create(P.UsersView | P.BansView | P.UserDelete | P.Speak, dialogs: dialogs);
+        admin.UsersAndBans.Apply(new UserList("r", [Known("fpX", "Xaver")]));
+        var user = Assert.Single(admin.UsersAndBans.Users);
 
         await user.DeleteCommand.ExecuteAsync(null);
         Assert.Equal("Xaver", asked);
@@ -595,9 +595,9 @@ public class AdminViewModelTests
 
         answer = true;
         await user.DeleteCommand.ExecuteAsync(null);
-        var index = sent.FindIndex(r => r is DeleteKnownUser);
+        var index = sent.FindIndex(request => request is DeleteKnownUser);
         Assert.Equal(new DeleteKnownUser("fpX"), sent[index] with { RequestId = null });
-        Assert.Equal([typeof(ListUsers), typeof(ListBans)], sent.Skip(index + 1).Select(r => r.GetType())); // both tabs follow
+        Assert.Equal([typeof(ListUsers), typeof(ListBans)], sent.Skip(index + 1).Select(request => request.GetType())); // both tabs follow
     }
 
     [Fact]
@@ -615,15 +615,15 @@ public class AdminViewModelTests
             Known("fp1", "ich", [ModGroup]),
             new KnownUserInfo("fpOld", "Otto", [WellKnownGroups.Guest], CanBeModeratedByMe: true),
         ];
-        static (bool Ban, bool Unban, bool Delete) Buttons(AdminViewModel vm, string nick)
+        static (bool Ban, bool Unban, bool Delete) Buttons(AdminViewModel admin, string nick)
         {
-            var u = vm.UsersAndBans.Users.Single(u => u.Nickname == nick);
-            return (u.CanBan, u.CanUnban, u.CanDelete);
+            var knownUser = admin.UsersAndBans.Users.Single(knownUserViewModel => knownUserViewModel.Nickname == nick);
+            return (knownUser.CanBan, knownUser.CanUnban, knownUser.CanDelete);
         }
 
         var (view, viewServer, _) = Create(P.UsersView | P.Speak | P.UserKick);
         view.UsersAndBans.Apply(new UserList("r", users));
-        Assert.All(view.UsersAndBans.Users, u => Assert.Equal((false, false, false), (u.CanBan, u.CanUnban, u.CanDelete)));
+        Assert.All(view.UsersAndBans.Users, knownUser => Assert.Equal((false, false, false), (knownUser.CanBan, knownUser.CanUnban, knownUser.CanDelete)));
 
         var (banOnly, banServer, _) = Create(P.UsersView | P.UserBan | P.Speak | P.UserKick);
         banOnly.UsersAndBans.Apply(new UserList("r", users));
@@ -642,29 +642,29 @@ public class AdminViewModelTests
                 },
             },
         };
-        var (vm, server, sent) = Create(P.UsersView | P.UserBan | P.UserDelete | P.Speak | P.UserKick, dialogs: dialogs);
-        vm.UsersAndBans.Apply(new UserList("r", users));
-        Assert.Equal((true, false, true), Buttons(vm, "Xaver"));
-        Assert.Equal((false, true, true), Buttons(vm, "Bert"));   // banned: unban instead of ban
-        Assert.Equal((true, false, true), Buttons(vm, "Mod"));    // Speak and UserKick are a subset (judged by the server)
-        Assert.Equal((false, false, false), Buttons(vm, "Anna")); // stronger (Admin)
-        Assert.Equal((false, false, false), Buttons(vm, "ich"));  // never oneself
+        var (viewModel, server, sent) = Create(P.UsersView | P.UserBan | P.UserDelete | P.Speak | P.UserKick, dialogs: dialogs);
+        viewModel.UsersAndBans.Apply(new UserList("r", users));
+        Assert.Equal((true, false, true), Buttons(viewModel, "Xaver"));
+        Assert.Equal((false, true, true), Buttons(viewModel, "Bert"));   // banned: unban instead of ban
+        Assert.Equal((true, false, true), Buttons(viewModel, "Mod"));    // Speak and UserKick are a subset (judged by the server)
+        Assert.Equal((false, false, false), Buttons(viewModel, "Anna")); // stronger (Admin)
+        Assert.Equal((false, false, false), Buttons(viewModel, "ich"));  // never oneself
 
-        await vm.UsersAndBans.Users.Single(u => u.Nickname == "Xaver").BanCommand.ExecuteAsync(null);
+        await viewModel.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Xaver").BanCommand.ExecuteAsync(null);
         Assert.True(ipOffered);
         Assert.Equal(new BanKnownUser("fpX", "spam", 60, true), sent.OfType<BanKnownUser>().Last() with { RequestId = null });
         Assert.IsType<ListUsers>(sent[^1]);
 
-        await vm.UsersAndBans.Users.Single(u => u.Nickname == "Otto").BanCommand.ExecuteAsync(null); // no IP known: the option is locked
+        await viewModel.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Otto").BanCommand.ExecuteAsync(null); // no IP known: the option is locked
         Assert.False(ipOffered);
         Assert.Equal(new BanKnownUser("fpOld", "spam", 60, false), sent.OfType<BanKnownUser>().Last() with { RequestId = null });
 
-        await vm.UsersAndBans.Users.Single(u => u.Nickname == "Bert").UnbanCommand.ExecuteAsync(null);
-        Assert.Equal([ban1.Id, ban2.Id], sent.OfType<Unban>().Select(u => u.BanId));
+        await viewModel.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Bert").UnbanCommand.ExecuteAsync(null);
+        Assert.Equal([ban1.Id, ban2.Id], sent.OfType<Unban>().Select(request => request.BanId));
 
         choice = null; // cancelled
         var count = sent.Count;
-        await vm.UsersAndBans.Users.Single(u => u.Nickname == "Xaver").BanCommand.ExecuteAsync(null);
+        await viewModel.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Xaver").BanCommand.ExecuteAsync(null);
         Assert.Equal(count, sent.Count);
     }
 
@@ -686,21 +686,21 @@ public class AdminViewModelTests
         ];
         static P Rights(KnownUserInfo user) =>
             user.GroupIds.Contains(WellKnownGroups.Admin) ? P.All : user.GroupIds.Contains(ModGroup) ? P.Speak | P.UserKick : P.Speak;
-        var (vm, server, _) = Create(P.All, groupIds: [WellKnownGroups.Admin]);
-        vm.UsersAndBans.Apply(new UserList("r", users.Select(u => u with { CanBeModeratedByMe = P.All.CanModerate("fp1", Rights(u), u.Fingerprint) }).ToList()));
-        vm.UsersAndBans.Apply(new BanList("b", [banX, banA]));
+        var (admin, server, _) = Create(P.All, groupIds: [WellKnownGroups.Admin]);
+        admin.UsersAndBans.Apply(new UserList("r", users.Select(knownUser => knownUser with { CanBeModeratedByMe = P.All.CanModerate("fp1", Rights(knownUser), knownUser.Fingerprint) }).ToList()));
+        admin.UsersAndBans.Apply(new BanList("b", [banX, banA]));
         foreach (var user in users)
         {
             var allowed = P.All.CanModerate("fp1", Rights(user), user.Fingerprint);
-            var card = vm.UsersAndBans.Users.Single(u => u.Fingerprint == user.Fingerprint);
+            var card = admin.UsersAndBans.Users.Single(knownUser => knownUser.Fingerprint == user.Fingerprint);
             Assert.Equal(allowed && card.IsBanned is false, card.CanBan);
             Assert.Equal(allowed && card.IsBanned, card.CanUnban);
             Assert.Equal(allowed, card.CanDelete);
-            Assert.All(card.Toggles, t => Assert.Equal(allowed, t.IsEnabled));
+            Assert.All(card.Toggles, groupAssignment => Assert.Equal(allowed, groupAssignment.IsEnabled));
         }
-        Assert.Equal((true, false), (vm.UsersAndBans.Users.Single(u => u.Nickname == "Xaver").CanUnban, vm.UsersAndBans.Users.Single(u => u.Nickname == "Anna").CanUnban));
-        Assert.False(vm.UsersAndBans.Users.Single(u => u.Nickname == "ich").CanDelete);
-        Assert.Equal((true, false), (vm.UsersAndBans.Bans.Single(b => b.Nickname == "Xaver").CanUnban, vm.UsersAndBans.Bans.Single(b => b.Nickname == "Anna").CanUnban));
+        Assert.Equal((true, false), (admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Xaver").CanUnban, admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Anna").CanUnban));
+        Assert.False(admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "ich").CanDelete);
+        Assert.Equal((true, false), (admin.UsersAndBans.Bans.Single(ban => ban.Nickname == "Xaver").CanUnban, admin.UsersAndBans.Bans.Single(ban => ban.Nickname == "Anna").CanUnban));
     }
 
     /// <summary>Package 85: the stored server mute on the card, lifted from there with UserMute, offline too, by the rank rule.</summary>
@@ -715,18 +715,18 @@ public class AdminViewModelTests
         ];
         var (view, viewServer, _) = Create(P.UsersView | P.Speak | P.UserKick);
         view.UsersAndBans.Apply(new UserList("r", users));
-        var seen = view.UsersAndBans.Users.Single(u => u.Nickname == "Xaver");
+        var seen = view.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Xaver");
         Assert.True(seen.IsServerMuted);
         Assert.False(seen.CanLiftMute); // shown, but without UserMute not offered
 
-        var (vm, server, sent) = Create(P.UsersView | P.UserMute | P.Speak | P.UserKick);
-        vm.UsersAndBans.Apply(new UserList("r", users));
-        var x = vm.UsersAndBans.Users.Single(u => u.Nickname == "Xaver");
-        Assert.Equal((true, true, true), (x.IsServerMuted, x.CanLiftMute, x.HasActions));
-        Assert.Equal((true, false), (vm.UsersAndBans.Users.Single(u => u.Nickname == "Anna").IsServerMuted, vm.UsersAndBans.Users.Single(u => u.Nickname == "Anna").CanLiftMute));
-        Assert.Equal((false, false), (vm.UsersAndBans.Users.Single(u => u.Nickname == "Yvonne").IsServerMuted, vm.UsersAndBans.Users.Single(u => u.Nickname == "Yvonne").CanLiftMute));
+        var (admin, server, sent) = Create(P.UsersView | P.UserMute | P.Speak | P.UserKick);
+        admin.UsersAndBans.Apply(new UserList("r", users));
+        var knownUserViewModel = admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Xaver");
+        Assert.Equal((true, true, true), (knownUserViewModel.IsServerMuted, knownUserViewModel.CanLiftMute, knownUserViewModel.HasActions));
+        Assert.Equal((true, false), (admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Anna").IsServerMuted, admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Anna").CanLiftMute));
+        Assert.Equal((false, false), (admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Yvonne").IsServerMuted, admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Yvonne").CanLiftMute));
 
-        await x.LiftMuteCommand.ExecuteAsync(null);
+        await knownUserViewModel.LiftMuteCommand.ExecuteAsync(null);
         Assert.Equal(new SetKnownUserServerMute("fpX", false), sent[^2] with { RequestId = null });
         Assert.IsType<ListUsers>(sent[^1]);
     }
@@ -737,13 +737,13 @@ public class AdminViewModelTests
     {
         var ids = Enumerable.Range(0, channelCount).Select(_ => Guid.NewGuid()).ToArray();
         var snapshot = Snapshots.Snapshot("Server", "", ids[0],
-            ids.Select((id, i) => new ChannelInfo(id, $"K{i + 1}", "", i)).ToList(),
+            ids.Select((id, index) => new ChannelInfo(id, $"K{index + 1}", "", index)).ToList(),
             [new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak)],
             [new UserInfo(1, "fp1", "ich", ids[0], false, false, false, perms, [])]);
         var sent = new List<Request>();
-        var server = new ServerViewModel(Snapshots.Mirror(snapshot), r =>
+        var server = new ServerViewModel(Snapshots.Mirror(snapshot), request =>
         {
-            sent.Add(r);
+            sent.Add(request);
             return Task.CompletedTask;
         }, new ManualTimeProvider());
         var admin = new AdminViewModel(server);
@@ -753,37 +753,37 @@ public class AdminViewModelTests
     [Fact]
     public async Task LinkMatrix_MeshOfEight_Sends28Links()
     {
-        var (m, _, sent, _) = Matrix(8);
-        foreach (var row in m.Rows) row.IsSelected = true;
-        m.LinkSelectedCommand.Execute(null);
-        Assert.Equal(28, m.PendingCount);
-        await m.ApplyCommand.ExecuteAsync(null);
+        var (linkMatrix, _, sent, _) = Matrix(8);
+        foreach (var row in linkMatrix.Rows) row.IsSelected = true;
+        linkMatrix.LinkSelectedCommand.Execute(null);
+        Assert.Equal(28, linkMatrix.PendingCount);
+        await linkMatrix.ApplyCommand.ExecuteAsync(null);
         var request = Assert.IsType<SetChannelLinks>(sent[^1]);
         Assert.Equal((28, 0), (request.Add.Count, request.Remove.Count));
-        Assert.Equal(28, request.Add.Select(l => (l.A, l.B)).Distinct().Count());
+        Assert.Equal(28, request.Add.Select(link => (link.A, link.B)).Distinct().Count());
     }
 
     [Fact]
     public void LinkMatrix_ToggleDiscardAndRemoteChange()
     {
-        var (m, server, _, ids) = Matrix(3);
-        var cell = m.Rows[0].Cells[1];
+        var (linkMatrix, server, _, ids) = Matrix(3);
+        var cell = linkMatrix.Rows[0].Cells[1];
         cell.IsLinked = true;
-        Assert.True(m.Rows[1].Cells[0].IsLinked); // the mirrored field follows
-        Assert.True(m.Rows[1].Cells[0].IsPending);
-        Assert.True(m.Rows[0].Cells[0].IsDiagonal);
+        Assert.True(linkMatrix.Rows[1].Cells[0].IsLinked); // the mirrored field follows
+        Assert.True(linkMatrix.Rows[1].Cells[0].IsPending);
+        Assert.True(linkMatrix.Rows[0].Cells[0].IsDiagonal);
 
-        m.DiscardCommand.Execute(null);
-        Assert.False(m.Rows[0].Cells[1].IsLinked);
-        Assert.False(m.HasPending);
+        linkMatrix.DiscardCommand.Execute(null);
+        Assert.False(linkMatrix.Rows[0].Cells[1].IsLinked);
+        Assert.False(linkMatrix.HasPending);
 
-        m.Rows[0].Cells[1].IsLinked = true; // pending K1-K2
-        m.Rows[0].Cells[2].IsLinked = true; // pending K1-K3
+        linkMatrix.Rows[0].Cells[1].IsLinked = true; // pending K1-K2
+        linkMatrix.Rows[0].Cells[2].IsLinked = true; // pending K1-K3
         server.Apply(new ChannelsLinked(ids[0], ids[1])); // another admin sets K1-K2
-        Assert.Equal(1, m.PendingCount); // K1-K2 is real now, K1-K3 still pending
-        Assert.True(m.Rows[0].Cells[1].IsLinked);
-        Assert.False(m.Rows[0].Cells[1].IsPending);
-        Assert.True(m.Rows[0].Cells[2].IsPending);
+        Assert.Equal(1, linkMatrix.PendingCount); // K1-K2 is real now, K1-K3 still pending
+        Assert.True(linkMatrix.Rows[0].Cells[1].IsLinked);
+        Assert.False(linkMatrix.Rows[0].Cells[1].IsPending);
+        Assert.True(linkMatrix.Rows[0].Cells[2].IsPending);
     }
 
     [Fact]
@@ -799,38 +799,38 @@ public class AdminViewModelTests
     [Fact]
     public void UserList_FetchesAllPages()
     {
-        var users = Enumerable.Range(0, 5).Select(i => new KnownUserInfo($"fp{i}", $"Nutzer{i}", [WellKnownGroups.Guest])).ToList();
+        var users = Enumerable.Range(0, 5).Select(index => new KnownUserInfo($"fp{index}", $"Nutzer{index}", [WellKnownGroups.Guest])).ToList();
         UserList PageAt(string? id, int offset) => new(id, users.Skip(offset).Take(2).ToList(), offset, users.Count);
-        var (vm, server, sent) = Create(P.UsersView | P.Speak, reply: r => r is ListUsers l && l.Offset > 0 ? PageAt(l.RequestId, l.Offset) : null);
+        var (admin, server, sent) = Create(P.UsersView | P.Speak, reply: request => request is ListUsers listUsers && listUsers.Offset > 0 ? PageAt(listUsers.RequestId, listUsers.Offset) : null);
 
-        vm.UsersAndBans.Apply(PageAt("r", 0));
-        Assert.Equal([2, 4], sent.OfType<ListUsers>().Select(l => l.Offset));
-        Assert.Equal(users.Select(u => u.Fingerprint), vm.UsersAndBans.Users.Select(u => u.Fingerprint).Order());
+        admin.UsersAndBans.Apply(PageAt("r", 0));
+        Assert.Equal([2, 4], sent.OfType<ListUsers>().Select(request => request.Offset));
+        Assert.Equal(users.Select(knownUser => knownUser.Fingerprint), admin.UsersAndBans.Users.Select(knownUser => knownUser.Fingerprint).Order());
 
         // a stale page of an older round is ignored
-        vm.UsersAndBans.Apply(PageAt("alt", 4));
-        Assert.Equal(5, vm.UsersAndBans.Users.Count);
+        admin.UsersAndBans.Apply(PageAt("alt", 4));
+        Assert.Equal(5, admin.UsersAndBans.Users.Count);
     }
 
     /// <summary>A user joins while a long list is still fetched: the pages of both rounds must not mix.</summary>
     [Fact]
     public void UserList_JoinMidFetch_NoUserMissingOrTwice()
     {
-        var before = Enumerable.Range(0, 450).Select(i => Known($"fp{i:D3}", $"Nutzer{i:D3}")).ToList();
+        var before = Enumerable.Range(0, 450).Select(index => Known($"fp{index:D3}", $"Nutzer{index:D3}")).ToList();
         var after = before.Prepend(Known("fpNew", "Aaron")).ToList(); // shifts every later page by one
         UserList PageOf(List<KnownUserInfo> all, string? id, int offset) => new(id, all.Skip(offset).Take(200).ToList(), offset, all.Count);
-        var (vm, server, sent) = Create(P.UsersView | P.Speak);
+        var (admin, server, sent) = Create(P.UsersView | P.Speak);
 
-        vm.UsersAndBans.Apply(PageOf(before, "r0", 0));
+        admin.UsersAndBans.Apply(PageOf(before, "r0", 0));
         server.Apply(new UserJoined(Online(2, "fpNew", "Aaron")));
-        var fresh = sent.OfType<ListUsers>().Single(l => l.Offset == 0).RequestId;
+        var fresh = sent.OfType<ListUsers>().Single(request => request.Offset == 0).RequestId;
         server.Apply(PageOf(after, fresh, 0));
         server.Apply(PageOf(before, "r0", 200)); // the old round's answer arrives late
         server.Apply(PageOf(after, fresh, 200));
-        Assert.Contains(sent.OfType<ListUsers>(), l => l.Offset == 400 && l.RequestId == fresh);
+        Assert.Contains(sent.OfType<ListUsers>(), request => request.Offset == 400 && request.RequestId == fresh);
         server.Apply(PageOf(after, fresh, 400));
 
-        Assert.Equal(after.Select(u => u.Fingerprint).Order(), vm.UsersAndBans.Users.Select(u => u.Fingerprint).Order());
+        Assert.Equal(after.Select(knownUser => knownUser.Fingerprint).Order(), admin.UsersAndBans.Users.Select(knownUser => knownUser.Fingerprint).Order());
     }
 
     /// <summary>Quickly ticked group boxes: the list refreshes are coalesced, so the server's list limit (2/s, burst 4) is never hit.</summary>
@@ -841,28 +841,28 @@ public class AdminViewModelTests
         ManualTimeProvider? clock = null;
         double tokens = 4;
         DateTimeOffset? refilled = null;
-        Message? Serve(Request r)
+        Message? Serve(Request request)
         {
-            switch (r)
+            switch (request)
             {
-                case AssignGroup a: groups.Add(a.GroupId); return null;
-                case UnassignGroup u: groups.Remove(u.GroupId); return null;
-                case ListUsers l:
+                case AssignGroup assignGroup: groups.Add(assignGroup.GroupId); return null;
+                case UnassignGroup unassignGroup: groups.Remove(unassignGroup.GroupId); return null;
+                case ListUsers listUsers:
                     var now = clock!.GetUtcNow();
                     if (refilled is { } at) tokens = Math.Min(4, tokens + (now - at).TotalSeconds * 2);
                     refilled = now;
-                    if (tokens < 1) return new Error(l.RequestId, ReasonCodes.RateLimited);
+                    if (tokens < 1) return new Error(listUsers.RequestId, ReasonCodes.RateLimited);
                     tokens--;
-                    return new UserList(l.RequestId, [new KnownUserInfo("fpX", "Xaver", [.. groups], CanBeModeratedByMe: true)]);
+                    return new UserList(listUsers.RequestId, [new KnownUserInfo("fpX", "Xaver", [.. groups], CanBeModeratedByMe: true)]);
                 default: return null;
             }
         }
-        var (vm, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick, reply: Serve);
+        var (admin, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick, reply: Serve);
         clock = (ManualTimeProvider)server.Time;
         var notices = new List<string>();
         server.Notice += notices.Add;
-        vm.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
-        GroupAssignmentViewModel Box(string name) => Assert.Single(vm.UsersAndBans.Users).Toggles.Single(t => t.Name == name);
+        admin.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)]));
+        GroupAssignmentViewModel Box(string name) => Assert.Single(admin.UsersAndBans.Users).Toggles.Single(groupAssignment => groupAssignment.Name == name);
 
         foreach (var (name, on) in new[] { ("Moderator", true), ("Gast", false), ("Moderator", false), ("Gast", true), ("Moderator", true) })
         {
@@ -883,13 +883,13 @@ public class AdminViewModelTests
     [Fact]
     public async Task GroupToggle_NotRevertedByAnOlderList()
     {
-        var (vm, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
+        var (admin, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
         var time = (ManualTimeProvider)server.Time;
         var before = new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true);
         server.Apply(new UserJoined(Online(2, "fpX", "Xaver"))); // a refresh is on its way when the box is ticked
         var older = sent.OfType<ListUsers>().Single().RequestId;
-        vm.UsersAndBans.Apply(new UserList("r", [before]));
-        GroupAssignmentViewModel Mod() => Assert.Single(vm.UsersAndBans.Users).Toggles.Single(t => t.Name == "Moderator");
+        admin.UsersAndBans.Apply(new UserList("r", [before]));
+        GroupAssignmentViewModel Mod() => Assert.Single(admin.UsersAndBans.Users).Toggles.Single(groupAssignment => groupAssignment.Name == "Moderator");
 
         Mod().IsChecked = true;
         await Mod().ToggleCommand.ExecuteAsync(null);
@@ -910,12 +910,12 @@ public class AdminViewModelTests
     {
         var ban = new BanInfo(Guid.NewGuid(), "fpB", "Bert", null, "", "mod", null);
         var dialogs = new AdminDialogs { UsersAndBans = new() { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, false)) } };
-        var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.Speak, dialogs: dialogs);
-        vm.UsersAndBans.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true },
+        var (admin, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.Speak, dialogs: dialogs);
+        admin.UsersAndBans.Apply(new UserList("r", [Known("fpX", "Xaver") with { CanBeModeratedByMe = true },
             Known("fpB", "Bert", bans: [ban]) with { CanBeModeratedByMe = true }]));
 
-        await vm.UsersAndBans.Users.Single(u => u.Nickname == "Bert").UnbanCommand.ExecuteAsync(null);
-        await vm.UsersAndBans.Users.Single(u => u.Nickname == "Xaver").BanCommand.ExecuteAsync(null);
+        await admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Bert").UnbanCommand.ExecuteAsync(null);
+        await admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "Xaver").BanCommand.ExecuteAsync(null);
 
         Assert.Single(sent.OfType<ListBans>());
         Assert.Single(sent.OfType<ListUsers>());
@@ -927,38 +927,38 @@ public class AdminViewModelTests
     [Fact]
     public async Task Lists_ShowLoadingUntilFirstPage_RefreshKeepsContent()
     {
-        var (vm, server, sent) = Create(P.UsersView | P.BansView | P.BackupsManage | P.LogsView | P.Speak);
+        var (admin, server, sent) = Create(P.UsersView | P.BansView | P.BackupsManage | P.LogsView | P.Speak);
         var time = (ManualTimeProvider)server.Time;
-        await vm.RequestListsAsync();
-        PendingActionViewModel[] loads = [vm.UsersAndBans.UsersLoad, vm.UsersAndBans.BansLoad, vm.BackupCard.BackupsLoad, vm.Logs.FilesLoad];
-        Assert.All(loads, l => Assert.True(l.IsRunning && !l.IsBusy)); // nothing shows before 150 ms
+        await admin.RequestListsAsync();
+        PendingActionViewModel[] loads = [admin.UsersAndBans.UsersLoad, admin.UsersAndBans.BansLoad, admin.BackupCard.BackupsLoad, admin.Logs.FilesLoad];
+        Assert.All(loads, pendingAction => Assert.True(pendingAction.IsRunning && !pendingAction.IsBusy)); // nothing shows before 150 ms
         time.Advance(PendingActionViewModel.ShowAfter);
-        Assert.All(loads, l => Assert.True(l.IsFirstLoad && !l.IsRefreshing));
+        Assert.All(loads, pendingAction => Assert.True(pendingAction.IsFirstLoad && !pendingAction.IsRefreshing));
 
         // the users come in two pages: loading until the list is complete
         var users = sent.OfType<ListUsers>().Single().RequestId;
         server.Apply(new UserList(users, [new KnownUserInfo("fpX", "Xaver", [])], 0, 2));
-        Assert.True(vm.UsersAndBans.UsersLoad.IsFirstLoad);
+        Assert.True(admin.UsersAndBans.UsersLoad.IsFirstLoad);
         server.Apply(new UserList(users, [new KnownUserInfo("fpY", "Yvonne", [])], 1, 2));
-        Assert.False(vm.UsersAndBans.UsersLoad.IsBusy);
+        Assert.False(admin.UsersAndBans.UsersLoad.IsBusy);
         server.Apply(new BanList(sent.OfType<ListBans>().Single().RequestId, []));
         server.Apply(new BackupList(sent.OfType<ListBackups>().Single().RequestId, []));
         server.Apply(new LogList(sent.OfType<ListLogs>().Single().RequestId, []));
-        Assert.All(loads, l => Assert.False(l.IsRunning || l.IsBusy));
+        Assert.All(loads, pendingAction => Assert.False(pendingAction.IsRunning || pendingAction.IsBusy));
 
         // a refresh: the old cards stay, with a small spinner instead of the loading state
         time.Advance(TimeSpan.FromSeconds(1));
-        await vm.RefreshCommand.ExecuteAsync(null);
+        await admin.RefreshCommand.ExecuteAsync(null);
         time.Advance(PendingActionViewModel.ShowAfter);
-        Assert.All(loads, l => Assert.True(l.IsRefreshing && !l.IsFirstLoad));
-        Assert.Equal(2, vm.UsersAndBans.Users.Count);
+        Assert.All(loads, pendingAction => Assert.True(pendingAction.IsRefreshing && !pendingAction.IsFirstLoad));
+        Assert.Equal(2, admin.UsersAndBans.Users.Count);
 
         // a list that never comes: a visible error after 10 s, and "Aktualisieren" asks again
         time.Advance(TimeSpan.FromSeconds(10));
-        Assert.All(loads, l => Assert.Equal(Strings.Pending_NoAnswer, l.Error));
-        Assert.All(loads, l => Assert.False(l.IsBusy));
-        await vm.RefreshCommand.ExecuteAsync(null);
-        Assert.All(loads, l => Assert.True(l.IsRunning && l.Error is null));
+        Assert.All(loads, pendingAction => Assert.Equal(Strings.Pending_NoAnswer, pendingAction.Error));
+        Assert.All(loads, pendingAction => Assert.False(pendingAction.IsBusy));
+        await admin.RefreshCommand.ExecuteAsync(null);
+        Assert.All(loads, pendingAction => Assert.True(pendingAction.IsRunning && pendingAction.Error is null));
     }
 
     /// <summary>Package 98 (AC4): the user card's actions spin until a user list asked for after them shows the change.</summary>
@@ -966,18 +966,18 @@ public class AdminViewModelTests
     public async Task CardActions_BusyUntilConfirmed()
     {
         var dialogs = new AdminDialogs { UsersAndBans = new() { ConfirmDeleteUser = _ => Task.FromResult(true) } };
-        var (vm, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.UserDelete | P.UserMute | P.GroupsAssign | P.Speak | P.UserKick,
+        var (admin, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.UserDelete | P.UserMute | P.GroupsAssign | P.Speak | P.UserKick,
             dialogs: dialogs);
         var time = (ManualTimeProvider)server.Time;
         var xaver = Known("fpX", "Xaver") with { CanBeModeratedByMe = true, ServerMuted = true };
-        vm.UsersAndBans.Apply(new UserList("r", [xaver]));
-        KnownUserViewModel Card() => vm.UsersAndBans.Users.Single(u => u.Fingerprint == "fpX");
+        admin.UsersAndBans.Apply(new UserList("r", [xaver]));
+        KnownUserViewModel Card() => admin.UsersAndBans.Users.Single(knownUser => knownUser.Fingerprint == "fpX");
 
         await Card().LiftMuteCommand.ExecuteAsync(null);
         Assert.Single(sent.OfType<SetKnownUserServerMute>());
         time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(Card().Busy.IsBusy);
-        vm.UsersAndBans.Apply(new UserList("r", [xaver])); // an older list: still waiting
+        admin.UsersAndBans.Apply(new UserList("r", [xaver])); // an older list: still waiting
         Assert.True(Card().Busy.IsBusy);
         var asked = sent.LastRequestId<ListUsers>();
         server.Apply(new UserList(asked, [xaver with { ServerMuted = false }]));
@@ -985,7 +985,7 @@ public class AdminViewModelTests
 
         // a group toggle, refused: the card stops and shows why
         time.Advance(TimeSpan.FromSeconds(1));
-        var box = Card().Toggles.Single(t => t.Name == "Moderator");
+        var box = Card().Toggles.Single(groupAssignment => groupAssignment.Name == "Moderator");
         box.IsChecked = true;
         await box.ToggleCommand.ExecuteAsync(null);
         var assign = sent.OfType<AssignGroup>().Single();
@@ -1001,7 +1001,7 @@ public class AdminViewModelTests
         time.Advance(PendingActionViewModel.ShowAfter);
         Assert.True(Card().Busy.IsBusy);
         server.Apply(new UserList(sent.LastRequestId<ListUsers>(), []));
-        Assert.Empty(vm.UsersAndBans.Users);
+        Assert.Empty(admin.UsersAndBans.Users);
     }
 
     /// <summary>Package 102: a lifted ban folds away in the real list, the count is right at once.</summary>
@@ -1009,7 +1009,7 @@ public class AdminViewModelTests
     public void LiftedBan_FoldsAway_CountAtOnce()
     {
         var (view, server, _) = Create(P.BansView | P.Speak);
-        server.Post = a => a();
+        server.Post = action => action();
         server.Leave.Delay = TimeSpan.FromMinutes(1);
         var keep = new BanInfo(Guid.NewGuid(), "fpA", "Anton", null, "", "mod", null);
         var lifted = new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null);
@@ -1017,7 +1017,7 @@ public class AdminViewModelTests
         view.UsersAndBans.Apply(new BanList("c", [keep]));
         Assert.Equal(2, view.UsersAndBans.Bans.Count);
         Assert.Equal("Anton", Assert.Single(view.UsersAndBans.Bans.Live()).Nickname);
-        Assert.True(CollectionSync.IsLeaving(view.UsersAndBans.Bans, view.UsersAndBans.Bans.Single(b => b.Nickname == "Xaver")));
+        Assert.True(CollectionSync.IsLeaving(view.UsersAndBans.Bans, view.UsersAndBans.Bans.Single(ban => ban.Nickname == "Xaver")));
         Assert.False(view.UsersAndBans.HasNoBanMatches);
     }
 
@@ -1026,7 +1026,7 @@ public class AdminViewModelTests
     public void UnsavedGroup_Dropped_FoldsAway()
     {
         var (view, server, _) = Create(P.GroupsView | P.GroupsCreate | P.Speak);
-        server.Post = a => a();
+        server.Post = action => action();
         server.Leave.Delay = TimeSpan.FromMilliseconds(220);
         view.GroupList.NewGroupCommand.Execute(null);
         var fresh = view.GroupList.SelectedGroup!;
@@ -1043,7 +1043,7 @@ public class AdminViewModelTests
         var watch = System.Diagnostics.Stopwatch.StartNew();
         while (view.GroupList.Groups.Contains(fresh) && watch.ElapsedMilliseconds < 5000) Thread.Sleep(10); // the removal runs on the pool
         Assert.DoesNotContain(fresh, view.GroupList.Groups);
-        Assert.Equal(["Gast", "Moderator", "Admin"], view.GroupList.Groups.Select(g => g.Name));
+        Assert.Equal(["Gast", "Moderator", "Admin"], view.GroupList.Groups.Select(groupEdit => groupEdit.Name));
 
         // no delay (the simplified display): gone at once
         server.Leave.Delay = TimeSpan.Zero;

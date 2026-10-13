@@ -18,10 +18,10 @@ public sealed class LinkCommandTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        server = await TestServer.StartAsync(d =>
+        server = await TestServer.StartAsync(serverData =>
         {
-            TestServer.Grant(adminId, "Admin")(d);
-            TestServer.Grant(modId, "Moderator")(d);
+            TestServer.Grant(adminId, "Admin")(serverData);
+            TestServer.Grant(modId, "Moderator")(serverData);
         });
         a = await TestClient.ConnectAsync(server, "admin", adminId);
         m = await TestClient.ConnectAsync(server, "mod", modId);
@@ -33,26 +33,26 @@ public sealed class LinkCommandTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        foreach (var c in new[] { a, m, g }) await c.DisposeAsync();
+        foreach (var client in new[] { a, m, g }) await client.DisposeAsync();
         await server.DisposeAsync();
     }
 
     async Task<Guid> CreateAsync(string name)
     {
         await a.SendAsync(new CreateChannel(name, ""));
-        return (await a.WaitForAsync<ChannelAdded>(c => c.Channel.Name == name)).Channel.Id;
+        return (await a.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == name)).Channel.Id;
     }
 
-    static (Guid, Guid) Norm(Guid p, Guid q) => p.CompareTo(q) < 0 ? (p, q) : (q, p);
+    static (Guid, Guid) Norm(Guid id, Guid otherId) => id.CompareTo(otherId) < 0 ? (id, otherId) : (otherId, id);
 
     /// <summary>
     /// Sends a request that surely fails and checks nothing unexpected arrives before its answer. The server answers
     /// in order, so the requests before it are done then, however slow the runner: the silence checks after it hold.
     /// </summary>
-    static async Task ProbeAsync(TestClient c, Func<Message, bool> unexpected)
+    static async Task ProbeAsync(TestClient client, Func<Message, bool> unexpected)
     {
-        await c.SendAsync(new LinkChannels(Guid.Empty, Guid.Empty) { RequestId = "probe" });
-        while (await c.NextAsync() is { } message and not Error { RequestId: "probe" })
+        await client.SendAsync(new LinkChannels(Guid.Empty, Guid.Empty) { RequestId = "probe" });
+        while (await client.NextAsync() is { } message and not Error { RequestId: "probe" })
             Assert.False(unexpected(message), $"unexpected {message}");
     }
 
@@ -70,7 +70,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
     public async Task LinkToSeparator_InvalidLink()
     {
         await a.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator));
-        var separator = (await a.WaitForAsync<ChannelAdded>(c => c.Channel.Kind == ChannelKind.Separator)).Channel.Id;
+        var separator = (await a.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Kind == ChannelKind.Separator)).Channel.Id;
         await m.SendAsync(new LinkChannels(x, separator) { RequestId = "l" });
         Assert.Equal(ReasonCodes.InvalidLink, (await m.ErrorAsync("l")).Code);
         await m.SendAsync(new SetChannelLinks([new LinkInfo(separator, y)], []) { RequestId = "s" });
@@ -109,7 +109,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
         await m.SendAsync(new LinkChannels(x, y));
         await g.WaitForAsync<ChannelsLinked>();
         await m.SendAsync(new UnlinkChannels(y, x));
-        Assert.Equal(Norm(x, y), await g.WaitForAsync<ChannelsUnlinked>() is var u ? (u.A, u.B) : default);
+        Assert.Equal(Norm(x, y), await g.WaitForAsync<ChannelsUnlinked>() is var channelsUnlinked ? (channelsUnlinked.A, channelsUnlinked.B) : default);
         await m.WaitForAsync<ChannelsUnlinked>(); // m's own copy of the real unlink, so the probe only sees what the no-op sends
 
         await m.SendAsync(new UnlinkChannels(y, x));
@@ -152,7 +152,7 @@ public sealed class LinkCommandTests : IAsyncLifetime
     {
         await m.SendAsync(new LinkChannels(x, y));
         await g.WaitForAsync<ChannelsLinked>();
-        foreach (var c in new[] { a, m, g }) await c.DisposeAsync();
+        foreach (var client in new[] { a, m, g }) await client.DisposeAsync();
 
         server = await server.RestartAsync();
         a = await TestClient.ConnectAsync(server, "admin", adminId);
@@ -184,10 +184,10 @@ public sealed class LinkCommandTests : IAsyncLifetime
 
         await m.SendAsync(new SetChannelLinks([new LinkInfo(x, y), new LinkInfo(y, lobby)], [new LinkInfo(x, lobby)]));
         var linked = new[] { await g.WaitForAsync<ChannelsLinked>(), await g.WaitForAsync<ChannelsLinked>() };
-        Assert.Equal(new[] { Norm(x, y), Norm(y, lobby) }.Order(), linked.Select(l => Norm(l.A, l.B)).Order());
+        Assert.Equal(new[] { Norm(x, y), Norm(y, lobby) }.Order(), linked.Select(channelsLinked => Norm(channelsLinked.A, channelsLinked.B)).Order());
         var unlinked = await g.WaitForAsync<ChannelsUnlinked>();
         Assert.Equal(Norm(lobby, x), Norm(unlinked.A, unlinked.B));
-        Assert.Contains(server.Log, l => l.Contains("Links geändert von mod: 2 gesetzt, 1 entfernt"));
+        Assert.Contains(server.Log, line => line.Contains("Links geändert von mod: 2 gesetzt, 1 entfernt"));
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
         Assert.Equal(2, late.Welcome.Snapshot.Links.Count);

@@ -31,7 +31,7 @@ public sealed class LogCommandTests
     {
         var id = Guid.NewGuid().ToString("N");
         await client.SendAsync(new ListLogs { RequestId = id });
-        return (await client.WaitForAsync<LogList>(l => l.RequestId == id)).Files;
+        return (await client.WaitForAsync<LogList>(logList => logList.RequestId == id)).Files;
     }
 
     // Generous waits in this file: reading and searching log files on a slow CI disk can take long; they return early.
@@ -39,14 +39,14 @@ public sealed class LogCommandTests
     {
         var id = Guid.NewGuid().ToString("N");
         await client.SendAsync(new ReadLog(fileId, page) { RequestId = id });
-        return await client.WaitForAsync<LogPage>(p => p.RequestId == id, 30_000);
+        return await client.WaitForAsync<LogPage>(logPage => logPage.RequestId == id, 30_000);
     }
 
     static async Task<LogSearchResult> SearchAsync(TestClient client, SearchLogs search, int timeoutMs = 30_000)
     {
         var id = Guid.NewGuid().ToString("N");
         await client.SendAsync(search with { RequestId = id });
-        return await client.WaitForAsync<LogSearchResult>(r => r.RequestId == id, timeoutMs);
+        return await client.WaitForAsync<LogSearchResult>(logSearchResult => logSearchResult.RequestId == id, timeoutMs);
     }
 
     static string ServerLogDir(TestServer server) => Directory.CreateDirectory(Path.Combine(server.DataDir, "logs", "server")).FullName;
@@ -63,7 +63,7 @@ public sealed class LogCommandTests
         await admin.SendAsync(new CreateChannel("Alt", ""));
         var old = (await admin.WaitForAsync<ChannelAdded>()).Channel.Id;
         await admin.SendAsync(new JoinChannel(raid));
-        await admin.WaitForAsync<UserUpdated>(u => u.User.ChannelId == raid);
+        await admin.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.ChannelId == raid);
         await admin.SendAsync(new DeleteChannel(old));
         await admin.WaitForAsync<ChannelRemoved>();
         await admin.DisposeAsync();
@@ -76,18 +76,18 @@ public sealed class LogCommandTests
         await again.WaitForAsync<ChannelUpdated>();
 
         var files = await ListAsync(again);
-        var servers = files.Where(f => f.Kind == LogKind.Server).ToList();
+        var servers = files.Where(logFile => logFile.Kind == LogKind.Server).ToList();
         Assert.Equal(2, servers.Count);
-        Assert.All(files, f => Assert.True(f.Size > 0, f.Id));
-        Assert.All(servers, f => Assert.Null(f.ChannelId));
-        Assert.Equal(files.OrderByDescending(f => f.Start).Select(f => f.Start), files.Select(f => f.Start));
+        Assert.All(files, logFile => Assert.True(logFile.Size > 0, logFile.Id));
+        Assert.All(servers, logFile => Assert.Null(logFile.ChannelId));
+        Assert.Equal(files.OrderByDescending(logFile => logFile.Start).Select(logFile => logFile.Start), files.Select(logFile => logFile.Start));
         Assert.True(servers[0].Start > servers[1].Start);
         Assert.Equal(time.GetUtcNow(), servers[0].Start);
         // current name for a live channel, the name in the file for a deleted one
-        Assert.Contains(files, f => f.ChannelId == raid && f.ChannelName == "Raid neu");
-        Assert.Contains(files, f => f.ChannelId == old && f.ChannelName == "Alt");
-        Assert.Contains(files, f => f.ChannelName == "Lobby");
-        Assert.All(files, f => Assert.Matches(@"^(server|channels/[0-9a-f-]{36})/\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.log$", f.Id));
+        Assert.Contains(files, logFile => logFile.ChannelId == raid && logFile.ChannelName == "Raid neu");
+        Assert.Contains(files, logFile => logFile.ChannelId == old && logFile.ChannelName == "Alt");
+        Assert.Contains(files, logFile => logFile.ChannelName == "Lobby");
+        Assert.All(files, logFile => Assert.Matches(@"^(server|channels/[0-9a-f-]{36})/\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.log$", logFile.Id));
     }
 
     [Fact]
@@ -95,9 +95,9 @@ public sealed class LogCommandTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
-        WriteLines(Path.Combine(ServerLogDir(server), "2025-01-01_00-00-00.log"), Enumerable.Range(1, 2500).Select(i => $"Zeile {i}"));
-        var file = (await ListAsync(admin)).Single(f => f.Id == "server/2025-01-01_00-00-00.log");
+        await using var client = admin;
+        WriteLines(Path.Combine(ServerLogDir(server), "2025-01-01_00-00-00.log"), Enumerable.Range(1, 2500).Select(index => $"Zeile {index}"));
+        var file = (await ListAsync(admin)).Single(logFile => logFile.Id == "server/2025-01-01_00-00-00.log");
 
         var last = await ReadAsync(admin, file.Id);
         Assert.Equal((3, 3, 2001, 500), (last.Page, last.PageCount, last.FirstLine, last.Lines.Count));
@@ -112,7 +112,7 @@ public sealed class LogCommandTests
         Assert.Equal(3, (await ReadAsync(admin, file.Id, 9)).Page);
 
         // exactly 1000 lines are one full page
-        WriteLines(Path.Combine(ServerLogDir(server), "2025-01-02_00-00-00.log"), Enumerable.Range(1, 1000).Select(i => $"Zeile {i}"));
+        WriteLines(Path.Combine(ServerLogDir(server), "2025-01-02_00-00-00.log"), Enumerable.Range(1, 1000).Select(index => $"Zeile {index}"));
         var full = await ReadAsync(admin, "server/2025-01-02_00-00-00.log");
         Assert.Equal((1, 1, 1, 1000), (full.Page, full.PageCount, full.FirstLine, full.Lines.Count));
     }
@@ -122,13 +122,13 @@ public sealed class LogCommandTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         var dir = ServerLogDir(server);
         var channel = Guid.NewGuid();
         var channelDir = Directory.CreateDirectory(Path.Combine(server.DataDir, "logs", "channels", channel.ToString())).FullName;
         WriteLines(Path.Combine(dir, "2025-01-01_00-00-00.log"), ["alt: gesucht", "axb"]);
         File.SetLastWriteTime(Path.Combine(dir, "2025-01-01_00-00-00.log"), new DateTime(2025, 1, 1, 1, 0, 0));
-        WriteLines(Path.Combine(dir, "2025-02-01_00-00-00.log"), Enumerable.Range(1, 1200).Select(i => i % 2 == 0 ? $"{i} GeSuChT" : $"{i} nichts"));
+        WriteLines(Path.Combine(dir, "2025-02-01_00-00-00.log"), Enumerable.Range(1, 1200).Select(index => index % 2 == 0 ? $"{index} GeSuChT" : $"{index} nichts"));
         File.SetLastWriteTime(Path.Combine(dir, "2025-02-01_00-00-00.log"), new DateTime(2025, 2, 1, 1, 0, 0));
         WriteLines(Path.Combine(channelDir, "2025-03-01_00-00-00.log"), ["2025-03-01 00:00:00.000 [Raid] eins gesucht", "zwei", "2025-03-01 00:00:01.000 [Raid] drei GESUCHT"]);
         File.SetLastWriteTime(Path.Combine(channelDir, "2025-03-01_00-00-00.log"), new DateTime(2025, 3, 1, 1, 0, 0));
@@ -139,16 +139,16 @@ public sealed class LogCommandTests
         Assert.False(all.TimedOut);
         // newest first: the channel file (newest start), its last line first, then the February file from its end
         Assert.Equal([("channels/" + channel + "/2025-03-01_00-00-00.log", 3), ("channels/" + channel + "/2025-03-01_00-00-00.log", 1)],
-            all.Hits.Take(2).Select(h => (h.FileId, h.Line)));
+            all.Hits.Take(2).Select(logHit => (logHit.FileId, logHit.Line)));
         Assert.Equal(("server/2025-02-01_00-00-00.log", 1200, "1200 GeSuChT"), (all.Hits[2].FileId, all.Hits[2].Line, all.Hits[2].Text));
-        Assert.All(all.Hits, h => Assert.Contains("gesucht", h.Text, StringComparison.OrdinalIgnoreCase));
+        Assert.All(all.Hits, logHit => Assert.Contains("gesucht", logHit.Text, StringComparison.OrdinalIgnoreCase));
 
         // filters: type, channel and period; plain text, no regex
         var channelOnly = await SearchAsync(admin, new SearchLogs("GESUCHT", LogKind.Channel, channel));
-        Assert.Equal([3, 1], channelOnly.Hits.Select(h => h.Line));
+        Assert.Equal([3, 1], channelOnly.Hits.Select(logHit => logHit.Line));
         Assert.False(channelOnly.Truncated);
         var serverOnly = await SearchAsync(admin, new SearchLogs("gesucht", LogKind.Server));
-        Assert.DoesNotContain(serverOnly.Hits, h => h.FileId.StartsWith("channels/"));
+        Assert.DoesNotContain(serverOnly.Hits, logHit => logHit.FileId.StartsWith("channels/"));
         var january = await SearchAsync(admin, new SearchLogs("gesucht", null, null,
             new DateTimeOffset(2024, 12, 31, 0, 0, 0, TimeSpan.Zero), new DateTimeOffset(2025, 1, 15, 0, 0, 0, TimeSpan.Zero)));
         Assert.Equal(("server/2025-01-01_00-00-00.log", 1), (Assert.Single(january.Hits).FileId, january.Hits[0].Line));
@@ -166,7 +166,7 @@ public sealed class LogCommandTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         await using var guest = await TestClient.ConnectAsync(server, "gast");
         var dir = ServerLogDir(server);
         File.WriteAllText(Path.Combine(dir, "notiz.txt"), "keine Logdatei");
@@ -179,7 +179,7 @@ public sealed class LogCommandTests
         }
 
         var files = await ListAsync(admin);
-        Assert.DoesNotContain(files, f => f.Id.EndsWith(".txt") || f.Id.Contains("wurzel"));
+        Assert.DoesNotContain(files, logFile => logFile.Id.EndsWith(".txt") || logFile.Id.Contains("wurzel"));
         var escapes = new[]
         {
             "server/notiz.txt", "wurzel.log", "../server-data.json", "server/../../server-data.json", "server/../server-data.json",
@@ -199,7 +199,7 @@ public sealed class LogCommandTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         var dir = ServerLogDir(server);
         var longLine = "Anfang " + new string('x', 5000) + " gesucht";
         WriteLines(Path.Combine(dir, "2025-01-01_00-00-00.log"), ["kurz", longLine]);
@@ -214,10 +214,10 @@ public sealed class LogCommandTests
         Assert.True(hit.Text.Length < ServerTuning.MaxLogLineLength + 10);
 
         // a full page of long lines with umlauts (6 bytes each in JSON) still fits one message; lines are cut further
-        WriteLines(Path.Combine(dir, "2025-01-02_00-00-00.log"), Enumerable.Range(1, 1000).Select(i => $"{i} " + new string('ä', 3000)));
+        WriteLines(Path.Combine(dir, "2025-01-02_00-00-00.log"), Enumerable.Range(1, 1000).Select(index => $"{index} " + new string('ä', 3000)));
         var wide = await ReadAsync(admin, "server/2025-01-02_00-00-00.log");
         Assert.Equal(1000, wide.Lines.Count);
-        Assert.All(wide.Lines, l => Assert.EndsWith(" [...]", l));
+        Assert.All(wide.Lines, line => Assert.EndsWith(" [...]", line));
         Assert.True(JsonSerializer.SerializeToUtf8Bytes<Message>(wide, ProtocolJson.Options).Length < FrameReader.MaxFrameSize);
         var many = await SearchAsync(admin, new SearchLogs("ä"));
         Assert.Equal(500, many.Hits.Count);
@@ -229,9 +229,9 @@ public sealed class LogCommandTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         await using var other = await TestClient.ConnectAsync(server, "anna");
-        WriteLines(Path.Combine(ServerLogDir(server), "2025-01-01_00-00-00.log"), Enumerable.Range(1, 200_000).Select(i => $"Zeile {i} gesucht"));
+        WriteLines(Path.Combine(ServerLogDir(server), "2025-01-01_00-00-00.log"), Enumerable.Range(1, 200_000).Select(index => $"Zeile {index} gesucht"));
         using var entered = new SemaphoreSlim(0);
         using var release = new ManualResetEventSlim();
         server.Stores.LogReader.ReadHook = _ =>
@@ -244,9 +244,9 @@ public sealed class LogCommandTests
         Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(30)), "search did not start");
         // the search is paused inside a file: chat still flows through the state
         await other.SendAsync(new SendChat(ChatTarget.Channel, null, "noch da?"));
-        await admin.WaitForAsync<ChatMessage>(m => m.Text == "noch da?");
+        await admin.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == "noch da?");
         release.Set();
-        var result = await admin.WaitForAsync<LogSearchResult>(r => r.RequestId == "s", 30_000);
+        var result = await admin.WaitForAsync<LogSearchResult>(logSearchResult => logSearchResult.RequestId == "s", 30_000);
         Assert.Equal(500, result.Hits.Count);
     }
 
@@ -256,7 +256,7 @@ public sealed class LogCommandTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         using var entered = new SemaphoreSlim(0);
         using var release = new ManualResetEventSlim();
         server.Stores.LogReader.ReadHook = _ =>
@@ -267,14 +267,14 @@ public sealed class LogCommandTests
 
         await admin.SendAsync(new SearchLogs("gesucht") { RequestId = "s0" });
         Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(30)), "search did not start");
-        for (int i = 1; i <= 5; i++) await admin.SendAsync(new SearchLogs("gesucht") { RequestId = $"s{i}" });
+        for (int index = 1; index <= 5; index++) await admin.SendAsync(new SearchLogs("gesucht") { RequestId = $"s{index}" });
         // s0 runs, s1 to s3 wait in the session's queue of 4, s4 and s5 are refused
         Assert.Equal(ReasonCodes.RateLimited, (await admin.ErrorAsync("s4")).Code);
         Assert.Equal(ReasonCodes.RateLimited, (await admin.ErrorAsync("s5")).Code);
         release.Set();
-        for (int i = 0; i <= 3; i++) await admin.WaitForAsync<LogSearchResult>(r => r.RequestId == $"s{i}", 30_000);
+        for (int index = 0; index <= 3; index++) await admin.WaitForAsync<LogSearchResult>(logSearchResult => logSearchResult.RequestId == $"s{index}", 30_000);
 
-        Assert.Equal(4, server.Log.Count(l => l.Contains("Logs durchsucht von chef")));
+        Assert.Equal(4, server.Log.Count(line => line.Contains("Logs durchsucht von chef")));
     }
 
     // ---- Package 82: download ----
@@ -285,7 +285,7 @@ public sealed class LogCommandTests
     {
         var id = Guid.NewGuid().ToString("N");
         await client.SendAsync(new PrepareLogDownload(ids) { RequestId = id });
-        return await client.WaitForAsync<LogDownloadReady>(r => r.RequestId == id, 30_000);
+        return await client.WaitForAsync<LogDownloadReady>(logDownloadReady => logDownloadReady.RequestId == id, 30_000);
     }
 
     /// <summary>Pulls every chunk, one request each.</summary>
@@ -296,7 +296,7 @@ public sealed class LogCommandTests
         {
             var id = Guid.NewGuid().ToString("N");
             await client.SendAsync(new DownloadLogChunk(ready.DownloadId, data.Length) { RequestId = id });
-            var chunk = await client.WaitForAsync<LogChunk>(c => c.RequestId == id, 30_000);
+            var chunk = await client.WaitForAsync<LogChunk>(logChunk => logChunk.RequestId == id, 30_000);
             Assert.Equal((data.Length, ready.Size), (chunk.Offset, chunk.TotalSize));
             data.Write(Convert.FromBase64String(chunk.DataBase64));
             if (chunk.IsLast) return data.ToArray();
@@ -316,8 +316,8 @@ public sealed class LogCommandTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
-        var live = (await ListAsync(admin)).First(f => f.Kind == LogKind.Server); // the file the server is writing
+        await using var client = admin;
+        var live = (await ListAsync(admin)).First(logFile => logFile.Kind == LogKind.Server); // the file the server is writing
         var path = Path.Combine(server.DataDir, "logs", live.Id);
         var before = ReadShared(path);
 
@@ -329,7 +329,7 @@ public sealed class LogCommandTests
         Assert.Equal(before, bytes);
         Assert.True(ReadShared(path).Length > before.Length);
         Assert.Empty(Directory.GetFiles(ExportDir(server))); // deleted once the last chunk went out
-        Assert.Contains(server.Log, l => l.Contains($"Logs heruntergeladen von chef: {Path.GetFileName(path)}"));
+        Assert.Contains(server.Log, line => line.Contains($"Logs heruntergeladen von chef: {Path.GetFileName(path)}"));
     }
 
     [Fact]
@@ -363,7 +363,7 @@ public sealed class LogCommandTests
         var zipBytes = await PullAsync(admin, ready);
         using (var zip = new ZipArchive(new MemoryStream(zipBytes)))
         {
-            var entries = zip.Entries.ToDictionary(e => e.FullName, e => new StreamReader(e.Open()).ReadToEnd());
+            var entries = zip.Entries.ToDictionary(zipArchiveEntry => zipArchiveEntry.FullName, zipArchiveEntry => new StreamReader(zipArchiveEntry.Open()).ReadToEnd());
             Assert.Equal(new Dictionary<string, string>
             {
                 ["server/2025-01-01_00-00-00.log"] = "server alt\n",
@@ -435,7 +435,7 @@ public sealed class LogCommandTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         await using var other = await TestClient.ConnectAsync(server, "anna");
         var content = new byte[3 * ProtocolLimits.BackupChunkBytes / 2 + 17];
         Random.Shared.NextBytes(content);
@@ -451,14 +451,14 @@ public sealed class LogCommandTests
         await admin.SendAsync(new PrepareLogDownload(["server/2025-01-01_00-00-00.log"]) { RequestId = "p" });
         Assert.True(await entered.WaitAsync(TimeSpan.FromSeconds(30)), "copy did not start");
         await other.SendAsync(new SendChat(ChatTarget.Channel, null, "noch da?")); // the copy is paused: chat still flows
-        await admin.WaitForAsync<ChatMessage>(m => m.Text == "noch da?");
+        await admin.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == "noch da?");
         release.Set();
-        var ready = await admin.WaitForAsync<LogDownloadReady>(r => r.RequestId == "p", 30_000);
+        var ready = await admin.WaitForAsync<LogDownloadReady>(logDownloadReady => logDownloadReady.RequestId == "p", 30_000);
         Assert.Equal(content.Length, ready.Size);
 
         // one chunk per request, nothing more without asking
         await admin.SendAsync(new DownloadLogChunk(ready.DownloadId, 0) { RequestId = "c1" });
-        var first = await admin.WaitForAsync<LogChunk>(c => c.RequestId == "c1");
+        var first = await admin.WaitForAsync<LogChunk>(logChunk => logChunk.RequestId == "c1");
         Assert.Equal(ProtocolLimits.BackupChunkBytes, Convert.FromBase64String(first.DataBase64).Length);
         Assert.False(first.IsLast);
         await admin.AssertNoMessageAsync<LogChunk>();

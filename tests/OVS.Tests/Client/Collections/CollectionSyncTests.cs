@@ -102,16 +102,16 @@ public class CollectionSyncTests
         var leave = new LeaveTimer(clock) { Delay = TimeSpan.FromMilliseconds(220) };
         var list = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var changes = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
-        list.CollectionChanged += (_, e) => changes.Add(e.Action);
+        list.CollectionChanged += (_, args) => changes.Add(args.Action);
         CollectionSync.Sync(list, [new KeyedRow("a", 1), new KeyedRow("b", 1)], leave);
-        Assert.Equal([1, 1], list.Select(r => r.Version));
-        Assert.All(changes, c => Assert.Equal(System.Collections.Specialized.NotifyCollectionChangedAction.Replace, c));
+        Assert.Equal([1, 1], list.Select(keyedRow => keyedRow.Version));
+        Assert.All(changes, notifyCollectionChangedAction => Assert.Equal(System.Collections.Specialized.NotifyCollectionChangedAction.Replace, notifyCollectionChangedAction));
 
         CollectionSync.Sync(list, [new KeyedRow("b", 2)], leave); // a is gone: it folds away
         Assert.True(CollectionSync.IsLeaving(list, list[0]));
         CollectionSync.Sync(list, [new KeyedRow("a", 3), new KeyedRow("b", 3)], leave); // and comes back as a new object
-        Assert.Equal([3, 3], list.Select(r => r.Version));
-        Assert.DoesNotContain(list, r => CollectionSync.IsLeaving(list, r));
+        Assert.Equal([3, 3], list.Select(keyedRow => keyedRow.Version));
+        Assert.DoesNotContain(list, keyedRow => CollectionSync.IsLeaving(list, keyedRow));
     }
 
     /// <summary>A user who switches channels leaves the old channel's list while entering the new one.</summary>
@@ -131,16 +131,16 @@ public class CollectionSyncTests
     public void PureReorders_OnlyMove()
     {
         var random = new Random(122);
-        var list = new ObservableCollection<string>(Enumerable.Range(0, 30).Select(i => $"e{i}"));
+        var list = new ObservableCollection<string>(Enumerable.Range(0, 30).Select(index => $"e{index}"));
         var changes = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
-        list.CollectionChanged += (_, e) => changes.Add(e.Action);
+        list.CollectionChanged += (_, args) => changes.Add(args.Action);
         for (int run = 0; run < 200; run++)
         {
             var order = list.OrderBy(_ => random.Next()).ToList();
             CollectionSync.Sync(list, order, run % 2 == 0 ? null : new LeaveTimer(new ManualTimeProvider()) { Delay = TimeSpan.FromMilliseconds(220) });
             Assert.Equal(order, list);
         }
-        Assert.All(changes, c => Assert.Equal(System.Collections.Specialized.NotifyCollectionChangedAction.Move, c));
+        Assert.All(changes, notifyCollectionChangedAction => Assert.Equal(System.Collections.Specialized.NotifyCollectionChangedAction.Move, notifyCollectionChangedAction));
     }
 
     /// <summary>Package 122: leaving entries stay behind the entry they followed while the others move around them.</summary>

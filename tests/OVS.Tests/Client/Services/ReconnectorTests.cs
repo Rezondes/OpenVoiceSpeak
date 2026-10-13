@@ -15,7 +15,7 @@ public sealed class ReconnectorTests
 
     void Run(int seconds)
     {
-        for (int i = 0; i < seconds; i++) time.Advance(TimeSpan.FromSeconds(1));
+        for (int index = 0; index < seconds; index++) time.Advance(TimeSpan.FromSeconds(1));
     }
 
     [Fact]

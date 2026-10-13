@@ -52,8 +52,8 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         Assert.Contains("zwei", File.ReadAllText(path));
     }
 
-    static string ServerLog(TestServer s) => Read(Path.Combine(s.DataDir, "logs", "server"));
-    static string ChannelLog(TestServer s, Guid id) => Read(Path.Combine(s.DataDir, "logs", "channels", id.ToString()));
+    static string ServerLog(TestServer server) => Read(Path.Combine(server.DataDir, "logs", "server"));
+    static string ChannelLog(TestServer server, Guid id) => Read(Path.Combine(server.DataDir, "logs", "channels", id.ToString()));
 
     /// <summary>Log lines are written under the server lock; clients may see the delta a moment earlier.</summary>
     static async Task Eventually(Func<string> read, params string[] expected)
@@ -68,7 +68,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         }
         text = read();
         if (expected.All(text.Contains)) return;
-        Assert.Fail($"Erwartet {string.Join(" | ", expected.Where(e => !text.Contains(e)))} in:\n{text}");
+        Assert.Fail($"Erwartet {string.Join(" | ", expected.Where(value => !text.Contains(value)))} in:\n{text}");
     }
 
     // ---- ServerLogWriter itself ----
@@ -83,7 +83,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         time.Advance(TimeSpan.FromMinutes(5));
         logs.WriteServerLine("Hallo Welt");
 
-        Assert.Contains(console, l => l.EndsWith("Hallo Welt"));
+        Assert.Contains(console, line => line.EndsWith("Hallo Welt"));
         var file = Path.Combine(dir, "logs", "server", start + ".log");
         Assert.Matches(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} Hallo Welt", File.ReadAllText(file));
     }
@@ -168,7 +168,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
 
         var line = Assert.Single(console);
         Assert.EndsWith(@" a\rb\nc\u2028d\u2029e\u001B[31mrot\u009B2J\u0007", line);
-        Assert.DoesNotContain(line, c => char.IsControl(c) || c is '\u2028' or '\u2029');
+        Assert.DoesNotContain(line, character => char.IsControl(character) || character is '\u2028' or '\u2029');
         var file = File.ReadAllText(Path.Combine(dir, "logs", "server", Start(time) + ".log"));
         Assert.Equal(line + Environment.NewLine, file);
     }
@@ -183,10 +183,10 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await anna.SendAsync(new SendChat(ChatTarget.Server, null, "hallo\n2026-09-30 12:00:00.000 Admin-Token: gefaelscht"));
         await Eventually(() => ServerLog(server), "gefaelscht");
 
-        var console = Assert.Single(server.Log, l => l.Contains("gefaelscht"));
+        var console = Assert.Single(server.Log, line => line.Contains("gefaelscht"));
         Assert.DoesNotContain(console, char.IsControl);
         Assert.EndsWith(@"Chat von anna: hallo\n2026-09-30 12:00:00.000 Admin-Token: gefaelscht", console);
-        var file = Assert.Single(ServerLog(server).Split('\n'), l => l.Contains("gefaelscht"));
+        var file = Assert.Single(ServerLog(server).Split('\n'), line => line.Contains("gefaelscht"));
         Assert.Equal(console, file.TrimEnd('\r'));
     }
 
@@ -276,8 +276,8 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         logs.WriteServerLine("eins");
         logs.WriteChannelLine(Guid.NewGuid(), "Raid", "zwei");
         logs.WriteServerLine("drei");
-        Assert.Single(console, l => l.Contains("Log konnte nicht geschrieben werden"));
-        Assert.Contains(console, l => l.EndsWith("drei")); // the console keeps working
+        Assert.Single(console, line => line.Contains("Log konnte nicht geschrieben werden"));
+        Assert.Contains(console, line => line.EndsWith("drei")); // the console keeps working
     }
 
     // ---- what the server logs ----
@@ -305,7 +305,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var g2 = await TestClient.ConnectAsync(server, "gast2");
 
         await admin.SendAsync(new CreateGroup("Team", Permission.Speak));
-        var team = (await admin.WaitForAsync<GroupsChanged>()).Groups.Single(g => g.Name == "Team");
+        var team = (await admin.WaitForAsync<GroupsChanged>()).Groups.Single(groupInfo => groupInfo.Name == "Team");
         await admin.SendAsync(new UpdateGroup(team.Id, "Team 2", Permission.Speak | Permission.SpeakLinked));
         await admin.SendAsync(new AssignGroup(g1.Identity.Fingerprint, team.Id));
         await admin.SendAsync(new UnassignGroup(g1.Identity.Fingerprint, team.Id));
@@ -315,7 +315,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await admin.SendAsync(new KickSession(g1.Id, "Spam"));
         await admin.SendAsync(new BanSession(g2.Id, "Troll", 60, true));
         await admin.SendAsync(new ListBans { RequestId = "l" });
-        var ban = Assert.Single((await admin.WaitForAsync<BanList>(b => b.RequestId == "l")).Bans);
+        var ban = Assert.Single((await admin.WaitForAsync<BanList>(banList => banList.RequestId == "l")).Bans);
         await admin.SendAsync(new Unban(ban.Id));
 
         await Eventually(() => ServerLog(server),
@@ -345,9 +345,9 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var raid = (await admin.WaitForAsync<ChannelAdded>()).Channel.Id;
 
         await gast.SendAsync(new JoinChannel(raid));
-        await admin.WaitForAsync<UserUpdated>(u => u.User.SessionId == gast.Id && u.User.ChannelId == raid);
+        await admin.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == gast.Id && userUpdated.User.ChannelId == raid);
         await admin.SendAsync(new MoveUser(gast.Id, lobby));
-        await admin.WaitForAsync<UserUpdated>(u => u.User.SessionId == gast.Id && u.User.ChannelId == lobby);
+        await admin.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == gast.Id && userUpdated.User.ChannelId == lobby);
         await gast.DisposeAsync();
 
         await Eventually(() => ChannelLog(server, lobby),
@@ -394,17 +394,17 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     {
         await using var server = await TestServer.StartAsync();
         var token = server.State.PendingAdminToken!;
-        await using var a = await TestClient.ConnectAsync(server, "anna");
-        await a.SendAsync(new RedeemAdminToken(token));
-        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == a.Id && u.User.Permissions == Permission.All);
-        await a.SendAsync(new UpdateServerSettings("S", "", "geheim-123"));
-        await a.WaitForAsync<ServerSettingsChanged>();
+        await using var client = await TestClient.ConnectAsync(server, "anna");
+        await client.SendAsync(new RedeemAdminToken(token));
+        await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id && userUpdated.User.Permissions == Permission.All);
+        await client.SendAsync(new UpdateServerSettings("S", "", "geheim-123"));
+        await client.WaitForAsync<ServerSettingsChanged>();
 
         await Eventually(() => ServerLog(server), "Admin-Token erzeugt", "anna hat das Admin-Token eingelöst", "Passwort gesetzt");
         var all = string.Join("\n", Directory.GetFiles(Path.Combine(server.DataDir, "logs"), "*.log", SearchOption.AllDirectories).Select(ReadShared));
         Assert.DoesNotContain(token, all);
         Assert.DoesNotContain("geheim-123", all);
-        Assert.Contains(server.Log, l => l.Contains(token)); // the console still shows it
+        Assert.Contains(server.Log, line => line.Contains(token)); // the console still shows it
     }
 
     [Fact]
@@ -424,7 +424,7 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await using var _ = server;
         await using var again = await TestClient.ConnectAsync(server, "chef", adminId);
         await again.SendAsync(new JoinChannel(raid));
-        await again.WaitForAsync<UserUpdated>(u => u.User.ChannelId == raid);
+        await again.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.ChannelId == raid);
 
         await Eventually(() => ChannelLog(server, raid), "[Raid] Channel angelegt von chef", "[Raid 2] chef hat den Channel betreten");
     }

@@ -9,9 +9,9 @@ namespace OVS.Tests.Server.Permissions;
 public class PermissionRulesTests
 {
     static readonly List<GroupRecord> Groups = DefaultGroups();
-    static GroupRecord Guest => Groups.Single(g => g.Name == "Gast");
-    static GroupRecord Moderator => Groups.Single(g => g.Name == "Moderator");
-    static GroupRecord Admin => Groups.Single(g => g.Name == "Admin");
+    static GroupRecord Guest => Groups.Single(groupRecord => groupRecord.Name == "Gast");
+    static GroupRecord Moderator => Groups.Single(groupRecord => groupRecord.Name == "Moderator");
+    static GroupRecord Admin => Groups.Single(groupRecord => groupRecord.Name == "Admin");
 
     [Fact]
     public void Effective_Cases()
@@ -132,13 +132,13 @@ public class PermissionRulesTests
     [Fact]
     public void WouldRemoveLastAdmin_Cases()
     {
-        var a = new UserRecord { Fingerprint = "a", GroupIds = [AdminGroupId] };
-        var b = new UserRecord { Fingerprint = "b", GroupIds = [AdminGroupId] };
-        var c = new UserRecord { Fingerprint = "c", GroupIds = [GuestGroupId] };
+        var user = new UserRecord { Fingerprint = "a", GroupIds = [AdminGroupId] };
+        var userRecord = new UserRecord { Fingerprint = "b", GroupIds = [AdminGroupId] };
+        var otherUser = new UserRecord { Fingerprint = "c", GroupIds = [GuestGroupId] };
 
-        Assert.True(WouldRemoveLastAdmin([a, c], "a", AdminGroupId));
-        Assert.False(WouldRemoveLastAdmin([a, b], "a", AdminGroupId));
-        Assert.False(WouldRemoveLastAdmin([a, c], "a", GuestGroupId));
-        Assert.False(WouldRemoveLastAdmin([a, c], "c", AdminGroupId));
+        Assert.True(WouldRemoveLastAdmin([user, otherUser], "a", AdminGroupId));
+        Assert.False(WouldRemoveLastAdmin([user, userRecord], "a", AdminGroupId));
+        Assert.False(WouldRemoveLastAdmin([user, otherUser], "a", GuestGroupId));
+        Assert.False(WouldRemoveLastAdmin([user, otherUser], "c", AdminGroupId));
     }
 }

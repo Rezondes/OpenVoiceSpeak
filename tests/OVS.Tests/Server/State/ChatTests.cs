@@ -19,16 +19,16 @@ public sealed class ChatTests
     {
         var chefId = ClientIdentity.Create();
         var raid = Guid.NewGuid();
-        var server = await TestServer.StartAsync(d =>
+        var server = await TestServer.StartAsync(serverData =>
         {
-            TestServer.Grant(chefId, "Admin")(d);
-            d.Channels.Add(new ChannelRecord { Id = raid, Name = "Raid", Order = 1 });
+            TestServer.Grant(chefId, "Admin")(serverData);
+            serverData.Channels.Add(new ChannelRecord { Id = raid, Name = "Raid", Order = 1 });
         }, time: time);
         var chef = await TestClient.ConnectAsync(server, "chef", chefId);
         var gast = await TestClient.ConnectAsync(server, "gast");
         var weit = await TestClient.ConnectAsync(server, "weit");
         await weit.SendAsync(new JoinChannel(raid));
-        await chef.WaitForAsync<UserUpdated>(u => u.User.SessionId == weit.Id && u.User.ChannelId == raid);
+        await chef.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == weit.Id && userUpdated.User.ChannelId == raid);
         return (server, chef, gast, weit, raid);
     }
 
@@ -42,20 +42,20 @@ public sealed class ChatTests
         await using var _w = weit;
 
         await chef.SendAsync(new SendChat(ChatTarget.Server, null, "  Hallo alle  "));
-        foreach (var c in new[] { chef, gast, weit })
+        foreach (var client in new[] { chef, gast, weit })
         {
-            var m = await c.WaitForAsync<ChatMessage>(x => x.Target == ChatTarget.Server);
-            Assert.Equal(("chef", "Hallo alle"), (m.FromNickname, m.Text)); // trimmed
+            var chatMessage = await client.WaitForAsync<ChatMessage>(otherChatMessage => otherChatMessage.Target == ChatTarget.Server);
+            Assert.Equal(("chef", "Hallo alle"), (chatMessage.FromNickname, chatMessage.Text)); // trimmed
         }
 
         await gast.SendAsync(new SendChat(ChatTarget.Channel, null, "nur Lobby"));
-        Assert.Equal("nur Lobby", (await chef.WaitForAsync<ChatMessage>(x => x.Target == ChatTarget.Channel)).Text);
+        Assert.Equal("nur Lobby", (await chef.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Target == ChatTarget.Channel)).Text);
         await weit.AssertNoMessageAsync<ChatMessage>(); // other channel
 
         await gast.SendAsync(new SendChat(ChatTarget.Private, weit.Id, "psst"));
-        var whisper = await weit.WaitForAsync<ChatMessage>(x => x.Target == ChatTarget.Private);
+        var whisper = await weit.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Target == ChatTarget.Private);
         Assert.Equal((gast.Id, weit.Id, "psst"), (whisper.FromSessionId, whisper.ToSessionId!.Value, whisper.Text));
-        await gast.WaitForAsync<ChatMessage>(x => x.Target == ChatTarget.Private); // the sender sees it too
+        await gast.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Target == ChatTarget.Private); // the sender sees it too
         await chef.AssertNoMessageAsync<ChatMessage>();
     }
 
@@ -66,10 +66,10 @@ public sealed class ChatTests
     public async Task NoRight_PermissionDenied_NobodyGetsIt(ChatTarget target)
     {
         var right = target switch { ChatTarget.Server => Permission.ChatServer, ChatTarget.Channel => Permission.ChatChannel, _ => Permission.ChatPrivate };
-        await using var server = await TestServer.StartAsync(d =>
+        await using var server = await TestServer.StartAsync(serverData =>
         {
-            var guest = d.Groups.FindIndex(g => g.Id == WellKnownGroups.Guest);
-            d.Groups[guest] = d.Groups[guest] with { Permissions = d.Groups[guest].Permissions & ~right };
+            var guest = serverData.Groups.FindIndex(groupRecord => groupRecord.Id == WellKnownGroups.Guest);
+            serverData.Groups[guest] = serverData.Groups[guest] with { Permissions = serverData.Groups[guest].Permissions & ~right };
         });
         await using var sender = await TestClient.ConnectAsync(server, "ohne");
         await using var other = await TestClient.ConnectAsync(server, "andere");
@@ -111,13 +111,13 @@ public sealed class ChatTests
         await using var _g = gast;
         await using var _w = weit;
 
-        for (int i = 0; i < ServerTuning.ChatBurst; i++) await gast.SendAsync(new SendChat(ChatTarget.Channel, null, $"n{i}"));
+        for (int index = 0; index < ServerTuning.ChatBurst; index++) await gast.SendAsync(new SendChat(ChatTarget.Channel, null, $"n{index}"));
         await gast.SendAsync(new SendChat(ChatTarget.Channel, null, "zu viel") { RequestId = "sechs" });
         Assert.Equal(ReasonCodes.RateLimited, (await gast.ErrorAsync("sechs")).Code);
 
         time.Advance(ServerTuning.ChatWindow);
         await gast.SendAsync(new SendChat(ChatTarget.Channel, null, "wieder da"));
-        await chef.WaitForAsync<ChatMessage>(m => m.Text == "wieder da");
+        await chef.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == "wieder da");
     }
 
     [Fact]
@@ -130,9 +130,9 @@ public sealed class ChatTests
         await using var _w = weit;
 
         await chef.SendAsync(new SetSessionServerMute(gast.Id, true));
-        await gast.WaitForAsync<UserUpdated>(u => u.User.SessionId == gast.Id && u.User.ServerMuted);
+        await gast.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == gast.Id && userUpdated.User.ServerMuted);
         await gast.SendAsync(new SendChat(ChatTarget.Channel, null, "stumm, aber lesbar"));
-        await chef.WaitForAsync<ChatMessage>(m => m.Text == "stumm, aber lesbar");
+        await chef.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == "stumm, aber lesbar");
     }
 
     [Fact]
@@ -151,11 +151,11 @@ public sealed class ChatTests
         // last one sent (each is logged before it goes out)
         var seen = new HashSet<string>();
         while (seen.Count < 3)
-            seen.Add((await weit.WaitForAsync<ChatMessage>(m => m.Text is "Ankündigung" or "im Raid" or "geheimer Inhalt")).Text);
+            seen.Add((await weit.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text is "Ankündigung" or "im Raid" or "geheimer Inhalt")).Text);
 
-        Assert.Contains(server.Log, l => l.Contains("Chat von chef: Ankündigung"));
-        Assert.Contains(server.Log, l => l.Contains("gast schreibt privat an weit"));
-        Assert.DoesNotContain(server.Log, l => l.Contains("geheimer Inhalt"));
+        Assert.Contains(server.Log, line => line.Contains("Chat von chef: Ankündigung"));
+        Assert.Contains(server.Log, line => line.Contains("gast schreibt privat an weit"));
+        Assert.DoesNotContain(server.Log, line => line.Contains("geheimer Inhalt"));
         var files = Directory.GetFiles(Path.Combine(server.DataDir, "logs"), "*.log", SearchOption.AllDirectories)
             .Select(path =>
             {

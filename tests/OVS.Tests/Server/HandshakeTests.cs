@@ -20,10 +20,10 @@ public class HandshakeTests
         Directory.CreateDirectory(dir);
         try
         {
-            using var a = ServerCertificate.LoadOrCreate(dir);
-            using var b = ServerCertificate.LoadOrCreate(dir);
-            Assert.Equal(a.Thumbprint, b.Thumbprint);
-            Assert.True(b.HasPrivateKey);
+            using var x509Certificate2 = ServerCertificate.LoadOrCreate(dir);
+            using var otherX509Certificate2 = ServerCertificate.LoadOrCreate(dir);
+            Assert.Equal(x509Certificate2.Thumbprint, otherX509Certificate2.Thumbprint);
+            Assert.True(otherX509Certificate2.HasPrivateKey);
         }
         finally
         {
@@ -89,15 +89,15 @@ public class HandshakeTests
     {
         var clock = new ManualTimeProvider();
         await using var server = await TestServer.StartAsync(password: "pw", time: clock);
-        int n = 0;
+        int count = 0;
         async Task<Message> Try(string password)
         {
             await using var client = await TestClient.OpenAsync(server.Port);
-            return await client.HandshakeAsync("user" + ++n, password);
+            return await client.HandshakeAsync("user" + ++count, password);
         }
-        static string Code(Message m) => Assert.IsType<Rejected>(m).Code;
+        static string Code(Message message) => Assert.IsType<Rejected>(message).Code;
 
-        for (int i = 0; i < 5; i++) Assert.Equal(ReasonCodes.WrongPassword, Code(await Try("falsch")));
+        for (int index = 0; index < 5; index++) Assert.Equal(ReasonCodes.WrongPassword, Code(await Try("falsch")));
         Assert.Equal(ReasonCodes.TooManyPasswordAttempts, Code(await Try("pw"))); // blocked: not even the right one
         clock.Advance(TimeSpan.FromMinutes(1));
         Assert.IsType<Welcome>(await Try("pw"));
@@ -177,7 +177,7 @@ public class HandshakeTests
         // hundreds of ms on a loaded CI runner), and enough rounds to outlast the timeout several times.
         await using var server = await TestServer.StartAsync(idleTimeout: TimeSpan.FromMilliseconds(1500));
         await using var client = await TestClient.ConnectAsync(server);
-        for (int i = 0; i < 8; i++)
+        for (int index = 0; index < 8; index++)
         {
             await client.SendAsync(new Ping());
             await client.WaitForAsync<Pong>();
@@ -190,7 +190,7 @@ public class HandshakeTests
     public async Task Startup_LogsAdminToken()
     {
         await using var server = await TestServer.StartAsync();
-        Assert.Contains(server.Log, l => l.Contains("Admin-Token: " + server.State.PendingAdminToken));
+        Assert.Contains(server.Log, line => line.Contains("Admin-Token: " + server.State.PendingAdminToken));
     }
 
     /// <summary>Package 88: one IPv6 host owns a whole /64, so its addresses share the 5 connections of one IP.</summary>
@@ -199,7 +199,7 @@ public class HandshakeTests
     {
         await using var server = await TestServer.StartAsync();
         var state = server.State;
-        for (int i = 1; i <= 5; i++) Assert.True(state.TryAddConnection(IPAddress.Parse($"2001:db8:5:6::{i}")));
+        for (int index = 1; index <= 5; index++) Assert.True(state.TryAddConnection(IPAddress.Parse($"2001:db8:5:6::{index}")));
         Assert.False(state.TryAddConnection(IPAddress.Parse("2001:db8:5:6:ffff::1")));
         Assert.Equal(6, state.ConnectionsFrom(IPAddress.Parse("2001:db8:5:6::99")));
         Assert.True(state.TryAddConnection(IPAddress.Parse("2001:db8:5:7::1")));
@@ -215,7 +215,7 @@ public class HandshakeTests
     public async Task OldSha256Hash_LoginWorks_UpgradedAfter()
     {
         var legacy = Convert.ToHexStringLower(SHA256.HashData("alt"u8));
-        await using var server = await TestServer.StartAsync(d => d.Settings.StoredPassword = StoredPassword.FromStored(legacy));
+        await using var server = await TestServer.StartAsync(serverData => serverData.Settings.StoredPassword = StoredPassword.FromStored(legacy));
 
         await using (var wrong = await TestClient.OpenAsync(server.Port))
             Assert.Equal(ReasonCodes.WrongPassword, Assert.IsType<Rejected>(await wrong.HandshakeAsync("anna", "falsch")).Code);

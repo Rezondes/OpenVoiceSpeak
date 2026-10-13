@@ -43,12 +43,12 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     [Fact]
     public async Task Tick_NoVoiceConnection_StatsStayBlank()
     {
-        await using var vm = MainViewModelSetup.Create(dir, action => action(), time: time);
+        await using var viewModel = MainViewModelSetup.Create(dir, action => action(), time: time);
         time.Advance(ConnectionStatsViewModel.RefreshInterval);
 
-        vm.Tick();
+        viewModel.Tick();
 
-        Assert.Equal((false, "-"), (vm.Stats.Unreachable, vm.Stats.BitrateText));
+        Assert.Equal((false, "-"), (viewModel.Stats.Unreachable, viewModel.Stats.BitrateText));
     }
 
     [Fact]
@@ -60,32 +60,32 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         var keys = new KeyPoller(time);
         var audio = new AudioEngine(keys, time, hardware: null, new NativeCaptureFilters(log.Write));
 
-        await using var vm = MainViewModelSetup.Compose(Profile, a => a(), time, log, settings, null, new TrustedServerFingerprints(Parts),
+        await using var viewModel = MainViewModelSetup.Compose(Profile, action => action(), time, log, settings, null, new TrustedServerFingerprints(Parts),
             new ServerIconCache(Parts), new SoundLibrary(Parts, log.Write), leave, keys, audio);
 
-        Assert.Same(log, vm.Log);
-        Assert.Same(settings, vm.Settings);
-        Assert.Same(leave, vm.Bookmarks.Leave);
-        Assert.Same(keys, vm.Keys);
-        Assert.Same(audio, vm.Audio);
-        Assert.Same(time, vm.Time);
+        Assert.Same(log, viewModel.Log);
+        Assert.Same(settings, viewModel.Settings);
+        Assert.Same(leave, viewModel.Bookmarks.Leave);
+        Assert.Same(keys, viewModel.Keys);
+        Assert.Same(audio, viewModel.Audio);
+        Assert.Same(time, viewModel.Time);
     }
 
     /// <summary>Package 123, 140: a filter library that cannot load is told in the client log, the one <see cref="MainViewModel.Create"/> was given.</summary>
     [Fact]
     public async Task Create_GivenClientLog_CaptureFiltersLogToIt()
     {
-        await using var vm = MainViewModelSetup.Create(Profile, a => a(), time: time);
+        await using var viewModel = MainViewModelSetup.Create(Profile, action => action(), time: time);
 
-        Assert.Equal(new Action<string>(vm.Log.Write), vm.Audio.Filters.Log);
+        Assert.Equal(new Action<string>(viewModel.Log.Write), viewModel.Audio.Filters.Log);
     }
 
     [Fact]
     public async Task Constructor_SettingsWarning_ShownAsWarningNotice()
     {
-        await using var vm = WithOwnParts(a => a(), settingsWarning: "The settings file was damaged");
+        await using var viewModel = WithOwnParts(action => action(), settingsWarning: "The settings file was damaged");
 
-        var notice = Assert.Single(vm.Notices);
+        var notice = Assert.Single(viewModel.Notices);
         Assert.Equal(("The settings file was damaged", NoticeKind.Warning), (notice.Text, notice.Kind));
     }
 
@@ -95,9 +95,9 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         byte[] logo = [1, 2, 3];
         new ServerIconCache(Parts).Save("voice.example.org", 7000, logo);
 
-        await using var vm = WithOwnParts(a => a(), new ClientSettings { Bookmarks = [new Bookmark("Voice", "voice.example.org", 7000, "anna")] });
+        await using var viewModel = WithOwnParts(action => action(), new ClientSettings { Bookmarks = [new Bookmark("Voice", "voice.example.org", 7000, "anna")] });
 
-        Assert.Equal(logo, Assert.Single(vm.Bookmarks.Items).Icon);
+        Assert.Equal(logo, Assert.Single(viewModel.Bookmarks.Items).Icon);
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         Directory.CreateDirectory(Path.GetDirectoryName(tone)!);
         File.WriteAllBytes(tone, [1]);
 
-        await using var vm = WithOwnParts(a => a()); // applying the settings cleans the tone folder up
+        await using var viewModel = WithOwnParts(action => action()); // applying the settings cleans the tone folder up
 
         Assert.False(File.Exists(tone));
     }
@@ -115,12 +115,12 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     [Fact]
     public async Task AddNotice_ClockMovedOn_StampedWithItsLocalTime()
     {
-        await using var vm = WithOwnParts(a => a());
+        await using var viewModel = WithOwnParts(action => action());
         time.Advance(TimeSpan.FromHours(3)); // far from the machine's own clock
 
-        vm.AddNotice("Saved");
+        viewModel.AddNotice("Saved");
 
-        var notice = Assert.Single(vm.Notices);
+        var notice = Assert.Single(viewModel.Notices);
         Assert.Equal(time.GetLocalNow().DateTime, notice.Time);
         Assert.Equal(DateTimeKind.Local, notice.Time.Kind);
     }
@@ -128,9 +128,9 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     [Fact]
     public async Task OpenSettings_GivenClock_PendingMarksRunOnIt()
     {
-        await using var vm = WithOwnParts(a => a());
-        vm.PageFlow.OpenSettings();
-        var saving = vm.PageFlow.SettingsPage!.Saving;
+        await using var viewModel = WithOwnParts(action => action());
+        viewModel.PageFlow.OpenSettings();
+        var saving = viewModel.PageFlow.SettingsPage!.Saving;
 
         saving.Start();
         time.Advance(PendingActionViewModel.ShowAfter); // only the given clock moves
@@ -142,12 +142,12 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     public async Task ApplySettingsAsync_GivenHardware_RestartsDevicesOffTheCallingThread()
     {
         var hardware = new FakeAudioHardware();
-        await using var vm = WithOwnParts(a => a(), hardware: hardware);
-        vm.PageFlow.OpenSettings(); // the level meter opens the microphone
+        await using var viewModel = WithOwnParts(action => action(), hardware: hardware);
+        viewModel.PageFlow.OpenSettings(); // the level meter opens the microphone
         await AsyncWait.Until(() => hardware.Counts.MicsOpen == 1);
 
         hardware.OpenGate.Reset(); // the restart's open waits, so a restart on this thread would not return
-        var applying = vm.ApplySettingsAsync(new ClientSettings());
+        var applying = viewModel.ApplySettingsAsync(new ClientSettings());
         Assert.False(applying.IsCompleted);
         hardware.OpenGate.Set();
         await applying;
@@ -165,10 +165,10 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
             poller = Thread.CurrentThread;
             return false;
         });
-        var vm = WithOwnParts(a => a(), keys: keys, hardware: hardware);
+        var viewModel = WithOwnParts(action => action(), keys: keys, hardware: hardware);
         await AsyncWait.Until(() => poller is not null);
 
-        await vm.DisposeAsync();
+        await viewModel.DisposeAsync();
 
         Assert.False(poller!.IsAlive); // the key poller's thread ended
         Assert.Equal(0, hardware.Subscribers); // the engine no longer listens to the devices
@@ -179,7 +179,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     {
         var hardware = new FakeAudioHardware();
 
-        Assert.ThrowsAny<Exception>(() => MainViewModel.Create(Profile, a => a(), time, new ClientLog(Parts, time), settings: null!, null,
+        Assert.ThrowsAny<Exception>(() => MainViewModel.Create(Profile, action => action(), time, new ClientLog(Parts, time), settings: null!, null,
             hardware: hardware));
 
         Assert.Equal(0, hardware.Subscribers);
@@ -188,7 +188,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     [Fact]
     public async Task Connect_GivenKnownServers_NewPinSavedThere()
     {
-        var (server, ui, vm) = await ConnectAsync();
+        var (server, ui, viewModel) = await ConnectAsync();
         try
         {
             Assert.True(File.Exists(Path.Combine(Parts, TrustedServerFingerprints.FileName)));
@@ -196,23 +196,23 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         }
         finally
         {
-            await CloseAsync(server, ui, vm);
+            await CloseAsync(server, ui, viewModel);
         }
     }
 
     [Fact]
     public async Task Connect_GivenClock_ConnectionPartsHoldIt()
     {
-        var (server, ui, vm) = await ConnectAsync();
+        var (server, ui, viewModel) = await ConnectAsync();
         try
         {
-            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.Connection.ConnectionTime)));
-            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.Server?.Time)));
-            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(vm.Connection.VoiceLink.Client?.Time)));
+            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(viewModel.Connection.ConnectionTime)));
+            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(viewModel.Server?.Time)));
+            Assert.Same(time, await ui.InvokeAsync(() => Task.FromResult(viewModel.Connection.VoiceLink.Client?.Time)));
         }
         finally
         {
-            await CloseAsync(server, ui, vm);
+            await CloseAsync(server, ui, viewModel);
         }
     }
 
@@ -221,21 +221,21 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
     {
         var server = await TestServer.StartAsync();
         var ui = new TestDispatcher();
-        var vm = await ui.InvokeAsync(() => Task.FromResult(WithOwnParts(ui.Post)));
-        vm.ConfirmTofu = _ => Task.FromResult(true);
+        var viewModel = await ui.InvokeAsync(() => Task.FromResult(WithOwnParts(ui.Post)));
+        viewModel.ConfirmTofu = _ => Task.FromResult(true);
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, SaveBookmark: false));
+            await viewModel.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, SaveBookmark: false));
             return null;
         });
-        return (server, ui, vm);
+        return (server, ui, viewModel);
     }
 
-    static async Task CloseAsync(TestServer server, TestDispatcher ui, MainViewModel vm)
+    static async Task CloseAsync(TestServer server, TestDispatcher ui, MainViewModel viewModel)
     {
         await ui.InvokeAsync<object?>(async () =>
         {
-            await vm.DisposeAsync();
+            await viewModel.DisposeAsync();
             return null;
         });
         ui.Dispose();

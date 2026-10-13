@@ -54,10 +54,10 @@ public sealed class PersistedFixtureTests() : TempDirectoryTest("ovs-fixture-", 
     }
 
     /// <summary>The order of every stored list, which <see cref="Assert.Equivalent"/> does not check.</summary>
-    static string[] Order(ServerData d) =>
+    static string[] Order(ServerData serverData) =>
     [
-        .. d.Channels.Select(c => $"{c.Id}"), .. d.Groups.Select(g => $"{g.Id}"), .. d.Users.Select(u => u.Fingerprint),
-        .. d.Users.Select(u => string.Join(",", u.GroupIds)), .. d.Users.SelectMany(u => u.PreviousNicknames), .. d.Bans.Select(b => $"{b.Id}"),
+        .. serverData.Channels.Select(channel => $"{channel.Id}"), .. serverData.Groups.Select(groupRecord => $"{groupRecord.Id}"), .. serverData.Users.Select(user => user.Fingerprint),
+        .. serverData.Users.Select(user => string.Join(",", user.GroupIds)), .. serverData.Users.SelectMany(user => user.PreviousNicknames), .. serverData.Bans.Select(ban => $"{ban.Id}"),
     ];
 
     /// <summary>What the fixture generator stored; the release had no channel bitrate yet, so its channels load with the default.</summary>

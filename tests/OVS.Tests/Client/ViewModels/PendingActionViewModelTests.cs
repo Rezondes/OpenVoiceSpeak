@@ -7,7 +7,7 @@ namespace OVS.Tests.Client.ViewModels;
 /// <summary>Package 97 (A113): the shared waiting mark for every action that waits for the server.</summary>
 public class PendingActionViewModelTests
 {
-    static TimeSpan Ms(int ms) => TimeSpan.FromMilliseconds(ms);
+    static TimeSpan Ms(int milliseconds) => TimeSpan.FromMilliseconds(milliseconds);
 
     [Fact]
     public void BusyVisibleWithin150ms_NotForFastActions()
@@ -29,7 +29,7 @@ public class PendingActionViewModelTests
 
         // answered after 1 s: busy from 150 ms on until the answer
         var seen = new List<string?>();
-        pending.PropertyChanged += (_, e) => seen.Add(e.PropertyName);
+        pending.PropertyChanged += (_, args) => seen.Add(args.PropertyName);
         pending.Start("r2");
         Assert.False(pending.Answers("r1"));
         time.Advance(Ms(149));

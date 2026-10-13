@@ -19,10 +19,10 @@ public sealed class ChannelCommandTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        server = await TestServer.StartAsync(d =>
+        server = await TestServer.StartAsync(serverData =>
         {
-            TestServer.Grant(adminId, "Admin")(d);
-            TestServer.Grant(modId, "Moderator")(d);
+            TestServer.Grant(adminId, "Admin")(serverData);
+            TestServer.Grant(modId, "Moderator")(serverData);
         });
         a = await TestClient.ConnectAsync(server, "admin", adminId);
         m = await TestClient.ConnectAsync(server, "mod", modId);
@@ -31,14 +31,14 @@ public sealed class ChannelCommandTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        foreach (var c in new[] { a, m, g }) await c.DisposeAsync();
+        foreach (var client in new[] { a, m, g }) await client.DisposeAsync();
         await server.DisposeAsync();
     }
 
     async Task<ChannelInfo> CreateAsync(string name)
     {
         await a.SendAsync(new CreateChannel(name, ""));
-        return (await a.WaitForAsync<ChannelAdded>(c => c.Channel.Name == name)).Channel;
+        return (await a.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == name)).Channel;
     }
 
     [Fact]
@@ -46,8 +46,8 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     {
         var raid = await CreateAsync("Raid");
         await g.SendAsync(new JoinChannel(raid.Id));
-        Assert.Equal(raid.Id, (await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id)).User.ChannelId);
-        Assert.Equal(raid.Id, (await g.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id)).User.ChannelId);
+        Assert.Equal(raid.Id, (await a.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == g.Id)).User.ChannelId);
+        Assert.Equal(raid.Id, (await g.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == g.Id)).User.ChannelId);
     }
 
     /// <summary>Package 54: a new channel gets its options right away, like an edited one.</summary>
@@ -58,7 +58,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         var added = (await g.WaitForAsync<ChannelAdded>()).Channel;
         Assert.Equal((true, 5), (added.IsMuted, added.MaxUsers));
         await using var late = await TestClient.ConnectAsync(server, "spät");
-        var known = late.Welcome.Snapshot.Channels.Single(c => c.Id == added.Id);
+        var known = late.Welcome.Snapshot.Channels.Single(channel => channel.Id == added.Id);
         Assert.Equal((true, 5), (known.IsMuted, known.MaxUsers));
     }
 
@@ -70,7 +70,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         await a.SendAsync(new CreateChannel("Raid", "", MaxUsers: maxUsers) { RequestId = "c" });
         Assert.Equal(ReasonCodes.InvalidValue, (await a.ErrorAsync("c")).Code);
         await using var late = await TestClient.ConnectAsync(server, "spät");
-        Assert.DoesNotContain(late.Welcome.Snapshot.Channels, c => c.Name == "Raid");
+        Assert.DoesNotContain(late.Welcome.Snapshot.Channels, channel => channel.Name == "Raid");
     }
 
     [Fact]
@@ -129,15 +129,15 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     {
         Assert.Equal(64, (await CreateAsync("Standard")).Bitrate);
         await a.SendAsync(new CreateChannel("Leise", "", Bitrate: 16));
-        Assert.Equal(16, (await g.WaitForAsync<ChannelAdded>(c => c.Channel.Name == "Leise")).Channel.Bitrate);
+        Assert.Equal(16, (await g.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == "Leise")).Channel.Bitrate);
         await a.SendAsync(new CreateChannel("Musik", "", Bitrate: 128));
-        var music = (await g.WaitForAsync<ChannelAdded>(c => c.Channel.Name == "Musik")).Channel;
+        var music = (await g.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == "Musik")).Channel;
         Assert.Equal(128, music.Bitrate);
 
         await a.SendAsync(new EditChannel(music.Id, "Musik", "", music.Order, Bitrate: 96));
-        Assert.Equal(96, (await g.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == music.Id)).Channel.Bitrate);
+        Assert.Equal(96, (await g.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.Id == music.Id)).Channel.Bitrate);
         await using (var late = await TestClient.ConnectAsync(server, "spät"))
-            Assert.Equal(96, late.Welcome.Snapshot.Channels.Single(c => c.Id == music.Id).Bitrate);
+            Assert.Equal(96, late.Welcome.Snapshot.Channels.Single(channel => channel.Id == music.Id).Bitrate);
         var log = Directory.GetFiles(Path.Combine(server.DataDir, "logs", "channels", music.Id.ToString())).Single();
         using (var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
             Assert.Contains("Qualität 96 kbps", new StreamReader(stream).ReadToEnd());
@@ -150,7 +150,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         Assert.Equal(ReasonCodes.InvalidValue, (await a.ErrorAsync("z")).Code);
 
         await a.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator));
-        Assert.Equal(0, (await g.WaitForAsync<ChannelAdded>(c => c.Channel.Kind == ChannelKind.Separator)).Channel.Bitrate);
+        Assert.Equal(0, (await g.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Kind == ChannelKind.Separator)).Channel.Bitrate);
         await a.SendAsync(new CreateChannel("", "", Bitrate: 96, Kind: ChannelKind.Separator) { RequestId = "s" });
         Assert.Equal(ReasonCodes.InvalidValue, (await a.ErrorAsync("s")).Code);
     }
@@ -159,7 +159,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     public async Task Separator_JoinMoveEdit_Refused()
     {
         await a.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator));
-        var separator = (await a.WaitForAsync<ChannelAdded>(c => c.Channel.Kind == ChannelKind.Separator)).Channel;
+        var separator = (await a.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Kind == ChannelKind.Separator)).Channel;
 
         await a.SendAsync(new JoinChannel(separator.Id) { RequestId = "j" });
         Assert.Equal(ReasonCodes.NotJoinable, (await a.ErrorAsync("j")).Code); // also for an admin
@@ -170,7 +170,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
 
         // it moves and goes like any channel
         await a.SendAsync(new ReorderChannels([separator.Id, Lobby]));
-        Assert.Equal(0, (await g.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == separator.Id)).Channel.Order);
+        Assert.Equal(0, (await g.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.Id == separator.Id)).Channel.Order);
         await a.SendAsync(new DeleteChannel(separator.Id));
         Assert.Equal(separator.Id, (await g.WaitForAsync<ChannelRemoved>()).ChannelId);
     }
@@ -201,7 +201,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         Assert.True((await g.WaitForAsync<ChannelUpdated>()).Channel.IsMuted);
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
-        Assert.True(late.Welcome.Snapshot.Channels.Single(c => c.Id == raid.Id).IsMuted);
+        Assert.True(late.Welcome.Snapshot.Channels.Single(channel => channel.Id == raid.Id).IsMuted);
         Assert.Contains("\"isMuted\": true", File.ReadAllText(Path.Combine(server.DataDir, "server-data.json")));
         var log = Directory.GetFiles(Path.Combine(server.DataDir, "logs", "channels", raid.Id.ToString())).Single();
         using var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -214,13 +214,13 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     {
         var channel = await CreateAsync(name);
         await a.SendAsync(new EditChannel(channel.Id, name, "", channel.Order, MaxUsers: maxUsers));
-        return (await g.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == channel.Id && u.Channel.MaxUsers == maxUsers)).Channel;
+        return (await g.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.Id == channel.Id && channelUpdated.Channel.MaxUsers == maxUsers)).Channel;
     }
 
     async Task JoinAsync(TestClient client, Guid channel)
     {
         await client.SendAsync(new JoinChannel(channel));
-        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == client.Id && u.User.ChannelId == channel);
+        await a.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id && userUpdated.User.ChannelId == channel);
     }
 
     [Fact]
@@ -242,7 +242,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         await m.SendAsync(new MoveUser(g2.Id, raid.Id) { RequestId = "mv" });
         Assert.Equal(ReasonCodes.ChannelFull, (await m.ErrorAsync("mv")).Code);
         await a.SendAsync(new MoveUser(g2.Id, raid.Id));
-        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g2.Id && u.User.ChannelId == raid.Id);
+        await a.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == g2.Id && userUpdated.User.ChannelId == raid.Id);
     }
 
     [Theory]
@@ -269,11 +269,11 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         await JoinAsync(g, raid.Id);
         await JoinAsync(m, raid.Id);
         await a.SendAsync(new EditChannel(raid.Id, "Raid", "", raid.Order, MaxUsers: 1));
-        await g.WaitForAsync<ChannelUpdated>(u => u.Channel.MaxUsers == 1);
+        await g.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.MaxUsers == 1);
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
-        Assert.Equal(1, late.Welcome.Snapshot.Channels.Single(c => c.Id == raid.Id).MaxUsers);
-        Assert.Equal(2, late.Welcome.Snapshot.Users.Count(u => u.ChannelId == raid.Id)); // both stay
+        Assert.Equal(1, late.Welcome.Snapshot.Channels.Single(channel => channel.Id == raid.Id).MaxUsers);
+        Assert.Equal(2, late.Welcome.Snapshot.Users.Count(user => user.ChannelId == raid.Id)); // both stay
         await late.SendAsync(new JoinChannel(raid.Id) { RequestId = "j" });
         Assert.Equal(ReasonCodes.ChannelFull, (await late.ErrorAsync("j")).Code);
     }
@@ -286,12 +286,12 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         var raid = await CreateAsync("Raid");
         var afk = await CreateAsync("AFK");
         await a.SendAsync(new ReorderChannels([afk.Id, Lobby, raid.Id]));
-        var afkNow = await g.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == afk.Id);
+        var afkNow = await g.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.Id == afk.Id);
         Assert.Equal(0, afkNow.Channel.Order);
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
-        Assert.Equal([afk.Id, Lobby, raid.Id], late.Welcome.Snapshot.Channels.OrderBy(c => c.Order).Select(c => c.Id));
-        Assert.Contains(server.Log, l => l.Contains("Channels umsortiert von admin"));
+        Assert.Equal([afk.Id, Lobby, raid.Id], late.Welcome.Snapshot.Channels.OrderBy(channel => channel.Order).Select(channel => channel.Id));
+        Assert.Contains(server.Log, line => line.Contains("Channels umsortiert von admin"));
     }
 
     [Fact]
@@ -332,10 +332,10 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     {
         var raid = await CreateAsync("Raid");
         await g.SendAsync(new JoinChannel(raid.Id));
-        await a.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ChannelId == raid.Id);
+        await a.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == g.Id && userUpdated.User.ChannelId == raid.Id);
 
         await a.SendAsync(new DeleteChannel(raid.Id));
-        Assert.Equal(Lobby, (await m.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id && u.User.ChannelId == Lobby)).User.ChannelId);
+        Assert.Equal(Lobby, (await m.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == g.Id && userUpdated.User.ChannelId == Lobby)).User.ChannelId);
         Assert.Equal(raid.Id, (await m.WaitForAsync<ChannelRemoved>()).ChannelId);
     }
 
@@ -351,7 +351,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
     {
         var raid = await CreateAsync("Raid");
         await m.SendAsync(new MoveUser(g.Id, raid.Id));
-        Assert.Equal(raid.Id, (await g.WaitForAsync<UserUpdated>(u => u.User.SessionId == g.Id)).User.ChannelId);
+        Assert.Equal(raid.Id, (await g.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == g.Id)).User.ChannelId);
     }
 
     [Fact]

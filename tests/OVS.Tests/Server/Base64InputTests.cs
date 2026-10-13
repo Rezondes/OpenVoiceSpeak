@@ -26,7 +26,7 @@ public class Base64InputTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
 
         // exactly BackupChunkBytes (one '=') and one byte less (two '=') pass
         foreach (var (size, padding) in new[] { (ProtocolLimits.BackupChunkBytes, 1), (ProtocolLimits.BackupChunkBytes - 1, 2) })
@@ -35,7 +35,7 @@ public class Base64InputTests
             Assert.Equal(padding, Padding(text));
             var id = Guid.NewGuid().ToString("N");
             await admin.SendAsync(new UploadBackupChunk(id, 0, text, false) { RequestId = "ok" + size });
-            Assert.Equal(size, (await admin.WaitForAsync<UploadBackupAck>(r => r.RequestId == "ok" + size)).Received);
+            Assert.Equal(size, (await admin.WaitForAsync<UploadBackupAck>(uploadBackupAck => uploadBackupAck.RequestId == "ok" + size)).Received);
         }
 
         // one byte more is refused
@@ -49,7 +49,7 @@ public class Base64InputTests
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
 
         // the largest allowed logo (one '=') and one byte less (two '='); only the header is checked, the rest is padding
         foreach (var (size, padding) in new[] { (ServerIconFormat.MaxBytes, 1), (ServerIconFormat.MaxBytes - 1, 2) })
@@ -59,7 +59,7 @@ public class Base64InputTests
             var text = Convert.ToBase64String(png);
             Assert.Equal(padding, Padding(text));
             await admin.SendAsync(new SetServerIcon(text) { RequestId = "logo" + size });
-            await admin.WaitForAsync<ServerSettingsChanged>(m => m.Settings.IconHash == ServerIconFormat.ComputeHash(png));
+            await admin.WaitForAsync<ServerSettingsChanged>(serverSettingsChanged => serverSettingsChanged.Settings.IconHash == ServerIconFormat.ComputeHash(png));
         }
     }
 
@@ -67,7 +67,7 @@ public class Base64InputTests
     public void StoredHash_Padded_StillValid()
     {
         // a PBKDF2 hash as the server stores it: a 16-byte salt (two '=') and a 32-byte key (one '=')
-        var salt = Enumerable.Range(1, 16).Select(i => (byte)i).ToArray();
+        var salt = Enumerable.Range(1, 16).Select(index => (byte)index).ToArray();
         var key = Rfc2898DeriveBytes.Pbkdf2("geheim"u8, salt, StoredPassword.HashIterations, HashAlgorithmName.SHA256, 32);
         var (saltText, keyText) = (Convert.ToBase64String(salt), Convert.ToBase64String(key));
         Assert.Equal((2, 1), (Padding(saltText), Padding(keyText)));
@@ -99,7 +99,7 @@ public class Base64InputTests
         await using var client = await TestClient.ConnectAsync(server, "anna", identity);
 
         // the server derives the fingerprint from the decoded key, so the same bytes give the same fingerprint
-        var self = Assert.Single(client.Welcome.Snapshot.Users, u => u.SessionId == client.Id);
+        var self = Assert.Single(client.Welcome.Snapshot.Users, user => user.SessionId == client.Id);
         Assert.Equal(identity.Fingerprint, self.Fingerprint);
     }
 }

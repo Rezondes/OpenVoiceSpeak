@@ -116,14 +116,14 @@ public sealed class ShowcaseServer
     /// <summary>Answers the administration's requests (users, bans, backups, logs) and joins, as the server would.</summary>
     public void AnswerAdministration() => Reply = request => request switch
     {
-        ListUsers r => new UserList(r.RequestId, KnownUsers(), 0, KnownUsers().Count),
-        ListBans r => new BanList(r.RequestId, Bans(), 0, Bans().Count),
-        ListBackups r => new BackupList(r.RequestId, Backups(), 0, Backups().Count),
-        ListLogs r => new LogList(r.RequestId, LogFiles(), 0, LogFiles().Count),
-        ReadLog r => new LogPage(r.RequestId, r.FileId, 1, 1, 1, LogLines(r.FileId)),
-        SearchLogs r => new LogSearchResult(r.RequestId, LogLines(RaidLog).Select((text, i) => new LogHit(RaidLog, i + 1, text))
-            .Where(h => h.Text.Contains(r.Query, StringComparison.OrdinalIgnoreCase)).ToList(), false, false),
-        JoinChannel r => new UserUpdated(Server.Mirror.Users[Self] with { ChannelId = r.ChannelId }),
+        ListUsers listUsers => new UserList(listUsers.RequestId, KnownUsers(), 0, KnownUsers().Count),
+        ListBans listBans => new BanList(listBans.RequestId, Bans(), 0, Bans().Count),
+        ListBackups listBackups => new BackupList(listBackups.RequestId, Backups(), 0, Backups().Count),
+        ListLogs listLogs => new LogList(listLogs.RequestId, LogFiles(), 0, LogFiles().Count),
+        ReadLog readLog => new LogPage(readLog.RequestId, readLog.FileId, 1, 1, 1, LogLines(readLog.FileId)),
+        SearchLogs searchLogs => new LogSearchResult(searchLogs.RequestId, LogLines(RaidLog).Select((text, index) => new LogHit(RaidLog, index + 1, text))
+            .Where(logHit => logHit.Text.Contains(searchLogs.Query, StringComparison.OrdinalIgnoreCase)).ToList(), false, false),
+        JoinChannel joinChannel => new UserUpdated(Server.Mirror.Users[Self] with { ChannelId = joinChannel.ChannelId }),
         _ => null,
     };
 

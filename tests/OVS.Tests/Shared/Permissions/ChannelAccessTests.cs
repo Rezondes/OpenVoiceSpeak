@@ -9,7 +9,7 @@ public class ChannelAccessTests
     static readonly Guid Team = Guid.NewGuid();
 
     /// <summary>"admin", "guest" and "team" separated by commas; "" is no group, null no list.</summary>
-    static Guid[]? Groups(string? names) => names?.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(n => n switch
+    static Guid[]? Groups(string? names) => names?.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(name => name switch
     {
         "admin" => WellKnownGroups.Admin,
         "guest" => WellKnownGroups.Guest,

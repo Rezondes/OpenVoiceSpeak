@@ -39,9 +39,9 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
         var inTests = false;
         string? context = null;
         var lines = plan.Split('\n');
-        for (var i = 0; i < lines.Length; i++)
+        for (var index = 0; index < lines.Length; index++)
         {
-            var line = lines[i].TrimEnd('\r');
+            var line = lines[index].TrimEnd('\r');
             if (line.StartsWith("## "))
             {
                 var heading = PackageHeading.Match(line);
@@ -63,10 +63,10 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
                 if (line[..span.Index].EndsWith("ersetzt ") || line[..span.Index].EndsWith("replaces ")) continue;
                 if (Read(text, ref lineContext) is not { } target)
                 {
-                    if (LooksLikeTest.IsMatch(text) && !text.StartsWith("dotnet ")) ignored.Add((i + 1, text));
+                    if (LooksLikeTest.IsMatch(text) && !text.StartsWith("dotnet ")) ignored.Add((index + 1, text));
                     continue;
                 }
-                references.Add(new(package!.Value, i + 1, target.Class, target.Method, target.File, target.Text,
+                references.Add(new(package!.Value, index + 1, target.Class, target.Method, target.File, target.Text,
                     ReadCriteria(line[(span.Index + span.Length)..])));
             }
             if (line.Length > 0 && !char.IsWhiteSpace(line[0])) context = lineContext;
@@ -95,7 +95,7 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
         {
             var number = int.Parse(part.Groups[2].Value);
             if (part.Groups[1].Value is "bis" or "to" && result.Count > 0)
-                for (var n = result[^1] + 1; n < number; n++) result.Add(n);
+                for (var count = result[^1] + 1; count < number; count++) result.Add(count);
             result.Add(number);
         }
         return [.. result];

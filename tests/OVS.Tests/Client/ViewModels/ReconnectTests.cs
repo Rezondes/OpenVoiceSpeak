@@ -36,7 +36,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         // the welcome text is there so that "one notice after a reconnect" shows that a reconnect brings no welcome text again
-        server = await TestServer.StartAsync(d => d.Settings.WelcomeText = "Willkommen auf dem Testserver!");
+        server = await TestServer.StartAsync(serverData => serverData.Settings.WelcomeText = "Willkommen auf dem Testserver!");
         seam = new ConnectSeam(dir, reconnectTime);
         vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, trustServers: true, time: reconnectTime,
             connect: seam.Connect)));
@@ -92,9 +92,9 @@ public sealed class ReconnectTests : IAsyncLifetime
     });
 
     /// <summary>The notices added since <paramref name="before"/> of them were there, oldest first.</summary>
-    Task<List<string>> NoticesSince(int before) => OnUi(() => vm.Notices.Take(vm.Notices.Count - before).Reverse().Select(n => n.Text).ToList());
+    Task<List<string>> NoticesSince(int before) => OnUi(() => vm.Notices.Take(vm.Notices.Count - before).Reverse().Select(notice => notice.Text).ToList());
 
-    static Action<OVS.Server.Data.Records.ServerData> SecretChannel(Guid id) => d => d.Channels.Add(new OVS.Server.Data.Records.ChannelRecord
+    static Action<OVS.Server.Data.Records.ServerData> SecretChannel(Guid id) => serverData => serverData.Channels.Add(new OVS.Server.Data.Records.ChannelRecord
     {
         Id = id, Name = "Geheim", Order = 1, StoredPassword = OVS.Server.Security.StoredPassword.Create("pw"),
     });
@@ -109,7 +109,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         vm.Dialogs = new DialogCallbacks { Server = new() { AskChannelPassword = _ => { asked++; return Task.FromResult<string?>("pw"); } } };
         await ConnectTo(own);
         await OnUi(() => vm.Server!.JoinAsync(secret));
-        Assert.Equal(secret, await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, c => c == secret));
+        Assert.Equal(secret, await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, id => id == secret));
         await OnUi(() => vm.Server!.SelfState.ToggleDeafenCommand.ExecuteAsync(null));
         var before = await OnUi(() => (vm.Server!.Mirror.SelfId, vm.Notices.Count));
 
@@ -136,7 +136,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         var before = await OnUi(() => vm.Server!.Mirror.SelfId);
         await DropAsync(on);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        Assert.True(await OnUiUntil(() => vm.Server is { } s && s.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
+        Assert.True(await OnUiUntil(() => vm.Server is { } server && server.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public sealed class ReconnectTests : IAsyncLifetime
             await OnUiUntil(() => vm.Keys.MuteHeld, h => !h);
         }
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        Assert.True(await OnUiUntil(() => vm.Server is { } s && s.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
+        Assert.True(await OnUiUntil(() => vm.Server is { } server && server.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
         if (heldThrough)
         {
             Assert.True(await OnUi(() => vm.Server!.SelfState.SelfMuted)); // still held: muted
@@ -238,7 +238,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         });
         Assert.True(fed > 0);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        Assert.True(await OnUiUntil(() => vm.Server is { } s && s.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
+        Assert.True(await OnUiUntil(() => vm.Server is { } server && server.Mirror.SelfId != before && !vm.Connection.IsReconnecting, ok => ok));
 
         var shown = await OnUi(() =>
         {
@@ -331,7 +331,7 @@ public sealed class ReconnectTests : IAsyncLifetime
             await locked.DisposeAsync();
             Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r)); // ServerShutdown retries
             reconnectTime.Advance(TimeSpan.FromSeconds(1));
-            Assert.StartsWith("Abgelehnt", await OnUiUntil(() => vm.Status, s => s.StartsWith("Abgelehnt")));
+            Assert.StartsWith("Abgelehnt", await OnUiUntil(() => vm.Status, text => text.StartsWith("Abgelehnt")));
             Assert.Contains(SoundEvent.Disconnected, await OnUi(() => vm.Audio.Sounds.Recent)); // review: the series ended, so the tone
         }
         else
@@ -380,7 +380,7 @@ public sealed class ReconnectTests : IAsyncLifetime
         var oldAttempt = seam.HoldNext();
         await first.DisposeAsync();
         Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
-        await using var back = await TestServer.StartAsync(d => d.Settings.Name = "Zurück", port: port);
+        await using var back = await TestServer.StartAsync(serverData => serverData.Settings.Name = "Zurück", port: port);
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
         var held = await HangGuard.Bound(oldAttempt.Reached);
         Assert.Equal(seam.Attempts.Count, held.Number);
@@ -535,31 +535,31 @@ public sealed class ReconnectTests : IAsyncLifetime
     {
         var secret = Guid.NewGuid();
         using var adminId = OVS.Shared.Identity.ClientIdentity.Create();
-        await using var own = await TestServer.StartAsync(d =>
+        await using var own = await TestServer.StartAsync(serverData =>
         {
-            SecretChannel(secret)(d);
-            TestServer.Grant(adminId, "Admin")(d);
+            SecretChannel(secret)(serverData);
+            TestServer.Grant(adminId, "Admin")(serverData);
         });
         await using var admin = await TestClient.ConnectAsync(own, "admin", adminId);
         vm.Dialogs = new DialogCallbacks { Server = new() { AskChannelPassword = _ => Task.FromResult<string?>("pw") } };
         await ConnectTo(own);
         await OnUi(() => vm.Server!.JoinAsync(secret));
-        await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, c => c == secret);
+        await OnUiUntil(() => vm.Server!.Mirror.Self!.ChannelId, id => id == secret);
         var before = await OnUi(() => vm.Notices.Count);
 
         await DropAsync(own);
         if (change == "deleted")
         {
             await admin.SendAsync(new DeleteChannel(secret) { RequestId = "x" });
-            await admin.WaitForAsync<ChannelRemoved>(r => r.ChannelId == secret);
+            await admin.WaitForAsync<ChannelRemoved>(channelRemoved => channelRemoved.ChannelId == secret);
         }
         else
         {
             await admin.SendAsync(new EditChannel(secret, "Geheim", "", 1, Password: "neu") { RequestId = "x" });
-            await admin.WaitForAsync<ChannelUpdated>(u => u.Channel.Id == secret);
+            await admin.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.Id == secret);
         }
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
-        var notices = await OnUiUntil(() => vm.Notices.Take(vm.Notices.Count - before).Select(n => n.Text).ToList(), n => n.Count >= 2);
+        var notices = await OnUiUntil(() => vm.Notices.Take(vm.Notices.Count - before).Select(notice => notice.Text).ToList(), list => list.Count >= 2);
         await Task.Delay(300); // nothing else follows
         notices = await NoticesSince(before);
 

@@ -54,10 +54,10 @@ public sealed class LogExporterTests : TempDirectoryTest
     static List<(string Name, string Text)> Entries(string zipPath)
     {
         using var zip = ZipFile.OpenRead(zipPath);
-        return zip.Entries.Select(e =>
+        return zip.Entries.Select(zipArchiveEntry =>
         {
-            using var text = new StreamReader(e.Open(), Encoding.UTF8);
-            return (e.FullName, text.ReadToEnd());
+            using var text = new StreamReader(zipArchiveEntry.Open(), Encoding.UTF8);
+            return (zipArchiveEntry.FullName, text.ReadToEnd());
         }).ToList();
     }
 

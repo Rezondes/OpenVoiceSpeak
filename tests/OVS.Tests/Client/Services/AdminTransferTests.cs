@@ -52,23 +52,23 @@ public sealed class AdminTransferTests : TempDirectoryTest
     }
 
     /// <summary>The requests whose route is still in place.</summary>
-    IEnumerable<string> Routed() => sent.Select(r => r.RequestId!).Where(id => routes.Find(id) is not null);
+    IEnumerable<string> Routed() => sent.Select(request => request.RequestId!).Where(id => routes.Find(id) is not null);
 
     /// <summary>A server that has <see cref="Content"/> as backup "b.ovsbackup" and as log download "d7", in chunks of <see cref="ChunkSize"/>.</summary>
-    static Message? Serve(Request r) => r switch
+    static Message? Serve(Request request) => request switch
     {
-        DownloadBackup d => new BackupChunk(r.RequestId, d.FileName, d.Offset, Content.Length, Part(d.Offset), d.Offset + ChunkSize >= Content.Length),
-        PrepareLogDownload => new LogDownloadReady(r.RequestId, "d7", "ovs-logs.zip", Content.Length),
-        DownloadLogChunk c => new LogChunk(r.RequestId, c.DownloadId, c.Offset, Content.Length, Part(c.Offset), c.Offset + ChunkSize >= Content.Length),
+        DownloadBackup downloadBackup => new BackupChunk(request.RequestId, downloadBackup.FileName, downloadBackup.Offset, Content.Length, Part(downloadBackup.Offset), downloadBackup.Offset + ChunkSize >= Content.Length),
+        PrepareLogDownload => new LogDownloadReady(request.RequestId, "d7", "ovs-logs.zip", Content.Length),
+        DownloadLogChunk downloadLogChunk => new LogChunk(request.RequestId, downloadLogChunk.DownloadId, downloadLogChunk.Offset, Content.Length, Part(downloadLogChunk.Offset), downloadLogChunk.Offset + ChunkSize >= Content.Length),
         _ => null,
     };
 
     static string Part(long offset) => Convert.ToBase64String(Content, (int)offset, (int)Math.Min(ChunkSize, Content.Length - offset));
 
-    static long? ChunkOffset(Request r) => r switch
+    static long? ChunkOffset(Request request) => request switch
     {
-        DownloadBackup d => d.Offset,
-        DownloadLogChunk c => c.Offset,
+        DownloadBackup downloadBackup => downloadBackup.Offset,
+        DownloadLogChunk downloadLogChunk => downloadLogChunk.Offset,
         _ => null,
     };
 
@@ -87,11 +87,11 @@ public sealed class AdminTransferTests : TempDirectoryTest
         var target = Target();
         var format = logs ? Strings.Logs_Downloading : Strings.Backup_Downloading;
         var seen = new List<(bool Running, double Percent, string Text, bool PartExists, bool TargetExists)>();
-        answer = r =>
+        answer = request =>
         {
-            if (ChunkOffset(r) is not null)
+            if (ChunkOffset(request) is not null)
                 seen.Add((transfer.IsRunning, transfer.Percent, transfer.ProgressText, File.Exists(target + ".part"), File.Exists(target)));
-            return Serve(r);
+            return Serve(request);
         };
 
         await Bound(DownloadAsync(logs, target));
@@ -109,9 +109,9 @@ public sealed class AdminTransferTests : TempDirectoryTest
         if (logs)
         {
             Assert.Equal(["a", "b"], Assert.IsType<PrepareLogDownload>(sent[0]).FileIds);
-            Assert.All(sent.OfType<DownloadLogChunk>(), c => Assert.Equal("d7", c.DownloadId));
+            Assert.All(sent.OfType<DownloadLogChunk>(), request => Assert.Equal("d7", request.DownloadId));
         }
-        else Assert.All(sent, r => Assert.Equal("b.ovsbackup", Assert.IsType<DownloadBackup>(r).FileName));
+        else Assert.All(sent, request => Assert.Equal("b.ovsbackup", Assert.IsType<DownloadBackup>(request).FileName));
     }
 
     [Theory]
@@ -121,7 +121,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     {
         var target = Target();
         File.WriteAllText(target, "alt");
-        answer = r => ChunkOffset(r) is 0 or null ? Serve(r) : new Error(r.RequestId, ReasonCodes.NotFound); // the server shows its own
+        answer = request => ChunkOffset(request) is 0 or null ? Serve(request) : new Error(request.RequestId, ReasonCodes.NotFound); // the server shows its own
 
         await Bound(DownloadAsync(logs, target));
 
@@ -139,7 +139,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     public async Task Download_NoAnswerFor30Seconds_StopsWithItsNotice(string unanswered)
     {
         bool logs = unanswered != "backup chunk";
-        answer = r => unanswered == "log chunk" && r is PrepareLogDownload ? Serve(r) : null;
+        answer = request => unanswered == "log chunk" && request is PrepareLogDownload ? Serve(request) : null;
 
         var download = DownloadAsync(logs, Target());
         time.Advance(AnswerTimeout - TimeSpan.FromTicks(1));
@@ -161,10 +161,10 @@ public sealed class AdminTransferTests : TempDirectoryTest
     {
         var target = Target();
         File.WriteAllText(target, "alt");
-        answer = r => Serve(r) switch
+        answer = request => Serve(request) switch
         {
-            BackupChunk c => c with { DataBase64 = "%%%" },
-            LogChunk c => c with { DataBase64 = "%%%" },
+            BackupChunk backupChunk => backupChunk with { DataBase64 = "%%%" },
+            LogChunk logChunk => logChunk with { DataBase64 = "%%%" },
             var other => other,
         };
 
@@ -283,21 +283,21 @@ public sealed class AdminTransferTests : TempDirectoryTest
         var stored = new BackupInfo("hochgeladen_2026-01-01_12-00-00.ovsbackup", time.GetUtcNow(), content.Length, "dev.0000");
         var received = new MemoryStream();
         var seen = new List<(bool Running, double Percent)>();
-        answer = r =>
+        answer = request =>
         {
-            var c = Assert.IsType<UploadBackupChunk>(r);
+            var uploadBackupChunk = Assert.IsType<UploadBackupChunk>(request);
             seen.Add((transfer.IsRunning, transfer.Percent));
-            received.Write(Convert.FromBase64String(c.DataBase64));
-            return c.IsLast ? new BackupUploaded(r.RequestId, stored) : new UploadBackupAck(r.RequestId, c.UploadId, received.Length);
+            received.Write(Convert.FromBase64String(uploadBackupChunk.DataBase64));
+            return uploadBackupChunk.IsLast ? new BackupUploaded(request.RequestId, stored) : new UploadBackupAck(request.RequestId, uploadBackupChunk.UploadId, received.Length);
         };
 
         Assert.Same(stored, await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
 
         var chunks = sent.Cast<UploadBackupChunk>().ToList();
         Assert.Equal(content, received.ToArray());
-        Assert.Equal([0L, 524_288L, 1_048_576L], chunks.Select(c => c.Offset));
-        Assert.Equal([false, false, true], chunks.Select(c => c.IsLast));
-        Assert.Matches("^[0-9a-f]{32}$", Assert.Single(chunks.Select(c => c.UploadId).Distinct()));
+        Assert.Equal([0L, 524_288L, 1_048_576L], chunks.Select(request => request.Offset));
+        Assert.Equal([false, false, true], chunks.Select(request => request.IsLast));
+        Assert.Matches("^[0-9a-f]{32}$", Assert.Single(chunks.Select(request => request.UploadId).Distinct()));
         Assert.Equal([0d, 47.7, 95.3], seen.Select(s => Math.Round(s.Percent, 1)));
         Assert.All(seen, s => Assert.True(s.Running));
         Assert.Equal(100d, transfer.Percent);
@@ -313,7 +313,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         var path = Target("up.ovsbackup");
         File.WriteAllBytes(path, [1, 2, 3]);
         var stored = new BackupInfo("hochgeladen_2026-01-01_12-00-00.ovsbackup", time.GetUtcNow(), 3, "dev.0000");
-        answer = r => new BackupUploaded(r.RequestId, stored);
+        answer = request => new BackupUploaded(request.RequestId, stored);
         Assert.Same(stored, await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
 
         var list = new BackupList("r1", [stored]);
@@ -327,7 +327,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     {
         var path = Target("up.ovsbackup");
         File.WriteAllBytes(path, new byte[ProtocolLimits.BackupChunkBytes + 1]);
-        answer = r => new Error(r.RequestId, ReasonCodes.InvalidBackup); // the server shows its own
+        answer = request => new Error(request.RequestId, ReasonCodes.InvalidBackup); // the server shows its own
 
         Assert.Null(await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
 
@@ -343,7 +343,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     {
         var path = Target("big.ovsbackup");
         using (var file = File.Create(path)) file.SetLength(ProtocolLimits.MaxBackupUploadBytes + over);
-        answer = r => new Error(r.RequestId, ReasonCodes.InvalidBackup); // ends an upload after its first chunk
+        answer = request => new Error(request.RequestId, ReasonCodes.InvalidBackup); // ends an upload after its first chunk
 
         Assert.Null(await Bound(transfer.UploadBackupAsync(path, followUps.Add)));
 

@@ -181,7 +181,7 @@ public sealed class WireFreezeTests
     public void Messages_Discriminators_KeepTheirPropertyNames()
     {
         var actual = typeof(Message).GetCustomAttributes<JsonDerivedTypeAttribute>()
-            .Select(a => $"{a.TypeDiscriminator}: {PropertyNames(a.DerivedType)}".TrimEnd())
+            .Select(jsonDerivedTypeAttribute => $"{jsonDerivedTypeAttribute.TypeDiscriminator}: {PropertyNames(jsonDerivedTypeAttribute.DerivedType)}".TrimEnd())
             .Order(StringComparer.Ordinal).ToArray();
         Assert.True(Messages.SequenceEqual(actual), Literal(actual));
     }
@@ -189,8 +189,8 @@ public sealed class WireFreezeTests
     [Fact]
     public void Records_CarriedByMessages_KeepTheirPropertyNames()
     {
-        var actual = Reachable(MessageTypes()).Where(t => !t.IsEnum && !typeof(Message).IsAssignableFrom(t))
-            .Select(t => $"{t.Name}: {PropertyNames(t)}").Order(StringComparer.Ordinal).ToArray();
+        var actual = Reachable(MessageTypes()).Where(candidate => !candidate.IsEnum && !typeof(Message).IsAssignableFrom(candidate))
+            .Select(candidate => $"{candidate.Name}: {PropertyNames(candidate)}").Order(StringComparer.Ordinal).ToArray();
         Assert.True(Records.SequenceEqual(actual), Literal(actual));
     }
 
@@ -204,24 +204,24 @@ public sealed class WireFreezeTests
     [Fact]
     public void Enums_OnWireOrPersisted_KeepTheirMemberNames()
     {
-        var actual = Reachable(MessageTypes().Concat(PersistedRoots)).Where(t => t.IsEnum)
-            .Select(t => $"{t.Name}: {string.Join(", ", Enum.GetNames(t))}").Order(StringComparer.Ordinal).ToArray();
+        var actual = Reachable(MessageTypes().Concat(PersistedRoots)).Where(candidate => candidate.IsEnum)
+            .Select(candidate => $"{candidate.Name}: {string.Join(", ", Enum.GetNames(candidate))}").Order(StringComparer.Ordinal).ToArray();
         Assert.True(Enums.SequenceEqual(actual), Literal(actual));
     }
 
     [Fact]
     public void Messages_EveryConcreteSubtype_IsRegistered()
     {
-        var concrete = typeof(Message).Assembly.GetTypes().Where(t => !t.IsAbstract && typeof(Message).IsAssignableFrom(t))
-            .Select(t => t.FullName!).Order(StringComparer.Ordinal).ToArray();
-        var registered = MessageTypes().Select(t => t.FullName!).Order(StringComparer.Ordinal).ToArray();
+        var concrete = typeof(Message).Assembly.GetTypes().Where(candidate => !candidate.IsAbstract && typeof(Message).IsAssignableFrom(candidate))
+            .Select(candidate => candidate.FullName!).Order(StringComparer.Ordinal).ToArray();
+        var registered = MessageTypes().Select(candidate => candidate.FullName!).Order(StringComparer.Ordinal).ToArray();
         Assert.Equal(concrete, registered);
     }
 
-    static IEnumerable<Type> MessageTypes() => typeof(Message).GetCustomAttributes<JsonDerivedTypeAttribute>().Select(a => a.DerivedType);
+    static IEnumerable<Type> MessageTypes() => typeof(Message).GetCustomAttributes<JsonDerivedTypeAttribute>().Select(jsonDerivedTypeAttribute => jsonDerivedTypeAttribute.DerivedType);
 
     static string PropertyNames(Type type) =>
-        string.Join(", ", Info(type).Properties.Select(p => p.Name).Order(StringComparer.Ordinal));
+        string.Join(", ", Info(type).Properties.Select(jsonProperty => jsonProperty.Name).Order(StringComparer.Ordinal));
 
     /// <summary>The contract the wire options give a type (the same one they use when they first serialize it).</summary>
     static JsonTypeInfo Info(Type type)
@@ -243,11 +243,11 @@ public sealed class WireFreezeTests
                 continue;
             }
             if (type.Namespace?.StartsWith("OVS.", StringComparison.Ordinal) != true || !seen.Add(type) || type.IsEnum) continue;
-            foreach (var p in Info(type).Properties) queue.Enqueue(p.PropertyType);
+            foreach (var jsonProperty in Info(type).Properties) queue.Enqueue(jsonProperty.PropertyType);
         }
         return seen;
     }
 
     /// <summary>The lines as they belong into the literal list, for the failure message.</summary>
-    static string Literal(IEnumerable<string> lines) => "Actual:\n" + string.Concat(lines.Select(l => $"        \"{l}\",\n"));
+    static string Literal(IEnumerable<string> lines) => "Actual:\n" + string.Concat(lines.Select(line => $"        \"{line}\",\n"));
 }

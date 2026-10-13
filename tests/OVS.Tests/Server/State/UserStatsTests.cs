@@ -19,7 +19,7 @@ public sealed class UserStatsTests
     {
         server.State.FlushPendingSave(); // Package 87: logins and logouts are saved debounced
         return new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException())
-            .Users.Single(u => u.Fingerprint == who.Fingerprint);
+            .Users.Single(user => user.Fingerprint == who.Fingerprint);
     }
 
     static async Task UntilAsync(Func<bool> condition)
@@ -42,9 +42,9 @@ public sealed class UserStatsTests
         for (int sent = 0; sent < frames; sent += 10)
         {
             time.Advance(TimeSpan.FromSeconds(1));
-            int n = Math.Min(10, frames - sent);
-            for (int i = 0; i < n; i++) await from.SendAsync(PacketType.Voice, Opus, VoiceHeader.TargetChannel);
-            for (int i = 0; i < n; i++) Assert.NotNull(await to.ReceiveVoiceAsync());
+            int count = Math.Min(10, frames - sent);
+            for (int index = 0; index < count; index++) await from.SendAsync(PacketType.Voice, Opus, VoiceHeader.TargetChannel);
+            for (int index = 0; index < count; index++) Assert.NotNull(await to.ReceiveVoiceAsync());
         }
     }
 
@@ -85,23 +85,23 @@ public sealed class UserStatsTests
         var time = new ManualTimeProvider();
         var anna = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(time: time);
-        var a = await TestClient.ConnectAsync(server, "anna", anna);
-        await using var b = await TestClient.ConnectAsync(server, "bert");
-        using var va = new TestVoice(a, server.VoiceEndPoint);
-        using var vb = new TestVoice(b, server.VoiceEndPoint);
+        var client = await TestClient.ConnectAsync(server, "anna", anna);
+        await using var testClient = await TestClient.ConnectAsync(server, "bert");
+        using var va = new TestVoice(client, server.VoiceEndPoint);
+        using var vb = new TestVoice(testClient, server.VoiceEndPoint);
         await va.HelloAsync();
         await vb.HelloAsync();
 
         await SpeakAsync(va, vb, 50, time); // 5 s on the clock
-        for (int i = 0; i < 3; i++)
+        for (int index = 0; index < 3; index++)
         {
-            await a.SendAsync(new SendChat(ChatTarget.Channel, null, $"hallo {i}"));
-            await a.WaitForAsync<ChatMessage>(m => m.Text == $"hallo {i}");
+            await client.SendAsync(new SendChat(ChatTarget.Channel, null, $"hallo {index}"));
+            await client.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == $"hallo {index}");
         }
         time.Advance(TimeSpan.FromSeconds(85));
         Assert.Equal((TimeSpan.Zero, 0), (Stored(server, anna).OnlineTime, Stored(server, anna).ChatMessages)); // nothing saved in between
 
-        await a.DisposeAsync();
+        await client.DisposeAsync();
         await UntilAsync(() => server.State.SessionCount == 1);
         var user = Stored(server, anna);
         Assert.Equal(TimeSpan.FromSeconds(90), user.OnlineTime);
@@ -116,18 +116,18 @@ public sealed class UserStatsTests
         var anna = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
         await using var ad = await TestClient.ConnectAsync(server, "admin", admin);
-        var a = await TestClient.ConnectAsync(server, "anna", anna);
+        var client = await TestClient.ConnectAsync(server, "anna", anna);
         using var vad = new TestVoice(ad, server.VoiceEndPoint);
-        using var va = new TestVoice(a, server.VoiceEndPoint);
+        using var va = new TestVoice(client, server.VoiceEndPoint);
         await vad.HelloAsync();
         await va.HelloAsync();
         var lobby = ad.Welcome.Snapshot.DefaultChannelId;
         await ad.SendAsync(new EditChannel(lobby, "Lobby", "", 0, IsMuted: true));
-        await a.WaitForAsync<ChannelUpdated>(u => u.Channel.IsMuted);
+        await client.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.IsMuted);
 
-        for (int i = 0; i < 5; i++) await va.SendAsync(PacketType.Voice, Opus, VoiceHeader.TargetChannel);
+        for (int index = 0; index < 5; index++) await va.SendAsync(PacketType.Voice, Opus, VoiceHeader.TargetChannel);
         await va.HelloAsync(); // UDP is handled in order: the frames are through
-        await a.DisposeAsync();
+        await client.DisposeAsync();
         await UntilAsync(() => server.State.SessionCount == 1);
         Assert.Equal(TimeSpan.Zero, Stored(server, anna).SpeechTime);
     }
@@ -142,24 +142,24 @@ public sealed class UserStatsTests
         await using var server = await TestServer.StartAsync(
             TestServer.Grant(admin, "Admin") + TestServer.Grant(offline, "Gast"), time: time);
         await using var ad = await TestClient.ConnectAsync(server, "admin", admin);
-        await using var a = await TestClient.ConnectAsync(server, "anna", anna);
+        await using var client = await TestClient.ConnectAsync(server, "anna", anna);
         using var vad = new TestVoice(ad, server.VoiceEndPoint);
-        using var va = new TestVoice(a, server.VoiceEndPoint);
+        using var va = new TestVoice(client, server.VoiceEndPoint);
         await vad.HelloAsync();
         await va.HelloAsync();
 
         await SpeakAsync(va, vad, 10, time); // 1 s on the clock
-        await a.SendAsync(new SendChat(ChatTarget.Server, null, "x") { RequestId = "c" }); // guests may not: not counted
-        await a.ErrorAsync("c");
-        await a.SendAsync(new SendChat(ChatTarget.Private, ad.Id, "psst"));
-        await a.WaitForAsync<ChatMessage>();
+        await client.SendAsync(new SendChat(ChatTarget.Server, null, "x") { RequestId = "c" }); // guests may not: not counted
+        await client.ErrorAsync("c");
+        await client.SendAsync(new SendChat(ChatTarget.Private, ad.Id, "psst"));
+        await client.WaitForAsync<ChatMessage>();
         time.Advance(TimeSpan.FromSeconds(29));
 
         await ad.SendAsync(new ListUsers());
         var users = (await ad.WaitForAsync<UserList>()).Users;
-        var info = users.Single(u => u.Fingerprint == anna.Fingerprint);
+        var info = users.Single(knownUser => knownUser.Fingerprint == anna.Fingerprint);
         Assert.True(info.IsOnline);
-        Assert.Equal(a.Id, info.SessionId);
+        Assert.Equal(client.Id, info.SessionId);
         Assert.Equal(TimeSpan.FromSeconds(30), info.OnlineTime);
         Assert.Equal(TimeSpan.FromMilliseconds(200), info.SpeechTime);
         Assert.Equal(1, info.ChatMessages);
@@ -167,7 +167,7 @@ public sealed class UserStatsTests
         Assert.Equal("127.0.0.1", info.LastIp);
         Assert.Equal(time.GetUtcNow() - TimeSpan.FromSeconds(30), info.LastLogin);
 
-        var off = users.Single(u => u.Fingerprint == offline.Fingerprint);
+        var off = users.Single(knownUser => knownUser.Fingerprint == offline.Fingerprint);
         Assert.False(off.IsOnline);
         Assert.Null(off.SessionId);
         Assert.Null(off.LastLogin);
@@ -180,9 +180,9 @@ public sealed class UserStatsTests
         var time = new ManualTimeProvider();
         var anna = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(time: time);
-        await using var a = await TestClient.ConnectAsync(server, "anna", anna);
-        await a.SendAsync(new SendChat(ChatTarget.Channel, null, "tschuess"));
-        await a.WaitForAsync<ChatMessage>();
+        await using var client = await TestClient.ConnectAsync(server, "anna", anna);
+        await client.SendAsync(new SendChat(ChatTarget.Channel, null, "tschuess"));
+        await client.WaitForAsync<ChatMessage>();
         time.Advance(TimeSpan.FromMinutes(1));
 
         await server.Control.StopAsync();

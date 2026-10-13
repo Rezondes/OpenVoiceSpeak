@@ -38,7 +38,7 @@ public sealed class SessionOutboxTests
     public void Send_OverByteLimit_AbortsWithFullBuffer()
     {
         var outbox = new SessionOutbox();
-        for (int i = 0; i < 20; i++) outbox.Send(Big);
+        for (int index = 0; index < 20; index++) outbox.Send(Big);
 
         Assert.True(outbox.Aborted.IsCancellationRequested);
         Assert.Equal("Sendepuffer voll", outbox.AbortReason);
@@ -49,7 +49,7 @@ public sealed class SessionOutboxTests
     public void Send_OverMessageLimit_Aborts()
     {
         var outbox = new SessionOutbox();
-        for (int i = 0; i < ServerTuning.MaxOutboxMessages; i++) outbox.Send(new Pong());
+        for (int index = 0; index < ServerTuning.MaxOutboxMessages; index++) outbox.Send(new Pong());
         Assert.False(outbox.Aborted.IsCancellationRequested);
 
         outbox.Send(new Pong());
@@ -74,7 +74,7 @@ public sealed class SessionOutboxTests
     {
         var outbox = new SessionOutbox();
         var frame = SessionOutbox.Encode(new VoiceDown(2, 0, 0, Convert.ToBase64String(new byte[1275])));
-        for (int i = 0; i < 1000; i++) outbox.SendVoice(frame);
+        for (int index = 0; index < 1000; index++) outbox.SendVoice(frame);
 
         Assert.Null(outbox.AbortReason);
         Assert.Equal(ServerTuning.MaxQueuedVoice, outbox.Outgoing.Count);
@@ -116,7 +116,7 @@ public sealed class SessionOutboxTests
     public void SendVoice_OverHalfTheBytes_Dropped()
     {
         var outbox = new SessionOutbox();
-        for (int i = 0; i < 6; i++) outbox.Send(Big); // about 4.2 MB, past half of the byte limit
+        for (int index = 0; index < 6; index++) outbox.Send(Big); // about 4.2 MB, past half of the byte limit
         long queued = outbox.QueuedBytes;
 
         outbox.SendVoice(SessionOutbox.Encode(new Pong()));

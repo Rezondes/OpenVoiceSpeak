@@ -50,7 +50,7 @@ public static class LayoutAssert
     /// </summary>
     static (double Left, double Right)? Horizontal(Visual visual, Visual top)
     {
-        var width = visual is ScrollViewer { Viewport.Width: > 0 } s ? s.Viewport.Width : visual.Bounds.Width;
+        var width = visual is ScrollViewer { Viewport.Width: > 0 } scrollViewer ? scrollViewer.Viewport.Width : visual.Bounds.Width;
         return X(visual, top) is { } x ? (x, x + width) : null;
     }
 
@@ -76,9 +76,9 @@ public static class LayoutAssert
     {
         var text = control switch
         {
-            TextBlock t => t.Text,
-            ContentControl { Content: string s } => s,
-            ContentControl c => c.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(t => !string.IsNullOrEmpty(t.Text))?.Text,
+            TextBlock textBlock => textBlock.Text,
+            ContentControl { Content: string value } => value,
+            ContentControl contentControl => contentControl.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(otherTextBlock => !string.IsNullOrEmpty(otherTextBlock.Text))?.Text,
             _ => null,
         };
         return $"'{control.Name ?? Avalonia.Automation.AutomationProperties.GetName(control)}' \"{text}\"";

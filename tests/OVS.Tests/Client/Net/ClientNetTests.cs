@@ -42,9 +42,9 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     [Fact]
     public void Identity_LoadOrCreate_Twice_SameFingerprint()
     {
-        using var a = IdentityFile.LoadOrCreate(dir);
-        using var b = IdentityFile.LoadOrCreate(dir);
-        Assert.Equal(a.Fingerprint, b.Fingerprint);
+        using var clientIdentity = IdentityFile.LoadOrCreate(dir);
+        using var otherClientIdentity = IdentityFile.LoadOrCreate(dir);
+        Assert.Equal(clientIdentity.Fingerprint, otherClientIdentity.Fingerprint);
     }
 
     [Fact]
@@ -52,9 +52,9 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     {
         await using var server = await TestServer.StartAsync();
         var prompts = new List<TofuPrompt>();
-        Task<bool> Confirm(TofuPrompt p)
+        Task<bool> Confirm(TofuPrompt tofuPrompt)
         {
-            prompts.Add(p);
+            prompts.Add(tofuPrompt);
             return Task.FromResult(true);
         }
 
@@ -74,22 +74,22 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         known.Trust("127.0.0.1", server.Port, Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32)));
         TofuPrompt? seen = null;
 
-        await Assert.ThrowsAsync<TofuRejectedException>(() => Connect(server, "a", known: known, confirm: p =>
+        await Assert.ThrowsAsync<TofuRejectedException>(() => Connect(server, "a", known: known, confirm: tofuPrompt =>
         {
-            seen = p;
+            seen = tofuPrompt;
             return Task.FromResult(false);
         }));
         Assert.Equal(TofuResult.Mismatch, seen!.Result);
         Assert.Equal(0, server.State.SessionCount);
-        Assert.DoesNotContain(server.Log, l => l.Contains("verbunden"));
+        Assert.DoesNotContain(server.Log, line => line.Contains("verbunden"));
     }
 
     [Fact]
     public async Task Rejected_Throws_WithCode()
     {
         await using var server = await TestServer.StartAsync(password: "pw");
-        var e = await Assert.ThrowsAsync<ConnectionRejectedException>(() => Connect(server, "a"));
-        Assert.Equal(ReasonCodes.WrongPassword, e.Code);
+        var exception = await Assert.ThrowsAsync<ConnectionRejectedException>(() => Connect(server, "a"));
+        Assert.Equal(ReasonCodes.WrongPassword, exception.Code);
     }
 
     // ---- 25h4b: server data that is not base64 fails the connect ----
@@ -185,16 +185,16 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         await using var first = await Connect(server, "anna");
         var mirror = new StateMirror(first.Welcome);
         var joined = new TaskCompletionSource();
-        first.MessageReceived += m =>
+        first.MessageReceived += message =>
         {
-            lock (mirror) mirror.Apply(m);
-            if (m is UserJoined) joined.TrySetResult();
+            lock (mirror) mirror.Apply(message);
+            if (message is UserJoined) joined.TrySetResult();
         };
 
         Assert.Equal(mirror.DefaultChannelId, mirror.Self!.ChannelId);
         await using var second = await Connect(server, "bert");
         await joined.Task.WaitAsync(TimeSpan.FromSeconds(10));
-        lock (mirror) Assert.Contains(mirror.Users.Values, u => u.Nickname == "bert");
+        lock (mirror) Assert.Contains(mirror.Users.Values, user => user.Nickname == "bert");
     }
 
     [Fact]
@@ -202,12 +202,12 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
-        await using var a = await TestClient.ConnectAsync(server, identity: admin);
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
         await using var victim = await Connect(server, "opfer");
         var reason = new TaskCompletionSource<(string, string?)>();
-        victim.Disconnected += (r, d) => reason.TrySetResult((r, d));
+        victim.Disconnected += (text, directory) => reason.TrySetResult((text, directory));
 
-        await a.SendAsync(new KickSession(victim.Welcome.SessionId, "tschüss"));
+        await client.SendAsync(new KickSession(victim.Welcome.SessionId, "tschüss"));
         Assert.Equal((ReasonCodes.Kicked, "tschüss"), await reason.Task.WaitAsync(TimeSpan.FromSeconds(10)));
     }
 
@@ -226,10 +226,10 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     public async Task Voice_SendFromA_ReceivedByB_Identical()
     {
         await using var server = await TestServer.StartAsync();
-        await using var a = await Connect(server, "a");
-        await using var b = await Connect(server, "b");
-        using var va = Voice(a, server.VoiceEndPoint);
-        using var vb = Voice(b, server.VoiceEndPoint);
+        await using var clientConnection = await Connect(server, "a");
+        await using var otherClientConnection = await Connect(server, "b");
+        using var va = Voice(clientConnection, server.VoiceEndPoint);
+        using var vb = Voice(otherClientConnection, server.VoiceEndPoint);
         var received = new TaskCompletionSource<(uint Speaker, byte Target, byte[] Opus)>();
         vb.VoiceReceived += (speaker, _, target, opus, _) => received.TrySetResult((speaker, target, opus));
         va.Start();
@@ -239,7 +239,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         var opus = RandomNumberGenerator.GetBytes(70);
         va.SendVoice(opus, VoiceHeader.TargetChannel);
         var got = await received.Task.WaitAsync(TimeSpan.FromSeconds(10));
-        Assert.Equal(a.Welcome.SessionId, got.Speaker);
+        Assert.Equal(clientConnection.Welcome.SessionId, got.Speaker);
         Assert.Equal(VoiceHeader.TargetChannel, got.Target);
         Assert.Equal(opus, got.Opus);
     }
@@ -250,10 +250,10 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         // Regression: pings used to consume the sequence the receiver's jitter buffer orders by,
         // so every keep-alive during speech looked like a lost frame (+20 ms latency each time).
         await using var server = await TestServer.StartAsync();
-        await using var a = await Connect(server, "a");
-        await using var b = await Connect(server, "b");
-        using var va = Voice(a, server.VoiceEndPoint);
-        using var vb = Voice(b, server.VoiceEndPoint);
+        await using var clientConnection = await Connect(server, "a");
+        await using var otherClientConnection = await Connect(server, "b");
+        using var va = Voice(clientConnection, server.VoiceEndPoint);
+        using var vb = Voice(otherClientConnection, server.VoiceEndPoint);
         var seqs = new List<uint>();
         var two = new TaskCompletionSource();
         vb.VoiceReceived += (_, speakerSeq, _, _, _) =>
@@ -276,8 +276,8 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         lock (seqs) Assert.Equal(seqs[0] + 1, seqs[1]);
     }
 
-    static VoiceClient Voice(ClientConnection c, IPEndPoint to, TimeProvider? time = null) =>
-        new(to, c.Welcome.SessionId, Convert.FromBase64String(c.Welcome.VoiceKey), time ?? TimeProvider.System);
+    static VoiceClient Voice(ClientConnection clientConnection, IPEndPoint to, TimeProvider? time = null) =>
+        new(to, clientConnection.Welcome.SessionId, Convert.FromBase64String(clientConnection.Welcome.VoiceKey), time ?? TimeProvider.System);
 
     /// <summary>Package 126: advances the voice clock in steps of the Hello retry, so every timer tick runs.</summary>
     static void Advance(ManualTimeProvider time, TimeSpan by)
@@ -291,12 +291,12 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     public async Task FirstHelloLost_StillGetsVoice()
     {
         await using var server = await TestServer.StartAsync();
-        await using var a = await Connect(server, "a");
-        await using var b = await Connect(server, "b");
+        await using var clientConnection = await Connect(server, "a");
+        await using var otherClientConnection = await Connect(server, "b");
         using var relay = new LossyUdpRelay(server.VoiceEndPoint) { DropNext = 1 };
         var time = new ManualTimeProvider();
-        using var va = Voice(a, relay.EndPoint, time);
-        using var vb = Voice(b, server.VoiceEndPoint);
+        using var va = Voice(clientConnection, relay.EndPoint, time);
+        using var vb = Voice(otherClientConnection, server.VoiceEndPoint);
         var atA = new TaskCompletionSource<byte[]>();
         var atB = new TaskCompletionSource<byte[]>();
         va.VoiceReceived += (_, _, _, opus, _) => atA.TrySetResult(opus);
@@ -319,10 +319,10 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     public async Task UdpOutage_Recovers()
     {
         await using var server = await TestServer.StartAsync();
-        await using var a = await Connect(server, "a");
+        await using var clientConnection = await Connect(server, "a");
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider();
-        using var va = Voice(a, relay.EndPoint, time);
+        using var va = Voice(clientConnection, relay.EndPoint, time);
         va.Start();
         await AsyncWait.Until(() => va.Reachable);
 
@@ -348,10 +348,10 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     public async Task TwoLostPings_StayReachable()
     {
         await using var server = await TestServer.StartAsync();
-        await using var a = await Connect(server, "a");
+        await using var clientConnection = await Connect(server, "a");
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider();
-        using var va = Voice(a, relay.EndPoint, time);
+        using var va = Voice(clientConnection, relay.EndPoint, time);
         va.Start();
         await AsyncWait.Until(() => va.Reachable);
 
@@ -370,19 +370,19 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     public async Task Reachable_SendsOnlyPings()
     {
         await using var server = await TestServer.StartAsync();
-        await using var a = await Connect(server, "a");
+        await using var clientConnection = await Connect(server, "a");
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider();
-        using var va = Voice(a, relay.EndPoint, time);
+        using var va = Voice(clientConnection, relay.EndPoint, time);
         va.Start();
         await AsyncWait.Until(() => va.Reachable);
 
-        for (int i = 1; i <= 6; i++)
+        for (int index = 1; index <= 6; index++)
         {
             Advance(time, TimeSpan.FromSeconds(1.5));
-            Assert.Equal(i - 1, relay.Count(PacketType.Ping));
+            Assert.Equal(index - 1, relay.Count(PacketType.Ping));
             Advance(time, TimeSpan.FromSeconds(0.5));
-            await AsyncWait.Until(() => relay.PassedBack == i + 1); // the answer arrives before the clock moves on, as in real time
+            await AsyncWait.Until(() => relay.PassedBack == index + 1); // the answer arrives before the clock moves on, as in real time
         }
         Assert.Equal(6, relay.Count(PacketType.Ping));
         Assert.Equal(1, relay.Count(PacketType.Hello));
@@ -394,17 +394,17 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     public async Task VoiceRoundTrip_Measured()
     {
         await using var server = await TestServer.StartAsync();
-        await using var a = await Connect(server, "a");
+        await using var clientConnection = await Connect(server, "a");
         var time = new ManualTimeProvider();
         using var relay = new LossyUdpRelay(server.VoiceEndPoint, time) { Delay = TimeSpan.FromMilliseconds(50) };
-        using var va = Voice(a, relay.EndPoint, time);
+        using var va = Voice(clientConnection, relay.EndPoint, time);
         Assert.Null(va.RoundTrip);
         va.Start(); // the Hello carries the time as well
 
-        async Task OneWay(int held, int ms = 50)
+        async Task OneWay(int held, int milliseconds = 50)
         {
             await AsyncWait.Until(() => relay.Held == held); // the relay holds the packet before the clock moves on
-            time.Advance(TimeSpan.FromMilliseconds(ms));
+            time.Advance(TimeSpan.FromMilliseconds(milliseconds));
         }
         await OneWay(1);
         await OneWay(2);
@@ -430,11 +430,11 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     {
         var time = new ManualTimeProvider(); // server and clients on one clock: 20 ms per frame, 5 s windows
         await using var server = await TestServer.StartAsync(time: time);
-        await using var a = await Connect(server, "a");
-        await using var b = await Connect(server, "b");
+        await using var clientConnection = await Connect(server, "a");
+        await using var otherClientConnection = await Connect(server, "b");
         using var relay = new LossyUdpRelay(server.VoiceEndPoint) { DropUpVoicePercent = 10, DropDownVoicePercent = 10 };
-        using var va = Voice(a, relay.EndPoint, time);
-        using var vb = Voice(b, server.VoiceEndPoint, time);
+        using var va = Voice(clientConnection, relay.EndPoint, time);
+        using var vb = Voice(otherClientConnection, server.VoiceEndPoint, time);
         int atA = 0, atB = 0;
         va.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atA);
         vb.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atB);
@@ -445,7 +445,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         int sent = 0;
         async Task Talk(int frames)
         {
-            for (int i = 1; i <= frames; i++)
+            for (int index = 1; index <= frames; index++)
             {
                 va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
                 vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
@@ -453,7 +453,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
                 time.Advance(TimeSpan.FromMilliseconds(20));
                 // every 5 frames everything sent has arrived, so the clock never runs ahead of the network (the server's rate
                 // limit would see a pile of frames at one instant)
-                if (i % 5 == 0)
+                if (index % 5 == 0)
                     await AsyncWait.Until(() => relay.Count(PacketType.Voice) == sent && relay.SeenDownVoice == sent
                         && Volatile.Read(ref atB) == relay.PassedUpVoice && Volatile.Read(ref atA) == relay.PassedDownVoice);
             }
@@ -461,7 +461,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         await Talk(295); // about 6 s; the last frame lost is the 290th, so the end of this spurt hides no gap
         // one timer tick each (one ping), as many ticks at one instant of the server's clock would hit its rate limit
         time.Advance(TimeSpan.FromSeconds(2)); // a ping after the first full window
-        var session = server.State.FindSession(a.Welcome.SessionId)!;
+        var session = server.State.FindSession(clientConnection.Welcome.SessionId)!;
         await AsyncWait.Until(() => va.UplinkLoss.Expected >= 200 && session.Voice.DownlinkLoss.Expected >= 200);
         Assert.InRange(va.UplinkLoss.Percent, 7, 13);
         Assert.InRange(va.DownlinkLoss.Percent, 7, 13);
@@ -487,32 +487,32 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     {
         var time = new ManualTimeProvider();
         await using var server = await TestServer.StartAsync(time: time);
-        await using var a = await Connect(server, "a");
-        await using var b = await Connect(server, "b");
-        using var va = Voice(a, server.VoiceEndPoint, time);
-        using var vb = Voice(b, server.VoiceEndPoint, time);
+        await using var clientConnection = await Connect(server, "a");
+        await using var otherClientConnection = await Connect(server, "b");
+        using var va = Voice(clientConnection, server.VoiceEndPoint, time);
+        using var vb = Voice(otherClientConnection, server.VoiceEndPoint, time);
         int atA = 0, sent = 0;
         va.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atA);
         va.Start();
         vb.Start();
         await AsyncWait.Until(() => va.Reachable && vb.Reachable);
-        var session = server.State.FindSession(a.Welcome.SessionId)!;
+        var session = server.State.FindSession(clientConnection.Welcome.SessionId)!;
 
         async Task Talk(int frames, bool heard)
         {
-            for (int i = 1; i <= frames; i++)
+            for (int index = 1; index <= frames; index++)
             {
                 vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
                 sent++;
                 time.Advance(TimeSpan.FromMilliseconds(20));
-                if (i % 5 != 0) continue;
+                if (index % 5 != 0) continue;
                 if (heard) await AsyncWait.Until(() => Volatile.Read(ref atA) == sent);
                 else await Task.Delay(10); // nothing arrives to wait for; keeps the server's clock from running ahead
             }
         }
         async Task Deafen(bool on)
         {
-            await a.SendAsync(new SetSelfState(false, on));
+            await clientConnection.SendAsync(new SetSelfState(false, on));
             await AsyncWait.Until(() => session.SelfDeafened == on);
         }
 
@@ -533,8 +533,8 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
 
     // ---- Package 141 (A150): voice over the TLS connection ----
 
-    static VoiceClient TcpCapable(ClientConnection c, IPEndPoint to, TimeProvider time) =>
-        new(to, c.Welcome.SessionId, Convert.FromBase64String(c.Welcome.VoiceKey), time, c);
+    static VoiceClient TcpCapable(ClientConnection clientConnection, IPEndPoint to, TimeProvider time) =>
+        new(to, clientConnection.Welcome.SessionId, Convert.FromBase64String(clientConnection.Welcome.VoiceKey), time, clientConnection);
 
     /// <summary>Package 141 (AC1, AC6): with all UDP blocked, voice goes over the control connection 5 s after the start.</summary>
     [Fact]
@@ -542,13 +542,13 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     {
         Assert.Equal(15, WireProtocol.Version);
         await using var server = await TestServer.StartAsync();
-        await using var a = await Connect(server, "a");
-        await using var b = await Connect(server, "b");
+        await using var clientConnection = await Connect(server, "a");
+        await using var otherClientConnection = await Connect(server, "b");
         using var relayA = new LossyUdpRelay(server.VoiceEndPoint) { DropAll = true };
         using var relayB = new LossyUdpRelay(server.VoiceEndPoint) { DropAll = true };
         var time = new ManualTimeProvider();
-        using var va = TcpCapable(a, relayA.EndPoint, time);
-        using var vb = TcpCapable(b, relayB.EndPoint, time);
+        using var va = TcpCapable(clientConnection, relayA.EndPoint, time);
+        using var vb = TcpCapable(otherClientConnection, relayB.EndPoint, time);
         var atA = new TaskCompletionSource<(uint, uint, byte[])>();
         var atB = new TaskCompletionSource<(uint, uint, byte[])>();
         va.VoiceReceived += (speaker, seq, _, opus, _) => atA.TrySetResult((speaker, seq, opus));
@@ -561,10 +561,10 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         Advance(time, TimeSpan.FromSeconds(0.5));
         Assert.True(va.OverTcp && vb.OverTcp);
         Assert.False(va.Reachable);
-        await AsyncWait.Until(() => server.State.FindSession(a.Welcome.SessionId)!.Voice.TcpVoice && server.State.FindSession(b.Welcome.SessionId)!.Voice.TcpVoice);
+        await AsyncWait.Until(() => server.State.FindSession(clientConnection.Welcome.SessionId)!.Voice.TcpVoice && server.State.FindSession(otherClientConnection.Welcome.SessionId)!.Voice.TcpVoice);
 
         // Package 141 (review): a lost switch (dropped, or overtaken by an older UDP ping) is repeated with the next Hello
-        var sessionB = server.State.FindSession(b.Welcome.SessionId)!;
+        var sessionB = server.State.FindSession(otherClientConnection.Welcome.SessionId)!;
         sessionB.Voice.TcpVoice = false;
         Advance(time, TimeSpan.FromSeconds(2));
         await AsyncWait.Until(() => sessionB.Voice.TcpVoice);
@@ -573,9 +573,9 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         vb.SendVoice([4, 5, 6], VoiceHeader.TargetChannel);
         var gotB = await atB.Task.WaitAsync(TimeSpan.FromSeconds(10));
         var gotA = await atA.Task.WaitAsync(TimeSpan.FromSeconds(10));
-        Assert.Equal(a.Welcome.SessionId, gotB.Item1);
+        Assert.Equal(clientConnection.Welcome.SessionId, gotB.Item1);
         Assert.Equal([1, 2, 3], gotB.Item3);
-        Assert.Equal(b.Welcome.SessionId, gotA.Item1);
+        Assert.Equal(otherClientConnection.Welcome.SessionId, gotA.Item1);
         Assert.Equal([4, 5, 6], gotA.Item3);
         Assert.Equal(0, relayA.Count(PacketType.Voice)); // nothing went into the blocked UDP path
         Assert.Equal(default, va.UplinkLoss); // a reliable path loses nothing
@@ -589,19 +589,19 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     public async Task UdpBack_SwitchesBack()
     {
         await using var server = await TestServer.StartAsync();
-        await using var a = await Connect(server, "a");
-        await using var b = await Connect(server, "b");
+        await using var clientConnection = await Connect(server, "a");
+        await using var otherClientConnection = await Connect(server, "b");
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider();
-        using var va = TcpCapable(a, relay.EndPoint, time);
-        using var vb = Voice(b, server.VoiceEndPoint);
+        using var va = TcpCapable(clientConnection, relay.EndPoint, time);
+        using var vb = Voice(otherClientConnection, server.VoiceEndPoint);
         int atA = 0, atB = 0;
         va.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atA);
         vb.VoiceReceived += (_, _, _, _, _) => Interlocked.Increment(ref atB);
         va.Start();
         vb.Start();
         await AsyncWait.Until(() => va.Reachable && vb.Reachable);
-        var session = server.State.FindSession(a.Welcome.SessionId)!;
+        var session = server.State.FindSession(clientConnection.Welcome.SessionId)!;
 
         relay.DropAll = true;
         Advance(time, TimeSpan.FromSeconds(14.5));

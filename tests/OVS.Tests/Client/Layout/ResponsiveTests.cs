@@ -25,13 +25,13 @@ namespace OVS.Tests.Client.Layout;
 [Collection(MotionCollection.Name)]
 public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: true)
 {
-    MainWindow Open(double width, ServerViewModel? server, out MainViewModel vm)
+    MainWindow Open(double width, ServerViewModel? server, out MainViewModel viewModel)
     {
         // the device list loads in the background (Package 52): its result comes back through the dispatcher, not on a pool thread
-        vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
-        var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
+        viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var main = new MainWindow { DataContext = viewModel, Width = width, Height = 700 };
         main.Show();
-        MainViewModelSetup.ShowServer(vm, server);
+        MainViewModelSetup.ShowServer(viewModel, server);
         Dispatcher.UIThread.RunJobs();
         return main;
     }
@@ -65,13 +65,13 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     static bool AtRest(Control control, Control root) =>
         control.TranslatePoint(default, root) is { } drawn && LayoutAssert.X(control, root) is { } x && LayoutAssert.Y(control, root) is { } y
         && Math.Abs(drawn.X - x) < 0.5 && Math.Abs(drawn.Y - y) < 0.5
-        && !root.GetVisualDescendants().OfType<Control>().Any(c => c.Classes.Contains("entering"));
+        && !root.GetVisualDescendants().OfType<Control>().Any(otherControl => otherControl.Classes.Contains("entering"));
 
     static ColumnDefinition SidebarColumn(MainWindow main) => ((Grid)Sidebar(main).Parent!).ColumnDefinitions[0];
 
     /// <summary>The header button whose text (or automation name) is the given resource text.</summary>
     static Button HeaderButton(MainWindow main, string text) => main.GetVisualDescendants().OfType<Button>()
-        .Single(b => b.IsEffectivelyVisible && AutomationProperties.GetName(b) == text);
+        .Single(button => button.IsEffectivelyVisible && AutomationProperties.GetName(button) == text);
 
     static void FullyInside(MainWindow main, Control control)
     {
@@ -89,7 +89,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     }
 
     static Button MenuButton(MainWindow main) => main.GetVisualDescendants().OfType<Button>()
-        .Single(b => b.IsEffectivelyVisible && AutomationProperties.GetName(b) == Strings.Ui_ShowChannels);
+        .Single(button => button.IsEffectivelyVisible && AutomationProperties.GetName(button) == Strings.Ui_ShowChannels);
 
     /// <summary>
     /// Clicks the menu button once it is at rest and checks that the click opened the drawer. After connecting, the header
@@ -140,16 +140,16 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData("en-US")]
     public void Reconnecting_StatusAndCancelFit360(string culture) => TestCulture.With(culture, () =>
     {
-        var main = Open(360, null, out var vm);
-        vm.Status = string.Format(Strings.Status_Reconnecting, 16);
-        vm.Connection.IsReconnecting = true;
+        var main = Open(360, null, out var viewModel);
+        viewModel.Status = string.Format(Strings.Status_Reconnecting, 16);
+        viewModel.Connection.IsReconnecting = true;
         Dispatcher.UIThread.RunJobs();
         var status = main.FindControl<TextBlock>("StatusText")!;
         var cancel = main.FindControl<Button>("CancelReconnect")!;
         Assert.True(status.IsEffectivelyVisible && cancel.IsEffectivelyVisible);
         FullyInside(main, status);
         FullyInside(main, cancel);
-        Assert.Equal(vm.Status, status.Text);
+        Assert.Equal(viewModel.Status, status.Text);
         main.Close();
         return 0;
     });
@@ -177,7 +177,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void Compact_SidebarAsOverlay_OpenClose()
     {
-        var main = Open(360, FakeServers.Admin(), out var vm);
+        var main = Open(360, FakeServers.Admin(), out var viewModel);
         Assert.False(Sidebar(main).IsEffectivelyVisible);
         var scrim = main.FindControl<Border>("DrawerScrim")!;
 
@@ -205,7 +205,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Dispatcher.UIThread.RunJobs();
         AssertDrawerClosed(main);
-        Assert.True(vm.PageFlow.IsHomePage);
+        Assert.True(viewModel.PageFlow.IsHomePage);
 
         OpenDrawer(main);
         var outside = new Point(main.Bounds.Width - 10, main.Bounds.Height / 2);
@@ -215,10 +215,10 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         AssertDrawerClosed(main);
 
         OpenDrawer(main);
-        vm.PageFlow.OpenSettings();
+        viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         AssertDrawerClosed(main);
-        vm.PageFlow.ClosePage();
+        viewModel.PageFlow.ClosePage();
 
         // wide again: the sidebar is back in its column
         OpenDrawer(main);
@@ -236,8 +236,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         var server = FakeServers.Admin();
         server.IsAdmin = admin; // not admin: "Admin-Token einlösen" joins the header
-        var main = Open(360, server, out var vm);
-        vm.Connection.PingText = "23 ms";
+        var main = Open(360, server, out var viewModel);
+        viewModel.Connection.PingText = "23 ms";
         Dispatcher.UIThread.RunJobs();
 
         var buttons = new List<string> { Strings.Ui_AdminMenu, Strings.Ui_Disconnect };
@@ -246,28 +246,28 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         {
             var button = HeaderButton(main, text);
             Assert.Equal(text, ToolTip.GetTip(button));
-            Assert.DoesNotContain(button.GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Text == text);
+            Assert.DoesNotContain(button.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.IsEffectivelyVisible && textBlock.Text == text);
             FullyInside(main, button);
         }
         var ping = main.FindControl<Border>("PingChip")!;
-        Assert.DoesNotContain(ping.GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Text == "23 ms");
+        Assert.DoesNotContain(ping.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.IsEffectivelyVisible && textBlock.Text == "23 ms");
         // Package 133: the signal icon stays, crossed out while UDP is unreachable
-        vm.Stats.Unreachable = true;
+        viewModel.Stats.Unreachable = true;
         Dispatcher.UIThread.RunJobs();
         FullyInside(main, main.FindControl<Button>("SignalButton")!);
         Assert.True(main.FindControl<Avalonia.Controls.Shapes.Line>("SignalCross")!.IsEffectivelyVisible);
-        vm.Stats.Unreachable = false;
-        vm.Stats.Update(TimeSpan.FromMilliseconds(20), default, default, default, 64); // the first sample is its own baseline: green
+        viewModel.Stats.Unreachable = false;
+        viewModel.Stats.Update(TimeSpan.FromMilliseconds(20), default, default, default, 64); // the first sample is its own baseline: green
         Dispatcher.UIThread.RunJobs();
-        var bars = main.FindControl<Button>("SignalButton")!.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("signalBar")).ToList();
-        Assert.Equal(4, bars.Count(b => b.Classes.Contains("on")));
-        Assert.Contains("bars4", bars[0].GetVisualAncestors().OfType<Panel>().First(p => p.Classes.Contains("bars4") || p.Classes.Contains("bars1")).Classes);
+        var bars = main.FindControl<Button>("SignalButton")!.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("signalBar")).ToList();
+        Assert.Equal(4, bars.Count(border => border.Classes.Contains("on")));
+        Assert.Contains("bars4", bars[0].GetVisualAncestors().OfType<Panel>().First(panel => panel.Classes.Contains("bars4") || panel.Classes.Contains("bars1")).Classes);
         Assert.False(main.FindControl<Avalonia.Controls.Shapes.Line>("SignalCross")!.IsEffectivelyVisible);
         LayoutAssert.FitsHorizontally(main);
 
         Resize(main, 1100); // wide: the texts are back
         Assert.Contains(HeaderButton(main, Strings.Ui_Disconnect).GetVisualDescendants().OfType<TextBlock>(),
-            t => t.IsEffectivelyVisible && t.Text == Strings.Ui_Disconnect);
+            textBlock => textBlock.IsEffectivelyVisible && textBlock.Text == Strings.Ui_Disconnect);
         main.Close();
     }
 
@@ -304,7 +304,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
 
         Click(main, MenuButton(main));
         Assert.True(Sidebar(main).IsEffectivelyVisible);
-        Assert.Contains(Sidebar(main).GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Text == "Gilde");
+        Assert.Contains(Sidebar(main).GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.IsEffectivelyVisible && textBlock.Text == "Gilde");
         main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Dispatcher.UIThread.RunJobs();
         AssertDrawerClosed(main);
@@ -312,7 +312,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Resize(main, 1100);
         Assert.DoesNotContain("compact", main.Classes);
         Assert.True(Sidebar(main).IsEffectivelyVisible);
-        Assert.DoesNotContain(main.GetVisualDescendants().OfType<Button>(), b => b.IsEffectivelyVisible && AutomationProperties.GetName(b) == Strings.Ui_ShowChannels);
+        Assert.DoesNotContain(main.GetVisualDescendants().OfType<Button>(), button => button.IsEffectivelyVisible && AutomationProperties.GetName(button) == Strings.Ui_ShowChannels);
         main.Close();
     }
 
@@ -325,11 +325,11 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         var settings = new ClientSettings { KeyBindings = [new OVS.Client.Input.KeyBinding(KeyAction.ToggleMute, new KeyChord(0x70))], Display = display };
         settings.Save(dir);
-        var main = Open(width, null, out var vm);
+        var main = Open(width, null, out var viewModel);
         Assert.Equal(display == DisplayMode.Animated, Motion.IsAnimated(main)); // the window took the display from the settings
-        vm.PageFlow.OpenSettings();
+        viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
-        Assert.True(vm.PageFlow.SettingsPage!.ShowPttHint);
+        Assert.True(viewModel.PageFlow.SettingsPage!.ShowPttHint);
         return main;
     }
 
@@ -347,7 +347,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var main = OpenSettings(width);
         var page = main.GetVisualDescendants().OfType<SettingsView>().Single();
         var scroller = page.GetVisualDescendants().OfType<ScrollViewer>().First();
-        foreach (var section in page.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Classes.Contains("section")).ToList())
+        foreach (var section in page.GetVisualDescendants().OfType<TextBlock>().Where(textBlock => textBlock.Classes.Contains("section")).ToList())
         {
             section.BringIntoView();
             Dispatcher.UIThread.RunJobs();
@@ -356,7 +356,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         // Package 129: voice activation shows the "Automatisch" box, its hint, the meter and the slider
         ((SettingsViewModel)page.DataContext!).VoiceActivation = true;
         Dispatcher.UIThread.RunJobs();
-        var automatic = page.GetVisualDescendants().OfType<CheckBox>().Single(c => c.Content as string == Strings.Ui_VadAutomatic);
+        var automatic = page.GetVisualDescendants().OfType<CheckBox>().Single(checkBox => checkBox.Content as string == Strings.Ui_VadAutomatic);
         automatic.BringIntoView();
         Dispatcher.UIThread.RunJobs();
         Assert.True(automatic.IsEffectivelyVisible);
@@ -364,9 +364,9 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         scroller.Offset = new Vector(0, scroller.Extent.Height);
         Dispatcher.UIThread.RunJobs();
         LayoutAssert.FitsHorizontally(main);
-        foreach (var row in page.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("soundRow")))
+        foreach (var row in page.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("soundRow")))
         {
-            var name = row.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("label"));
+            var name = row.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("label"));
             Assert.True(name.Bounds.Width > 60, $"Name {name.Text}: {name.Bounds.Width}");
         }
 
@@ -374,8 +374,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         foreach (var text in new[] { Strings.Dlg_Cancel, Strings.Dlg_Save })
         {
             // Package 98: "Speichern" holds its text beside a spinner
-            var button = page.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == text
-                || b.Content is Panel p && p.Children.OfType<TextBlock>().Any(t => t.Text == text));
+            var button = page.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Content as string == text
+                || otherButton.Content is Panel panel && panel.Children.OfType<TextBlock>().Any(textBlock => textBlock.Text == text));
             Assert.True(button.IsEffectivelyVisible);
             var y = button.TranslatePoint(default, main)!.Value.Y;
             Assert.True(y >= 0 && y + button.Bounds.Height <= main.Bounds.Height + 1, $"{text} at {y}");
@@ -386,8 +386,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
 
     static (TextBlock Name, Slider Slider) FirstSoundRow(MainWindow main)
     {
-        var row = main.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("soundRow"));
-        return (row.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("label")),
+        var row = main.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("soundRow"));
+        return (row.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("label")),
             row.GetVisualDescendants().OfType<Slider>().Single());
     }
 
@@ -405,7 +405,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var main = OpenSettings(width);
         var (name, slider) = FirstSoundRow(main);
         Assert.True(name.Bounds.Width > 0);
-        Assert.False(name.TextLayout.TextLines.Any(l => l.HasCollapsed), "Name abgeschnitten");
+        Assert.False(name.TextLayout.TextLines.Any(textLine => textLine.HasCollapsed), "Name abgeschnitten");
         Assert.True(Vertical(slider, main).Top >= Vertical(name, main).Bottom, "Regler nicht unter dem Namen");
         main.Close();
     }
@@ -430,30 +430,30 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     MainWindow OpenAdmin(double width, out AdminView page)
     {
         var server = FakeServers.Crowded();
-        var main = Open(width, server, out var vm);
-        _ = vm.PageFlow.OpenAdminAsync();
+        var main = Open(width, server, out var viewModel);
+        _ = viewModel.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
         var admin = (AdminViewModel)main.GetVisualDescendants().OfType<AdminView>().Single().DataContext!;
-        var groups = server.Mirror.Groups.Select(g => g.Id).ToList();
+        var groups = server.Mirror.Groups.Select(groupInfo => groupInfo.Id).ToList();
         // Package 71: cards with every detail, long previous nicknames and an active ban
         admin.UsersAndBans.Apply(new OVS.Shared.Protocol.Messages.Users.UserList("r", Enumerable.Range(1, 20)
-            .Select(i => new OVS.Shared.Protocol.Messages.Users.KnownUserInfo(new string((char)('a' + i % 6), 64), $"Mitspieler{i}", i % 3 == 0 ? groups : [groups[0]],
-                DateTimeOffset.Now.AddDays(-40), DateTimeOffset.Now.AddHours(-i), i, TimeSpan.FromHours(30 + i), "2001:db8:85a3::8a2e:370:7334",
-                ["Ein sehr langer früherer Nickname", "Noch ein Name", "Dritter"], TimeSpan.FromMinutes(95), 1234, i % 2 == 0, null,
-                i % 4 == 0 ? [new OVS.Shared.Protocol.Messages.Moderation.BanInfo(Guid.NewGuid(), "x", "y", null, "Hat wiederholt den Raid-Channel mit Musik beschallt", "ich", null)] : null,
-                i % 5 == 0, // Package 85: stored server mute with its banner and lift button
-                CanBeModeratedByMe: i % 3 != 0)) // Package 92: as the server judges it, members of the Admin group are not weaker
+            .Select(index => new OVS.Shared.Protocol.Messages.Users.KnownUserInfo(new string((char)('a' + index % 6), 64), $"Mitspieler{index}", index % 3 == 0 ? groups : [groups[0]],
+                DateTimeOffset.Now.AddDays(-40), DateTimeOffset.Now.AddHours(-index), index, TimeSpan.FromHours(30 + index), "2001:db8:85a3::8a2e:370:7334",
+                ["Ein sehr langer früherer Nickname", "Noch ein Name", "Dritter"], TimeSpan.FromMinutes(95), 1234, index % 2 == 0, null,
+                index % 4 == 0 ? [new OVS.Shared.Protocol.Messages.Moderation.BanInfo(Guid.NewGuid(), "x", "y", null, "Hat wiederholt den Raid-Channel mit Musik beschallt", "ich", null)] : null,
+                index % 5 == 0, // Package 85: stored server mute with its banner and lift button
+                CanBeModeratedByMe: index % 3 != 0)) // Package 92: as the server judges it, members of the Admin group are not weaker
             .ToList()));
         // Package 80: 12 bans of every status (active, expired, lifted, old without details), all shown
         var now = DateTimeOffset.Now;
-        admin.UsersAndBans.Apply(new OVS.Shared.Protocol.Messages.Moderation.BanList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.Messages.Moderation.BanInfo(Guid.NewGuid(),
-            new string((char)('a' + i % 6), 64), $"Störenfried mit langem Namen {i}", i % 2 == 0 ? "2001:db8:85a3::8a2e:370:7334" : null,
-            i % 3 == 0 ? "Hat wiederholt den Raid-Channel mit Musik beschallt und Warnungen ignoriert" : "", "Moderator mit langem Namen",
-            (i % 4) switch { 0 => null, 1 => now.AddDays(3), 2 => now.AddDays(-1), _ => now.AddHours(5) },
-            i == 11 ? null : now.AddDays(-i - 2), i == 11 ? null : new string('f', 64), i % 4 is 1 or 3 ? 4320 : i % 4 == 2 ? 1440 : null,
-            i % 4 == 3 ? now.AddHours(-1) : null, i % 4 == 3 ? "Administrator mit langem Namen" : null, i * 7,
-            i % 2 == 1 ? now.AddMinutes(-i) : null, i % 2 == 1 ? "2001:db8:85a3::8a2e:370:7335" : null)).ToList()));
-        admin.UsersAndBans.SelectedBanStatusFilter = admin.UsersAndBans.BanStatusFilters.Single(f => f.Value == BanStatusFilter.All);
+        admin.UsersAndBans.Apply(new OVS.Shared.Protocol.Messages.Moderation.BanList("r", Enumerable.Range(0, 12).Select(index => new OVS.Shared.Protocol.Messages.Moderation.BanInfo(Guid.NewGuid(),
+            new string((char)('a' + index % 6), 64), $"Störenfried mit langem Namen {index}", index % 2 == 0 ? "2001:db8:85a3::8a2e:370:7334" : null,
+            index % 3 == 0 ? "Hat wiederholt den Raid-Channel mit Musik beschallt und Warnungen ignoriert" : "", "Moderator mit langem Namen",
+            (index % 4) switch { 0 => null, 1 => now.AddDays(3), 2 => now.AddDays(-1), _ => now.AddHours(5) },
+            index == 11 ? null : now.AddDays(-index - 2), index == 11 ? null : new string('f', 64), index % 4 is 1 or 3 ? 4320 : index % 4 == 2 ? 1440 : null,
+            index % 4 == 3 ? now.AddHours(-1) : null, index % 4 == 3 ? "Administrator mit langem Namen" : null, index * 7,
+            index % 2 == 1 ? now.AddMinutes(-index) : null, index % 2 == 1 ? "2001:db8:85a3::8a2e:370:7335" : null)).ToList()));
+        admin.UsersAndBans.SelectedBanStatusFilter = admin.UsersAndBans.BanStatusFilters.Single(choice => choice.Value == BanStatusFilter.All);
         // Package 74: backups in the server tab, one of them the safety backup with the longer title
         admin.BackupCard.Apply(new OVS.Shared.Protocol.Messages.ServerBackups.BackupList("r",
         [
@@ -462,18 +462,18 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
             new("2026-09-28_12-00-00.ovsbackup", DateTimeOffset.Now.AddDays(-2), 900, "dev.0000"),
         ]));
         // Package 81: log files of the server and of channels with long names, one opened on a page with long lines
-        var channel = server.Mirror.Channels.Values.First(c => c.Name.StartsWith("Raid")).Id;
-        admin.Logs.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogList("r", Enumerable.Range(0, 12).Select(i => new OVS.Shared.Protocol.Messages.LogAccess.LogFileInfo(
-            i % 3 == 0 ? $"server/2026-09-{30 - i:00}_12-00-00.log" : $"channels/{channel}/2026-09-{30 - i:00}_12-00-00.log",
-            i % 3 == 0 ? OVS.Shared.Protocol.Messages.LogAccess.LogKind.Server : OVS.Shared.Protocol.Messages.LogAccess.LogKind.Channel, i % 3 == 0 ? null : channel,
-            i % 3 == 0 ? null : i == 11 ? "Ein gelöschter Channel mit einem sehr langen Namen" : "Raidgruppe Nummer 2",
-            now.AddDays(-i), now.AddDays(-i).AddHours(5), 1_234_567L * (i + 1))).ToList()));
+        var channel = server.Mirror.Channels.Values.First(channelInfo => channelInfo.Name.StartsWith("Raid")).Id;
+        admin.Logs.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogList("r", Enumerable.Range(0, 12).Select(index => new OVS.Shared.Protocol.Messages.LogAccess.LogFileInfo(
+            index % 3 == 0 ? $"server/2026-09-{30 - index:00}_12-00-00.log" : $"channels/{channel}/2026-09-{30 - index:00}_12-00-00.log",
+            index % 3 == 0 ? OVS.Shared.Protocol.Messages.LogAccess.LogKind.Server : OVS.Shared.Protocol.Messages.LogAccess.LogKind.Channel, index % 3 == 0 ? null : channel,
+            index % 3 == 0 ? null : index == 11 ? "Ein gelöschter Channel mit einem sehr langen Namen" : "Raidgruppe Nummer 2",
+            now.AddDays(-index), now.AddDays(-index).AddHours(5), 1_234_567L * (index + 1))).ToList()));
         // Package 82: some files checked (the Server tab's transfer above shows here too)
-        foreach (var file in admin.Logs.Files.Where((_, i) => i % 2 == 0)) file.IsSelected = true;
+        foreach (var file in admin.Logs.Files.Where((_, index) => index % 2 == 0)) file.IsSelected = true;
         admin.Logs.OpenCommand.Execute(admin.Logs.Files[0]);
         admin.Logs.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogPage(null, admin.Logs.Files[0].Info.Id, 3, 3, 2001, Enumerable.Range(2001, 40)
-            .Select(n => n % 5 == 0 ? $"2026-09-30 12:00:{n % 60:00}.000 Mitspieler{n} verbunden (" + new string('a', 64) + ", 2001:db8:85a3::8a2e:370:7334) " + new string('x', 300)
-                : $"2026-09-30 12:00:{n % 60:00}.000 Zeile {n}").ToList()));
+            .Select(count => count % 5 == 0 ? $"2026-09-30 12:00:{count % 60:00}.000 Mitspieler{count} verbunden (" + new string('a', 64) + ", 2001:db8:85a3::8a2e:370:7334) " + new string('x', 300)
+                : $"2026-09-30 12:00:{count % 60:00}.000 Zeile {count}").ToList()));
         admin.Logs.LineFilter = "0";
         Dispatcher.UIThread.RunJobs();
         page = main.GetVisualDescendants().OfType<AdminView>().Single();
@@ -504,7 +504,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         // Package 75: nothing running, so neither progress shows, the backups' on the Server tab and the logs' on theirs
         foreach (var (header, progress) in new[] { (Strings.Ui_Server, "BackupTransfer"), (Strings.Ui_Logs, "LogTransfer") })
         {
-            SelectTab(page, Enumerable.Range(0, AdminTabs(page).ItemCount).Single(i => ((TabItem)AdminTabs(page).ContainerFromIndex(i)!).Header as string == header));
+            SelectTab(page, Enumerable.Range(0, AdminTabs(page).ItemCount).Single(index => ((TabItem)AdminTabs(page).ContainerFromIndex(index)!).Header as string == header));
             Assert.False(page.FindControl<Control>(progress)!.IsEffectivelyVisible, progress);
         }
         // Package 75: a transfer in progress, so its progress line is checked with the rest of the Server tab
@@ -521,19 +521,19 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Assert.Equal(12, admin.UsersAndBans.Bans.Count); // Package 80: every ban of every status is checked for width below
         Dispatcher.UIThread.RunJobs();
         var tabs = AdminTabs(page);
-        var strip = tabs.GetVisualDescendants().OfType<ScrollViewer>().Single(s => s.Name == "PART_TabStrip");
-        for (var i = 0; i < tabs.ItemCount; i++)
+        var strip = tabs.GetVisualDescendants().OfType<ScrollViewer>().Single(scrollViewer => scrollViewer.Name == "PART_TabStrip");
+        for (var index = 0; index < tabs.ItemCount; index++)
         {
-            SelectTab(page, i);
+            SelectTab(page, index);
             // the chosen tab is in view of the (scrolling) tab strip
-            var header = (TabItem)tabs.ContainerFromIndex(i)!;
+            var header = (TabItem)tabs.ContainerFromIndex(index)!;
             var x = header.TranslatePoint(default, strip)!.Value.X;
             Assert.True(x >= -1 && x + header.Bounds.Width <= strip.Viewport.Width + 1, $"Tab {header.Header} at {x}, strip {strip.Viewport.Width}");
 
-            var content = tabs.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Single(p => p.Name == "PART_SelectedContentHost");
-            var matrix = content.GetVisualDescendants().OfType<ScrollViewer>().SingleOrDefault(s => s.Name == "LinkCells");
+            var content = tabs.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Single(contentPresenter => contentPresenter.Name == "PART_SelectedContentHost");
+            var matrix = content.GetVisualDescendants().OfType<ScrollViewer>().SingleOrDefault(scrollViewer => scrollViewer.Name == "LinkCells");
             // scroll every scrolling list through, so the lower cards are checked too
-            foreach (var scroller in content.GetVisualDescendants().OfType<ScrollViewer>().Where(s => s != matrix && s.Viewport.Height > 0).ToList())
+            foreach (var scroller in content.GetVisualDescendants().OfType<ScrollViewer>().Where(scrollViewer => scrollViewer != matrix && scrollViewer.Viewport.Height > 0).ToList())
             {
                 for (var y = 0.0; ; y += scroller.Viewport.Height)
                 {
@@ -546,33 +546,33 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
             LayoutAssert.FitsHorizontally(main, matrix);
         }
         // Package 69: the new server settings are part of the checked Server tab
-        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Server));
+        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Server));
         foreach (var name in new[] { "MaxUsersInput", "LogDaysInput", "LogRotateDailyInput", "AutoRestartInput", "AutoRestartTimeInput" })
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         // Package 74: every backup with its restore and delete button, all checked for width above
-        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_Restore && t.IsEffectivelyVisible));
-        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_Delete && t.IsEffectivelyVisible));
+        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_Restore && textBlock.IsEffectivelyVisible));
+        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_Delete && textBlock.IsEffectivelyVisible));
         // Package 75: download per backup, both upload buttons and the progress
-        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_Download && t.IsEffectivelyVisible));
+        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_Download && textBlock.IsEffectivelyVisible));
         foreach (var name in new[] { "UploadBackupButton", "UploadRestoreButton", "BackupTransfer" })
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
-        Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == admin.Transfer.ProgressText && t.IsEffectivelyVisible);
+        Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == admin.Transfer.ProgressText && textBlock.IsEffectivelyVisible);
         // Package 97: "Backup anlegen" busy (checked above), then the whole card while restoring
-        Assert.Contains(page.FindControl<Button>("NewBackupButton")!.GetVisualDescendants().OfType<BusySpinner>(), s => s.IsEffectivelyVisible);
+        Assert.Contains(page.FindControl<Button>("NewBackupButton")!.GetVisualDescendants().OfType<BusySpinner>(), busySpinner => busySpinner.IsEffectivelyVisible);
         admin.BackupCard.Restoring.IsBusy = true;
         Dispatcher.UIThread.RunJobs();
         Assert.True(page.FindControl<Control>("RestoringState")?.IsEffectivelyVisible);
         LayoutAssert.FitsHorizontally(main);
         admin.BackupCard.Restoring.IsBusy = false;
         // Package 85: the stored server mute on four cards, the lift button where the viewer outranks the user (checked for width above)
-        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Users));
-        Assert.Equal(4, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_ServerMuted && t.IsEffectivelyVisible));
-        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(t => t.Text == Strings.Ui_LiftServerMute && t.IsEffectivelyVisible));
-        Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Ui_Loading && t.IsEffectivelyVisible); // Package 97: refreshing
-        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Bans));
-        Assert.Contains(page.FindControl<ContentControl>("BansLoadState")!.GetVisualDescendants().OfType<BusySpinner>(), s => s.IsEffectivelyVisible);
+        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Users));
+        Assert.Equal(4, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_ServerMuted && textBlock.IsEffectivelyVisible));
+        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_LiftServerMute && textBlock.IsEffectivelyVisible));
+        Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == Strings.Ui_Loading && textBlock.IsEffectivelyVisible); // Package 97: refreshing
+        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Bans));
+        Assert.Contains(page.FindControl<ContentControl>("BansLoadState")!.GetVisualDescendants().OfType<BusySpinner>(), busySpinner => busySpinner.IsEffectivelyVisible);
         // Package 81: the Logs tab with the opened file (checked above), then with the hits of a search instead of the files
-        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Logs));
+        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Logs));
         foreach (var name in new[] { "LogPager", "LogLineFilter", "LogLines" })
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         Assert.NotEmpty(page.FindControl<ListBox>("LogLines")!.GetRealizedContainers());
@@ -580,11 +580,11 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Dispatcher.UIThread.RunJobs();
         foreach (var name in new[] { "LogSearch", "LogSourceFilter", "LogFrom", "LogTo", "LogFileList", "LogDownloadBar", "LogDownloadButton", "LogTransfer", "LogSearchBusy" })
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
-        Assert.Contains(page.FindControl<ListBox>("LogFileList")!.GetVisualDescendants().OfType<CheckBox>(), c => c.IsEffectivelyVisible && c.IsChecked == true);
-        Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Pending_NoAnswer && t.IsEffectivelyVisible); // Package 97
+        Assert.Contains(page.FindControl<ListBox>("LogFileList")!.GetVisualDescendants().OfType<CheckBox>(), checkBox => checkBox.IsEffectivelyVisible && checkBox.IsChecked == true);
+        Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == Strings.Pending_NoAnswer && textBlock.IsEffectivelyVisible); // Package 97
         LayoutAssert.FitsHorizontally(main);
-        admin.Logs.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogSearchResult(null, admin.Logs.Files.Take(8).Select((f, i) =>
-            new OVS.Shared.Protocol.Messages.LogAccess.LogHit(f.Info.Id, 1000 + i, "2026-09-30 12:00:00.000 [Raidgruppe Nummer 2] Mitspieler3: " + new string('y', 400))).ToList(), true, false));
+        admin.Logs.Apply(new OVS.Shared.Protocol.Messages.LogAccess.LogSearchResult(null, admin.Logs.Files.Take(8).Select((logFile, index) =>
+            new OVS.Shared.Protocol.Messages.LogAccess.LogHit(logFile.Info.Id, 1000 + index, "2026-09-30 12:00:00.000 [Raidgruppe Nummer 2] Mitspieler3: " + new string('y', 400))).ToList(), true, false));
         Dispatcher.UIThread.RunJobs();
         Assert.True(page.FindControl<Control>("LogHitsText")?.IsEffectivelyVisible);
         Assert.NotEmpty(page.FindControl<ListBox>("LogHitList")!.GetRealizedContainers());
@@ -601,9 +601,9 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         var main = OpenAdmin(width, out var page);
         var tabs = AdminTabs(page);
-        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(i => ((TabItem)tabs.ContainerFromIndex(i)!).Header as string == Strings.Ui_Logs));
-        var list = page.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("logList"));
-        var viewer = page.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("logViewer"));
+        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Logs));
+        var list = page.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("logList"));
+        var viewer = page.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("logViewer"));
         var lines = page.FindControl<ListBox>("LogLines")!;
         if (stacked)
         {
@@ -619,7 +619,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         }
         // long lines wrap inside the viewer instead of widening it
         Assert.True(lines.Bounds.Width <= viewer.Bounds.Width);
-        Assert.Contains(lines.GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.TextLayout.TextLines.Count > 1);
+        Assert.Contains(lines.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.IsEffectivelyVisible && textBlock.TextLayout.TextLines.Count > 1);
         var admin = (AdminViewModel)page.DataContext!;
         admin.Logs.CloseFileCommand.Execute(null);
         Dispatcher.UIThread.RunJobs();
@@ -638,11 +638,11 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         SelectTab(page, 0);
         var list = page.FindControl<ListBox>("GroupRows")!;
         var listCard = list.FindAncestorOfType<Border>()!;
-        var editor = page.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("groupEditor"));
+        var editor = page.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("groupEditor"));
         var grid = (Grid)listCard.Parent!;
-        var rights = editor.GetVisualDescendants().OfType<CheckBox>().Where(c => c.IsEffectivelyVisible).ToList();
+        var rights = editor.GetVisualDescendants().OfType<CheckBox>().Where(checkBox => checkBox.IsEffectivelyVisible).ToList();
         Assert.True(rights.Count > 2);
-        var columns = rights.Select(c => Math.Round(c.TranslatePoint(default, main)!.Value.X)).Distinct().Count();
+        var columns = rights.Select(checkBox => Math.Round(checkBox.TranslatePoint(default, main)!.Value.X)).Distinct().Count();
         if (stacked)
         {
             Assert.True(Vertical(editor, main).Top >= Vertical(listCard, main).Bottom - 1, "Editor nicht unter der Liste");
@@ -692,9 +692,9 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         SelectTab(page, 3);
         var cells = page.FindControl<ScrollViewer>("LinkCells")!;
         Assert.True(cells.Extent.Width > cells.Viewport.Width + 1, $"Matrix {cells.Extent.Width} passt in {cells.Viewport.Width}");
-        var title = page.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("linkTitle"));
+        var title = page.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("linkTitle"));
         var before = title.TranslatePoint(default, main)!.Value;
-        var lastCell = page.GetVisualDescendants().OfType<Border>().Last(b => b.Classes.Contains("linkCell"));
+        var lastCell = page.GetVisualDescendants().OfType<Border>().Last(border => border.Classes.Contains("linkCell"));
         Assert.True(lastCell.TranslatePoint(default, cells)!.Value.X > cells.Viewport.Width);
 
         cells.Offset = new Vector(cells.Extent.Width, 0);
@@ -704,7 +704,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Assert.True(x >= 0 && x + lastCell.Bounds.Width <= cells.Viewport.Width + 1, $"letzte Zelle bei {x}");
         // title and cells of one row stay on one line
         Assert.Equal(Vertical(title, main).Top + title.Bounds.Height / 2,
-            Vertical(page.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("linkCell")), main).Top + 16, tolerance: 2);
+            Vertical(page.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("linkCell")), main).Top + 16, tolerance: 2);
         LayoutAssert.FitsHorizontally(page, cells);
         main.Close();
     }
@@ -712,30 +712,30 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     // ---- Package 79: chat, start screen, update card and dialogs at every width ----
 
     /// <summary>Every dialog of <c>UiSmokeTests.ExercisePagesAndDialogs</c>, plus the password and bookmark dialogs.</summary>
-    static Task OpenDialog(string name, OverlayHost o, ClientSettings settings, ServerViewModel server) => name switch
+    static Task OpenDialog(string name, OverlayHost overlayHost, ClientSettings settings, ServerViewModel server) => name switch
     {
-        "Connect" => ConnectDialog.ShowAsync(o, settings.Bookmarks),
-        "TofuMismatch" => TofuDialog.ShowAsync(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Mismatch)),
-        "TofuUnknown" => TofuDialog.ShowAsync(o, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Unknown)),
-        "Ban" => BanDialog.ShowAsync(o, "Mitspieler mit langem Namen"),
-        "BanWithoutIp" => BanDialog.ShowAsync(o, "Mitspieler mit langem Namen", ipKnown: false),
-        "DeleteUser" => DeleteUserDialog.ShowAsync(o, "Mitspieler mit langem Namen"),
-        "Confirm" => ConfirmDialog.ShowAsync(o, "Channel \"Raidgruppe Nummer 2\" wirklich löschen? Alle darin landen in der Lobby."),
-        "Update" => UpdateOfferDialog.ShowAsync(o, new OVS.Client.Net.Updates.UpdateOffer("280926.0b2c", "deploy-bbbbbbb",
-            string.Join("\n", Enumerable.Range(1, 30).Select(i => $"- Neuerung Nummer {i} mit etwas mehr Text")), DateTimeOffset.UtcNow,
+        "Connect" => ConnectDialog.ShowAsync(overlayHost, settings.Bookmarks),
+        "TofuMismatch" => TofuDialog.ShowAsync(overlayHost, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Mismatch)),
+        "TofuUnknown" => TofuDialog.ShowAsync(overlayHost, new OVS.Client.Net.TofuPrompt("voice.example.org", 7000, new string('a', 64), OVS.Client.Net.TofuResult.Unknown)),
+        "Ban" => BanDialog.ShowAsync(overlayHost, "Mitspieler mit langem Namen"),
+        "BanWithoutIp" => BanDialog.ShowAsync(overlayHost, "Mitspieler mit langem Namen", ipKnown: false),
+        "DeleteUser" => DeleteUserDialog.ShowAsync(overlayHost, "Mitspieler mit langem Namen"),
+        "Confirm" => ConfirmDialog.ShowAsync(overlayHost, "Channel \"Raidgruppe Nummer 2\" wirklich löschen? Alle darin landen in der Lobby."),
+        "Update" => UpdateOfferDialog.ShowAsync(overlayHost, new OVS.Client.Net.Updates.UpdateOffer("280926.0b2c", "deploy-bbbbbbb",
+            string.Join("\n", Enumerable.Range(1, 30).Select(index => $"- Neuerung Nummer {index} mit etwas mehr Text")), DateTimeOffset.UtcNow,
             new Uri("https://example.org/a"), new Uri("https://example.org/b"))),
-        "KeyBinding" => KeyBindingDialog.ShowAsync(o, null, _ => Task.FromResult<KeyChord?>(null)),
-        "ChannelCreate" => ChannelDialogView.ShowAsync(o, new ChannelEdit("", ""), ChannelDialogMode.Create),
-        "ChannelEdit" => ChannelDialogView.ShowAsync(o, new ChannelEdit("Raid", "Donnerstags ab 20 Uhr", IsMuted: true, MaxUsers: 8,
+        "KeyBinding" => KeyBindingDialog.ShowAsync(overlayHost, null, _ => Task.FromResult<KeyChord?>(null)),
+        "ChannelCreate" => ChannelDialogView.ShowAsync(overlayHost, new ChannelEdit("", ""), ChannelDialogMode.Create),
+        "ChannelEdit" => ChannelDialogView.ShowAsync(overlayHost, new ChannelEdit("Raid", "Donnerstags ab 20 Uhr", IsMuted: true, MaxUsers: 8,
             AllowedGroupIds: [server.Mirror.Groups[2].Id]), ChannelDialogMode.Edit, server.Mirror.Groups), // Package 93: with its groups
-        "PickChannel" => ChannelPickerDialog.ShowAsync(o, "Verschieben nach", server.Tree.Channels),
-        "AskText" => TextDialog.ShowAsync(o, Strings.Dialog_RedeemToken, "Token:"),
-        "Password" => ServerPasswordDialog.ShowAsync(o, "Gilde"),
-        "ChannelPassword" => ChannelPasswordDialog.ShowAsync(o, "Raidgruppe am Donnerstagabend"), // Package 94
-        "Bookmark" => BookmarkDialog.ShowAsync(o, settings.Bookmarks[0]),
-        "BackupDownload" => BackupDownloadDialog.ShowAsync(o), // Package 89
-        "Leave" => LeaveDialog.ShowAsync(o), // Package 114: three buttons
-        "ConnectionDetails" => ConnectionDetailsDialog.ShowAsync(o, Measured()), // Package 133
+        "PickChannel" => ChannelPickerDialog.ShowAsync(overlayHost, "Verschieben nach", server.Tree.Channels),
+        "AskText" => TextDialog.ShowAsync(overlayHost, Strings.Dialog_RedeemToken, "Token:"),
+        "Password" => ServerPasswordDialog.ShowAsync(overlayHost, "Gilde"),
+        "ChannelPassword" => ChannelPasswordDialog.ShowAsync(overlayHost, "Raidgruppe am Donnerstagabend"), // Package 94
+        "Bookmark" => BookmarkDialog.ShowAsync(overlayHost, settings.Bookmarks[0]),
+        "BackupDownload" => BackupDownloadDialog.ShowAsync(overlayHost), // Package 89
+        "Leave" => LeaveDialog.ShowAsync(overlayHost), // Package 114: three buttons
+        "ConnectionDetails" => ConnectionDetailsDialog.ShowAsync(overlayHost, Measured()), // Package 133
         _ => throw new ArgumentException(name),
     };
 
@@ -757,7 +757,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         settings.Save(dir);
     }
 
-    static Border DialogCard(MainWindow main) => main.Overlay.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("dialog"));
+    static Border DialogCard(MainWindow main) => main.Overlay.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("dialog"));
 
     /// <summary>At most as wide as before, at least 16 px from every window edge.</summary>
     static void CardInside(MainWindow main, Border card, double maxWidth)
@@ -782,11 +782,11 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Dialogs_FitAt360(string dialog, string culture) => TestCulture.With(culture, () =>
     {
         SaveThreeBookmarks();
-        var main = Open(1100, FakeServers.Crowded(), out var vm);
+        var main = Open(1100, FakeServers.Crowded(), out var viewModel);
         foreach (var width in new[] { 360.0, 480, 1100 })
         {
             Resize(main, width);
-            var shown = OpenDialog(dialog, main.Overlay, vm.Settings, vm.Server!);
+            var shown = OpenDialog(dialog, main.Overlay, viewModel.Settings, viewModel.Server!);
             Dispatcher.UIThread.RunJobs();
             Assert.True(main.Overlay.IsOpen);
             CardInside(main, DialogCard(main), 460);
@@ -813,25 +813,25 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
             OpenDrawer(main); // the channel tree lives in the drawer
             MotionWait.WaitFor(() => Sidebar(main).IsEffectivelyVisible && AtRest(Sidebar(main), main), 5000);
         }
-        var row = main.GetVisualDescendants().OfType<Border>().Single(b => b.ContextMenu is not null && b.DataContext is UserViewModel { Nickname: "anna" });
+        var row = main.GetVisualDescendants().OfType<Border>().Single(border => border.ContextMenu is not null && border.DataContext is UserViewModel { Nickname: "anna" });
         var menu = row.ContextMenu!;
         menu.Open(row);
         Dispatcher.UIThread.RunJobs();
-        var groups = menu.Items.OfType<MenuItem>().Single(m => m.Header as string == Strings.Ui_Groups);
+        var groups = menu.Items.OfType<MenuItem>().Single(menuItem => menuItem.Header as string == Strings.Ui_Groups);
         groups.IsSubMenuOpen = true;
         Dispatcher.UIThread.RunJobs();
-        var items = menu.Items.OfType<MenuItem>().Where(m => m.IsVisible).Concat(Avalonia.LogicalTree.LogicalExtensions.GetLogicalChildren(groups).OfType<MenuItem>()).ToList();
-        Assert.Equal(2, items.Count(m => m.ToggleType == MenuItemToggleType.CheckBox));
+        var items = menu.Items.OfType<MenuItem>().Where(menuItem => menuItem.IsVisible).Concat(Avalonia.LogicalTree.LogicalExtensions.GetLogicalChildren(groups).OfType<MenuItem>()).ToList();
+        Assert.Equal(2, items.Count(menuItem => menuItem.ToggleType == MenuItemToggleType.CheckBox));
         Assert.All(items, item => Assert.True(item.Bounds.Width > 0, "laid out"));
         foreach (var item in items) FullyInside(main, item);
         groups.IsSubMenuOpen = false;
 
         // Package 120 (AC7): the "Verschieben" submenu with the channels
-        var move = menu.Items.OfType<MenuItem>().Single(m => m.Header as string == Strings.Ui_MoveMenu);
+        var move = menu.Items.OfType<MenuItem>().Single(menuItem => menuItem.Header as string == Strings.Ui_MoveMenu);
         move.IsSubMenuOpen = true;
         Dispatcher.UIThread.RunJobs();
         var channels = Avalonia.LogicalTree.LogicalExtensions.GetLogicalChildren(move).OfType<MenuItem>().ToList();
-        Assert.Equal(["Lobby"], channels.Select(m => m.Header as string));
+        Assert.Equal(["Lobby"], channels.Select(menuItem => menuItem.Header as string));
         Assert.All(channels, item => Assert.True(item.Bounds.Width > 0, "laid out"));
         foreach (var item in channels) FullyInside(main, item);
         menu.Close();
@@ -846,21 +846,21 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Dialog_TallerThanWindow_ContentScrollsButtonsVisible(string dialog)
     {
         SaveThreeBookmarks();
-        var main = Open(360, FakeServers.Crowded(), out var vm);
+        var main = Open(360, FakeServers.Crowded(), out var viewModel);
         main.Height = 480;
         Dispatcher.UIThread.RunJobs();
-        _ = OpenDialog(dialog, main.Overlay, vm.Settings, vm.Server!);
+        _ = OpenDialog(dialog, main.Overlay, viewModel.Settings, viewModel.Server!);
         Dispatcher.UIThread.RunJobs();
         var card = DialogCard(main);
         CardInside(main, card, 460);
         var content = card.GetVisualDescendants().OfType<ScrollViewer>().First();
         Assert.True(content.Extent.Height > content.Viewport.Height + 1, $"Inhalt {content.Extent.Height} passt in {content.Viewport.Height}");
-        foreach (var button in card.GetVisualDescendants().OfType<Button>().Where(b => b.Content is string && b.FindAncestorOfType<ScrollViewer>() is null))
+        foreach (var button in card.GetVisualDescendants().OfType<Button>().Where(button => button.Content is string && button.FindAncestorOfType<ScrollViewer>() is null))
         {
             var (top, bottom) = Vertical(button, main);
             Assert.True(top >= 0 && bottom <= main.Bounds.Height, $"{button.Content} bei {top}..{bottom}");
         }
-        Assert.Equal(2, card.GetVisualDescendants().OfType<Button>().Count(b => b.Content is string && b.FindAncestorOfType<ScrollViewer>() is null));
+        Assert.Equal(2, card.GetVisualDescendants().OfType<Button>().Count(button => button.Content is string && button.FindAncestorOfType<ScrollViewer>() is null));
         // scrolled to the end, the last field is reachable
         content.Offset = new Vector(0, content.Extent.Height);
         Dispatcher.UIThread.RunJobs();
@@ -879,8 +879,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData(1100, "en-US")]
     public void UpdateCard_Fits(double width, string culture) => TestCulture.With(culture, () =>
     {
-        var main = Open(width, FakeServers.Admin(), out var vm);
-        vm.Update.Progress = new OVS.Client.Net.Updates.UpdateProgress("290926.0lh6", OVS.Client.Net.Updates.UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
+        var main = Open(width, FakeServers.Admin(), out var viewModel);
+        viewModel.Update.Progress = new OVS.Client.Net.Updates.UpdateProgress("290926.0lh6", OVS.Client.Net.Updates.UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
         Dispatcher.UIThread.RunJobs();
         var layer = main.FindControl<Panel>("UpdateLayer")!;
         CardInside(main, layer.Children.OfType<Border>().Single(), 420);
@@ -899,42 +899,42 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Chat_Narrow_TabsScroll_SendVisible(double width, string culture) => TestCulture.With(culture, () =>
     {
         var server = FakeServers.Crowded();
-        var main = Open(width, server, out var vm);
+        var main = Open(width, server, out var viewModel);
         var text = string.Join(" ", Enumerable.Repeat("Eine recht lange Nachricht, die umbrechen muss.", 12));
         server.Apply(new OVS.Shared.Protocol.Messages.Chat.ChatMessage(OVS.Shared.Protocol.Messages.Chat.ChatTarget.Server, 3, "Mitspieler3", null, null, text, DateTimeOffset.Now));
         server.Apply(new OVS.Shared.Protocol.Messages.Chat.ChatMessage(OVS.Shared.Protocol.Messages.Chat.ChatTarget.Server, 1, "ich", null, null, new string('y', 400), DateTimeOffset.Now));
         server.Apply(new OVS.Shared.Protocol.Messages.Chat.ChatMessage(OVS.Shared.Protocol.Messages.Chat.ChatTarget.Server, 4, "Mitspieler4", null, null, new string('x', 400), DateTimeOffset.Now));
-        for (var i = 5; i <= 10; i++) vm.Chat!.OpenPrivate($"fp{i}");
-        vm.Chat!.Selected = vm.Chat.Tabs[0];
+        for (var index = 5; index <= 10; index++) viewModel.Chat!.OpenPrivate($"fp{index}");
+        viewModel.Chat!.Selected = viewModel.Chat.Tabs[0];
         Dispatcher.UIThread.RunJobs();
 
         var chat = main.GetVisualDescendants().OfType<ChatView>().Single();
         var strip = chat.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.TabStrip>().Single();
         var tabs = strip.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.TabStripItem>().ToList();
-        Assert.Equal(vm.Chat.Tabs.Count, tabs.Count);
-        Assert.Single(tabs.Select(t => Math.Round(t.TranslatePoint(default, main)!.Value.Y)).Distinct()); // one line
+        Assert.Equal(viewModel.Chat.Tabs.Count, tabs.Count);
+        Assert.Single(tabs.Select(tabStripItem => Math.Round(tabStripItem.TranslatePoint(default, main)!.Value.Y)).Distinct()); // one line
         var scroller = strip.FindAncestorOfType<ScrollViewer>()!;
         if (width < 1100) Assert.True(scroller.Extent.Width > scroller.Viewport.Width + 1, "Tab-Leiste scrollt nicht");
 
         // the last tab, once chosen, is in view
-        vm.Chat.Selected = vm.Chat.Tabs[^1];
+        viewModel.Chat.Selected = viewModel.Chat.Tabs[^1];
         Dispatcher.UIThread.RunJobs();
         var last = tabs[^1];
         var x = last.TranslatePoint(default, scroller)!.Value.X;
         Assert.True(x >= -1 && x + last.Bounds.Width <= scroller.Viewport.Width + 1, $"letzter Tab bei {x}");
-        vm.Chat.Selected = vm.Chat.Tabs[0];
+        viewModel.Chat.Selected = viewModel.Chat.Tabs[0];
         Dispatcher.UIThread.RunJobs();
         Assert.True(tabs[0].TranslatePoint(default, scroller)!.Value.X >= -1, $"erster Tab bei {tabs[0].TranslatePoint(default, scroller)!.Value.X}");
 
-        var send = chat.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == Strings.Ui_Send);
+        var send = chat.GetVisualDescendants().OfType<Button>().Single(button => AutomationProperties.GetName(button) == Strings.Ui_Send);
         FullyInside(main, send);
-        var history = chat.GetVisualDescendants().OfType<ItemsControl>().Single(i => i is not Avalonia.Controls.Primitives.TabStrip);
+        var history = chat.GetVisualDescendants().OfType<ItemsControl>().Single(itemsControl => itemsControl is not Avalonia.Controls.Primitives.TabStrip);
         var share = main.Classes.Contains("narrow") ? 0.85 : 0.75;
-        foreach (var bubble in history.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("bubble") && b.IsEffectivelyVisible))
+        foreach (var bubble in history.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("bubble") && border.IsEffectivelyVisible))
             Assert.True(bubble.Bounds.Width <= history.Bounds.Width * share + 1, $"Blase {bubble.Bounds.Width} von {history.Bounds.Width}");
         if (main.Classes.Contains("narrow"))
         {
-            var own = history.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("bubble") && b.Classes.Contains("own") && b.IsEffectivelyVisible);
+            var own = history.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("bubble") && border.Classes.Contains("own") && border.IsEffectivelyVisible);
             Assert.True(own.Bounds.Width > history.Bounds.Width * 0.8, $"eigene Blase nur {own.Bounds.Width} von {history.Bounds.Width}");
             Assert.Equal(12, LayoutAssert.X(history, chat)!.Value, 1);
         }
@@ -952,12 +952,12 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void WaitingStates_Fit(double width, string culture) => TestCulture.With(culture, () =>
     {
         var time = new ManualTimeProvider();
-        var vm = MainViewModelSetup.Create(dir, a => a());
-        var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = new MainWindow { DataContext = viewModel, Width = width, Height = 700 };
         main.Show();
         ServerViewModel? server = null;
         server = FakeServers.Admin(time: time, dialogs: OverlayDialogs.Create(main.Overlay, () => server?.Mirror.Groups).Server);
-        MainViewModelSetup.ShowServer(vm, server);
+        MainViewModelSetup.ShowServer(viewModel, server);
         // the connect sequence (at most 700 ms) is over before anything is clicked; the server's clock is a manual one
         MotionWait.WaitFor(() => false, 800);
         MotionWait.WaitFor(() => main.Classes.Contains("compact") == width < 700, 5000);
@@ -965,22 +965,22 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         // a sent message still waiting and a refused one with its retry, both long
         foreach (var text in new[] { new string('w', 300), "Diese Nachricht kam nicht an, weil zu viele in kurzer Zeit geschickt wurden." })
         {
-            vm.Chat!.Draft = text;
-            _ = vm.Chat.SendCommand.ExecuteAsync(null);
+            viewModel.Chat!.Draft = text;
+            _ = viewModel.Chat.SendCommand.ExecuteAsync(null);
         }
-        server.Apply(new OVS.Shared.Protocol.Messages.Connection.Error(vm.Chat!.General.Entries[^1].Sending!.Pending.RequestId, OVS.Shared.Protocol.ReasonCodes.RateLimited));
+        server.Apply(new OVS.Shared.Protocol.Messages.Connection.Error(viewModel.Chat!.General.Entries[^1].Sending!.Pending.RequestId, OVS.Shared.Protocol.ReasonCodes.RateLimited));
         // rows that spin: joining a channel, a server mute
-        _ = server.Tree.Channels.Single(c => c.Name == "Raid").JoinCommand.ExecuteAsync(null);
-        _ = server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").ToggleServerMuteCommand.ExecuteAsync(null);
+        _ = server.Tree.Channels.Single(channel => channel.Name == "Raid").JoinCommand.ExecuteAsync(null);
+        _ = server.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.Nickname == "anna").ToggleServerMuteCommand.ExecuteAsync(null);
         time.Advance(PendingActionViewModel.ShowAfter);
         Dispatcher.UIThread.RunJobs();
-        Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == Strings.Chat_NotSent && t.IsEffectivelyVisible);
+        Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == Strings.Chat_NotSent && textBlock.IsEffectivelyVisible);
         LayoutAssert.FitsHorizontally(main);
         if (width < 700) OpenDrawer(main); // the channel tree lives in the drawer (a missed click fails there, not as "0 spinners")
         else Assert.DoesNotContain("drawer", main.Classes);
         // the drawer slides in (Package 105); on a busy machine that can take longer than its 220 ms
-        MotionWait.WaitFor(() => Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible) == 2, 5000);
-        Assert.Equal(2, Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(s => s.IsEffectivelyVisible));
+        MotionWait.WaitFor(() => Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(busySpinner => busySpinner.IsEffectivelyVisible) == 2, 5000);
+        Assert.Equal(2, Sidebar(main).GetVisualDescendants().OfType<BusySpinner>().Count(busySpinner => busySpinner.IsEffectivelyVisible));
         LayoutAssert.FitsHorizontally(main);
         if (width < 700) Click(main, MenuButton(main));
 
@@ -988,13 +988,13 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         _ = server.NewChannelCommand.ExecuteAsync(null);
         Dispatcher.UIThread.RunJobs();
         main.Overlay.GetVisualDescendants().OfType<TextBox>().First().Text = "Neu";
-        var create = main.Overlay.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == Strings.Dlg_Create);
+        var create = main.Overlay.GetVisualDescendants().OfType<Button>().Single(button => button.Content as string == Strings.Dlg_Create);
         create.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
         time.Advance(TimeSpan.FromSeconds(10));
         create.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
         time.Advance(PendingActionViewModel.ShowAfter);
         Dispatcher.UIThread.RunJobs();
-        Assert.Contains(main.Overlay.GetVisualDescendants().OfType<BusySpinner>(), s => s.IsEffectivelyVisible);
+        Assert.Contains(main.Overlay.GetVisualDescendants().OfType<BusySpinner>(), busySpinner => busySpinner.IsEffectivelyVisible);
         CardInside(main, DialogCard(main), 460);
         LayoutAssert.FitsHorizontally(main.Overlay);
         main.Overlay.Close();
@@ -1003,16 +1003,16 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         // the settings: saving while the devices restart, the update check
         var restart = new TaskCompletionSource();
         var check = new TaskCompletionSource<string>();
-        vm.PageFlow.ShownPage = new SettingsViewModel(vm.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
-        vm.PageFlow.Page = Page.Settings;
-        _ = vm.PageFlow.SettingsPage!.SaveCommand.ExecuteAsync(null);
-        _ = vm.PageFlow.SettingsPage!.CheckUpdatesCommand.ExecuteAsync(null);
+        viewModel.PageFlow.ShownPage = new SettingsViewModel(viewModel.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
+        viewModel.PageFlow.Page = Page.Settings;
+        _ = viewModel.PageFlow.SettingsPage!.SaveCommand.ExecuteAsync(null);
+        _ = viewModel.PageFlow.SettingsPage!.CheckUpdatesCommand.ExecuteAsync(null);
         time.Advance(PendingActionViewModel.ShowAfter);
         Dispatcher.UIThread.RunJobs();
         var settings = main.GetVisualDescendants().OfType<SettingsView>().Single();
         Assert.True(settings.FindControl<Control>("UpdateCheckBusy")?.IsEffectivelyVisible);
-        Assert.Contains(settings.FindControl<Button>("SaveSettingsButton")!.GetVisualDescendants().OfType<BusySpinner>(), s => s.IsEffectivelyVisible);
-        foreach (var scroller in settings.GetVisualDescendants().OfType<ScrollViewer>().Where(s => s.Viewport.Height > 0).ToList())
+        Assert.Contains(settings.FindControl<Button>("SaveSettingsButton")!.GetVisualDescendants().OfType<BusySpinner>(), busySpinner => busySpinner.IsEffectivelyVisible);
+        foreach (var scroller in settings.GetVisualDescendants().OfType<ScrollViewer>().Where(scrollViewer => scrollViewer.Viewport.Height > 0).ToList())
         {
             scroller.Offset = new Vector(0, scroller.Extent.Height);
             Dispatcher.UIThread.RunJobs();
@@ -1035,17 +1035,17 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void StartScreen_FitsAt360(double width, string culture) => TestCulture.With(culture, () =>
     {
         SaveThreeBookmarks();
-        var main = Open(width, null, out var vm);
-        vm.Status = "Verbindung zu raidgruppe-am-donnerstagabend.example.org:7000 fehlgeschlagen: Zeitüberschreitung";
+        var main = Open(width, null, out var viewModel);
+        viewModel.Status = "Verbindung zu raidgruppe-am-donnerstagabend.example.org:7000 fehlgeschlagen: Zeitüberschreitung";
         Dispatcher.UIThread.RunJobs();
-        var start = main.GetVisualDescendants().OfType<StackPanel>().Single(p => p.Classes.Contains("startScreen"));
+        var start = main.GetVisualDescendants().OfType<StackPanel>().Single(stackPanel => stackPanel.Classes.Contains("startScreen"));
         Assert.Equal(width < 700 ? 16 : 32, start.Margin.Left);
         LayoutAssert.FitsHorizontally(main);
         if (width < 700)
         {
             OpenDrawer(main); // the bookmarks live in the drawer
             LayoutAssert.FitsHorizontally(main);
-            Assert.Contains(Sidebar(main).GetVisualDescendants().OfType<TextBlock>(), t => t.IsEffectivelyVisible && t.Text == "Freunde");
+            Assert.Contains(Sidebar(main).GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.IsEffectivelyVisible && textBlock.Text == "Freunde");
         }
         main.Close();
         return 0;
@@ -1088,10 +1088,10 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void Sending_WidthStays()
     {
-        var main = Open(1100, FakeServers.WithChannels("A", "B"), out var vm);
+        var main = Open(1100, FakeServers.WithChannels("A", "B"), out var viewModel);
         MotionWait.WaitFor(() => false, 200);
         var before = Sidebar(main).Bounds.Width;
-        vm.TransmitText = Strings.Transmit_Linked;
+        viewModel.TransmitText = Strings.Transmit_Linked;
         MotionWait.WaitFor(() => false, 200);
         Assert.Equal(before, Sidebar(main).Bounds.Width, 1);
         main.Close();
@@ -1104,22 +1104,22 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void ModeChange_Refits()
     {
-        var main = Open(1100, FakeServers.WithChannels("A", "B"), out var vm);
-        vm.ApplySettings(new ClientSettings { Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation });
+        var main = Open(1100, FakeServers.WithChannels("A", "B"), out var viewModel);
+        viewModel.ApplySettings(new ClientSettings { Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation });
         MotionWait.WaitFor(() => false, 200);
         Assert.Equal("ich", Footer(main, "SelfName").Text);
         Assert.Equal(Strings.TalkHint_VoiceActivation, Footer(main, "TalkHintLine").Text);
         Untrimmed(Footer(main, "TalkHintLine"));
         Assert.True(Sidebar(main).Bounds.Width > SidebarWidth.Minimum, $"{Sidebar(main).Bounds.Width}: the footer, not the rows, sets the width");
 
-        vm.ApplySettings(new ClientSettings { KeyBindings = [] }); // push-to-talk without a key: the hint button
+        viewModel.ApplySettings(new ClientSettings { KeyBindings = [] }); // push-to-talk without a key: the hint button
         MotionWait.WaitFor(() => false, 200);
         var hint = main.FindControl<Button>("PttHint")!;
         Assert.True(hint.IsEffectivelyVisible);
         Untrimmed(hint.GetVisualDescendants().OfType<TextBlock>().Single());
         Assert.True(hint.Bounds.Width >= hint.DesiredSize.Width - 0.5, "the whole button shows");
 
-        vm.ApplySettings(new ClientSettings { KeyBindings = [new OVS.Client.Input.KeyBinding(KeyAction.PushToTalk, new KeyChord(0x05))] });
+        viewModel.ApplySettings(new ClientSettings { KeyBindings = [new OVS.Client.Input.KeyBinding(KeyAction.PushToTalk, new KeyChord(0x05))] });
         MotionWait.WaitFor(() => false, 200);
         Untrimmed(Footer(main, "TalkHintLine"));
         main.Close();

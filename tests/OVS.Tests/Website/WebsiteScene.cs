@@ -28,7 +28,7 @@ public sealed class WebsiteScene : IDisposable
         var saved = new ClientSettings { KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(0x05))] };
         settings?.Invoke(saved);
         saved.Save(profile);
-        Vm = MainViewModelSetup.Create(profile, a => Dispatcher.UIThread.Post(a));
+        Vm = MainViewModelSetup.Create(profile, action => Dispatcher.UIThread.Post(action));
         Window = new MainWindow { DataContext = Vm, Width = 1100, Height = height };
         Window.Show();
         ShotWriter.Settle(100);

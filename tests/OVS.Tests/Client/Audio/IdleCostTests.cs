@@ -18,12 +18,12 @@ public class IdleCostTests
     /// </summary>
     static long[] Allocated(Action work)
     {
-        for (int i = 0; i < WarmUp; i++) work();
+        for (int index = 0; index < WarmUp; index++) work();
         var windows = new long[Windows];
         for (int w = 0; w < Windows; w++)
         {
             long before = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < Runs; i++) work();
+            for (int index = 0; index < Runs; index++) work();
             windows[w] = GC.GetAllocatedBytesForCurrentThread() - before;
         }
         return windows;
@@ -31,17 +31,17 @@ public class IdleCostTests
 
     static float[] Sine(int frame) =>
         Enumerable.Range(frame * AudioFormat.FrameSamples, AudioFormat.FrameSamples)
-            .Select(i => 0.3f * MathF.Sin(2 * MathF.PI * 440 * i / AudioFormat.SampleRate)).ToArray();
+            .Select(index => 0.3f * MathF.Sin(2 * MathF.PI * 440 * index / AudioFormat.SampleRate)).ToArray();
 
     /// <summary>Package 142: a different tone on each side, interleaved.</summary>
     static float[] StereoSine(int frame)
     {
         var samples = new float[AudioFormat.StereoFrameSamples];
-        for (int i = 0; i < AudioFormat.FrameSamples; i++)
+        for (int index = 0; index < AudioFormat.FrameSamples; index++)
         {
-            int n = frame * AudioFormat.FrameSamples + i;
-            samples[2 * i] = 0.3f * MathF.Sin(2 * MathF.PI * 440 * n / AudioFormat.SampleRate);
-            samples[2 * i + 1] = 0.3f * MathF.Sin(2 * MathF.PI * 1000 * n / AudioFormat.SampleRate);
+            int count = frame * AudioFormat.FrameSamples + index;
+            samples[2 * index] = 0.3f * MathF.Sin(2 * MathF.PI * 440 * count / AudioFormat.SampleRate);
+            samples[2 * index + 1] = 0.3f * MathF.Sin(2 * MathF.PI * 1000 * count / AudioFormat.SampleRate);
         }
         return samples;
     }
@@ -69,7 +69,7 @@ public class IdleCostTests
         // would avoid (out of scope). So the decoder and a mixer tick must allocate exactly what Concentus does on the same
         // packets, nothing more (in at least one window).
         var encoder = new VoiceEncoder();
-        var packets = Enumerable.Range(0, WarmUp + Windows * Runs + 3).Select(n => encoder.Encode(Sine(n))).ToList();
+        var packets = Enumerable.Range(0, WarmUp + Windows * Runs + 3).Select(count => encoder.Encode(Sine(count))).ToList();
         var bare = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2); // Package 142: the decoders are stereo
         var pcm = new float[AudioFormat.StereoFrameSamples];
         int bareNext = 0;
@@ -89,18 +89,18 @@ public class IdleCostTests
         var ticks = new long[Windows]; // tick i decodes packet i, as the bare decoder beside it does
         var beside = new long[Windows];
         var bareBeside = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
-        for (int i = 0; i < WarmUp + Windows * Runs; i++, seq++)
+        for (int index = 0; index < WarmUp + Windows * Runs; index++, seq++)
         {
             mixer.Push(1, (uint)seq, packets[seq], false);
             mixer.Push(2, (uint)seq, packets[seq], false);
             long before = GC.GetAllocatedBytesForCurrentThread();
-            bareBeside.Decode(packets[i], pcm, AudioFormat.FrameSamples, false);
+            bareBeside.Decode(packets[index], pcm, AudioFormat.FrameSamples, false);
             long between = GC.GetAllocatedBytesForCurrentThread();
             int active = mixer.Tick().Active.Count;
-            if (i >= WarmUp)
+            if (index >= WarmUp)
             {
-                beside[(i - WarmUp) / Runs] += between - before;
-                ticks[(i - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - between;
+                beside[(index - WarmUp) / Runs] += between - before;
+                ticks[(index - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - between;
             }
             Assert.Equal(2, active);
         }
@@ -111,15 +111,15 @@ public class IdleCostTests
         var decoder = new VoiceDecoder();
         var bareTurns = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
         long[] decodes = new long[Windows], bareDecodes = new long[Windows];
-        for (int i = 0; i < WarmUp + Windows * Runs; i++)
+        for (int index = 0; index < WarmUp + Windows * Runs; index++)
         {
             long before = GC.GetAllocatedBytesForCurrentThread();
-            bareTurns.Decode(packets[i], pcm, AudioFormat.FrameSamples, false);
+            bareTurns.Decode(packets[index], pcm, AudioFormat.FrameSamples, false);
             long between = GC.GetAllocatedBytesForCurrentThread();
-            decoder.Decode(packets[i]);
-            if (i < WarmUp) continue;
-            bareDecodes[(i - WarmUp) / Runs] += between - before;
-            decodes[(i - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - between;
+            decoder.Decode(packets[index]);
+            if (index < WarmUp) continue;
+            bareDecodes[(index - WarmUp) / Runs] += between - before;
+            decodes[(index - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - between;
         }
         Assert.Contains(true, Enumerable.Range(0, Windows).Select(w => decodes[w] == bareDecodes[w]));
 
@@ -148,15 +148,15 @@ public class IdleCostTests
         own.Encode(frames[0]);
         sender.Feed(frames[0], AudioFormat.SampleRate, 2);
         long[] sends = new long[Windows], encodes = new long[Windows];
-        for (int i = 0; i < WarmUp + Windows * Runs; i++)
+        for (int index = 0; index < WarmUp + Windows * Runs; index++)
         {
             long before = GC.GetAllocatedBytesForCurrentThread();
-            own.Encode(frames[i + 1]);
+            own.Encode(frames[index + 1]);
             long between = GC.GetAllocatedBytesForCurrentThread();
-            sender.Feed(frames[i + 1], AudioFormat.SampleRate, 2);
-            if (i < WarmUp) continue;
-            encodes[(i - WarmUp) / Runs] += between - before;
-            sends[(i - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - between;
+            sender.Feed(frames[index + 1], AudioFormat.SampleRate, 2);
+            if (index < WarmUp) continue;
+            encodes[(index - WarmUp) / Runs] += between - before;
+            sends[(index - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - between;
         }
         Assert.Contains(true, Enumerable.Range(0, Windows).Select(w => sends[w] == encodes[w]));
 

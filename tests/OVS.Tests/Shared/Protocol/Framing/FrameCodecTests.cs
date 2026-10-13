@@ -13,10 +13,10 @@ public class FrameCodecTests
 {
     static async Task<byte[]> Encode(params Message[] messages)
     {
-        var ms = new MemoryStream();
-        var writer = new FrameWriter(ms);
-        foreach (var m in messages) await writer.WriteAsync(m);
-        return ms.ToArray();
+        var milliseconds = new MemoryStream();
+        var writer = new FrameWriter(milliseconds);
+        foreach (var message in messages) await writer.WriteAsync(message);
+        return milliseconds.ToArray();
     }
 
     static byte[] RawFrame(string json)
@@ -90,8 +90,8 @@ public class FrameCodecTests
     public async Task Read_UnknownTypeOrInvalidJson_Throws(string json, bool jsonObject)
     {
         var reader = new FrameReader(new MemoryStream(RawFrame(json)));
-        var e = await Assert.ThrowsAnyAsync<ProtocolException>(() => reader.ReadAsync());
-        Assert.Equal(jsonObject, e is InvalidRequestException); // Package 83: an object is a bad request, anything else a broken frame
+        var exception = await Assert.ThrowsAnyAsync<ProtocolException>(() => reader.ReadAsync());
+        Assert.Equal(jsonObject, exception is InvalidRequestException); // Package 83: an object is a bad request, anything else a broken frame
     }
 
     /// <summary>Package 83: the server answers a bad request under its own RequestId.</summary>
@@ -112,23 +112,23 @@ public class FrameCodecTests
     [Fact]
     public async Task Write_OversizedMessage_ThrowsAndWritesNothing()
     {
-        var ms = new MemoryStream();
-        var writer = new FrameWriter(ms);
+        var milliseconds = new MemoryStream();
+        var writer = new FrameWriter(milliseconds);
         await Assert.ThrowsAsync<ProtocolException>(() => writer.WriteAsync(new Error(null, "x", new string('a', 1_100_000))));
-        Assert.Equal(0, ms.Length);
+        Assert.Equal(0, milliseconds.Length);
     }
 
     [Fact]
     public async Task Write_Concurrent100_AllFramesIntact()
     {
-        var ms = new MemoryStream();
-        var writer = new FrameWriter(ms);
-        await Task.WhenAll(Enumerable.Range(0, 100).Select(i => Task.Run(() => writer.WriteAsync(new Error(i.ToString(), "c")))));
+        var milliseconds = new MemoryStream();
+        var writer = new FrameWriter(milliseconds);
+        await Task.WhenAll(Enumerable.Range(0, 100).Select(index => Task.Run(() => writer.WriteAsync(new Error(index.ToString(), "c")))));
 
-        ms.Position = 0;
-        var reader = new FrameReader(ms);
+        milliseconds.Position = 0;
+        var reader = new FrameReader(milliseconds);
         var ids = new HashSet<string?>();
-        while (await reader.ReadAsync() is Error e) ids.Add(e.RequestId);
+        while (await reader.ReadAsync() is Error error) ids.Add(error.RequestId);
         Assert.Equal(100, ids.Count);
     }
 }

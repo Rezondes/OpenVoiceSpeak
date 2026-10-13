@@ -38,7 +38,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        server = await TestServer.StartAsync(d => d.Settings.WelcomeText = "Willkommen auf dem Testserver!");
+        server = await TestServer.StartAsync(serverData => serverData.Settings.WelcomeText = "Willkommen auf dem Testserver!");
         vm = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, keyState: keys.IsDown, trustServers: true)));
     }
 
@@ -537,9 +537,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await OnUi(() =>
         {
-            var s = vm.Settings;
-            s.CheckForUpdates = false;
-            vm.ApplySettings(s);
+            var clientSettings = vm.Settings;
+            clientSettings.CheckForUpdates = false;
+            vm.ApplySettings(clientSettings);
             return 0;
         });
         await ui.InvokeAsync<object?>(async () =>
@@ -566,8 +566,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
                 new { name = "OVS.Client.exe.sha256", browser_download_url = "https://example.org/OVS.Client.exe.sha256" },
             },
         };
-        var http = new FakeHttp(r => r.RequestUri!.Host == "api.github.com" ? FakeHttp.Json(release)
-            : r.RequestUri.AbsolutePath.EndsWith(".sha256") ? FakeHttp.Bytes(System.Text.Encoding.ASCII.GetBytes(new string('0', 64)))
+        var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.Host == "api.github.com" ? FakeHttp.Json(release)
+            : httpRequestMessage.RequestUri.AbsolutePath.EndsWith(".sha256") ? FakeHttp.Bytes(System.Text.Encoding.ASCII.GetBytes(new string('0', 64)))
             : FakeHttp.Bytes(new byte[200_000]));
         var running = new OVS.Shared.BuildInfo(DateTimeOffset.UtcNow.AddDays(-1), "aaaaaaa", IsCi: true);
         var seen = new List<OVS.Client.Net.Updates.UpdateProgress?>();
@@ -586,8 +586,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var result = await ui.InvokeAsync(() => vm.Update.CheckAsync());
 
         Assert.Equal(OVS.Client.Localization.Strings.Update_Damaged, result);
-        Assert.Contains(seen, p => p is { Phase: OVS.Client.Net.Updates.UpdatePhase.Downloading, Bytes: 200_000, Total: 200_000 });
-        Assert.All(seen.OfType<OVS.Client.Net.Updates.UpdateProgress>(), p => Assert.Equal("280926.0b2c", p.Version));
+        Assert.Contains(seen, updateProgress => updateProgress is { Phase: OVS.Client.Net.Updates.UpdatePhase.Downloading, Bytes: 200_000, Total: 200_000 });
+        Assert.All(seen.OfType<OVS.Client.Net.Updates.UpdateProgress>(), updateProgress => Assert.Equal("280926.0b2c", updateProgress.Version));
         Assert.Null(seen[^1]);
         Assert.False(await OnUi(() => vm.Update.IsUpdating));
         Assert.Equal(OVS.Client.Localization.Strings.Update_Damaged, await OnUi(() => vm.Status));
@@ -690,12 +690,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var annaId = await OnUi(() => vm.Server!.Mirror.SelfId);
 
         await PressUntil(KeyAction.ToggleMute, () => vm.Server!.SelfState.SelfMuted);
-        var muted = await bert.WaitForAsync<UserUpdated>(u => u.User.SessionId == annaId && u.User.SelfMuted);
+        var muted = await bert.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == annaId && userUpdated.User.SelfMuted);
         Assert.False(muted.User.SelfDeafened);
         Assert.True(await OnUi(() => vm.Server!.SelfState.SelfMuted));
 
         await PressUntil(KeyAction.ToggleDeafen, () => vm.Server!.SelfState.SelfDeafened);
-        await bert.WaitForAsync<UserUpdated>(u => u.User.SessionId == annaId && u.User.SelfDeafened);
+        await bert.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == annaId && userUpdated.User.SelfDeafened);
     }
 
     [Fact]
@@ -703,18 +703,18 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await OnUi(() => // an existing profile without keys (a new one gets a PTT key, Package 59)
         {
-            var s = vm.Settings;
-            s.KeyBindings = [];
-            vm.ApplySettings(s);
+            var clientSettings = vm.Settings;
+            clientSettings.KeyBindings = [];
+            vm.ApplySettings(clientSettings);
             return 0;
         });
         Assert.True(await OnUi(() => vm.HasNoPttBinding));
         Assert.Equal("Keine PTT-Taste belegt", await OnUi(() => vm.TalkHint));
         await OnUi(() =>
         {
-            var s = vm.Settings;
-            s.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton1))];
-            vm.ApplySettings(s);
+            var clientSettings = vm.Settings;
+            clientSettings.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton1))];
+            vm.ApplySettings(clientSettings);
             return 0;
         });
         Assert.False(await OnUi(() => vm.HasNoPttBinding));
@@ -722,9 +722,9 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await OnUi(() => // Package 41: several PTT keys are all listed
         {
-            var s = vm.Settings;
-            s.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton1)), new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton2))];
-            vm.ApplySettings(s);
+            var clientSettings = vm.Settings;
+            clientSettings.KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton1)), new KeyBinding(KeyAction.PushToTalk, new KeyChord(VirtualKeys.XButton2))];
+            vm.ApplySettings(clientSettings);
             return 0;
         });
         Assert.Equal("PTT: Maustaste 4, Maustaste 5", await OnUi(() => vm.TalkHint));
@@ -745,7 +745,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         });
 
         await Connect();
-        var shown = await OnUiUntil(() => vm.Server?.IconPng, s => s is not null);
+        var shown = await OnUiUntil(() => vm.Server?.IconPng, bytes => bytes is not null);
         Assert.Equal(png, shown);
 
         await Connect(); // second time straight from the cache
@@ -753,20 +753,20 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Equal(png, (await OnUi(() => vm.Bookmarks.Items)).Single().Icon);
 
         var log = ClientLogText();
-        Assert.Equal(1, log.Split(Environment.NewLine).Count(l => l.Contains("Request server logo")));
+        Assert.Equal(1, log.Split(Environment.NewLine).Count(line => line.Contains("Request server logo")));
     }
 
     [Fact]
     public async Task Connect_ShowsWelcomeText_AndPing()
     {
         await ConnectAsync(saveBookmark: false);
-        Assert.Contains(await OnUi(() => vm.Notices.ToList()), n => n.Kind == NoticeKind.Welcome && n.Text == "Willkommen auf dem Testserver!");
+        Assert.Contains(await OnUi(() => vm.Notices.ToList()), notice => notice.Kind == NoticeKind.Welcome && notice.Text == "Willkommen auf dem Testserver!");
 
         var ping = await OnUiUntil(() =>
         {
             vm.Tick();
             return vm.Connection.PingText;
-        }, p => p.Length > 0);
+        }, path => path.Length > 0);
         Assert.StartsWith("Ping ", ping);
     }
 
@@ -782,18 +782,18 @@ public sealed class MainViewModelTests : IAsyncLifetime
             vm.Tick();
             return ClientLogText();
         }
-        Assert.Contains("UDP now reachable", await OnUiUntil(Logged, l => l.Contains("UDP now reachable")));
+        Assert.Contains("UDP now reachable", await OnUiUntil(Logged, line => line.Contains("UDP now reachable")));
 
         relay.DropAll = true;
-        for (int i = 0; i < 40; i++) time.Advance(TimeSpan.FromMilliseconds(500)); // 20 s
+        for (int index = 0; index < 40; index++) time.Advance(TimeSpan.FromMilliseconds(500)); // 20 s
         Assert.Contains("UDP not reachable", await OnUi(Logged));
         relay.DropAll = false;
-        for (int i = 0; i < 10; i++) time.Advance(TimeSpan.FromMilliseconds(500));
-        await OnUiUntil(Logged, l => l.Contains("UDP reachable again"));
+        for (int index = 0; index < 10; index++) time.Advance(TimeSpan.FromMilliseconds(500));
+        await OnUiUntil(Logged, line => line.Contains("UDP reachable again"));
 
         var log = await OnUi(Logged); // one more tick adds nothing
         foreach (var line in new[] { "UDP now reachable", "UDP not reachable", "UDP reachable again" })
-            Assert.Single(log.Split(Environment.NewLine), l => l.Contains(line));
+            Assert.Single(log.Split(Environment.NewLine), text => text.Contains(line));
     }
 
     /// <summary>
@@ -807,7 +807,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         // every answer carries the frames sent (a slow machine cannot turn them into an empty or partial window)
         var serverTime = new ManualTimeProvider();
         await server.DisposeAsync();
-        server = await TestServer.StartAsync(d => d.Settings.WelcomeText = "Willkommen auf dem Testserver!", time: serverTime);
+        server = await TestServer.StartAsync(serverData => serverData.Settings.WelcomeText = "Willkommen auf dem Testserver!", time: serverTime);
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider(); // the voice client's and the refresh's clock
         ConnectionStatsViewModel? shown = null;
@@ -853,7 +853,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         // the loss hint and, after 5 s of them (on the client's clock), halves the bitrate, which the card shows
         relay.DropUpVoicePercent = 20;
         var frame = new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]);
-        for (int i = 0; i < 40; i++) // 0.8 s on the server's clock: within one window and its 1 s fresh start
+        for (int index = 0; index < 40; index++) // 0.8 s on the server's clock: within one window and its 1 s fresh start
         {
             serverTime.Advance(AudioFormat.FrameDuration); // its voice rate limit (60/s, burst 10) refills
             await OnUi(() =>
@@ -891,7 +891,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         int samples = await OnUi(() => stats.Samples);
         var (unreachable, bars, after) = await OnUi(() =>
         {
-            for (int i = 0; i < 32; i++)
+            for (int index = 0; index < 32; index++)
             {
                 time.Advance(TimeSpan.FromMilliseconds(500));
                 vm.Tick();
@@ -931,7 +931,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         }, bars => bars == 4); // the answer to the Hello is taken, the card has refreshed
         relay.DropUpVoicePercent = 20;
         var frame = new VoiceEncoder().Encode(new float[AudioFormat.FrameSamples]);
-        for (int i = 0; i < 10; i++) // the voice burst of the server's rate limit
+        for (int index = 0; index < 10; index++) // the voice burst of the server's rate limit
         {
             serverTime.Advance(AudioFormat.FrameDuration);
             await OnUi(() =>
@@ -992,11 +992,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await ConnectAsync(saveBookmark: false);
         await using var bert = await TestClient.ConnectAsync(server, "bert");
-        Assert.Equal(["Allgemein", "Lobby"], await OnUi(() => vm.Chat!.Tabs.Select(t => t.Title).ToList()));
-        Assert.Contains(await OnUi(() => vm.Chat!.General.Entries.ToList()), e => e.IsWelcome && e.Text == "Willkommen auf dem Testserver!");
+        Assert.Equal(["Allgemein", "Lobby"], await OnUi(() => vm.Chat!.Tabs.Select(chatTab => chatTab.Title).ToList()));
+        Assert.Contains(await OnUi(() => vm.Chat!.General.Entries.ToList()), chatEntry => chatEntry.IsWelcome && chatEntry.Text == "Willkommen auf dem Testserver!");
 
         await bert.SendAsync(new SendChat(ChatTarget.Channel, null, "hallo anna"));
-        var received = await OnUiUntil(() => vm.Chat!.ChannelTab.Entries.FirstOrDefault(e => e.IsMessage), e => e is not null);
+        var received = await OnUiUntil(() => vm.Chat!.ChannelTab.Entries.FirstOrDefault(chatEntry => chatEntry.IsMessage), chatEntry => chatEntry is not null);
         Assert.Equal(("bert", "hallo anna", false), (received?.From, received?.Text, received?.IsOwn));
         Assert.Equal(1, await OnUi(() => vm.Chat!.ChannelTab.Unread));
 
@@ -1007,7 +1007,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             await vm.Chat.SendCommand.ExecuteAsync(null);
             return null;
         });
-        var echo = await bert.WaitForAsync<ChatMessage>(m => m.Text == "hallo bert");
+        var echo = await bert.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == "hallo bert");
         Assert.Equal("anna", echo.FromNickname);
     }
 
@@ -1021,19 +1021,19 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var annaId = await OnUi(() => vm.Server!.Mirror.SelfId);
 
         await bert.SendAsync(new SendChat(ChatTarget.Private, annaId, "psst"));
-        var tab = await OnUiUntil(() => vm.Chat!.Tabs.FirstOrDefault(t => t.IsPrivate), t => t is not null);
+        var tab = await OnUiUntil(() => vm.Chat!.Tabs.FirstOrDefault(chatTab => chatTab.IsPrivate), chatTab => chatTab is not null);
         Assert.Equal(("@bert", 1), (tab?.Title, tab?.Unread));
         Assert.True(await OnUi(() => vm.Chat!.Selected.IsGeneral)); // in the background
 
         await ui.InvokeAsync<object?>(async () =>
         {
-            vm.Server!.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "bert").MessageCommand.Execute(null);
+            vm.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.Nickname == "bert").MessageCommand.Execute(null);
             vm.Chat!.Draft = "psst zurück";
             await vm.Chat.SendCommand.ExecuteAsync(null);
             return null;
         });
         Assert.Same(tab, await OnUi(() => vm.Chat!.Selected));
-        var reply = await bert.WaitForAsync<ChatMessage>(m => m.Text == "psst zurück");
+        var reply = await bert.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == "psst zurück");
         Assert.Equal(ChatTarget.Private, reply.Target);
         await carla.AssertNoMessageAsync<ChatMessage>();
     }
@@ -1047,14 +1047,14 @@ public sealed class MainViewModelTests : IAsyncLifetime
             await vm.Server!.SendAsync(new CreateChannel("Raid", "")); // a guest may not
             return null;
         });
-        var error = await OnUiUntil(() => vm.Notices.FirstOrDefault(n => n.Kind == NoticeKind.Error), n => n is not null);
+        var error = await OnUiUntil(() => vm.Notices.FirstOrDefault(notice => notice.Kind == NoticeKind.Error), notice => notice is not null);
         Assert.Equal("Dafür fehlt dir das Recht.", error?.Text);
 
         await server.Control.StopAsync();
         // Package 139: a shutdown first starts reconnecting; "Abbrechen" ends it with the disconnected notice
         Assert.True(await OnUiUntil(() => vm.Connection.IsReconnecting, r => r));
         await CancelReconnectAsync();
-        var bye = await OnUiUntil(() => vm.Notices.FirstOrDefault(n => n.Kind == NoticeKind.Warning), n => n is not null);
+        var bye = await OnUiUntil(() => vm.Notices.FirstOrDefault(notice => notice.Kind == NoticeKind.Warning), notice => notice is not null);
         Assert.StartsWith("Getrennt: ", bye?.Text);
         Assert.Matches(@"^\d{2}:\d{2}:\d{2}  Getrennt: ", bye!.ToString()); // the debug API keeps its "time  text" form
     }
@@ -1068,7 +1068,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var changedBookmarks = new List<string?>();
         await OnUi(() =>
         {
-            vm.Connection.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+            vm.Connection.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
             vm.Bookmarks.PropertyChanged += (_, args) => changedBookmarks.Add(args.PropertyName);
             return 0;
         });
@@ -1115,7 +1115,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
         await OnUi(() =>
         {
-            vm.PageFlow.SettingsPage!.SelectedTheme = SettingsViewModel.Themes.Single(t => t.Value == AppTheme.Dark);
+            vm.PageFlow.SettingsPage!.SelectedTheme = SettingsViewModel.Themes.Single(choice => choice.Value == AppTheme.Dark);
             vm.PageFlow.SettingsPage.SaveCommand.Execute(null);
             return 0;
         });
@@ -1150,7 +1150,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var (page, inputs, hint) = await OnUi(() =>
         {
             main.PageFlow.OpenSettings();
-            return (main.PageFlow.Page, main.PageFlow.SettingsPage!.Inputs.Select(i => i.Name).ToList(), main.PageFlow.SettingsPage.DeviceHint);
+            return (main.PageFlow.Page, main.PageFlow.SettingsPage!.Inputs.Select(audioDeviceOption => audioDeviceOption.Name).ToList(), main.PageFlow.SettingsPage.DeviceHint);
         });
         // not blocked by the gate (which holds 10 s): the margin is for a slow runner, the UI round trip alone may take a while
         Assert.True(watch.ElapsedMilliseconds < 5000, $"{watch.ElapsedMilliseconds} ms");
@@ -1159,8 +1159,8 @@ public sealed class MainViewModelTests : IAsyncLifetime
         Assert.Null(hint);
 
         gate.Set();
-        await OnUiUntil(() => main.PageFlow.SettingsPage!.Inputs.Count, n => n == 3);
-        Assert.Equal(["Standardgerät", "Headset", "XLR Mic"], await OnUi(() => main.PageFlow.SettingsPage!.Inputs.Select(i => i.Name).ToList()));
+        await OnUiUntil(() => main.PageFlow.SettingsPage!.Inputs.Count, count => count == 3);
+        Assert.Equal(["Standardgerät", "Headset", "XLR Mic"], await OnUi(() => main.PageFlow.SettingsPage!.Inputs.Select(audioDeviceOption => audioDeviceOption.Name).ToList()));
         Assert.Equal("mic-2", await OnUi(() => main.PageFlow.SettingsPage!.SelectedInput.Id));
         Assert.Null(await OnUi(() => main.PageFlow.SettingsPage!.DeviceHint));
 
@@ -1170,7 +1170,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             main.PageFlow.ClosePage();
             main.PageFlow.OpenSettings();
-            return main.PageFlow.SettingsPage!.Inputs.Select(i => i.Name).ToList();
+            return main.PageFlow.SettingsPage!.Inputs.Select(audioDeviceOption => audioDeviceOption.Name).ToList();
         });
         Assert.Equal(["Standardgerät", "Headset", "XLR Mic"], again);
         gate.Set();
@@ -1214,7 +1214,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task Display_LivePreviewAndCancelRevert()
     {
-        var simplified = SettingsViewModel.Displays.Single(d => d.Value == DisplayMode.Simplified);
+        var simplified = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified);
         Assert.Equal(DisplayMode.Animated, await OnUi(() => vm.Appearance.Display));
         Assert.Equal(DisplayMode.Simplified, await OnUi(() =>
         {
@@ -1329,7 +1329,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var after = await OnUi(() =>
         {
             vm.PageFlow.OpenSettings();
-            vm.PageFlow.SettingsPage!.SelectedDisplay = SettingsViewModel.Displays.Single(d => d.Value == DisplayMode.Simplified);
+            vm.PageFlow.SettingsPage!.SelectedDisplay = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified);
             vm.PageFlow.SettingsPage.BlurBackground = true;
             vm.PageFlow.ClosePage(); // what Esc does
             return vm.Appearance;
@@ -1378,7 +1378,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             var before = vm.Settings;
             MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-            vm.Server!.Tree.Channels.SelectMany(c => c.Users).Single(u => u.Nickname == "anna").VolumePercent = 200;
+            vm.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.Nickname == "anna").VolumePercent = 200;
             return before;
         });
         Assert.Equal(2f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(2)));
@@ -1395,11 +1395,11 @@ public sealed class MainViewModelTests : IAsyncLifetime
         });
         Assert.Equal(2f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(9)));
         Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(2)));
-        Assert.Equal(200, await OnUi(() => vm.Server!.Tree.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == 9).VolumePercent));
+        Assert.Equal(200, await OnUi(() => vm.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == 9).VolumePercent));
 
         await OnUi(() =>
         {
-            vm.Server!.Tree.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == 9).ResetVolumeCommand.Execute(null);
+            vm.Server!.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == 9).ResetVolumeCommand.Execute(null);
             return 0;
         });
         Assert.Equal(1f, await OnUi(() => vm.Audio.Mixer.SpeakerGain(9)));
@@ -1468,7 +1468,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         try
         {
             new ClientSettings { Display = DisplayMode.Simplified, BackgroundOpacity = 0.5f, BlurBackground = true }.Save(saved);
-            var started = MainViewModelSetup.Create(saved, a => a());
+            var started = MainViewModelSetup.Create(saved, action => action());
             Assert.Equal(new BackgroundAppearance(0.5f, true, DisplayMode.Simplified), started.Appearance);
             await started.DisposeAsync();
         }
@@ -1679,7 +1679,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         using var keys = new KeyPoller(TimeProvider.System);
         var hardware = new FakeAudioHardware();
-        for (int i = 0; i < 50; i++)
+        for (int index = 0; index < 50; index++)
         {
             var engine = new AudioEngine(keys, TimeProvider.System, hardware: hardware);
             engine.LevelMeter = true;
@@ -1795,12 +1795,12 @@ public sealed class MainViewModelTests : IAsyncLifetime
                 await main.Connection.ConnectAsync(new ConnectChoice("127.0.0.1", server.Port, "anna", null, false));
                 return null;
             });
-            for (int i = 0; i < 5; i++)
+            for (int index = 0; index < 5; index++)
             {
-                var guest = await TestClient.ConnectAsync(server, $"gast{i}");
-                await OnUiUntil(() => main.Server!.Mirror.Users.Count, n => n == 2);
+                var guest = await TestClient.ConnectAsync(server, $"gast{index}");
+                await OnUiUntil(() => main.Server!.Mirror.Users.Count, count => count == 2);
                 await guest.DisposeAsync();
-                await OnUiUntil(() => main.Server!.Mirror.Users.Count, n => n == 1);
+                await OnUiUntil(() => main.Server!.Mirror.Users.Count, count => count == 1);
             }
             var whileRunning = writers.ToArray();
             await ui.InvokeAsync<object?>(async () =>
@@ -1813,7 +1813,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             Assert.DoesNotContain(uiThread, whileRunning);
             var log = string.Join(Environment.NewLine, Directory.GetFiles(Path.Combine(own, "logs"), "client-*.log").Select(File.ReadAllText));
             var order = new List<string>();
-            for (int i = 0; i < 5; i++) order.AddRange([$"gast{i} connected", $"gast{i} disconnected"]);
+            for (int index = 0; index < 5; index++) order.AddRange([$"gast{index} connected", $"gast{index} disconnected"]);
             order.Add("Disconnected (own action)"); // written while closing
             var positions = order.Select(line => log.IndexOf(line, StringComparison.Ordinal)).ToList();
             Assert.DoesNotContain(-1, positions);

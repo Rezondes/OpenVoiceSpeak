@@ -42,8 +42,8 @@ public sealed class AdminPlaceTests
         var admin = Admin();
         WithTabs(admin, (_, tabs) =>
         {
-            foreach (var place in admin.Places) Assert.Single(tabs, t => ReferenceEquals(t.Tag, place));
-            Assert.All(tabs.Where(t => t.Tag is AdminPlace), t => Assert.Contains(t.Tag as AdminPlace, admin.Places));
+            foreach (var place in admin.Places) Assert.Single(tabs, tabItem => ReferenceEquals(tabItem.Tag, place));
+            Assert.All(tabs.Where(tabItem => tabItem.Tag is AdminPlace), tabItem => Assert.Contains(tabItem.Tag as AdminPlace, admin.Places));
         });
     }
 

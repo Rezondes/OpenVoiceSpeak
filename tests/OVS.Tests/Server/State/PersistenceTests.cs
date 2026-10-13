@@ -19,15 +19,15 @@ public sealed class PersistenceTests
     public void CreateChannel_SaveFails_AnsweredInvalidValueWithoutBroadcast()
     {
         using var harness = new StateHarness(TestServer.Grant(admin, "Admin"));
-        var a = harness.Admit("admin", admin.Fingerprint);
+        var session = harness.Admit("admin", admin.Fingerprint);
         var guest = harness.Admit("gast");
-        StateHarness.Drain(a);
+        StateHarness.Drain(session);
         StateHarness.Drain(guest);
         harness.State.BeforeSave = () => throw new IOException("Datei gesperrt");
 
-        harness.Handle(a, new CreateChannel("Raid", "") { RequestId = "c" });
+        harness.Handle(session, new CreateChannel("Raid", "") { RequestId = "c" });
 
-        Assert.Equal(new Error("c", ReasonCodes.InvalidValue), Assert.Single(StateHarness.Drain(a)));
+        Assert.Equal(new Error("c", ReasonCodes.InvalidValue), Assert.Single(StateHarness.Drain(session)));
         Assert.Empty(StateHarness.Drain(guest));
     }
 
@@ -36,11 +36,11 @@ public sealed class PersistenceTests
     {
         using var harness = new StateHarness(TestServer.Grant(admin, "Admin"));
         File.WriteAllBytes(Path.Combine(harness.DataDir, ServerCertificate.FileName), [1]); // the archive takes the certificate file along
-        var a = harness.Admit("admin", admin.Fingerprint);
+        var session = harness.Admit("admin", admin.Fingerprint);
         var newcomer = ClientIdentity.Create();
         harness.Admit("neu", newcomer.Fingerprint); // a login is saved debounced, so only the pending save holds it
 
-        harness.Handle(a, new CreateBackup { RequestId = "b" });
+        harness.Handle(session, new CreateBackup { RequestId = "b" });
 
         var backups = new BackupStore(harness.DataDir, harness.Time);
         using var archive = ZipFile.OpenRead(backups.Find(Assert.Single(backups.List()).FileName)!);

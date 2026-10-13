@@ -136,8 +136,8 @@ public sealed class OneClockTests
         foreach (var file in files)
         {
             var lines = File.ReadAllLines(Path.Combine(RepoPaths.ClientSource, file));
-            for (int i = 0; i < lines.Length; i++)
-                if (check(lines[i])) found.Add($"{file}:{i + 1}: {lines[i].Trim()}");
+            for (int index = 0; index < lines.Length; index++)
+                if (check(lines[index])) found.Add($"{file}:{index + 1}: {lines[index].Trim()}");
         }
         return found;
     }
@@ -170,14 +170,14 @@ public sealed class OneClockTests
     {
         var arguments = new List<string>();
         int depth = 0;
-        for (int i = start; i < code.Length; i++)
+        for (int index = start; index < code.Length; index++)
         {
-            if (code[i] is '(' or '[' or '{') depth++;
-            else if (code[i] is ')' or ']' or '}') depth--;
-            if ((code[i] == ',' && depth == 0) || depth < 0)
+            if (code[index] is '(' or '[' or '{') depth++;
+            else if (code[index] is ')' or ']' or '}') depth--;
+            if ((code[index] == ',' && depth == 0) || depth < 0)
             {
-                arguments.Add(code[start..i].Trim());
-                start = i + 1;
+                arguments.Add(code[start..index].Trim());
+                start = index + 1;
             }
             if (depth < 0) return arguments.Where(argument => argument.Length > 0).ToList();
         }
@@ -188,17 +188,17 @@ public sealed class OneClockTests
     static (string Code, string Comment) Split(string line)
     {
         bool inString = false;
-        for (int i = 0; i < line.Length; i++)
+        for (int index = 0; index < line.Length; index++)
         {
-            char c = line[i];
+            char character = line[index];
             if (inString)
             {
-                if (c == '\\') i++; // the escaped character
-                else if (c == '"') inString = false;
+                if (character == '\\') index++; // the escaped character
+                else if (character == '"') inString = false;
             }
-            else if (c == '"') inString = true;
-            else if (c == '\'' && i + 1 < line.Length) i += line[i + 1] == '\\' ? 3 : 2; // to the closing quote of 'x' or '\x'
-            else if (c == '/' && i + 1 < line.Length && line[i + 1] == '/') return (line[..i], line[i..]);
+            else if (character == '"') inString = true;
+            else if (character == '\'' && index + 1 < line.Length) index += line[index + 1] == '\\' ? 3 : 2; // to the closing quote of 'x' or '\x'
+            else if (character == '/' && index + 1 < line.Length && line[index + 1] == '/') return (line[..index], line[index..]);
         }
         return (line, "");
     }

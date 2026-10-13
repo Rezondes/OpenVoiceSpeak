@@ -26,39 +26,39 @@ public class StateMirrorTests
     [Fact]
     public void Snapshot_IsMirrored()
     {
-        var m = Mirror();
-        Assert.Equal("ich", m.Self!.Nickname);
-        Assert.Equal(Lobby, m.DefaultChannelId);
-        Assert.Single(m.Channels);
+        var stateMirror = Mirror();
+        Assert.Equal("ich", stateMirror.Self!.Nickname);
+        Assert.Equal(Lobby, stateMirror.DefaultChannelId);
+        Assert.Single(stateMirror.Channels);
     }
 
     [Fact]
     public void Apply_EachDelta()
     {
-        var m = Mirror();
-        Assert.True(m.Apply(new ChannelAdded(new ChannelInfo(Raid, "Raid", "", 1))));
-        Assert.True(m.Apply(new ChannelUpdated(new ChannelInfo(Raid, "Raid 2", "x", 2))));
-        Assert.Equal("Raid 2", m.Channels[Raid].Name);
+        var stateMirror = Mirror();
+        Assert.True(stateMirror.Apply(new ChannelAdded(new ChannelInfo(Raid, "Raid", "", 1))));
+        Assert.True(stateMirror.Apply(new ChannelUpdated(new ChannelInfo(Raid, "Raid 2", "x", 2))));
+        Assert.Equal("Raid 2", stateMirror.Channels[Raid].Name);
 
-        Assert.True(m.Apply(new UserJoined(User(2, Lobby))));
-        Assert.True(m.Apply(new UserUpdated(User(2, Raid))));
-        Assert.Equal(Raid, m.Users[2].ChannelId);
+        Assert.True(stateMirror.Apply(new UserJoined(User(2, Lobby))));
+        Assert.True(stateMirror.Apply(new UserUpdated(User(2, Raid))));
+        Assert.Equal(Raid, stateMirror.Users[2].ChannelId);
 
-        Assert.True(m.Apply(new ChannelsLinked(Raid, Lobby)));
-        Assert.Equal([Raid], m.LinkedChannels(Lobby));
-        Assert.True(m.Apply(new ChannelsUnlinked(Lobby, Raid)));
-        Assert.Empty(m.LinkedChannels(Lobby));
+        Assert.True(stateMirror.Apply(new ChannelsLinked(Raid, Lobby)));
+        Assert.Equal([Raid], stateMirror.LinkedChannels(Lobby));
+        Assert.True(stateMirror.Apply(new ChannelsUnlinked(Lobby, Raid)));
+        Assert.Empty(stateMirror.LinkedChannels(Lobby));
 
-        Assert.True(m.Apply(new GroupsChanged([])));
-        Assert.Empty(m.Groups);
-        Assert.True(m.Apply(new ServerSettingsChanged(new ServerSettingsInfo("Neu", "Hi", true))));
-        Assert.Equal("Neu", m.Settings.Name);
+        Assert.True(stateMirror.Apply(new GroupsChanged([])));
+        Assert.Empty(stateMirror.Groups);
+        Assert.True(stateMirror.Apply(new ServerSettingsChanged(new ServerSettingsInfo("Neu", "Hi", true))));
+        Assert.Equal("Neu", stateMirror.Settings.Name);
 
-        Assert.True(m.Apply(new UserLeft(2)));
-        Assert.False(m.Users.ContainsKey(2));
-        Assert.True(m.Apply(new ChannelRemoved(Raid)));
-        Assert.False(m.Channels.ContainsKey(Raid));
+        Assert.True(stateMirror.Apply(new UserLeft(2)));
+        Assert.False(stateMirror.Users.ContainsKey(2));
+        Assert.True(stateMirror.Apply(new ChannelRemoved(Raid)));
+        Assert.False(stateMirror.Channels.ContainsKey(Raid));
 
-        Assert.False(m.Apply(new Pong()));
+        Assert.False(stateMirror.Apply(new Pong()));
     }
 }

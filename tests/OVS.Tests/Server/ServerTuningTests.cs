@@ -52,10 +52,10 @@ public sealed class ServerTuningTests
         await using var server = await TestServer.StartAsync(time: time);
         await using var client = await TestClient.ConnectAsync(server, "flut");
         var here = client.Welcome.Snapshot.DefaultChannelId;
-        int n = 0;
+        int count = 0;
 
         // The burst passes (joining the own channel is a no-op), the rest is refused.
-        for (int i = 0; i < ServerTuning.RequestBurst + 5; i++) await client.SendAsync(new JoinChannel(here) { RequestId = $"j{n++}" });
+        for (int index = 0; index < ServerTuning.RequestBurst + 5; index++) await client.SendAsync(new JoinChannel(here) { RequestId = $"j{count++}" });
         var first = await client.WaitForAsync<Error>();
         Assert.Equal(($"j{(int)ServerTuning.RequestBurst}", ReasonCodes.RateLimited), (first.RequestId, first.Code));
 
@@ -67,12 +67,12 @@ public sealed class ServerTuningTests
             string last = "";
             try
             {
-                for (int i = 0; i < ServerTuning.RequestsPerSecond; i++)
-                    await client.SendAsync(new JoinChannel(here) { RequestId = last = $"j{n++}" });
-                var error = await client.WaitForAsync<Error>(e => e.RequestId == last);
+                for (int index = 0; index < ServerTuning.RequestsPerSecond; index++)
+                    await client.SendAsync(new JoinChannel(here) { RequestId = last = $"j{count++}" });
+                var error = await client.WaitForAsync<Error>(otherError => otherError.RequestId == last);
                 Assert.Equal(ReasonCodes.RateLimited, error.Code);
             }
-            catch (Exception e) when (e is EndOfStreamException or IOException)
+            catch (Exception exception) when (exception is EndOfStreamException or IOException)
             {
                 closed = true;
             }
@@ -80,8 +80,8 @@ public sealed class ServerTuningTests
         }
         Assert.True(closed || await client.WaitClosedAsync());
         // The goodbye can reach the client a moment before the server writes its log line.
-        for (int i = 0; i < 200 && !server.Log.Any(l => l.Contains("flut getrennt (zu viele Anfragen)")); i++) await Task.Delay(50);
-        Assert.Contains(server.Log, l => l.Contains("flut getrennt (zu viele Anfragen)"));
+        for (int index = 0; index < 200 && !server.Log.Any(line => line.Contains("flut getrennt (zu viele Anfragen)")); index++) await Task.Delay(50);
+        Assert.Contains(server.Log, line => line.Contains("flut getrennt (zu viele Anfragen)"));
     }
 
     /// <summary>
@@ -96,14 +96,14 @@ public sealed class ServerTuningTests
         await using var talker = await TestClient.ConnectAsync(server, "viel");
         await using var listener = await TestClient.ConnectAsync(server, "ohr");
         await listener.SendAsync(new VoiceUp(0, 0, ""));
-        for (int i = 0; i < 500 && !server.State.FindSession(listener.Id)!.Voice.TcpVoice; i++) await Task.Delay(20);
+        for (int index = 0; index < 500 && !server.State.FindSession(listener.Id)!.Voice.TcpVoice; index++) await Task.Delay(20);
 
-        for (uint n = 0; n < 30; n++) await talker.SendAsync(new VoiceUp(n, 0, Convert.ToBase64String([1, 2, 3])));
-        for (uint n = 0; n < ServerTuning.VoiceBurst; n++) Assert.Equal(n, (await listener.WaitForAsync<VoiceDown>()).Seq);
+        for (uint number = 0; number < 30; number++) await talker.SendAsync(new VoiceUp(number, 0, Convert.ToBase64String([1, 2, 3])));
+        for (uint number = 0; number < ServerTuning.VoiceBurst; number++) Assert.Equal(number, (await listener.WaitForAsync<VoiceDown>()).Seq);
         await listener.AssertNoMessageAsync<VoiceDown>();
 
         var here = talker.Welcome.Snapshot.DefaultChannelId;
-        for (int i = 0; i < ServerTuning.RequestBurst; i++) await talker.SendAsync(new JoinChannel(here) { RequestId = $"j{i}" });
+        for (int index = 0; index < ServerTuning.RequestBurst; index++) await talker.SendAsync(new JoinChannel(here) { RequestId = $"j{index}" });
         await talker.SendAsync(new JoinChannel(here) { RequestId = "over" });
         var refused = await talker.WaitForAsync<Error>(); // the whole request burst passed: the voice took none of it
         Assert.Equal(("over", ReasonCodes.RateLimited), (refused.RequestId, refused.Code));
@@ -126,23 +126,23 @@ public sealed class ServerTuningTests
         await using var server = await TestServer.StartAsync(time: time);
         await using var talker = await TestClient.ConnectAsync(server, "redner");
         await using var flood = await TestClient.ConnectAsync(server, "flut");
-        async Task Sync(TestClient c) // everything sent before is handled at the current time
+        async Task Sync(TestClient client) // everything sent before is handled at the current time
         {
-            await c.SendAsync(new Ping());
-            await c.WaitForAsync<Pong>();
+            await client.SendAsync(new Ping());
+            await client.WaitForAsync<Pong>();
         }
 
-        for (uint n = 0; n < 50 * 12; n++) // 12 s at 50 frames per second, below the budget of 60
+        for (uint number = 0; number < 50 * 12; number++) // 12 s at 50 frames per second, below the budget of 60
         {
-            await talker.SendAsync(new VoiceUp(n, 0, Convert.ToBase64String([1, 2, 3])));
+            await talker.SendAsync(new VoiceUp(number, 0, Convert.ToBase64String([1, 2, 3])));
             time.Advance(TimeSpan.FromMilliseconds(20));
-            if (n % 25 == 0) await Sync(talker);
+            if (number % 25 == 0) await Sync(talker);
         }
         await Sync(talker);
 
         for (uint second = 0; second < 12; second++) // the same second of speech arriving as one burst after each stall
         {
-            for (uint i = 0; i < 20; i++) await talker.SendAsync(new VoiceUp(1000 + second * 50 + i, 0, Convert.ToBase64String([1, 2, 3])));
+            for (uint index = 0; index < 20; index++) await talker.SendAsync(new VoiceUp(1000 + second * 50 + index, 0, Convert.ToBase64String([1, 2, 3])));
             await Sync(talker);
             time.Advance(TimeSpan.FromMilliseconds(500));
             await Sync(talker);
@@ -156,10 +156,10 @@ public sealed class ServerTuningTests
         {
             try
             {
-                for (int i = 0; i < 5; i++) await flood.SendAsync(new VoiceUp((uint)i, 0, padded));
+                for (int index = 0; index < 5; index++) await flood.SendAsync(new VoiceUp((uint)index, 0, padded));
                 await Sync(flood);
             }
-            catch (Exception e) when (e is EndOfStreamException or IOException)
+            catch (Exception exception) when (exception is EndOfStreamException or IOException)
             {
                 closed = true;
             }
@@ -176,7 +176,7 @@ public sealed class ServerTuningTests
     {
         using var session = new Session(1, "fp", "n", IPAddress.Loopback, new byte[32], new ManualTimeProvider());
         var frame = SessionOutbox.Encode(new VoiceDown(2, 0, 0, Convert.ToBase64String(new byte[1275])));
-        for (int i = 0; i < 1000; i++) session.Outbox.SendVoice(frame);
+        for (int index = 0; index < 1000; index++) session.Outbox.SendVoice(frame);
         Assert.Null(session.Outbox.AbortReason);
         Assert.Equal(ServerTuning.MaxQueuedVoice, session.Outbox.Outgoing.Count);
         session.Outbox.Send(new Pong()); // other messages still fit
@@ -212,21 +212,21 @@ public sealed class ServerTuningTests
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"), dataDir: NewDataDirWithIcon(), time: time);
         await using var client = await TestClient.ConnectAsync(server, "chef", admin);
         await client.SendAsync(new GetServerIcon { RequestId = "i1" });
-        var first = await client.WaitForAsync<ServerIcon>(i => i.RequestId == "i1");
+        var first = await client.WaitForAsync<ServerIcon>(serverIcon => serverIcon.RequestId == "i1");
 
         // Changed right after the fetch: the first request for the new logo is answered at once, a repeat is not.
         await client.SendAsync(new SetServerIcon(Convert.ToBase64String(Png(1024))));
-        var changed = await client.WaitForAsync<ServerSettingsChanged>(c => c.Settings.IconHash != first.Hash);
+        var changed = await client.WaitForAsync<ServerSettingsChanged>(serverSettingsChanged => serverSettingsChanged.Settings.IconHash != first.Hash);
         await client.SendAsync(new GetServerIcon { RequestId = "i2" });
-        Assert.Equal(changed.Settings.IconHash, (await client.WaitForAsync<ServerIcon>(i => i.RequestId == "i2")).Hash);
+        Assert.Equal(changed.Settings.IconHash, (await client.WaitForAsync<ServerIcon>(serverIcon => serverIcon.RequestId == "i2")).Hash);
         await client.SendAsync(new GetServerIcon { RequestId = "i3" });
         Assert.Equal(ReasonCodes.RateLimited, (await client.ErrorAsync("i3")).Code);
 
         // Changed twice within the interval: still answered.
         await client.SendAsync(new SetServerIcon(Convert.ToBase64String(Png(2048))));
-        var again = await client.WaitForAsync<ServerSettingsChanged>(c => c.Settings.IconHash != changed.Settings.IconHash);
+        var again = await client.WaitForAsync<ServerSettingsChanged>(serverSettingsChanged => serverSettingsChanged.Settings.IconHash != changed.Settings.IconHash);
         await client.SendAsync(new GetServerIcon { RequestId = "i4" });
-        Assert.Equal(again.Settings.IconHash, (await client.WaitForAsync<ServerIcon>(i => i.RequestId == "i4")).Hash);
+        Assert.Equal(again.Settings.IconHash, (await client.WaitForAsync<ServerIcon>(serverIcon => serverIcon.RequestId == "i4")).Hash);
     }
 
     [Fact]
@@ -237,23 +237,23 @@ public sealed class ServerTuningTests
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"), time: time);
         await using var client = await TestClient.ConnectAsync(server, "chef", admin);
 
-        for (int i = 0; i < ServerTuning.ListBurst; i++)
+        for (int index = 0; index < ServerTuning.ListBurst; index++)
         {
-            await client.SendAsync(new ListUsers { RequestId = $"u{i}" });
-            await client.WaitForAsync<UserList>(l => l.RequestId == $"u{i}");
+            await client.SendAsync(new ListUsers { RequestId = $"u{index}" });
+            await client.WaitForAsync<UserList>(userList => userList.RequestId == $"u{index}");
         }
         await client.SendAsync(new ListUsers { RequestId = "zu viel" });
         Assert.Equal(ReasonCodes.RateLimited, (await client.ErrorAsync("zu viel")).Code);
         await client.SendAsync(new ListBans { RequestId = "andere liste" }); // every list has its own budget
-        await client.WaitForAsync<BanList>(l => l.RequestId == "andere liste");
+        await client.WaitForAsync<BanList>(banList => banList.RequestId == "andere liste");
 
         await client.SendAsync(new CreateBackup { RequestId = "b1" });
-        await client.WaitForAsync<BackupList>(l => l.RequestId == "b1");
+        await client.WaitForAsync<BackupList>(backupList => backupList.RequestId == "b1");
         await client.SendAsync(new CreateBackup { RequestId = "b2" });
         Assert.Equal(ReasonCodes.RateLimited, (await client.ErrorAsync("b2")).Code);
         time.Advance(ServerTuning.HeavyInterval);
         await client.SendAsync(new CreateBackup { RequestId = "b3" });
-        await client.WaitForAsync<BackupList>(l => l.RequestId == "b3");
+        await client.WaitForAsync<BackupList>(backupList => backupList.RequestId == "b3");
     }
 
     [Fact]
@@ -261,22 +261,22 @@ public sealed class ServerTuningTests
     {
         var admin = ClientIdentity.Create();
         var time = new ManualTimeProvider();
-        await using var server = await TestServer.StartAsync(d =>
+        await using var server = await TestServer.StartAsync(serverData =>
         {
-            TestServer.Grant(admin, "Admin")(d);
-            for (int i = 0; i < 449; i++) d.Users.Add(new UserRecord { Fingerprint = $"fp{i}", GroupIds = [WellKnownGroups.Guest], FirstSeen = time.GetUtcNow() });
+            TestServer.Grant(admin, "Admin")(serverData);
+            for (int index = 0; index < 449; index++) serverData.Users.Add(new UserRecord { Fingerprint = $"fp{index}", GroupIds = [WellKnownGroups.Guest], FirstSeen = time.GetUtcNow() });
         }, time: time);
         await using var client = await TestClient.ConnectAsync(server, "chef", admin);
-        int n = 0;
+        int count = 0;
         async Task<string> Ask(int offset)
         {
-            var id = $"l{n++}";
+            var id = $"l{count++}";
             await client.SendAsync(new ListUsers(offset) { RequestId = id });
             while (true)
                 switch (await client.NextAsync())
                 {
-                    case UserList l when l.RequestId == id: return "ok";
-                    case Error e when e.RequestId == id: return e.Code;
+                    case UserList userList when userList.RequestId == id: return "ok";
+                    case Error error when error.RequestId == id: return error.Code;
                 }
         }
 
@@ -290,13 +290,13 @@ public sealed class ServerTuningTests
 
         // Without a first page in the last 30 s every later page counts.
         time.Advance(TimeSpan.FromSeconds(31)); // the budget is full again
-        for (int i = 0; i < ServerTuning.ListBurst; i++) Assert.Equal("ok", await Ask(1));
+        for (int index = 0; index < ServerTuning.ListBurst; index++) Assert.Equal("ok", await Ask(1));
         Assert.Equal(ReasonCodes.RateLimited, await Ask(1));
 
         // Asking for the same later page again within a round counts from the second time on.
         time.Advance(TimeSpan.FromSeconds(10));
         Assert.Equal("ok", await Ask(0));
-        for (int i = 0; i < ServerTuning.ListBurst; i++) Assert.Equal("ok", await Ask(ServerTuning.ListPageSize));
+        for (int index = 0; index < ServerTuning.ListBurst; index++) Assert.Equal("ok", await Ask(ServerTuning.ListPageSize));
         Assert.Equal(ReasonCodes.RateLimited, await Ask(ServerTuning.ListPageSize));
     }
 
@@ -305,25 +305,25 @@ public sealed class ServerTuningTests
     {
         var time = new ManualTimeProvider();
         await using var server = await TestServer.StartAsync(time: time);
-        await using var a = await TestClient.ConnectAsync(server, "rater");
-        await using var b = await TestClient.ConnectAsync(server, "zweiter");
+        await using var client = await TestClient.ConnectAsync(server, "rater");
+        await using var testClient = await TestClient.ConnectAsync(server, "zweiter");
         var token = server.State.PendingAdminToken!;
 
-        for (int i = 0; i < ServerTuning.AdminTokenFailures; i++)
+        for (int index = 0; index < ServerTuning.AdminTokenFailures; index++)
         {
-            await a.SendAsync(new RedeemAdminToken("falsch") { RequestId = $"t{i}" });
-            Assert.Equal(ReasonCodes.InvalidToken, (await a.ErrorAsync($"t{i}")).Code);
+            await client.SendAsync(new RedeemAdminToken("falsch") { RequestId = $"t{index}" });
+            Assert.Equal(ReasonCodes.InvalidToken, (await client.ErrorAsync($"t{index}")).Code);
         }
-        Assert.Equal(ServerTuning.AdminTokenFailures, server.Log.Count(l => l.Contains("Admin-Token falsch von rater")));
+        Assert.Equal(ServerTuning.AdminTokenFailures, server.Log.Count(line => line.Contains("Admin-Token falsch von rater")));
 
         // Same IP, other session: blocked too, even with the right token.
-        await b.SendAsync(new RedeemAdminToken(token) { RequestId = "richtig" });
-        Assert.Equal(ReasonCodes.RateLimited, (await b.ErrorAsync("richtig")).Code);
+        await testClient.SendAsync(new RedeemAdminToken(token) { RequestId = "richtig" });
+        Assert.Equal(ReasonCodes.RateLimited, (await testClient.ErrorAsync("richtig")).Code);
         Assert.Equal(token, server.State.PendingAdminToken);
 
         time.Advance(ServerTuning.AdminTokenWindow);
-        await b.SendAsync(new RedeemAdminToken(token) { RequestId = "spaeter" });
-        await b.WaitForAsync<UserUpdated>(u => u.User.SessionId == b.Id);
+        await testClient.SendAsync(new RedeemAdminToken(token) { RequestId = "spaeter" });
+        await testClient.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == testClient.Id);
         Assert.Null(server.State.PendingAdminToken);
     }
 
@@ -331,35 +331,35 @@ public sealed class ServerTuningTests
     public async Task NoOpJoinAndSelfState_NoBroadcast()
     {
         await using var server = await TestServer.StartAsync();
-        await using var a = await TestClient.ConnectAsync(server, "ruhig");
-        await using var b = await TestClient.ConnectAsync(server);
-        await a.WaitForAsync<UserJoined>(); // b's arrival
+        await using var client = await TestClient.ConnectAsync(server, "ruhig");
+        await using var testClient = await TestClient.ConnectAsync(server);
+        await client.WaitForAsync<UserJoined>(); // b's arrival
         int logLines = server.Log.Count;
 
-        await a.SendAsync(new JoinChannel(a.Welcome.Snapshot.DefaultChannelId));
-        await a.SendAsync(new SetSelfState(false, false));
-        await a.SendAsync(new SetSelfState(true, false)); // a real change, as a marker
+        await client.SendAsync(new JoinChannel(client.Welcome.Snapshot.DefaultChannelId));
+        await client.SendAsync(new SetSelfState(false, false));
+        await client.SendAsync(new SetSelfState(true, false)); // a real change, as a marker
 
-        var first = await b.WaitForAsync<UserUpdated>();
+        var first = await testClient.WaitForAsync<UserUpdated>();
         Assert.True(first.User.SelfMuted);
-        Assert.DoesNotContain(server.Log.Skip(logLines), l => l.Contains("ruhig"));
+        Assert.DoesNotContain(server.Log.Skip(logLines), line => line.Contains("ruhig"));
     }
 
     [Fact]
     public async Task LongRequestId_Rejected()
     {
         await using var server = await TestServer.StartAsync();
-        await using var a = await TestClient.ConnectAsync(server);
-        await using var b = await TestClient.ConnectAsync(server);
-        await a.WaitForAsync<UserJoined>();
+        await using var client = await TestClient.ConnectAsync(server);
+        await using var testClient = await TestClient.ConnectAsync(server);
+        await client.WaitForAsync<UserJoined>();
         var id = new string('x', 1000);
 
-        await a.SendAsync(new SetSelfState(true, false) { RequestId = id });
-        var error = await a.WaitForAsync<Error>();
+        await client.SendAsync(new SetSelfState(true, false) { RequestId = id });
+        var error = await client.WaitForAsync<Error>();
         Assert.Equal((id[..ServerTuning.MaxRequestIdLength], ReasonCodes.InvalidValue), (error.RequestId, error.Code));
 
-        await a.SendAsync(new SetSelfState(false, true) { RequestId = "kurz" });
-        Assert.True((await b.WaitForAsync<UserUpdated>()).User.SelfDeafened); // the long one never ran
+        await client.SendAsync(new SetSelfState(false, true) { RequestId = "kurz" });
+        Assert.True((await testClient.WaitForAsync<UserUpdated>()).User.SelfDeafened); // the long one never ran
     }
 
     [Fact]
@@ -367,7 +367,7 @@ public sealed class ServerTuningTests
     {
         var session = new Session(1, "fp", "gast", IPAddress.Loopback, new byte[32], TimeProvider.System);
         var big = new ServerIcon(null, null, new string('A', 700_000));
-        for (int i = 0; i < 20; i++) session.Outbox.Send(big);
+        for (int index = 0; index < 20; index++) session.Outbox.Send(big);
 
         Assert.True(session.Outbox.Aborted.IsCancellationRequested);
         Assert.True(session.Outbox.QueuedBytes <= ServerTuning.MaxOutboxBytes, $"{session.Outbox.QueuedBytes} bytes queued");
@@ -385,13 +385,13 @@ public sealed class ServerTuningTests
         // About 700 KB per answer; far more than socket buffers and the outbox cap together.
         try
         {
-            for (int i = 0; i < 60; i++)
+            for (int index = 0; index < 60; index++)
             {
                 time.Advance(ServerTuning.IconInterval);
-                await client.SendAsync(new GetServerIcon { RequestId = $"i{i}" });
+                await client.SendAsync(new GetServerIcon { RequestId = $"i{index}" });
             }
         }
-        catch (Exception e) when (e is IOException or ObjectDisposedException)
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException)
         {
         }
 
@@ -400,7 +400,7 @@ public sealed class ServerTuningTests
             await Task.Delay(50);
         Assert.Equal(0, server.State.SessionCount);
         Assert.Equal(0, server.State.ConnectionsFrom(IPAddress.Loopback));
-        Assert.Contains(server.Log, l => l.Contains("taub getrennt (Sendepuffer voll)") || l.Contains("taub getrennt (Schreiben zu langsam)"));
+        Assert.Contains(server.Log, line => line.Contains("taub getrennt (Sendepuffer voll)") || line.Contains("taub getrennt (Schreiben zu langsam)"));
     }
 
     [Fact]
@@ -408,11 +408,11 @@ public sealed class ServerTuningTests
     {
         await using var server = await TestServer.StartAsync();
         var open = new List<TestClient>();
-        for (int i = 0; i < 5; i++) open.Add(await TestClient.OpenAsync(server.Port));
+        for (int index = 0; index < 5; index++) open.Add(await TestClient.OpenAsync(server.Port));
 
         await Assert.ThrowsAnyAsync<Exception>(() => TestClient.OpenAsync(server.Port));
-        Assert.Contains(server.Log, l => l.Contains("abgelehnt: TooManyConnections"));
-        foreach (var c in open) await c.DisposeAsync();
+        Assert.Contains(server.Log, line => line.Contains("abgelehnt: TooManyConnections"));
+        foreach (var client in open) await client.DisposeAsync();
     }
 
     [Fact]
@@ -438,7 +438,7 @@ public sealed class ServerTuningTests
             {
                 late = await TestClient.OpenAsync(server.Port);
             }
-            catch (Exception e) when (e is IOException or System.Security.Authentication.AuthenticationException)
+            catch (Exception exception) when (exception is IOException or System.Security.Authentication.AuthenticationException)
             {
                 await Task.Delay(100);
             }

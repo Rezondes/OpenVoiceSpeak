@@ -33,7 +33,7 @@ public class ServerDataTests
             AutoRestart = true, AutoRestartTime = new TimeOnly(4, 30),
         };
 
-        var keys = JsonDocument.Parse(JsonSerializer.Serialize(settings, ProtocolJson.Indented)).RootElement.EnumerateObject().Select(p => p.Name);
+        var keys = JsonDocument.Parse(JsonSerializer.Serialize(settings, ProtocolJson.Indented)).RootElement.EnumerateObject().Select(jsonProperty => jsonProperty.Name);
 
         Assert.Equal(["name", "welcomeText", "passwordHash", "maxUsers", "logDays", "logRotateDaily", "autoRestart", "autoRestartTime"], keys);
     }
@@ -164,7 +164,7 @@ public class ServerDataTests
 
         data.PruneEndedBans(Now);
 
-        Assert.Equal(["aktiv", "abgelaufen-genau", "aufgehoben-neu"], data.Bans.Select(b => b.Nickname));
+        Assert.Equal(["aktiv", "abgelaufen-genau", "aufgehoben-neu"], data.Bans.Select(ban => ban.Nickname));
     }
 
     [Fact]

@@ -23,14 +23,14 @@ public sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
         lock (gate)
         {
             now += by;
-            due = timers.Where(t => t.Due <= now).ToList();
-            foreach (var t in due)
+            due = timers.Where(timer => timer.Due <= now).ToList();
+            foreach (var timer in due)
             {
-                if (t.Period > TimeSpan.Zero) t.Due = now + t.Period;
-                else timers.Remove(t);
+                if (timer.Period > TimeSpan.Zero) timer.Due = now + timer.Period;
+                else timers.Remove(timer);
             }
         }
-        foreach (var t in due) t.Callback(t.State);
+        foreach (var timer in due) timer.Callback(timer.State);
     }
 
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)

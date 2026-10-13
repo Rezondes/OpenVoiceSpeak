@@ -15,64 +15,64 @@ public class ChannelDialogViewModelTests
     [Fact]
     public void Create_EmptyDefaults()
     {
-        var vm = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
-        Assert.Equal(("Channel anlegen", "Anlegen"), (vm.Title, vm.ConfirmText));
-        Assert.Equal(("", "", false, 0m, true), (vm.Name, vm.Description, vm.IsMuted, vm.MaxUsers, vm.CanLimitUsers));
-        Assert.Equal("Wer drin ist, bleibt auch bei einem kleineren Limit. Das Recht \"Volle Channel betreten\" umgeht es.", vm.SlotsHint);
+        var channelDialog = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
+        Assert.Equal(("Channel anlegen", "Anlegen"), (channelDialog.Title, channelDialog.ConfirmText));
+        Assert.Equal(("", "", false, 0m, true), (channelDialog.Name, channelDialog.Description, channelDialog.IsMuted, channelDialog.MaxUsers, channelDialog.CanLimitUsers));
+        Assert.Equal("Wer drin ist, bleibt auch bei einem kleineren Limit. Das Recht \"Volle Channel betreten\" umgeht es.", channelDialog.SlotsHint);
     }
 
     [Fact]
     public void Edit_Prefilled()
     {
-        var vm = new ChannelDialogViewModel(new ChannelEdit("Raid", "Nur Raid", IsMuted: true, MaxUsers: 10), ChannelDialogMode.Edit);
-        Assert.Equal(("Channel bearbeiten", "Speichern"), (vm.Title, vm.ConfirmText));
-        Assert.Equal(("Raid", "Nur Raid", true, 10m, true), (vm.Name, vm.Description, vm.IsMuted, vm.MaxUsers, vm.CanLimitUsers));
-        Assert.Equal(new ChannelEdit("Raid", "Nur Raid", true, 10), vm.Result());
+        var channelDialog = new ChannelDialogViewModel(new ChannelEdit("Raid", "Nur Raid", IsMuted: true, MaxUsers: 10), ChannelDialogMode.Edit);
+        Assert.Equal(("Channel bearbeiten", "Speichern"), (channelDialog.Title, channelDialog.ConfirmText));
+        Assert.Equal(("Raid", "Nur Raid", true, 10m, true), (channelDialog.Name, channelDialog.Description, channelDialog.IsMuted, channelDialog.MaxUsers, channelDialog.CanLimitUsers));
+        Assert.Equal(new ChannelEdit("Raid", "Nur Raid", true, 10), channelDialog.Result());
     }
 
     [Fact]
     public void Default_SlotsLocked()
     {
-        var vm = new ChannelDialogViewModel(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault);
-        Assert.False(vm.CanLimitUsers);
-        Assert.Contains("Standard-Channel", vm.SlotsHint);
-        vm.MaxUsers = 5; // cannot happen through the locked field, but never sent either
-        Assert.Equal(0, vm.Result()!.MaxUsers);
+        var channelDialog = new ChannelDialogViewModel(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault);
+        Assert.False(channelDialog.CanLimitUsers);
+        Assert.Contains("Standard-Channel", channelDialog.SlotsHint);
+        channelDialog.MaxUsers = 5; // cannot happen through the locked field, but never sent either
+        Assert.Equal(0, channelDialog.Result()!.MaxUsers);
     }
 
     [Fact]
     public void NameRequired_SlotsBounded_Trimmed()
     {
-        var vm = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
-        Assert.Null(vm.Result());
-        vm.Name = "   ";
-        Assert.Null(vm.Result());
-        vm.Name = "  Raid  ";
-        vm.MaxUsers = 5000;
-        Assert.Equal(ProtocolLimits.MaxChannelUsers, vm.MaxUsers);
-        vm.MaxUsers = -3;
-        Assert.Equal(0m, vm.MaxUsers);
-        vm.MaxUsers = null; // an emptied number field
-        Assert.Equal(new ChannelEdit("Raid", "", false, 0), vm.Result());
+        var channelDialog = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
+        Assert.Null(channelDialog.Result());
+        channelDialog.Name = "   ";
+        Assert.Null(channelDialog.Result());
+        channelDialog.Name = "  Raid  ";
+        channelDialog.MaxUsers = 5000;
+        Assert.Equal(ProtocolLimits.MaxChannelUsers, channelDialog.MaxUsers);
+        channelDialog.MaxUsers = -3;
+        Assert.Equal(0m, channelDialog.MaxUsers);
+        channelDialog.MaxUsers = null; // an emptied number field
+        Assert.Equal(new ChannelEdit("Raid", "", false, 0), channelDialog.Result());
     }
 
     /// <summary>Package 83: the server's name and text rules, shown before sending.</summary>
     [Fact]
     public void InvalidNameOrDescription_ErrorShown()
     {
-        var vm = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
-        vm.Name = "Raid" + (char)0x202E; // a bidi override
-        Assert.Null(vm.Result());
-        Assert.Equal(Strings.Dlg_NameInvalid, vm.Error);
+        var channelDialog = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
+        channelDialog.Name = "Raid" + (char)0x202E; // a bidi override
+        Assert.Null(channelDialog.Result());
+        Assert.Equal(Strings.Dlg_NameInvalid, channelDialog.Error);
 
-        vm.Name = "Raid";
-        vm.Description = "a" + (char)7 + "b";
-        Assert.Null(vm.Result());
-        Assert.Equal(Strings.Dlg_TextInvalid, vm.Error);
+        channelDialog.Name = "Raid";
+        channelDialog.Description = "a" + (char)7 + "b";
+        Assert.Null(channelDialog.Result());
+        Assert.Equal(Strings.Dlg_TextInvalid, channelDialog.Error);
 
-        vm.Description = "oben\r\nunten"; // a line break from the text box is fine
-        Assert.Equal(new ChannelEdit("Raid", "oben\r\nunten", false, 0), vm.Result());
-        Assert.Null(vm.Error);
+        channelDialog.Description = "oben\r\nunten"; // a line break from the text box is fine
+        Assert.Equal(new ChannelEdit("Raid", "oben\r\nunten", false, 0), channelDialog.Result());
+        Assert.Null(channelDialog.Error);
     }
 
     static readonly Guid Mod = Guid.NewGuid(), RaidGroup = Guid.NewGuid();
@@ -86,17 +86,17 @@ public class ChannelDialogViewModelTests
     [Fact]
     public void GroupLock_ListedChecked_SentOnlyWhenChanged()
     {
-        var vm = new ChannelDialogViewModel(new ChannelEdit("Raid", "", AllowedGroupIds: [RaidGroup]), ChannelDialogMode.Edit, Groups);
-        Assert.Equal(["Gast", "Moderator", "Raid", "Admin"], vm.Groups.Select(g => g.Name));
-        Assert.Equal([RaidGroup], vm.Groups.Where(g => g.IsChecked).Select(g => g.Id));
-        Assert.True(vm.CanLockGroups);
-        Assert.Null(vm.Result()!.AllowedGroupIds);
+        var channelDialog = new ChannelDialogViewModel(new ChannelEdit("Raid", "", AllowedGroupIds: [RaidGroup]), ChannelDialogMode.Edit, Groups);
+        Assert.Equal(["Gast", "Moderator", "Raid", "Admin"], channelDialog.Groups.Select(allowedGroup => allowedGroup.Name));
+        Assert.Equal([RaidGroup], channelDialog.Groups.Where(allowedGroup => allowedGroup.IsChecked).Select(allowedGroup => allowedGroup.Id));
+        Assert.True(channelDialog.CanLockGroups);
+        Assert.Null(channelDialog.Result()!.AllowedGroupIds);
 
-        vm.Groups[1].IsChecked = true;
-        Assert.Equal([Mod, RaidGroup], vm.Result()!.AllowedGroupIds!);
-        vm.Groups[1].IsChecked = false;
-        vm.Groups[2].IsChecked = false;
-        Assert.Equal([], vm.Result()!.AllowedGroupIds!); // the lock goes
+        channelDialog.Groups[1].IsChecked = true;
+        Assert.Equal([Mod, RaidGroup], channelDialog.Result()!.AllowedGroupIds!);
+        channelDialog.Groups[1].IsChecked = false;
+        channelDialog.Groups[2].IsChecked = false;
+        Assert.Equal([], channelDialog.Result()!.AllowedGroupIds!); // the lock goes
 
         var create = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create, Groups) { Name = "Neu" };
         Assert.Null(create.Result()!.AllowedGroupIds);
@@ -108,15 +108,15 @@ public class ChannelDialogViewModelTests
     [Fact]
     public void Password_SetRemoveUnchanged_DisabledForDefault()
     {
-        var vm = new ChannelDialogViewModel(new ChannelEdit("Raid", "", HasPassword: true), ChannelDialogMode.Edit);
-        Assert.True(vm.HasPassword);
-        Assert.True(vm.CanEnterPassword);
-        Assert.Null(vm.Result()!.Password);
-        vm.Password = "neu";
-        Assert.Equal("neu", vm.Result()!.Password);
-        vm.RemovePassword = true;
-        Assert.False(vm.CanEnterPassword);
-        Assert.Equal("", vm.Result()!.Password);
+        var channelDialog = new ChannelDialogViewModel(new ChannelEdit("Raid", "", HasPassword: true), ChannelDialogMode.Edit);
+        Assert.True(channelDialog.HasPassword);
+        Assert.True(channelDialog.CanEnterPassword);
+        Assert.Null(channelDialog.Result()!.Password);
+        channelDialog.Password = "neu";
+        Assert.Equal("neu", channelDialog.Result()!.Password);
+        channelDialog.RemovePassword = true;
+        Assert.False(channelDialog.CanEnterPassword);
+        Assert.Equal("", channelDialog.Result()!.Password);
 
         var create = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create) { Name = "Neu" };
         Assert.False(create.HasPassword);
@@ -133,11 +133,11 @@ public class ChannelDialogViewModelTests
     [Fact]
     public void GroupLock_DisabledForDefault()
     {
-        var vm = new ChannelDialogViewModel(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault, Groups);
-        Assert.False(vm.CanLockGroups);
-        Assert.Contains("Standard-Channel", vm.GroupLockHint);
-        vm.Groups[1].IsChecked = true; // cannot happen through the disabled list, but never sent either
-        Assert.Null(vm.Result()!.AllowedGroupIds);
+        var channelDialog = new ChannelDialogViewModel(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault, Groups);
+        Assert.False(channelDialog.CanLockGroups);
+        Assert.Contains("Standard-Channel", channelDialog.GroupLockHint);
+        channelDialog.Groups[1].IsChecked = true; // cannot happen through the disabled list, but never sent either
+        Assert.Null(channelDialog.Result()!.AllowedGroupIds);
     }
 
     /// <summary>Package 132 (A141): "Qualität" starts at 64 kbps for a new channel and at the channel's own when editing, bounded 16 to 128.</summary>
@@ -184,7 +184,7 @@ public class ChannelDialogViewModelTests
         });
         var raid = OVS.Tests.TestSupport.FakeServers.Raid;
         server.Apply(new ChannelUpdated(new ChannelInfo(raid, "Raid", "", 1, Bitrate: 24)));
-        var channel = server.Tree.Channels.Single(c => c.Id == raid);
+        var channel = server.Tree.Channels.Single(channelViewModel => channelViewModel.Id == raid);
         Assert.Equal(24, channel.Bitrate);
         await channel.EditCommand.ExecuteAsync(null);
         Assert.Equal(24, shown!.Bitrate);
@@ -198,13 +198,13 @@ public class ChannelDialogViewModelTests
     [Fact]
     public void Create_Separator_HidesFieldsAndSendsKind()
     {
-        var vm = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
-        Assert.True(vm.CanChooseKind);
-        Assert.True(vm.ShowsChannelFields);
-        Assert.Null(vm.Result()); // a voice channel still needs its name
-        vm.IsSeparator = true;
-        Assert.False(vm.ShowsChannelFields);
-        Assert.Equal(new ChannelEdit("", "", Kind: ChannelKind.Separator), vm.Result());
+        var channelDialog = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
+        Assert.True(channelDialog.CanChooseKind);
+        Assert.True(channelDialog.ShowsChannelFields);
+        Assert.Null(channelDialog.Result()); // a voice channel still needs its name
+        channelDialog.IsSeparator = true;
+        Assert.False(channelDialog.ShowsChannelFields);
+        Assert.Equal(new ChannelEdit("", "", Kind: ChannelKind.Separator), channelDialog.Result());
         Assert.False(new ChannelDialogViewModel(new ChannelEdit("Raid", ""), ChannelDialogMode.Edit).CanChooseKind);
     }
 }

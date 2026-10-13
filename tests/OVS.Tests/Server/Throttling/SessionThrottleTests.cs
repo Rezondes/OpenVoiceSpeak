@@ -33,13 +33,13 @@ public sealed class SessionThrottleTests
     [Fact]
     public void TakeRequest_WithinBurst_MayRun()
     {
-        for (int i = 0; i < ServerTuning.RequestBurst; i++) Assert.Null(throttle.TakeRequest());
+        for (int index = 0; index < ServerTuning.RequestBurst; index++) Assert.Null(throttle.TakeRequest());
     }
 
     [Fact]
     public void TakeRequest_PastBurst_Refused()
     {
-        for (int i = 0; i < ServerTuning.RequestBurst; i++) throttle.TakeRequest();
+        for (int index = 0; index < ServerTuning.RequestBurst; index++) throttle.TakeRequest();
         Assert.False(throttle.TakeRequest());
     }
 
@@ -156,7 +156,7 @@ public sealed class SessionThrottleTests
     [Fact]
     public void TryChat_ChatBurstPerWindow_RefusedUntilTheWindowPassed()
     {
-        for (int i = 0; i < ServerTuning.ChatBurst; i++) Assert.True(throttle.TryChat());
+        for (int index = 0; index < ServerTuning.ChatBurst; index++) Assert.True(throttle.TryChat());
         Assert.False(throttle.TryChat());
 
         time.Advance(ServerTuning.ChatWindow);

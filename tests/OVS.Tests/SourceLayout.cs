@@ -45,7 +45,7 @@ static class SourceLayout
                         var (namespaces, types) = Read(File.ReadAllText(full));
                         files.Add((path, project, namespaces, types));
                     }
-                    catch (InvalidDataException e) { throw new InvalidDataException($"{path}: {e.Message}", e); }
+                    catch (InvalidDataException exception) { throw new InvalidDataException($"{path}: {exception.Message}", exception); }
                 }
                 else if (path.EndsWith(".axaml", StringComparison.Ordinal))
                 {
@@ -61,7 +61,7 @@ static class SourceLayout
         }
 
         var typeNames = files.GroupBy(f => f.Project)
-            .ToDictionary(g => g.Key, g => g.SelectMany(f => f.Types).Select(t => t.Name).ToHashSet(StringComparer.Ordinal));
+            .ToDictionary(grouping => grouping.Key, grouping => grouping.SelectMany(f => f.Types).Select(t => t.Name).ToHashSet(StringComparer.Ordinal));
         var problems = new List<string>();
         foreach (var (path, project, namespaces, types) in files)
         {
@@ -89,7 +89,7 @@ static class SourceLayout
             {
                 // Type.Part.cs only for the parts of ServerState in State/.
                 var part = name[..name.IndexOf('.')] == "ServerState" && folder == "src/OVS.Server/State"
-                    && topLevel.Count > 0 && topLevel.All(t => t == "ServerState");
+                    && topLevel.Count > 0 && topLevel.All(text => text == "ServerState");
                 if (!part) Problem("file name = type name", $"{file} declares {(topLevel.Count == 0 ? "no type" : string.Join(", ", topLevel))}");
             }
             else if (topLevel.Count > 0 && !topLevel.Contains(name))
@@ -97,7 +97,7 @@ static class SourceLayout
             if (project == "src/OVS.Server" && topLevel.Contains("ServerState") && folder != "src/OVS.Server/State")
                 Problem("ServerState parts in State/", folder);
 
-            var expected = (parts[0] == "tools" ? "OVS.Tools" : parts[1]) + string.Concat(folders.Skip(2).Select(f => "." + f));
+            var expected = (parts[0] == "tools" ? "OVS.Tools" : parts[1]) + string.Concat(folders.Skip(2).Select(text => "." + text));
             if (topLevel.Count > 0 && namespaces.Count == 0) Problem("namespace = folder", $"no namespace, expected {expected}");
             foreach (var ns in namespaces.Where(ns => ns != expected)) Problem("namespace = folder", $"{ns}, expected {expected}");
 
@@ -108,12 +108,12 @@ static class SourceLayout
             {
                 if (folders.Contains("Views"))
                 {
-                    foreach (var type in topLevel.Where(t => !t.EndsWith("View", StringComparison.Ordinal) && t != "MainWindow"))
+                    foreach (var type in topLevel.Where(text => !text.EndsWith("View", StringComparison.Ordinal) && text != "MainWindow"))
                         Problem("views end in View", type);
                 }
                 if (folders.Contains("ViewModels"))
                 {
-                    foreach (var type in topLevel.Where(t => !t.EndsWith("ViewModel", StringComparison.Ordinal)))
+                    foreach (var type in topLevel.Where(text => !text.EndsWith("ViewModel", StringComparison.Ordinal)))
                         Problem("view models end in ViewModel", type);
                 }
             }
@@ -171,7 +171,7 @@ static class SourceLayout
                 }
                 else if (token == "{")
                 {
-                    var depth = header.Count(t => t is "(" or "[") - header.Count(t => t is ")" or "]");
+                    var depth = header.Count(value => value is "(" or "[") - header.Count(value => value is ")" or "]");
                     open.Push(('o', current, depth > 0 ? header : null));
                 }
                 header = [];
@@ -191,26 +191,26 @@ static class SourceLayout
     static (string Name, string Access)? Declaration(List<string> header)
     {
         var modifiers = new List<string>();
-        for (var i = 0; i < header.Count; i++)
+        for (var index = 0; index < header.Count; index++)
         {
-            var token = header[i];
+            var token = header[index];
             if (token == "[")
             {
-                for (var depth = 0; i < header.Count; i++)
+                for (var depth = 0; index < header.Count; index++)
                 {
-                    if (header[i] == "[") depth++;
-                    else if (header[i] == "]" && --depth == 0) break;
+                    if (header[index] == "[") depth++;
+                    else if (header[index] == "]" && --depth == 0) break;
                 }
                 continue;
             }
             if (token is "(" or "=" or "=>" or ":" or "where") return null;
             if (token is "class" or "struct" or "interface" or "enum" or "record" or "delegate")
             {
-                var next = i + 1;
+                var next = index + 1;
                 if (token == "record" && next < header.Count && header[next] is "class" or "struct") next++;
                 var name = token == "delegate" ? DelegateName(header, next) : next < header.Count ? header[next] : null;
                 if (name is null || !Identifier.IsMatch(name)) return null;
-                var access = modifiers.Where(m => m is "public" or "private" or "protected" or "internal" or "file");
+                var access = modifiers.Where(text => text is "public" or "private" or "protected" or "internal" or "file");
                 return (name.TrimStart('@'), string.Join(' ', access));
             }
             modifiers.Add(token);
@@ -242,129 +242,129 @@ static class SourceLayout
     static string Strip(string text)
     {
         var code = new StringBuilder(text.Length);
-        var i = 0;
-        Code(text, ref i, code, hole: false);
+        var index = 0;
+        Code(text, ref index, code, hole: false);
         return code.ToString();
     }
 
     // Copies code to `code` (skips it when null) up to the end of the text, or in an interpolation hole up to its
     // closing brace, which it leaves for the caller.
-    static void Code(string s, ref int i, StringBuilder? code, bool hole)
+    static void Code(string text, ref int index, StringBuilder? code, bool hole)
     {
         var depth = 0;
         var lineStart = !hole;
-        while (i < s.Length)
+        while (index < text.Length)
         {
-            var c = s[i];
-            if (c == '\n') lineStart = !hole;
-            else if (lineStart && c == '#')
+            var character = text[index];
+            if (character == '\n') lineStart = !hole;
+            else if (lineStart && character == '#')
             {
-                while (i < s.Length && s[i] != '\n') i++;
+                while (index < text.Length && text[index] != '\n') index++;
                 continue;
             }
-            else if (!char.IsWhiteSpace(c)) lineStart = false;
+            else if (!char.IsWhiteSpace(character)) lineStart = false;
 
-            var next = i + 1 < s.Length ? s[i + 1] : '\0';
-            if (c == '/' && next == '/')
+            var next = index + 1 < text.Length ? text[index + 1] : '\0';
+            if (character == '/' && next == '/')
             {
-                while (i < s.Length && s[i] != '\n') i++;
+                while (index < text.Length && text[index] != '\n') index++;
                 continue;
             }
-            if (c == '/' && next == '*')
+            if (character == '/' && next == '*')
             {
-                var end = s.IndexOf("*/", i + 2, StringComparison.Ordinal);
-                i = end < 0 ? s.Length : end + 2;
+                var end = text.IndexOf("*/", index + 2, StringComparison.Ordinal);
+                index = end < 0 ? text.Length : end + 2;
                 code?.Append(' ');
                 continue;
             }
-            if (c == '\'')
+            if (character == '\'')
             {
-                var j = i + 1;
-                if (j < s.Length && s[j] == '\\') j += 2;
-                while (j < s.Length && s[j] != '\'') j++;
-                i = j + 1;
+                var otherIndex = index + 1;
+                if (otherIndex < text.Length && text[otherIndex] == '\\') otherIndex += 2;
+                while (otherIndex < text.Length && text[otherIndex] != '\'') otherIndex++;
+                index = otherIndex + 1;
                 code?.Append(' ');
                 continue;
             }
-            if (c is '"' or '$' or '@' && StringStart(s, i))
+            if (character is '"' or '$' or '@' && StringStart(text, index))
             {
-                SkipString(s, ref i);
+                SkipString(text, ref index);
                 code?.Append(' ');
                 continue;
             }
-            if (hole && c == '}' && depth == 0) return;
-            if (c == '{') depth++;
-            else if (c == '}') depth--;
-            code?.Append(c);
-            i++;
+            if (hole && character == '}' && depth == 0) return;
+            if (character == '{') depth++;
+            else if (character == '}') depth--;
+            code?.Append(character);
+            index++;
         }
     }
 
-    static bool StringStart(string s, int i)
+    static bool StringStart(string text, int index)
     {
-        while (i < s.Length && s[i] is '$' or '@') i++;
-        return i < s.Length && s[i] == '"';
+        while (index < text.Length && text[index] is '$' or '@') index++;
+        return index < text.Length && text[index] == '"';
     }
 
-    static void SkipString(string s, ref int i)
+    static void SkipString(string text, ref int index)
     {
         int dollars = 0, quotes = 0;
         var verbatim = false;
-        for (; s[i] is '$' or '@'; i++)
+        for (; text[index] is '$' or '@'; index++)
         {
-            if (s[i] == '$') dollars++;
+            if (text[index] == '$') dollars++;
             else verbatim = true;
         }
         // A verbatim string has one opening quote; @"""a" starts with an escaped quote, it is no raw string.
         if (verbatim) quotes = 1;
-        else while (i + quotes < s.Length && s[i + quotes] == '"') quotes++;
-        i += quotes;
+        else while (index + quotes < text.Length && text[index + quotes] == '"') quotes++;
+        index += quotes;
         if (quotes == 2) return; // ""
         if (quotes >= 3)
         {
             // Raw: ends at a run of as many quotes; with n dollars, n braces open a hole (more are literal).
-            while (i < s.Length)
+            while (index < text.Length)
             {
                 var run = 0;
-                if (s[i] == '"')
+                if (text[index] == '"')
                 {
-                    while (i + run < s.Length && s[i + run] == '"') run++;
-                    i += run;
+                    while (index + run < text.Length && text[index + run] == '"') run++;
+                    index += run;
                     if (run >= quotes) return;
                 }
-                else if (dollars > 0 && s[i] == '{')
+                else if (dollars > 0 && text[index] == '{')
                 {
-                    while (i + run < s.Length && s[i + run] == '{') run++;
-                    i += run;
+                    while (index + run < text.Length && text[index + run] == '{') run++;
+                    index += run;
                     if (run >= dollars)
                     {
-                        Code(s, ref i, null, hole: true);
-                        i += dollars;
+                        Code(text, ref index, null, hole: true);
+                        index += dollars;
                     }
                 }
-                else i++;
+                else index++;
             }
             return;
         }
-        while (i < s.Length)
+        while (index < text.Length)
         {
-            var c = s[i];
-            var next = i + 1 < s.Length ? s[i + 1] : '\0';
-            if (!verbatim && c == '\\') i += 2;
-            else if (c == '"' && verbatim && next == '"') i += 2;
-            else if (c == '"')
+            var character = text[index];
+            var next = index + 1 < text.Length ? text[index + 1] : '\0';
+            if (!verbatim && character == '\\') index += 2;
+            else if (character == '"' && verbatim && next == '"') index += 2;
+            else if (character == '"')
             {
-                i++;
+                index++;
                 return;
             }
-            else if (dollars > 0 && c is '{' or '}' && next == c) i += 2;
-            else if (dollars > 0 && c == '{')
+            else if (dollars > 0 && character is '{' or '}' && next == character) index += 2;
+            else if (dollars > 0 && character == '{')
             {
-                i++;
-                Code(s, ref i, null, hole: true);
-                i++;
+                index++;
+                Code(text, ref index, null, hole: true);
+                index++;
             }
-            else i++;
+            else index++;
         }
     }
 }

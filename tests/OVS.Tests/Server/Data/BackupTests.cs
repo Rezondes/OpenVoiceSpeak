@@ -29,9 +29,9 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     static Dictionary<string, byte[]> Entries(string path)
     {
         using var zip = ZipFile.OpenRead(path);
-        return zip.Entries.ToDictionary(e => e.FullName, e =>
+        return zip.Entries.ToDictionary(zipArchiveEntry => zipArchiveEntry.FullName, zipArchiveEntry =>
         {
-            using var stream = e.Open();
+            using var stream = zipArchiveEntry.Open();
             using var copy = new MemoryStream();
             stream.CopyTo(copy);
             return copy.ToArray();
@@ -43,7 +43,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     static async Task<(TestServer Server, TestClient Admin)> StartWithAdminAsync(TimeProvider? time = null, Action<ServerData>? seed = null)
     {
         var admin = ClientIdentity.Create();
-        var server = await TestServer.StartAsync(d => { TestServer.Grant(admin, "Admin")(d); seed?.Invoke(d); }, time: time);
+        var server = await TestServer.StartAsync(serverData => { TestServer.Grant(admin, "Admin")(serverData); seed?.Invoke(serverData); }, time: time);
         return (server, await TestClient.ConnectAsync(server, "chef", admin));
     }
 
@@ -52,17 +52,17 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         var png = TestImages.Encode(64, 64);
         await admin.SendAsync(new SetServerIcon(Convert.ToBase64String(png)));
-        await admin.WaitForAsync<ServerSettingsChanged>(m => m.Settings.IconHash is not null);
+        await admin.WaitForAsync<ServerSettingsChanged>(serverSettingsChanged => serverSettingsChanged.Settings.IconHash is not null);
         await admin.SendAsync(new CreateChannel("Alt", ""));
         await admin.WaitForAsync<ChannelAdded>();
         Directory.CreateDirectory(Path.Combine(server.DataDir, "logs", "server"));
         File.WriteAllText(Path.Combine(server.DataDir, "logs", "server", "x.log"), "geheim");
 
         await admin.SendAsync(new CreateBackup { RequestId = "b" });
-        var list = await admin.WaitForAsync<BackupList>(l => l.RequestId == "b");
+        var list = await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "b");
         var info = Assert.Single(list.Backups);
         Assert.Matches(@"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.ovsbackup$", info.FileName);
         var path = Path.Combine(server.DataDir, "backups", info.FileName);
@@ -73,11 +73,11 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         Assert.Equal(["cert.pfx", "manifest.json", "server-data.json", "server-icon.png"], entries.Keys.Order());
         Assert.Equal(File.ReadAllBytes(Path.Combine(server.DataDir, "cert.pfx")), entries["cert.pfx"]);
         Assert.Equal(png, entries["server-icon.png"]);
-        Assert.Contains(DataOf(entries["server-data.json"]).Channels, c => c.Name == "Alt");
+        Assert.Contains(DataOf(entries["server-data.json"]).Channels, channel => channel.Name == "Alt");
         using var manifest = JsonDocument.Parse(entries["manifest.json"]);
         Assert.Equal(ServerData.CurrentVersion, manifest.RootElement.GetProperty("dataVersion").GetInt32());
         Assert.Equal(1, manifest.RootElement.GetProperty("formatVersion").GetInt32());
-        Assert.Contains(server.Log, l => l.Contains($"Backup {info.FileName} angelegt von chef"));
+        Assert.Contains(server.Log, line => line.Contains($"Backup {info.FileName} angelegt von chef"));
     }
 
     [Fact]
@@ -85,14 +85,14 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     {
         var (server, admin) = await StartWithAdminAsync(new ManualTimeProvider()); // the debounced save never fires
         await using var _ = server;
-        await using var a = admin;
+        await using var testClient = admin;
         var anna = ClientIdentity.Create();
         await using var client = await TestClient.ConnectAsync(server, "anna", anna);
 
         await admin.SendAsync(new CreateBackup { RequestId = "b" });
-        var info = Assert.Single((await admin.WaitForAsync<BackupList>(l => l.RequestId == "b")).Backups);
+        var info = Assert.Single((await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "b")).Backups);
         var data = DataOf(Entries(Path.Combine(server.DataDir, "backups", info.FileName))["server-data.json"]);
-        Assert.Contains(data.Users, u => u.Fingerprint == anna.Fingerprint);
+        Assert.Contains(data.Users, user => user.Fingerprint == anna.Fingerprint);
     }
 
     [Fact]
@@ -100,14 +100,14 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     {
         var (server, admin) = await StartWithAdminAsync(new ManualTimeProvider()); // the debounced save never fires
         await using var _ = server;
-        await using var a = admin;
+        await using var testClient = admin;
         await admin.SendAsync(new CreateBackup { RequestId = "b" });
-        var backup = Assert.Single((await admin.WaitForAsync<BackupList>(l => l.RequestId == "b")).Backups).FileName;
+        var backup = Assert.Single((await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "b")).Backups).FileName;
 
         var bert = ClientIdentity.Create();
         await using var client = await TestClient.ConnectAsync(server, "bert", bert);
         await client.SendAsync(new SendChat(ChatTarget.Channel, null, "hallo"));
-        await client.WaitForAsync<ChatMessage>(m => m.Text == "hallo");
+        await client.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == "hallo");
 
         await admin.SendAsync(new RestoreBackup(backup));
         // a restore writes a safety backup and the data file first, slow on a CI disk
@@ -116,12 +116,12 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         // pending restore takes that lock, so the file is complete once it returns.
         Assert.NotNull(server.State.PendingRestore);
         var safety = Directory.GetFiles(Path.Combine(server.DataDir, "backups"), BackupStore.SafetyPrefix + "*").Single();
-        var user = DataOf(Entries(safety)["server-data.json"]).Users.Single(u => u.Fingerprint == bert.Fingerprint);
+        var user = DataOf(Entries(safety)["server-data.json"]).Users.Single(userRecord => userRecord.Fingerprint == bert.Fingerprint);
         Assert.Equal((1, 1), (user.LoginCount, user.ChatMessages));
 
         // the running session was counted once, not again on the disconnect
         var live = new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException());
-        Assert.Equal(1, live.Users.Single(u => u.Fingerprint == bert.Fingerprint).ChatMessages);
+        Assert.Equal(1, live.Users.Single(userRecord => userRecord.Fingerprint == bert.Fingerprint).ChatMessages);
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         var other = ClientIdentity.Create(); // Package 86: one backup per 10 s and session, so a second admin
         var (server, admin) = await StartWithAdminAsync(time, TestServer.Grant(other, "Admin"));
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         await admin.SendAsync(new CreateBackup());
         await admin.WaitForAsync<BackupList>();
         time.Advance(TimeSpan.FromMinutes(1));
@@ -142,16 +142,16 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         await second.WaitForAsync<BackupList>();
 
         await admin.SendAsync(new ListBackups { RequestId = "l" });
-        var list = (await admin.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups;
+        var list = (await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "l")).Backups;
         Assert.Equal(3, list.Count);
-        Assert.Equal(3, list.Select(b => b.FileName).Distinct().Count());
+        Assert.Equal(3, list.Select(backup => backup.FileName).Distinct().Count());
         Assert.True(list[0].CreatedAt >= list[1].CreatedAt && list[1].CreatedAt > list[2].CreatedAt);
 
         await admin.SendAsync(new DeleteBackup(list[2].FileName) { RequestId = "d" });
-        var after = (await admin.WaitForAsync<BackupList>(l => l.RequestId == "d")).Backups;
-        Assert.Equal(list.Take(2).Select(b => b.FileName), after.Select(b => b.FileName));
+        var after = (await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "d")).Backups;
+        Assert.Equal(list.Take(2).Select(backup => backup.FileName), after.Select(backup => backup.FileName));
         Assert.False(File.Exists(Path.Combine(server.DataDir, "backups", list[2].FileName)));
-        Assert.Contains(server.Log, l => l.Contains($"Backup {list[2].FileName} gelöscht von chef"));
+        Assert.Contains(server.Log, line => line.Contains($"Backup {list[2].FileName} gelöscht von chef"));
     }
 
     static void WriteArchive(string path, Dictionary<string, byte[]> entries)
@@ -172,14 +172,14 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         await using var other = await TestClient.ConnectAsync(server, "anna");
         await admin.SendAsync(new CreateBackup());
         var good = Entries(Path.Combine(server.DataDir, "backups", Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName));
         var backups = Path.Combine(server.DataDir, "backups");
 
         File.WriteAllBytes(Path.Combine(backups, "kaputt.ovsbackup"), [1, 2, 3, 4]);
-        WriteArchive(Path.Combine(backups, "ohne-manifest.ovsbackup"), good.Where(e => e.Key != "manifest.json").ToDictionary());
+        WriteArchive(Path.Combine(backups, "ohne-manifest.ovsbackup"), good.Where(pair => pair.Key != "manifest.json").ToDictionary());
         var future = DataOf(good["server-data.json"]);
         future.DataVersion = ServerData.CurrentVersion + 1;
         WriteArchive(Path.Combine(backups, "zu-neu.ovsbackup"), new()
@@ -188,7 +188,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             ["server-data.json"] = JsonSerializer.SerializeToUtf8Bytes(future, ProtocolJson.Options),
             ["cert.pfx"] = good["cert.pfx"],
         });
-        WriteArchive(Path.Combine(backups, "ohne-zertifikat.ovsbackup"), good.Where(e => e.Key != "cert.pfx").ToDictionary());
+        WriteArchive(Path.Combine(backups, "ohne-zertifikat.ovsbackup"), good.Where(pair => pair.Key != "cert.pfx").ToDictionary());
         WriteArchive(Path.Combine(backups, "daten-kaputt.ovsbackup"), new(good) { ["server-data.json"] = "{nicht json"u8.ToArray() });
 
         var dataBefore = File.ReadAllBytes(Path.Combine(server.DataDir, DataStore.FileName));
@@ -199,11 +199,11 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         }
         await other.AssertNoMessageAsync<Disconnected>();
         Assert.Equal(dataBefore, File.ReadAllBytes(Path.Combine(server.DataDir, DataStore.FileName)));
-        Assert.DoesNotContain(Directory.GetFiles(backups), f => Path.GetFileName(f).StartsWith("vor-wiederherstellung_"));
-        Assert.Contains(server.Log, l => l.Contains("Backup zu-neu.ovsbackup ist ungültig"));
+        Assert.DoesNotContain(Directory.GetFiles(backups), text => Path.GetFileName(text).StartsWith("vor-wiederherstellung_"));
+        Assert.Contains(server.Log, line => line.Contains("Backup zu-neu.ovsbackup ist ungültig"));
 
         await admin.SendAsync(new ListBackups { RequestId = "l" }); // broken ones still show, so they can be deleted
-        Assert.Equal(6, (await admin.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups.Count);
+        Assert.Equal(6, (await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "l")).Backups.Count);
     }
 
     [Fact]
@@ -211,7 +211,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         await using var guest = await TestClient.ConnectAsync(server, "gast");
         var backups = Directory.CreateDirectory(Path.Combine(server.DataDir, "backups")).FullName;
         var outside = Path.Combine(server.DataDir, "draussen.ovsbackup");
@@ -225,12 +225,12 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             "../draussen.ovsbackup", "..\\draussen.ovsbackup", outside, "../server-data.json", "ohne-endung",
             "unter/tief.ovsbackup", "unter\\tief.ovsbackup", "", ".ovsbackup", "../" + DataStore.FileName,
         };
-        int n = 0;
+        int count = 0;
         foreach (var name in names)
         {
             foreach (Request request in new Request[] { new DeleteBackup(name), new RestoreBackup(name) })
             {
-                var id = $"x{n++}";
+                var id = $"x{count++}";
                 await admin.SendAsync(request with { RequestId = id });
                 Assert.Equal(ReasonCodes.NotFound, (await admin.ErrorAsync(id)).Code);
             }
@@ -244,7 +244,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         var real = Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName;
         foreach (Request request in new Request[] { new ListBackups(), new CreateBackup(), new DeleteBackup(real), new RestoreBackup(real) })
         {
-            var id = $"g{n++}";
+            var id = $"g{count++}";
             await guest.SendAsync(request with { RequestId = id });
             Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync(id)).Code);
         }
@@ -266,7 +266,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         var logo = new byte[1_500_000];
         Random.Shared.NextBytes(logo); // does not compress: the archive needs three chunks
         File.WriteAllBytes(Path.Combine(server.DataDir, ServerIconStore.FileName), logo);
@@ -280,7 +280,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         {
             var id = $"d{chunks}";
             await admin.SendAsync(new DownloadBackup(info.FileName, received.Length) { RequestId = id });
-            var chunk = await admin.WaitForAsync<BackupChunk>(c => c.RequestId == id);
+            var chunk = await admin.WaitForAsync<BackupChunk>(backupChunk => backupChunk.RequestId == id);
             await admin.AssertNoMessageAsync<BackupChunk>(100); // one chunk per request, the next only on request
             Assert.Equal(info.FileName, chunk.FileName);
             Assert.Equal(received.Length, chunk.Offset);
@@ -292,7 +292,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             if (chunks == 1) // AC4: other requests go through between two chunks
             {
                 await admin.SendAsync(new SendChat(ChatTarget.Server, null, "während des Downloads"));
-                await admin.WaitForAsync<ChatMessage>(m => m.Text == "während des Downloads");
+                await admin.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == "während des Downloads");
             }
             Assert.Equal(received.Length == chunk.TotalSize, chunk.IsLast);
             if (chunk.IsLast) break;
@@ -312,15 +312,15 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     static async Task<Message> UploadAsync(TestClient client, byte[] bytes, int chunkSize = Chunk, string? uploadId = null)
     {
         uploadId ??= Guid.NewGuid().ToString("N");
-        for (int offset = 0, n = 0; ; offset += chunkSize, n++)
+        for (int offset = 0, count = 0; ; offset += chunkSize, count++)
         {
             var size = Math.Min(chunkSize, bytes.Length - offset);
             var last = offset + size >= bytes.Length;
-            var id = $"u{n}";
+            var id = $"u{count}";
             await client.SendAsync(new UploadBackupChunk(uploadId, offset, Convert.ToBase64String(bytes, offset, size), last) { RequestId = id });
-            var answer = await client.WaitForAsync<Message>(m => m is UploadBackupAck { RequestId: var r } && r == id
-                                                                 || m is BackupUploaded { RequestId: var u } && u == id
-                                                                 || m is Error { RequestId: var e } && e == id);
+            var answer = await client.WaitForAsync<Message>(message => message is UploadBackupAck { RequestId: var text } && text == id
+                                                                 || message is BackupUploaded { RequestId: var value } && value == id
+                                                                 || message is Error { RequestId: var e } && e == id);
             if (answer is UploadBackupAck ack) Assert.Equal(offset + size, ack.Received);
             if (last || answer is not UploadBackupAck) return answer;
         }
@@ -331,24 +331,24 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         await admin.SendAsync(new CreateChannel("Hochgeladen", ""));
         await admin.WaitForAsync<ChannelAdded>();
         await admin.SendAsync(new CreateBackup());
         var original = Assert.Single((await admin.WaitForAsync<BackupList>()).Backups);
         var bytes = File.ReadAllBytes(Path.Combine(server.DataDir, "backups", original.FileName));
         await admin.SendAsync(new DeleteBackup(original.FileName) { RequestId = "weg" });
-        Assert.Empty((await admin.WaitForAsync<BackupList>(l => l.RequestId == "weg")).Backups);
+        Assert.Empty((await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "weg")).Backups);
 
         var answer = Assert.IsType<BackupUploaded>(await UploadAsync(admin, bytes, chunkSize: 1000)); // several chunks
         Assert.EndsWith(".ovsbackup", answer.Backup.FileName);
         Assert.Equal(bytes.Length, answer.Backup.Size);
         Assert.Equal(original.CreatedAt, answer.Backup.CreatedAt);
-        var list = await admin.WaitForAsync<BackupList>(l => l.RequestId == answer.RequestId);
+        var list = await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == answer.RequestId);
         Assert.Equal(answer.Backup, Assert.Single(list.Backups));
         Assert.Equal(bytes, File.ReadAllBytes(Path.Combine(server.DataDir, "backups", answer.Backup.FileName)));
         Assert.Empty(UploadFiles(server.DataDir));
-        Assert.Contains(server.Log, l => l.Contains($"Backup {answer.Backup.FileName} hochgeladen von chef"));
+        Assert.Contains(server.Log, line => line.Contains($"Backup {answer.Backup.FileName} hochgeladen von chef"));
 
         // a second upload of the same file gets a name of its own
         var again = Assert.IsType<BackupUploaded>(await UploadAsync(admin, bytes));
@@ -371,7 +371,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         await admin.SendAsync(new UploadBackupChunk(id, 0, Convert.ToBase64String(new byte[Chunk + 1]), false) { RequestId = "gross" });
         Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("gross")).Code);
         await admin.SendAsync(new UploadBackupChunk(id, 0, Convert.ToBase64String(new byte[10]), false) { RequestId = "ok" });
-        Assert.Equal(10, (await admin.WaitForAsync<UploadBackupAck>(r => r.RequestId == "ok")).Received);
+        Assert.Equal(10, (await admin.WaitForAsync<UploadBackupAck>(uploadBackupAck => uploadBackupAck.RequestId == "ok")).Received);
         await admin.SendAsync(new UploadBackupChunk(id, 5, Convert.ToBase64String(new byte[10]), false) { RequestId = "luecke" });
         Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("luecke")).Code);
         Assert.Empty(UploadFiles(server.DataDir));
@@ -387,7 +387,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
 
         // the connection ends in the middle of an upload
         await admin.SendAsync(new UploadBackupChunk(id, 0, Convert.ToBase64String(new byte[10]), false) { RequestId = "halb" });
-        await admin.WaitForAsync<UploadBackupAck>(r => r.RequestId == "halb");
+        await admin.WaitForAsync<UploadBackupAck>(uploadBackupAck => uploadBackupAck.RequestId == "halb");
         Assert.Single(UploadFiles(server.DataDir));
         await admin.DisposeAsync();
         // the server notices the closed connection on its own time: poll with a generous cap
@@ -407,12 +407,12 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     {
         var (server, admin) = await StartWithAdminAsync();
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         await using var guest = await TestClient.ConnectAsync(server, "gast");
         await admin.SendAsync(new CreateBackup());
         var good = Entries(Path.Combine(server.DataDir, "backups", Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName));
         var scratch = Path.Combine(dir, "ohne-manifest.zip");
-        WriteArchive(scratch, good.Where(e => e.Key != "manifest.json").ToDictionary());
+        WriteArchive(scratch, good.Where(pair => pair.Key != "manifest.json").ToDictionary());
 
         foreach (var bytes in new[] { new byte[] { 1, 2, 3, 4 }, File.ReadAllBytes(scratch) })
         {
@@ -421,7 +421,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         }
         var name = Assert.Single(Directory.GetFiles(Path.Combine(server.DataDir, "backups"), "*.ovsbackup"));
         Assert.Empty(UploadFiles(server.DataDir));
-        Assert.Contains(server.Log, l => l.Contains("Hochgeladenes Backup ist ungültig"));
+        Assert.Contains(server.Log, line => line.Contains("Hochgeladenes Backup ist ungültig"));
 
         // AC5: the right ServerConfig for both directions
         await guest.SendAsync(new DownloadBackup(Path.GetFileName(name), 0) { RequestId = "g1" });
@@ -443,7 +443,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             await client.DisposeAsync();
             return null;
         }
-        catch (Exception e) when (e is SocketException or IOException)
+        catch (Exception exception) when (exception is SocketException or IOException)
         {
             return null;
         }
@@ -538,17 +538,17 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             await admin2.DisposeAsync();
 
             await using var again = await ConnectWhenUpAsync(host.Port, "chef", adminId, host.Run);
-            var channels = again.Welcome.Snapshot.Channels.Select(c => c.Name).ToList();
+            var channels = again.Welcome.Snapshot.Channels.Select(channel => channel.Name).ToList();
             Assert.Contains("Alt", channels);
             Assert.DoesNotContain("Neu", channels);
             Assert.Equal(backupCertHash, again.ServerCertHash);
-            Assert.True(again.Welcome.Snapshot.Users.Single(u => u.Nickname == "chef").Permissions.Has(Permission.ServerConfig));
+            Assert.True(again.Welcome.Snapshot.Users.Single(user => user.Nickname == "chef").Permissions.Has(Permission.ServerConfig));
 
             await again.SendAsync(new ListBackups { RequestId = "l" });
-            var list = (await again.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups;
-            var safety = Assert.Single(list, b => b.FileName.StartsWith("vor-wiederherstellung_"));
-            Assert.Contains(list, b => b.FileName == backup);
-            Assert.Contains(DataOf(Entries(Path.Combine(dir, "backups", safety.FileName))["server-data.json"]).Channels, c => c.Name == "Neu");
+            var list = (await again.WaitForAsync<BackupList>(backupList => backupList.RequestId == "l")).Backups;
+            var safety = Assert.Single(list, backupInfo => backupInfo.FileName.StartsWith("vor-wiederherstellung_"));
+            Assert.Contains(list, backupInfo => backupInfo.FileName == backup);
+            Assert.Contains(DataOf(Entries(Path.Combine(dir, "backups", safety.FileName))["server-data.json"]).Channels, channel => channel.Name == "Neu");
         }
         var log = string.Join("\n", Directory.GetFiles(Path.Combine(dir, "logs", "server")).Select(File.ReadAllText));
         Assert.Contains($"Backup {backup} wird wiederhergestellt von chef", log);
@@ -576,7 +576,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             await admin.SendAsync(new CreateBackup());
             var backup = Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName;
             await admin.SendAsync(new CreateChannel("Neu", ""));
-            await admin.WaitForAsync<ChannelAdded>(c => c.Channel.Name == "Neu");
+            await admin.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == "Neu");
 
             host.Stop(); // a plain shutdown: the wait ends, the sessions are still open
             await gap.Task.WaitAsync(TimeSpan.FromSeconds(30));
@@ -586,8 +586,8 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             Assert.Equal(0, await host.Run.WaitAsync(TimeSpan.FromSeconds(30)));
         }
         var channels = new DataStore(Path.Combine(dir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException()).Channels;
-        Assert.Contains(channels, c => c.Name == "Alt");
-        Assert.DoesNotContain(channels, c => c.Name == "Neu");
+        Assert.Contains(channels, channel => channel.Name == "Alt");
+        Assert.DoesNotContain(channels, channel => channel.Name == "Neu");
         var log = string.Join("\n", Directory.GetFiles(Path.Combine(dir, "logs", "server")).Select(File.ReadAllText));
         Assert.Contains("Backup eingespielt", log);
     }
@@ -603,7 +603,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             // a backup from a version 1 server: guests could not chat yet
             var old = DataOf(File.ReadAllBytes(Path.Combine(dir, DataStore.FileName)));
             old.DataVersion = 1;
-            int guest = old.Groups.FindIndex(g => g.Id == OVS.Server.Permissions.PermissionRules.GuestGroupId);
+            int guest = old.Groups.FindIndex(groupRecord => groupRecord.Id == OVS.Server.Permissions.PermissionRules.GuestGroupId);
             old.Groups[guest] = old.Groups[guest] with { Permissions = Permission.Speak };
             old.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Name = "Früher", Order = 1 });
             var backups = Directory.CreateDirectory(Path.Combine(dir, "backups")).FullName;
@@ -620,8 +620,8 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             await admin.DisposeAsync();
 
             await using var again = await ConnectWhenUpAsync(host.Port, "chef", adminId, host.Run);
-            Assert.Contains(again.Welcome.Snapshot.Channels, c => c.Name == "Früher");
-            var guestGroup = again.Welcome.Snapshot.Groups.Single(g => g.Id == OVS.Server.Permissions.PermissionRules.GuestGroupId);
+            Assert.Contains(again.Welcome.Snapshot.Channels, channel => channel.Name == "Früher");
+            var guestGroup = again.Welcome.Snapshot.Groups.Single(groupInfo => groupInfo.Id == OVS.Server.Permissions.PermissionRules.GuestGroupId);
             Assert.True(guestGroup.Permissions.Has(Permission.ChatChannel));
             Assert.False(File.Exists(Path.Combine(dir, ServerIconStore.FileName))); // the backup had no logo
         }
@@ -631,47 +631,47 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     // ---- Package 89 (A101): the right BackupsManage, upload and restore only for the Admin group, full validation ----
 
     static Action<ServerData> AddGroup(string name, Permission permissions) =>
-        d => d.Groups.Add(new OVS.Server.Permissions.GroupRecord(Guid.NewGuid(), name, permissions));
+        serverData => serverData.Groups.Add(new OVS.Server.Permissions.GroupRecord(Guid.NewGuid(), name, permissions));
 
     [Fact]
     public async Task BackupsManage_Required_ServerConfigAloneNotEnough()
     {
         var config = ClientIdentity.Create();
         var keeper = ClientIdentity.Create();
-        await using var server = await TestServer.StartAsync(d =>
+        await using var server = await TestServer.StartAsync(serverData =>
         {
-            AddGroup("Konfig", Permission.ServerConfig)(d);
-            AddGroup("Sicherung", Permission.BackupsManage)(d);
-            TestServer.Grant(config, "Konfig")(d);
-            TestServer.Grant(keeper, "Sicherung")(d);
+            AddGroup("Konfig", Permission.ServerConfig)(serverData);
+            AddGroup("Sicherung", Permission.BackupsManage)(serverData);
+            TestServer.Grant(config, "Konfig")(serverData);
+            TestServer.Grant(keeper, "Sicherung")(serverData);
         });
-        await using var c = await TestClient.ConnectAsync(server, "konfig", config);
-        await using var k = await TestClient.ConnectAsync(server, "sicherung", keeper);
+        await using var client = await TestClient.ConnectAsync(server, "konfig", config);
+        await using var testClient = await TestClient.ConnectAsync(server, "sicherung", keeper);
 
-        await k.SendAsync(new CreateBackup { RequestId = "c" });
-        var name = Assert.Single((await k.WaitForAsync<BackupList>(l => l.RequestId == "c")).Backups).FileName;
-        Assert.Contains(server.Log, l => l.Contains($"Backup {name} angelegt von sicherung"));
-        int n = 0;
+        await testClient.SendAsync(new CreateBackup { RequestId = "c" });
+        var name = Assert.Single((await testClient.WaitForAsync<BackupList>(backupList => backupList.RequestId == "c")).Backups).FileName;
+        Assert.Contains(server.Log, line => line.Contains($"Backup {name} angelegt von sicherung"));
+        int count = 0;
         foreach (Request request in new Request[] { new ListBackups(), new CreateBackup(), new DownloadBackup(name, 0), new DeleteBackup(name) })
         {
-            var id = $"c{n++}";
-            await c.SendAsync(request with { RequestId = id });
-            Assert.Equal(ReasonCodes.PermissionDenied, (await c.ErrorAsync(id)).Code);
+            var id = $"c{count++}";
+            await client.SendAsync(request with { RequestId = id });
+            Assert.Equal(ReasonCodes.PermissionDenied, (await client.ErrorAsync(id)).Code);
         }
 
-        await k.SendAsync(new ListBackups { RequestId = "l" });
-        Assert.Single((await k.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups);
-        await k.SendAsync(new DownloadBackup(name, 0) { RequestId = "d" });
-        Assert.True((await k.WaitForAsync<BackupChunk>(ch => ch.RequestId == "d")).IsLast);
+        await testClient.SendAsync(new ListBackups { RequestId = "l" });
+        Assert.Single((await testClient.WaitForAsync<BackupList>(backupList => backupList.RequestId == "l")).Backups);
+        await testClient.SendAsync(new DownloadBackup(name, 0) { RequestId = "d" });
+        Assert.True((await testClient.WaitForAsync<BackupChunk>(ch => ch.RequestId == "d")).IsLast);
         // uploading and restoring are not part of the right
-        await k.SendAsync(new RestoreBackup(name) { RequestId = "r" });
-        Assert.Equal(ReasonCodes.PermissionDenied, (await k.ErrorAsync("r")).Code);
+        await testClient.SendAsync(new RestoreBackup(name) { RequestId = "r" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await testClient.ErrorAsync("r")).Code);
         var bytes = File.ReadAllBytes(Path.Combine(server.DataDir, "backups", name));
-        Assert.Equal(ReasonCodes.PermissionDenied, Assert.IsType<Error>(await UploadAsync(k, bytes)).Code);
+        Assert.Equal(ReasonCodes.PermissionDenied, Assert.IsType<Error>(await UploadAsync(testClient, bytes)).Code);
         Assert.Empty(UploadFiles(server.DataDir));
-        await k.SendAsync(new DeleteBackup(name) { RequestId = "x" });
-        Assert.Empty((await k.WaitForAsync<BackupList>(l => l.RequestId == "x")).Backups);
-        await k.AssertNoMessageAsync<Disconnected>();
+        await testClient.SendAsync(new DeleteBackup(name) { RequestId = "x" });
+        Assert.Empty((await testClient.WaitForAsync<BackupList>(backupList => backupList.RequestId == "x")).Backups);
+        await testClient.AssertNoMessageAsync<Disconnected>();
     }
 
     [Fact]
@@ -679,14 +679,14 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     {
         var second = ClientIdentity.Create();
         var almighty = ClientIdentity.Create();
-        var (server, admin) = await StartWithAdminAsync(seed: d =>
+        var (server, admin) = await StartWithAdminAsync(seed: serverData =>
         {
-            TestServer.Grant(second, "Admin")(d);
-            AddGroup("Alles", Permission.All)(d);
-            TestServer.Grant(almighty, "Alles")(d);
+            TestServer.Grant(second, "Admin")(serverData);
+            AddGroup("Alles", Permission.All)(serverData);
+            TestServer.Grant(almighty, "Alles")(serverData);
         });
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         await using var two = await TestClient.ConnectAsync(server, "zweiter", second);
         await using var all = await TestClient.ConnectAsync(server, "allmacht", almighty);
         await admin.SendAsync(new CreateBackup());
@@ -700,15 +700,15 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         Assert.Equal(ReasonCodes.PermissionDenied, (await all.ErrorAsync("r")).Code);
         Assert.Empty(UploadFiles(server.DataDir));
         await all.SendAsync(new ListBackups { RequestId = "l" });
-        Assert.Single((await all.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups);
+        Assert.Single((await all.WaitForAsync<BackupList>(backupList => backupList.RequestId == "l")).Backups);
 
         // checked on every chunk: out of the Admin group in the middle of an upload, the next chunk is refused and the file goes
         var id = Guid.NewGuid().ToString("N");
         await two.SendAsync(new UploadBackupChunk(id, 0, Convert.ToBase64String(bytes, 0, 100), false) { RequestId = "c0" });
-        await two.WaitForAsync<UploadBackupAck>(r => r.RequestId == "c0");
+        await two.WaitForAsync<UploadBackupAck>(uploadBackupAck => uploadBackupAck.RequestId == "c0");
         Assert.Single(UploadFiles(server.DataDir));
         LeaveAdminGroup(server.State, second.Fingerprint);
-        await two.WaitForAsync<UserUpdated>(u => u.User.Nickname == "zweiter" && !u.User.GroupIds.Contains(WellKnownGroups.Admin));
+        await two.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.Nickname == "zweiter" && !userUpdated.User.GroupIds.Contains(WellKnownGroups.Admin));
         await two.SendAsync(new UploadBackupChunk(id, 100, Convert.ToBase64String(bytes, 100, bytes.Length - 100), true) { RequestId = "c1" });
         Assert.Equal(ReasonCodes.PermissionDenied, (await two.ErrorAsync("c1")).Code);
         Assert.Empty(UploadFiles(server.DataDir));
@@ -723,7 +723,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     /// The test changes the stored groups itself, under the server's lock, and lets the server apply them as after a group change.
     /// </summary>
     static void LeaveAdminGroup(ServerState state, string fingerprint) =>
-        StateHarness.ChangeStoredData(state, d => d.Users.Single(u => u.Fingerprint == fingerprint).GroupIds.Remove(WellKnownGroups.Admin));
+        StateHarness.ChangeStoredData(state, serverData => serverData.Users.Single(user => user.Fingerprint == fingerprint).GroupIds.Remove(WellKnownGroups.Admin));
 
     [Theory]
     [InlineData("users-null")]
@@ -764,7 +764,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         // uploaded: refused with the same check, no file left
         Assert.Equal(ReasonCodes.InvalidBackup, Assert.IsType<Error>(await UploadAsync(admin, File.ReadAllBytes(archive))).Code);
         Assert.Empty(UploadFiles(server.DataDir));
-        Assert.Contains(server.Log, l => l.Contains("Hochgeladenes Backup ist ungültig"));
+        Assert.Contains(server.Log, line => line.Contains("Hochgeladenes Backup ist ungültig"));
 
         // put on the server by hand: the restore is refused and nothing is applied
         File.Copy(archive, Path.Combine(backups, "kaputt.ovsbackup"));
@@ -773,13 +773,13 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         Assert.Equal(ReasonCodes.InvalidBackup, (await admin.ErrorAsync("r")).Code);
         await admin.AssertNoMessageAsync<Disconnected>();
         Assert.Equal(dataBefore, File.ReadAllBytes(Path.Combine(server.DataDir, DataStore.FileName)));
-        Assert.DoesNotContain(Directory.GetFiles(backups), f => Path.GetFileName(f).StartsWith("vor-wiederherstellung_"));
+        Assert.DoesNotContain(Directory.GetFiles(backups), text => Path.GetFileName(text).StartsWith("vor-wiederherstellung_"));
         await admin.DisposeAsync();
 
         // and the server still starts
         await using var restarted = await server.RestartAsync();
         await using var anna = await TestClient.ConnectAsync(restarted, "anna");
-        Assert.Contains(anna.Welcome.Snapshot.Channels, c => c.Name == "Lobby");
+        Assert.Contains(anna.Welcome.Snapshot.Channels, channel => channel.Name == "Lobby");
     }
 
     [Fact]
@@ -788,7 +788,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         var time = new ManualTimeProvider(); // Package 86: one CreateBackup per 10 s and session
         var (server, admin) = await StartWithAdminAsync(time);
         await using var _ = server;
-        await using var a = admin;
+        await using var client = admin;
         await admin.SendAsync(new CreateBackup());
         var first = Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName;
         var backups = Path.Combine(server.DataDir, "backups");
@@ -802,21 +802,21 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         });
         WriteArchive(Path.Combine(backups, "gross.ovsbackup"), new(good) { ["manifest.json"] = big });
         await admin.SendAsync(new ListBackups { RequestId = "l" });
-        Assert.Equal("?", (await admin.WaitForAsync<BackupList>(l => l.RequestId == "l")).Backups.Single(b => b.FileName == "gross.ovsbackup").ServerVersion);
+        Assert.Equal("?", (await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "l")).Backups.Single(backup => backup.FileName == "gross.ovsbackup").ServerVersion);
         await admin.SendAsync(new RestoreBackup("gross.ovsbackup") { RequestId = "r" });
         Assert.Equal(ReasonCodes.InvalidBackup, (await admin.ErrorAsync("r")).Code);
 
         // at most 50 backups: creating and uploading beyond that are refused
-        for (int i = 0; i < 48; i++) File.WriteAllBytes(Path.Combine(backups, $"alt-{i:00}.ovsbackup"), [1]);
+        for (int index = 0; index < 48; index++) File.WriteAllBytes(Path.Combine(backups, $"alt-{index:00}.ovsbackup"), [1]);
         time.Advance(TimeSpan.FromMinutes(1));
         await admin.SendAsync(new CreateBackup { RequestId = "q" });
         Assert.Equal(ReasonCodes.BackupQuotaExceeded, (await admin.ErrorAsync("q")).Code);
         Assert.Equal(ReasonCodes.BackupQuotaExceeded, Assert.IsType<Error>(await UploadAsync(admin, bytes)).Code);
         Assert.Empty(UploadFiles(server.DataDir));
         Assert.Equal(50, Directory.GetFiles(backups, "*.ovsbackup").Length);
-        Assert.Contains(server.Log, l => l.Contains("Backup-Limit erreicht"));
+        Assert.Contains(server.Log, line => line.Contains("Backup-Limit erreicht"));
         await admin.SendAsync(new DeleteBackup("alt-00.ovsbackup") { RequestId = "d" });
-        Assert.Equal(49, (await admin.WaitForAsync<BackupList>(l => l.RequestId == "d")).Total);
+        Assert.Equal(49, (await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "d")).Total);
         Assert.IsType<BackupUploaded>(await UploadAsync(admin, bytes));
 
         // at most MaxBytes in total (a small limit here instead of 2 GB)
@@ -842,7 +842,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             ["manifest.json"] = JsonSerializer.SerializeToUtf8Bytes(new { formatVersion = 1, dataVersion = 1, serverVersion = "geaendert", createdAt = listed[0].CreatedAt }),
         });
         File.WriteAllBytes(path, File.ReadAllBytes(changed));
-        Assert.Equal("geaendert", store.List().Single(b => b.FileName == listed[0].FileName).ServerVersion);
+        Assert.Equal("geaendert", store.List().Single(backup => backup.FileName == listed[0].FileName).ServerVersion);
         store.Delete(Path.Combine(store.Folder, listed[1].FileName));
         File.Delete(path); // right after the store's own change, from outside
         Assert.Empty(store.List());

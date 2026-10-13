@@ -113,17 +113,17 @@ public sealed class MotionTests() : TempDirectoryTest("ovs-motion-", quiet: true
     [AvaloniaFact]
     public void MainWindow_FollowsTheChosenDisplay()
     {
-        var vm = MainViewModelSetup.Create(dir, a => a());
-        var main = new MainWindow { DataContext = vm };
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = new MainWindow { DataContext = viewModel };
         main.Show();
         Dispatcher.UIThread.RunJobs();
         Assert.Contains("animated", main.Classes); // the default (A114)
 
-        vm.Appearance = vm.Appearance with { Display = DisplayMode.Simplified };
+        viewModel.Appearance = viewModel.Appearance with { Display = DisplayMode.Simplified };
         Assert.DoesNotContain("animated", main.Classes);
         Assert.False(Motion.IsAnimated(main));
 
-        vm.Appearance = vm.Appearance with { Display = DisplayMode.Animated };
+        viewModel.Appearance = viewModel.Appearance with { Display = DisplayMode.Animated };
         Assert.Contains("animated", main.Classes);
         main.Close();
     }

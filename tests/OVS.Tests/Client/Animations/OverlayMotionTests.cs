@@ -28,13 +28,13 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         Dispatcher.UIThread.RunJobs();
     }
 
-    MainWindow Open(out MainViewModel vm, DisplayMode display = DisplayMode.Animated, double width = 1100)
+    MainWindow Open(out MainViewModel viewModel, DisplayMode display = DisplayMode.Animated, double width = 1100)
     {
         new ClientSettings { Display = display }.Save(dir);
-        vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
-        var main = new MainWindow { DataContext = vm, Width = width, Height = 700 };
+        viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var main = new MainWindow { DataContext = viewModel, Width = width, Height = 700 };
         main.Show();
-        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
         MotionWait.Settle(700); // connecting builds the tree up (Package 106)
         Motion.Apply(main, display);
         MotionWait.Connected(main); // under load that takes longer: no test acts while it still moves
@@ -43,11 +43,11 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
 
     static Border Scrim(OverlayHost overlay) => (Border)overlay.Children[0];
     static Border Card(OverlayHost overlay) => (Border)overlay.Children[1];
-    static double Scale(Visual v) => v.RenderTransform?.Value.M11 ?? 1;
-    static double OffsetX(Visual v) => v.RenderTransform?.Value.M31 ?? 0;
+    static double Scale(Visual visual) => visual.RenderTransform?.Value.M11 ?? 1;
+    static double OffsetX(Visual visual) => visual.RenderTransform?.Value.M31 ?? 0;
 
     static void ClickMenu(MainWindow main) =>
-        main.GetVisualDescendants().OfType<Button>().Single(b => b.IsEffectivelyVisible && AutomationProperties.GetName(b) == Strings.Ui_ShowChannels)
+        main.GetVisualDescendants().OfType<Button>().Single(button => button.IsEffectivelyVisible && AutomationProperties.GetName(button) == Strings.Ui_ShowChannels)
             .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
 
     [AvaloniaFact]
@@ -56,8 +56,8 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         var main = Open(out _);
         var overlay = main.Overlay;
         // the smallest values seen while it opens, every value as it happens: under load one frame can outlast the pop
-        var scrims = MotionWait.Record(Scrim(overlay), v => v.Opacity);
-        var cards = MotionWait.Record(Card(overlay), v => v.Opacity);
+        var scrims = MotionWait.Record(Scrim(overlay), visual => visual.Opacity);
+        var cards = MotionWait.Record(Card(overlay), visual => visual.Opacity);
         var scales = MotionWait.Record(Card(overlay), Scale);
         var answer = ConfirmDialog.ShowAsync(overlay, "Weg damit?");
         MotionWait.Eventually(() =>
@@ -87,29 +87,29 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         var first = ConfirmDialog.ShowAsync(overlay, "Erste Frage?");
         var second = ConfirmDialog.ShowAsync(overlay, "Zweite Frage?"); // waits its turn
         MotionWait.Settle(350);
-        Assert.Contains(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Erste Frage?");
+        Assert.Contains(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == "Erste Frage?");
         // what the card holds from now on, in order: under load one frame can outlast the whole fold
         var held = new List<object?>();
-        Card(overlay).PropertyChanged += (_, e) =>
+        Card(overlay).PropertyChanged += (_, args) =>
         {
-            if (e.Property == Decorator.ChildProperty) held.Add(e.NewValue);
+            if (args.Property == Decorator.ChildProperty) held.Add(args.NewValue);
         };
         overlay.Close();
         Frame(); // ends the first: its fold has had no frame yet
         await first;
         Assert.False(overlay.IsOpen); // closed at once
-        Assert.Contains(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Erste Frage?"); // still folding away
+        Assert.Contains(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == "Erste Frage?"); // still folding away
         MotionWait.Eventually(() =>
         {
             Assert.True(overlay.IsOpen);
-            Assert.Contains(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Zweite Frage?");
-            Assert.DoesNotContain(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Erste Frage?");
+            Assert.Contains(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == "Zweite Frage?");
+            Assert.DoesNotContain(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == "Erste Frage?");
         });
         // the waiting one came only once the first had gone
         Assert.Equal(2, held.Count);
         Assert.Null(held[0]);
         Assert.Same(Card(overlay).Child, held[1]);
-        Assert.Single(overlay.Children.OfType<Border>(), b => b.Classes.Contains("dialog"));
+        Assert.Single(overlay.Children.OfType<Border>(), border => border.Classes.Contains("dialog"));
         // one asked while the last folds away: the fold ends at once, never two cards
         overlay.Close();
         await second;
@@ -117,7 +117,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         var third = ConfirmDialog.ShowAsync(overlay, "Dritte Frage?");
         Frame();
         Assert.True(overlay.IsOpen);
-        Assert.Contains(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Dritte Frage?");
+        Assert.Contains(Card(overlay).GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == "Dritte Frage?");
         overlay.Close();
         await third;
         main.Close();
@@ -126,9 +126,9 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     [AvaloniaFact]
     public void Refused_ShakesCard()
     {
-        var main = Open(out var vm);
+        var main = Open(out var viewModel);
         var overlay = main.Overlay;
-        _ = ConnectDialog.ShowAsync(overlay, vm.Bookmarks.Saved, null); // nothing filled in
+        _ = ConnectDialog.ShowAsync(overlay, viewModel.Bookmarks.Saved, null); // nothing filled in
         MotionWait.Settle(350);
         MotionWait.Eventually(() => Assert.Equal(1, Card(overlay).Opacity, 2)); // it has popped up: the shake is the only movement
         var swings = MotionWait.Record(Card(overlay), OffsetX); // every swing as it happens: under load one frame can outlast the shake
@@ -155,8 +155,8 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         var popup = combo.GetVisualDescendants().OfType<Popup>().First();
         var child = popup.Child!;
         // every value as it happens: under load one frame can outlast the whole fade
-        var fades = MotionWait.Record(child, v => v.Opacity);
-        var slides = MotionWait.Record(child, v => v.RenderTransform?.Value.M32 ?? 0);
+        var fades = MotionWait.Record(child, visual => visual.Opacity);
+        var slides = MotionWait.Record(child, visual => visual.RenderTransform?.Value.M32 ?? 0);
         combo.IsDropDownOpen = true;
         MotionWait.Eventually(() =>
         {
@@ -171,19 +171,19 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         Image? ghost = null;
         int pictures = 0, shown = 0, all = 0;
         List<double>? faded = null;
-        overlay.Children.CollectionChanged += (_, e) =>
+        overlay.Children.CollectionChanged += (_, args) =>
         {
-            foreach (var added in e.NewItems?.OfType<Image>() ?? [])
+            foreach (var added in args.NewItems?.OfType<Image>() ?? [])
             {
                 if (!added.Classes.Contains(PopupMotion.GhostClass)) continue;
                 pictures++;
                 ghost ??= added;
-                faded ??= MotionWait.Record(added, v => v.Opacity);
+                faded ??= MotionWait.Record(added, visual => visual.Opacity);
                 using var png = new MemoryStream();
                 ((Avalonia.Media.Imaging.RenderTargetBitmap)added.Source!).Save(png);
                 png.Position = 0;
                 using var picture = SkiaSharp.SKBitmap.Decode(png);
-                (shown, all) = (picture.Pixels.Count(p => p.Alpha > 0), picture.Pixels.Length);
+                (shown, all) = (picture.Pixels.Count(skColor => skColor.Alpha > 0), picture.Pixels.Length);
             }
         };
         combo.IsDropDownOpen = false;
@@ -211,13 +211,13 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     public void PopupClosedForADialog_NoPictureOverIt()
     {
         var main = Open(out _);
-        var row = main.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row") && b.ContextMenu is not null);
+        var row = main.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("row") && border.ContextMenu is not null);
         row.ContextMenu!.Open(row);
         MotionWait.Settle(300);
         // every picture put in the overlay counts, not only one a frame finds there: under load its fade is over within a frame
         int pictures = 0;
-        OverlayLayer.GetOverlayLayer(main)!.Children.CollectionChanged += (_, e) =>
-            pictures += e.NewItems?.OfType<Image>().Count(i => i.Classes.Contains(PopupMotion.GhostClass)) ?? 0;
+        OverlayLayer.GetOverlayLayer(main)!.Children.CollectionChanged += (_, args) =>
+            pictures += args.NewItems?.OfType<Image>().Count(image => image.Classes.Contains(PopupMotion.GhostClass)) ?? 0;
         row.ContextMenu.Close();
         _ = ConfirmDialog.ShowAsync(main.Overlay, "Weg damit?");
         MotionWait.Settle(200);
@@ -235,7 +235,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         var scrim = main.FindControl<Border>("DrawerScrim")!;
         // every value as it happens: under load one frame can outlast the whole slide
         var slides = MotionWait.Record(sidebar, OffsetX);
-        var fades = MotionWait.Record(scrim, v => v.Opacity);
+        var fades = MotionWait.Record(scrim, visual => visual.Opacity);
         ClickMenu(main);
         Frame();
         Assert.True(sidebar.IsEffectivelyVisible);
@@ -360,9 +360,9 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         Motion.Apply(window, DisplayMode.Animated);
         Dispatcher.UIThread.RunJobs();
         int opened = 0;
-        using var watchOpen = Popup.IsOpenProperty.Changed.AddClassHandler<Popup>((_, e) =>
+        using var watchOpen = Popup.IsOpenProperty.Changed.AddClassHandler<Popup>((_, args) =>
         {
-            if (e.GetNewValue<bool>()) opened++;
+            if (args.GetNewValue<bool>()) opened++;
         });
         ToolTip.SetIsOpen(button, true);
         var seen = Shown(tip, out double slid);
@@ -386,10 +386,10 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         {
             Frame();
             double shown = 1;
-            for (Visual? v = content; v is not null; v = v.GetVisualParent())
+            for (Visual? visual = content; visual is not null; visual = visual.GetVisualParent())
             {
-                shown *= v.Opacity;
-                if (Math.Abs(v.RenderTransform?.Value.M32 ?? 0) > Math.Abs(slid)) slid = v.RenderTransform!.Value.M32;
+                shown *= visual.Opacity;
+                if (Math.Abs(visual.RenderTransform?.Value.M32 ?? 0) > Math.Abs(slid)) slid = visual.RenderTransform!.Value.M32;
             }
             seen.Add(Math.Round(shown, 3));
             Thread.Sleep(1);
@@ -400,8 +400,8 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     static void Rises(List<double> seen)
     {
         Assert.Equal(1, seen[^1], 2);
-        for (int i = 1; i < seen.Count; i++)
-            Assert.True(seen[i] >= seen[i - 1] - 0.001, $"dips at frame {i}: {string.Join(" ", seen)}");
+        for (int index = 1; index < seen.Count; index++)
+            Assert.True(seen[index] >= seen[index - 1] - 0.001, $"dips at frame {index}: {string.Join(" ", seen)}");
     }
 
     /// <summary>Package 115: a context menu keeps its fade and slide (Package 105) and shows no blink either.</summary>

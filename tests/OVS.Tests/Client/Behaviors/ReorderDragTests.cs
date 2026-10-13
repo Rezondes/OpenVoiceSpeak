@@ -21,13 +21,13 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
 {
     sealed record Tree(MainWindow Main, MainViewModel Vm, ItemsControl List, List<Request> Sent)
     {
-        public Control Container(string name) => List.ContainerFromItem(Vm.Server!.Tree.Channels.Single(c => c.Name == name))!;
+        public Control Container(string name) => List.ContainerFromItem(Vm.Server!.Tree.Channels.Single(channel => channel.Name == name))!;
 
         public double Top(string name) => Container(name).TranslatePoint(default, List)!.Value.Y;
 
         public Point Center(string name) => Rows.Center(Rows.ChannelRow(Main, name), Main);
 
-        public Border? Preview => OverlayLayer.GetOverlayLayer(List)?.Children.OfType<Border>().SingleOrDefault(b => b.Classes.Contains("dragPreview"));
+        public Border? Preview => OverlayLayer.GetOverlayLayer(List)?.Children.OfType<Border>().SingleOrDefault(border => border.Classes.Contains("dragPreview"));
 
         /// <summary>Presses on the row of <paramref name="from"/> and moves to the upper half of the row of <paramref name="to"/>.</summary>
         public Point DragAbove(string from, string to)
@@ -46,12 +46,12 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     Tree Open(bool reduced, ServerViewModel? server = null)
     {
         var sent = new List<Request>();
-        var vm = MainViewModelSetup.Create(dir, a => a(), server: server ?? FakeServers.Admin(sent));
-        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        var viewModel = MainViewModelSetup.Create(dir, action => action(), server: server ?? FakeServers.Admin(sent));
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
         main.SetValue(Motion.ReducedProperty, reduced);
         main.Show();
         Dispatcher.UIThread.RunJobs();
-        return new Tree(main, vm, main.FindControl<ItemsControl>("ChannelItems")!, sent);
+        return new Tree(main, viewModel, main.FindControl<ItemsControl>("ChannelItems")!, sent);
     }
 
     static (ScaleTransform? Scale, RotateTransform? Rotate) Transforms(Visual preview)
@@ -89,7 +89,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     {
         // "ich" and two more sit in the second channel, the first has two users: the dragged block is the taller one
         var tree = Open(reduced: true, FakeServers.Crowded());
-        var names = tree.Vm.Server!.Tree.Channels.Select(c => c.Name).ToList();
+        var names = tree.Vm.Server!.Tree.Channels.Select(channel => channel.Name).ToList();
         var height = tree.Container(names[1]).Bounds.Height;
         Assert.NotEqual(height, tree.Container(names[0]).Bounds.Height);
         var lobbyTop = tree.Top(names[0]);
@@ -98,7 +98,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
 
         Assert.Equal(height, tree.Container(names[0]).Margin.Top);
         Assert.Equal(lobbyTop + height, tree.Top(names[0])); // the lobby moved aside by exactly the gap
-        Assert.All(names.Skip(1), n => Assert.Equal(default, tree.Container(n).Margin));
+        Assert.All(names.Skip(1), name => Assert.Equal(default, tree.Container(name).Margin));
         tree.Main.Close();
     }
 
@@ -112,7 +112,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
 
         tree.DragAbove("Raid", "Lobby");
 
-        var frame = Assert.Single(overlay.Children.OfType<Avalonia.Controls.Shapes.Rectangle>(), r => r.Classes.Contains("dropPlaceholder"));
+        var frame = Assert.Single(overlay.Children.OfType<Avalonia.Controls.Shapes.Rectangle>(), rectangle => rectangle.Classes.Contains("dropPlaceholder"));
         Assert.True(frame.IsVisible);
         Assert.NotEmpty(frame.StrokeDashArray!); // a dashed outline, not a plain gap
         Assert.True(frame.StrokeThickness > 0);
@@ -122,7 +122,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
 
         tree.Main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
         Dispatcher.UIThread.RunJobs();
-        Assert.DoesNotContain(overlay.Children, c => c.Classes.Contains("dropPlaceholder"));
+        Assert.DoesNotContain(overlay.Children, control => control.Classes.Contains("dropPlaceholder"));
         tree.Main.Close();
     }
 
@@ -143,7 +143,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
         Dispatcher.UIThread.RunJobs();
 
         Assert.Equal(height, raid.Margin.Bottom); // the gap opens below the last item
-        var frame = Assert.Single(overlay.Children.OfType<Avalonia.Controls.Shapes.Rectangle>(), r => r.Classes.Contains("dropPlaceholder"));
+        var frame = Assert.Single(overlay.Children.OfType<Avalonia.Controls.Shapes.Rectangle>(), rectangle => rectangle.Classes.Contains("dropPlaceholder"));
         Assert.True(frame.IsVisible);
         Assert.Equal(raidBottom, Canvas.GetTop(frame), 1);
 
@@ -172,7 +172,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
         tree.Vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 1)));
         Dispatcher.UIThread.RunJobs();
         tree.Main.UpdateLayout();
-        Assert.Equal(["Raid", "Lobby"], tree.Vm.Server.Tree.Channels.Select(c => c.Name));
+        Assert.Equal(["Raid", "Lobby"], tree.Vm.Server.Tree.Channels.Select(channel => channel.Name));
         Assert.Equal(gapTop, tree.Top("Raid"));
         Assert.Equal(lobbyTop, tree.Top("Lobby"));
         Assert.Equal(default, tree.Container("Lobby").Margin);
@@ -250,7 +250,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
         Dispatcher.UIThread.RunJobs();
         tree.Main.MouseUp(below, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
-        Assert.All(tree.Sent.OfType<ReorderChannels>(), r => Assert.DoesNotContain(FakeServers.Raid, r.ChannelIds));
+        Assert.All(tree.Sent.OfType<ReorderChannels>(), request => Assert.DoesNotContain(FakeServers.Raid, request.ChannelIds));
         tree.Main.Close();
     }
 
@@ -263,12 +263,12 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
         tree.Main.MouseUp(end, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
         Assert.Single(tree.Sent.OfType<ReorderChannels>());
-        Assert.All(tree.List.GetRealizedContainers(), c => Assert.Equal(0, c.RenderTransform?.Value.M32 ?? 0));
+        Assert.All(tree.List.GetRealizedContainers(), control => Assert.Equal(0, control.RenderTransform?.Value.M32 ?? 0));
         tree.Vm.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 0))); // the server confirms
         tree.Vm.Server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Lobby, "Lobby", "Start", 1)));
         Dispatcher.UIThread.RunJobs();
         tree.Main.UpdateLayout();
-        Assert.All(tree.List.GetRealizedContainers(), c => Assert.Equal(0, c.RenderTransform?.Value.M32 ?? 0));
+        Assert.All(tree.List.GetRealizedContainers(), control => Assert.Equal(0, control.RenderTransform?.Value.M32 ?? 0));
         tree.Main.Close();
     }
 }

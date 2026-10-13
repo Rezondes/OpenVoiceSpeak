@@ -34,11 +34,11 @@ static class MainViewModelSetup
     {
         time ??= TimeProvider.System;
         var settings = ClientSettings.Load(dir, out var settingsWarning);
-        var vm = MainViewModel.Create(dir, post, time, new ClientLog(dir, time), settings, settingsWarning, hardware, keyState, connect);
-        if (dialogs is not null) vm.Dialogs = dialogs;
-        if (trustServers) vm.ConfirmTofu = _ => Task.FromResult(true);
-        if (server is not null) ShowServer(vm, server);
-        return vm;
+        var viewModel = MainViewModel.Create(dir, post, time, new ClientLog(dir, time), settings, settingsWarning, hardware, keyState, connect);
+        if (dialogs is not null) viewModel.Dialogs = dialogs;
+        if (trustServers) viewModel.ConfirmTofu = _ => Task.FromResult(true);
+        if (server is not null) ShowServer(viewModel, server);
+        return viewModel;
     }
 
     /// <summary>
@@ -52,9 +52,9 @@ static class MainViewModelSetup
         new(dir, post, time, log, settings, settingsWarning, knownServers, icons, soundLibrary, leave, keys, audio, listDevices, connect);
 
     /// <summary>The text of the client log files in <paramref name="dir"/>, after the lines still queued were written.</summary>
-    public static string ReadLogText(MainViewModel vm, string dir)
+    public static string ReadLogText(MainViewModel viewModel, string dir)
     {
-        vm.Log.Flush();
+        viewModel.Log.Flush();
         return string.Join(Environment.NewLine, Directory.GetFiles(Path.Combine(dir, "logs"), "client-*.log").Select(path =>
         {
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -67,5 +67,5 @@ static class MainViewModelSetup
         sent.OfType<SetSelfState>().Select(request => new SelfState(request.Muted, request.Deafened)).ToList();
 
     /// <summary>Shows <paramref name="server"/> as the connected server (null: none); returns it, like an assignment.</summary>
-    public static ServerViewModel? ShowServer(MainViewModel vm, ServerViewModel? server) => vm.Server = server;
+    public static ServerViewModel? ShowServer(MainViewModel viewModel, ServerViewModel? server) => viewModel.Server = server;
 }

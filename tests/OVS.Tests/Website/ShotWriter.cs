@@ -34,7 +34,7 @@ public static class ShotWriter
     /// row enters or flashes (the flash waits on real time).
     /// </summary>
     public static bool Quiet(Visual root) => AnimationCounter.Running == 0 && !root.GetVisualDescendants().OfType<StyledElement>()
-        .Any(e => e.Classes.Contains("entering") || e.Classes.Contains("fresh") || e.Classes.Contains(PageMotion.PageGhostClass));
+        .Any(styledElement => styledElement.Classes.Contains("entering") || styledElement.Classes.Contains("fresh") || styledElement.Classes.Contains(PageMotion.PageGhostClass));
 
     /// <summary>
     /// Lets the clock run until the window is <see cref="Quiet"/> (at most <paramref name="cap"/> ms), then a little more
@@ -102,11 +102,11 @@ public static class ShotWriter
             taken.Add((watch.ElapsedMilliseconds, data.ToArray()));
         }
         int slots = milliseconds * Fps / 1000;
-        for (int i = 0; i < slots; i++)
+        for (int index = 0; index < slots; index++)
         {
-            long at = i * 1000L / Fps;
+            long at = index * 1000L / Fps;
             var best = taken.MinBy(t => Math.Abs(t.At - at));
-            File.WriteAllBytes(Path.Combine(folder, $"frame{i:D4}.png"), best.Png);
+            File.WriteAllBytes(Path.Combine(folder, $"frame{index:D4}.png"), best.Png);
         }
         using var poster = SKBitmap.Decode(taken.MinBy(t => Math.Abs(t.At - posterAt)).Png);
         File.WriteAllBytes(Path.Combine(folder, "poster.webp"), WebP(poster));

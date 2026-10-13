@@ -39,9 +39,9 @@ public sealed class TestDispatcher : IDisposable
             {
                 done.SetResult(await work());
             }
-            catch (Exception e)
+            catch (Exception exception)
             {
-                done.SetException(e);
+                done.SetException(exception);
             }
         });
         return done.Task;

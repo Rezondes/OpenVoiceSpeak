@@ -19,7 +19,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     public void Scanner_FindsSecondTopLevelType()
     {
         Write("src/OVS.Shared/Voice/Pair.cs", "namespace OVS.Shared.Voice;\n\npublic sealed class Pair;\n\npublic sealed class Other\n{\n}\n");
-        Assert.Contains(Check(), p => p.StartsWith("src/OVS.Shared/Voice/Pair.cs: one type per file"));
+        Assert.Contains(Check(), path => path.StartsWith("src/OVS.Shared/Voice/Pair.cs: one type per file"));
     }
 
     [Fact]
@@ -28,8 +28,8 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
         Write("src/OVS.Shared/Voice/Packet.cs", "namespace OVS.Shared.Voice;\n\npublic sealed class VoicePacket\n{\n}\n");
         Write("src/OVS.Shared/Voice/Packet.Extra.cs", "namespace OVS.Shared.Voice;\n\npublic partial class Packet\n{\n}\n");
         var problems = Check();
-        Assert.Contains(problems, p => p.StartsWith("src/OVS.Shared/Voice/Packet.cs: file name = type name"));
-        Assert.Contains(problems, p => p.StartsWith("src/OVS.Shared/Voice/Packet.Extra.cs: file name = type name"));
+        Assert.Contains(problems, path => path.StartsWith("src/OVS.Shared/Voice/Packet.cs: file name = type name"));
+        Assert.Contains(problems, path => path.StartsWith("src/OVS.Shared/Voice/Packet.Extra.cs: file name = type name"));
     }
 
     [Fact]
@@ -38,8 +38,8 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
         Write("src/OVS.Server/Data/Records/UserRecord.cs", "namespace OVS.Server.Data\n{\n    public sealed record UserRecord(string Fingerprint);\n}\n");
         Write("src/OVS.Server/Limits.cs", "public static class Limits\n{\n}\n");
         var problems = Check();
-        Assert.Contains(problems, p => p.StartsWith("src/OVS.Server/Data/Records/UserRecord.cs: namespace = folder: OVS.Server.Data"));
-        Assert.Contains(problems, p => p.StartsWith("src/OVS.Server/Limits.cs: namespace = folder: no namespace"));
+        Assert.Contains(problems, path => path.StartsWith("src/OVS.Server/Data/Records/UserRecord.cs: namespace = folder: OVS.Server.Data"));
+        Assert.Contains(problems, path => path.StartsWith("src/OVS.Server/Limits.cs: namespace = folder: no namespace"));
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
         Assert.Empty(Check());
 
         Write("src/OVS.Server/ServerState.Chat.cs", "namespace OVS.Server;\n\npublic sealed partial class ServerState\n{\n}\n");
-        Assert.Contains(Check(), p => p.StartsWith("src/OVS.Server/ServerState.Chat.cs: file name = type name"));
+        Assert.Contains(Check(), path => path.StartsWith("src/OVS.Server/ServerState.Chat.cs: file name = type name"));
     }
 
     [Fact]

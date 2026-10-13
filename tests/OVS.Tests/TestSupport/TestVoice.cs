@@ -52,13 +52,13 @@ public sealed class TestVoice : IDisposable
     /// <summary>The default wait is generous for a slow CI runner (it returns as soon as a packet arrives); silence checks pass a short one.</summary>
     public async Task<(VoiceHeader Header, byte[] Plain)?> ReceiveAsync(int timeoutMs = 10000)
     {
-        using var cts = new CancellationTokenSource(timeoutMs);
+        using var cancelSource = new CancellationTokenSource(timeoutMs);
         while (true)
         {
             UdpReceiveResult result;
             try
             {
-                result = await udp.ReceiveAsync(cts.Token);
+                result = await udp.ReceiveAsync(cancelSource.Token);
             }
             catch (OperationCanceledException)
             {
@@ -79,9 +79,9 @@ public sealed class TestVoice : IDisposable
         {
             int left = (int)(deadline - DateTime.UtcNow).TotalMilliseconds;
             if (left <= 0) return null;
-            var r = await ReceiveAsync(left);
-            if (r is null) return null;
-            if (r.Value.Header.Type == PacketType.Voice) return r;
+            var valueTuple = await ReceiveAsync(left);
+            if (valueTuple is null) return null;
+            if (valueTuple.Value.Header.Type == PacketType.Voice) return valueTuple;
         }
     }
 

@@ -65,19 +65,19 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
                 if (transform is Avalonia.Media.TransformGroup group)
                     foreach (var child in group.Children) Track(child);
                 if (transform is Avalonia.Media.TranslateTransform translate) seen.Add((row.DataContext, translate.Y)); // set before it came
-                transform.PropertyChanged += (_, e) =>
+                transform.PropertyChanged += (_, args) =>
                 {
-                    if (e.Property == Avalonia.Media.TranslateTransform.YProperty && e.NewValue is double y) seen.Add((row.DataContext, y));
+                    if (args.Property == Avalonia.Media.TranslateTransform.YProperty && args.NewValue is double y) seen.Add((row.DataContext, y));
                 };
             }
             if (row.RenderTransform is AvaloniaObject now) Track(now);
-            row.PropertyChanged += (_, c) =>
+            row.PropertyChanged += (_, args) =>
             {
-                if (c.Property == Visual.RenderTransformProperty && c.NewValue is AvaloniaObject transform) Track(transform);
+                if (args.Property == Visual.RenderTransformProperty && args.NewValue is AvaloniaObject transform) Track(transform);
             };
         }
         foreach (var row in items.GetRealizedContainers()) Watch(row);
-        items.ContainerPrepared += (_, e) => Watch(e.Container);
+        items.ContainerPrepared += (_, args) => Watch(args.Container);
         return seen;
     }
 
@@ -114,7 +114,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var below = KeyedList.Container(list, "b");
         double before = below.TranslatePoint(default, window)!.Value.Y;
         // every place it takes on the way, not one frame's: under load one frame can outlast the whole slide
-        var tops = MotionWait.Record(below, v => v.TranslatePoint(default, window)!.Value.Y);
+        var tops = MotionWait.Record(below, visual => visual.TranslatePoint(default, window)!.Value.Y);
         rows.Insert(1, new KeyedRow("neu"));
         MotionWait.Until(() => !KeyedList.Container(list, "neu").Classes.Contains("entering"));
         MotionWait.Eventually(() => Assert.Equal(before + 30, below.TranslatePoint(default, window)!.Value.Y, 1));
@@ -137,7 +137,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         Motion.Apply(window, DisplayMode.Animated);
         Frame();
         Assert.True(list.Opacity < 1, "the first fill fades in as a whole");
-        Assert.All(list.GetRealizedContainers(), c => Assert.DoesNotContain("entering", c.Classes));
+        Assert.All(list.GetRealizedContainers(), control => Assert.DoesNotContain("entering", control.Classes));
         MotionWait.Eventually(() => Assert.Equal(1, list.Opacity, 2));
 
         // the administration rebuilds its lists with new objects
@@ -145,7 +145,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         rows.Add(new KeyedRow("a", 1));
         rows.Add(new KeyedRow("b", 1));
         Frame();
-        Assert.All(list.GetRealizedContainers(), c => Assert.DoesNotContain("entering", c.Classes));
+        Assert.All(list.GetRealizedContainers(), control => Assert.DoesNotContain("entering", control.Classes));
         Assert.Equal(1, list.Opacity, 2);
 
         rows.Add(new KeyedRow("c"));
@@ -161,7 +161,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         foreach (var key in new[] { "a", "b", "c" }) rows.Add(new KeyedRow(key));
         Frame();
         Assert.True(list.Opacity < 1);
-        Assert.All(list.GetRealizedContainers(), c => Assert.DoesNotContain("entering", c.Classes));
+        Assert.All(list.GetRealizedContainers(), control => Assert.DoesNotContain("entering", control.Classes));
     }
 
     [AvaloniaFact]
@@ -182,7 +182,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     {
         var rows = new ObservableCollection<KeyedRow> { new("start") };
         var (_, list) = Host(rows);
-        for (int i = 0; i < 12; i++) rows.Add(new KeyedRow($"r{i}"));
+        for (int index = 0; index < 12; index++) rows.Add(new KeyedRow($"r{index}"));
         // looked at after every frame until all are in, not at one moment: under load one frame can outlast the stagger
         bool staggered = false;
         MotionWait.Until(() =>
@@ -190,10 +190,10 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
             double first = KeyedList.Container(list, "r0").Opacity, eighth = KeyedList.Container(list, "r7").Opacity, last = KeyedList.Container(list, "r11").Opacity;
             staggered |= first > eighth;
             Assert.Equal(eighth, last, 2); // everything after the 8th step comes with it: never longer than 8 steps plus Motion.Normal
-            return rows.All(r => !KeyedList.Container(list, r.Key).Classes.Contains("entering"));
+            return rows.All(keyedRow => !KeyedList.Container(list, keyedRow.Key).Classes.Contains("entering"));
         });
         Assert.True(staggered, "staggered: the first one fades in before the eighth");
-        Assert.All(rows.Select(r => KeyedList.Container(list, r.Key)), c => Assert.Equal(1, c.Opacity, 2));
+        Assert.All(rows.Select(keyedRow => KeyedList.Container(list, keyedRow.Key)), control => Assert.Equal(1, control.Opacity, 2));
     }
 
     [AvaloniaFact]
@@ -213,17 +213,17 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
 
     MainWindow Connected(out ServerViewModel server)
     {
-        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
-        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
         main.Show();
-        MainViewModelSetup.ShowServer(vm, server = FakeServers.Admin());
+        MainViewModelSetup.ShowServer(viewModel, server = FakeServers.Admin());
         MotionWait.Settle(700); // connecting builds the tree up (Package 106)
         MotionWait.Connected(main); // under load that takes longer: no test acts while it still builds up
         return main;
     }
 
     static Control UserContainer(MainWindow main, string nickname) =>
-        main.GetVisualDescendants().OfType<ContentPresenter>().Single(c => c.DataContext is UserViewModel u && u.Nickname == nickname);
+        main.GetVisualDescendants().OfType<ContentPresenter>().Single(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname);
 
     [AvaloniaFact]
     public void NewUser_SlidesInAndFlashes()
@@ -235,11 +235,11 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         Assert.Contains("entering", bert.Classes);
         Assert.True(bert.Opacity < 1);
         // the accent flash after sliding in, recorded as it happens: under load one frame can outlast the whole flash
-        var row = bert.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
+        var row = bert.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("row"));
         bool flashedAfterSlide = false, lit = false;
         bert.Classes.CollectionChanged += (_, _) =>
             flashedAfterSlide |= bert.Classes.Contains("fresh") && !bert.Classes.Contains("entering") && bert.Opacity == 1;
-        row.PropertyChanged += (_, e) => lit |= e.Property == Border.BackgroundProperty && bert.Classes.Contains("fresh")
+        row.PropertyChanged += (_, args) => lit |= args.Property == Border.BackgroundProperty && bert.Classes.Contains("fresh")
             && (row.Background as Avalonia.Media.ISolidColorBrush)?.Color != Avalonia.Media.Colors.Transparent;
         MotionWait.Eventually(() => Assert.Equal(1, bert.Opacity, 2));
         MotionWait.Until(() => flashedAfterSlide && !bert.Classes.Contains("fresh"));
@@ -259,7 +259,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var tops = MotionWait.Record(ChannelContainer(main, "Raid"), _ => raid.TranslatePoint(default, main)!.Value.Y);
         server.Apply(new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Archiv", "", 0)));
         MotionWait.Until(() => main.FindControl<ItemsControl>("ChannelItems")!.GetRealizedContainers()
-            .Any(c => c.DataContext is ChannelViewModel { Name: "Archiv" } && !c.Classes.Contains("entering")));
+            .Any(control => control.DataContext is ChannelViewModel { Name: "Archiv" } && !control.Classes.Contains("entering")));
         MotionWait.Settle(50); // lays out its last height
         double after = raid.TranslatePoint(default, main)!.Value.Y;
         Assert.True(after > before, "the new channel sits above Raid");
@@ -274,17 +274,17 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var settings = new ClientSettings();
         settings.Bookmarks.Add(new Bookmark("Alt", "alt.example.org", 7000, "ich"));
         settings.Save(dir);
-        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
-        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
         main.Show();
         MotionWait.Settle(400);
 
-        var changed = vm.Settings;
+        var changed = viewModel.Settings;
         changed.Bookmarks.Add(new Bookmark("Neu", "neu.example.org", 7000, "ich"));
-        vm.ApplySettings(changed);
+        viewModel.ApplySettings(changed);
         Frame();
-        var list = main.GetVisualDescendants().OfType<ItemsControl>().Single(l => l.ItemsSource is IReadOnlyList<BookmarkItem>);
-        Control Tile(string name) => list.GetRealizedContainers().Single(c => c.DataContext is BookmarkItem b && b.Name == name);
+        var list = main.GetVisualDescendants().OfType<ItemsControl>().Single(itemsControl => itemsControl.ItemsSource is IReadOnlyList<BookmarkItem>);
+        Control Tile(string name) => list.GetRealizedContainers().Single(control => control.DataContext is BookmarkItem bookmarkItem && bookmarkItem.Name == name);
         Assert.Contains("entering", Tile("Neu").Classes);
         Assert.DoesNotContain("entering", Tile("Alt").Classes);
         main.Close();
@@ -316,7 +316,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     {
         var main = Connected(out var server);
         Assert.Equal(Motion.Normal, server.Leave.Delay); // the window set the animated display's length
-        var raid = server.Tree.Channels.Single(c => c.Name == "Raid");
+        var raid = server.Tree.Channels.Single(channel => channel.Name == "Raid");
         var row = main.FindControl<ItemsControl>("ChannelItems")!.ContainerFromItem(raid)!;
         double height = row.Bounds.Height;
         // how far it folds while it is still in the list, recorded as it happens: the list lets it go after Motion.Normal
@@ -344,23 +344,23 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     {
         var rows = new ObservableCollection<KeyedRow> { new("a"), new("b"), new("c") };
         var (window, list) = Host(rows);
-        var leave = new LeaveTimer(TimeProvider.System, () => a => Dispatcher.UIThread.Post(a)) { Delay = Motion.Normal };
+        var leave = new LeaveTimer(TimeProvider.System, () => action => Dispatcher.UIThread.Post(action)) { Delay = Motion.Normal };
         var below = KeyedList.Container(list, "c");
         double before = below.TranslatePoint(default, window)!.Value.Y;
         // what the rows do while b folds, recorded as it happens: the list lets it go after Motion.Normal of real time,
         // and under load one frame can take as long
-        var b = KeyedList.Container(list, "b");
-        var faint = MotionWait.Record(b, v => v.Opacity);
-        var drift = MotionWait.Record(b, MotionWait.OffsetX);
+        var control = KeyedList.Container(list, "b");
+        var faint = MotionWait.Record(control, visual => visual.Opacity);
+        var drift = MotionWait.Record(control, MotionWait.OffsetX);
         var tops = new List<double>(); // c's place after every layout pass, whichever container shows it
         list.LayoutUpdated += (_, _) =>
         {
-            if (list.GetRealizedContainers().FirstOrDefault(r => list.ItemFromContainer(r) is KeyedRow { Key: "c" }) is { } c)
+            if (list.GetRealizedContainers().FirstOrDefault(otherControl => list.ItemFromContainer(otherControl) is KeyedRow { Key: "c" }) is { } c)
                 tops.Add(c.TranslatePoint(default, window)!.Value.Y);
         };
         bool Folds() => faint.Any(o => o < 1) && drift.Any(x => x < 0);
         CollectionSync.Sync(rows, [new KeyedRow("a", 1), new KeyedRow("c", 1)], leave);
-        MotionWait.Until(() => (Folds() && tops.Any(top => top < before)) || !rows.Any(r => r.Key == "b"));
+        MotionWait.Until(() => (Folds() && tops.Any(top => top < before)) || !rows.Any(keyedRow => keyedRow.Key == "b"));
         Assert.True(Folds(), "fades and drifts to the left");
         Assert.True(tops.Any(during => during < before), "the rows below move up while it folds");
 
@@ -383,17 +383,17 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         ((MainViewModel)main.DataContext!).Appearance = ((MainViewModel)main.DataContext!).Appearance with { Display = DisplayMode.Simplified };
         Assert.Equal(TimeSpan.Zero, server.Leave.Delay);
         server.Apply(new ChannelRemoved(FakeServers.Raid));
-        Assert.DoesNotContain(server.Tree.Channels, c => c.Name == "Raid");
+        Assert.DoesNotContain(server.Tree.Channels, channel => channel.Name == "Raid");
         main.Close();
     }
 
     // ---- Package 103: moves ----
 
     static Control ChannelContainer(MainWindow main, string name) =>
-        main.FindControl<ItemsControl>("ChannelItems")!.GetRealizedContainers().Single(c => c.DataContext is ChannelViewModel ch && ch.Name == name);
+        main.FindControl<ItemsControl>("ChannelItems")!.GetRealizedContainers().Single(control => control.DataContext is ChannelViewModel ch && ch.Name == name);
 
     static IEnumerable<Border> Ghosts(Visual main, string kind) =>
-        Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!.Children.OfType<Border>().Where(b => b.Classes.Contains(kind));
+        Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!.Children.OfType<Border>().Where(border => border.Classes.Contains(kind));
 
     static UserInfo Anna(Guid channel) => new(2, "fp2", "anna", channel, true, true, true, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true);
 
@@ -409,7 +409,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         raid = ChannelContainer(main, "Raid"); // a moved entry gets a new row
         double now = raid.TranslatePoint(default, main)!.Value.Y - MotionWait.OffsetY(raid);
         Assert.True(now < before, "Raid is first now");
-        for (int i = 0; i < 5; i++) Frame();
+        for (int index = 0; index < 5; index++) Frame();
         double most = Math.Max(MotionWait.OffsetY(raid), Most(seen, item => item is ChannelViewModel { Name: "Raid" }));
         Assert.True(most > 0.5 * (before - now), $"it starts where it was: {most} of {before - now}");
         MotionWait.Eventually(() => Assert.Equal(0, MotionWait.OffsetY(raid), 2));
@@ -418,7 +418,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
 
     /// <summary>The row of a user in the list they came into (not the one folding away in the old channel).</summary>
     static Control Arrived(MainWindow main, string nickname) =>
-        main.GetVisualDescendants().OfType<ContentPresenter>().Single(c => c.DataContext is UserViewModel u && u.Nickname == nickname && !c.Classes.Contains("leaving"));
+        main.GetVisualDescendants().OfType<ContentPresenter>().Single(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname && !contentPresenter.Classes.Contains("leaving"));
 
     /// <summary>Follows a flying ghost until it lands; returns where it was last seen (overlay coordinates).</summary>
     static double LastTop(Border ghost, out double first)
@@ -448,9 +448,9 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         Border? ghost = null;
         double? start = null, waiting = null;
         int pictures = 0;
-        overlay.Children.CollectionChanged += (_, e) =>
+        overlay.Children.CollectionChanged += (_, args) =>
         {
-            foreach (var added in e.NewItems?.OfType<Border>() ?? [])
+            foreach (var added in args.NewItems?.OfType<Border>() ?? [])
                 if (added.Classes.Contains(FlyGhost.GhostClass))
                 {
                     pictures++;
@@ -484,14 +484,14 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     {
         var main = Connected(out var server);
         var overlay = Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!;
-        var raidRow = ChannelContainer(main, "Raid").GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("row"));
+        var raidRow = ChannelContainer(main, "Raid").GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("row"));
         // the highlight as it is put in the overlay, and Raid's row while it waits for it, recorded as it happens: under
         // load one frame can outlast the whole flight
         Border? highlight = null;
         int highlights = 0;
-        overlay.Children.CollectionChanged += (_, e) =>
+        overlay.Children.CollectionChanged += (_, args) =>
         {
-            foreach (var added in e.NewItems?.OfType<Border>() ?? [])
+            foreach (var added in args.NewItems?.OfType<Border>() ?? [])
                 if (added.Classes.Contains(FlyGhost.HighlightClass))
                 {
                     highlights++;
@@ -507,9 +507,9 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
             waited = (raidRow.Background as Avalonia.Media.ISolidColorBrush)?.Color;
         }
         raidRow.Classes.CollectionChanged += (_, _) => Look();
-        raidRow.PropertyChanged += (_, e) =>
+        raidRow.PropertyChanged += (_, args) =>
         {
-            if (e.Property == Border.BackgroundProperty) Look();
+            if (args.Property == Border.BackgroundProperty) Look();
         };
         server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false, Permission.All, [WellKnownGroups.Admin])));
         MotionWait.Until(() => highlight is not null);
@@ -532,7 +532,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         var (window, list) = Host(rows, flip: true);
         var seen = WatchOffsets(list);
         rows.Move(2, 0);
-        for (int i = 0; i < 5; i++) Frame();
+        for (int index = 0; index < 5; index++) Frame();
         double admin = Most(seen, item => item is KeyedRow { Key: "Admin" });
         double gast = Least(seen, item => item is KeyedRow { Key: "Gast" });
         Assert.True(admin > 30, $"Admin glides up from 60 px below ({admin})");
@@ -557,7 +557,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
 
         var seen = WatchOffsets(list);
         rows.Move(3, 2); // c and d swap, b stays where it is
-        for (int i = 0; i < 5; i++) Frame();
+        for (int index = 0; index < 5; index++) Frame();
         Assert.True(Most(seen, item => item is KeyedRow { Key: "d" }) > 15, "d glides up from below");
         Assert.Equal(0, seen.Where(s => s.Item is KeyedRow { Key: "b" }).Select(s => Math.Abs(s.Y)).DefaultIfEmpty(0).Max(), 1);
         MotionWait.Eventually(() => Assert.Equal(0, MotionWait.OffsetY(KeyedList.Container(list, "d")), 2));
@@ -566,17 +566,17 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     [AvaloniaFact]
     public void OffscreenEnd_NoGhost()
     {
-        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
-        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 400 };
+        var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 400 };
         main.Show();
         var server = FakeServers.Crowded();
-        MainViewModelSetup.ShowServer(vm, server);
+        MainViewModelSetup.ShowServer(viewModel, server);
         MotionWait.Settle(400);
         MotionWait.Connected(main);
         // every picture put in the overlay counts, not only one a frame finds there: under load a flight is over within a frame
         int pictures = 0;
-        Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!.Children.CollectionChanged += (_, e) =>
-            pictures += e.NewItems?.OfType<Border>().Count(b => b.Classes.Contains(FlyGhost.GhostClass)) ?? 0;
+        Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!.Children.CollectionChanged += (_, args) =>
+            pictures += args.NewItems?.OfType<Border>().Count(border => border.Classes.Contains(FlyGhost.GhostClass)) ?? 0;
         var lobby = server.Tree.Channels.First();
         var far = server.Tree.Channels.Last().Users.First(); // in the last channel, scrolled out of view
         server.Apply(new UserUpdated(server.Mirror.Users[far.SessionId] with { ChannelId = lobby.Id }));
@@ -584,7 +584,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         Assert.Equal(0, pictures);
 
         // and the other way round: from the Lobby into a channel scrolled out of view
-        var mine = server.Tree.Channels.First().Users.First(u => !u.IsSelf);
+        var mine = server.Tree.Channels.First().Users.First(user => !user.IsSelf);
         server.Apply(new UserUpdated(server.Mirror.Users[mine.SessionId] with { ChannelId = server.Tree.Channels.Last().Id }));
         MotionWait.Settle(60);
         Assert.Equal(0, pictures);
@@ -595,20 +595,20 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     [AvaloniaFact]
     public async Task AdminGroupList_Glides()
     {
-        var vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
-        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
         main.Show();
-        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
-        await vm.PageFlow.OpenAdminAsync();
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+        await viewModel.PageFlow.OpenAdminAsync();
         MotionWait.Settle(400);
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in: the list stands still
-        var groups = main.GetVisualDescendants().OfType<ListBox>().Single(l => l.Name == "GroupRows");
+        var groups = main.GetVisualDescendants().OfType<ListBox>().Single(listBox => listBox.Name == "GroupRows");
         Assert.True(ItemMotion.GetFlip(groups));
-        var admin = vm.PageFlow.AdminPage!;
-        admin.GroupList.SelectedGroup = admin.GroupList.Groups.Single(g => g.Name == "Admin");
+        var admin = viewModel.PageFlow.AdminPage!;
+        admin.GroupList.SelectedGroup = admin.GroupList.Groups.Single(groupEdit => groupEdit.Name == "Admin");
         var seen = WatchOffsets(groups);
         await HangGuard.Bound(admin.GroupList.MoveGroupUpCommand.ExecuteAsync(null));
-        for (int i = 0; i < 5; i++) Frame();
+        for (int index = 0; index < 5; index++) Frame();
         Assert.True(Most(seen, item => item is GroupEditViewModel { Name: "Admin" }) > 0, "Admin glides up from below");
         main.Close();
     }
@@ -617,8 +617,8 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     public void Simplified_Jumps()
     {
         var main = Connected(out var server);
-        var vm = (MainViewModel)main.DataContext!;
-        vm.Appearance = vm.Appearance with { Display = DisplayMode.Simplified };
+        var viewModel = (MainViewModel)main.DataContext!;
+        viewModel.Appearance = viewModel.Appearance with { Display = DisplayMode.Simplified };
         server.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", -1)));
         server.Apply(new UserUpdated(Anna(FakeServers.Lobby)));
         Frame();
@@ -634,16 +634,16 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     {
         var rows = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var (_, list) = Host(rows);
-        var leave = new LeaveTimer(TimeProvider.System, () => a => Dispatcher.UIThread.Post(a)) { Delay = TimeSpan.FromSeconds(5) }; // stays long after its fold
+        var leave = new LeaveTimer(TimeProvider.System, () => action => Dispatcher.UIThread.Post(action)) { Delay = TimeSpan.FromSeconds(5) }; // stays long after its fold
         CollectionSync.Sync(rows, [new KeyedRow("a", 1)], leave);
         MotionWait.Eventually(() => Assert.Equal(0, KeyedList.Container(list, "b").Opacity, 2)); // folded
         CollectionSync.Sync(rows, [new KeyedRow("a", 2), new KeyedRow("b", 2)], leave);
         MotionWait.Eventually(() =>
         {
-            var b = KeyedList.Container(list, "b");
-            Assert.Equal(1, b.Opacity, 2);
-            Assert.Equal(30, b.Bounds.Height, 1);
-            Assert.Equal(0, MotionWait.OffsetX(b));
+            var control = KeyedList.Container(list, "b");
+            Assert.Equal(1, control.Opacity, 2);
+            Assert.Equal(30, control.Bounds.Height, 1);
+            Assert.Equal(0, MotionWait.OffsetX(control));
         });
     }
 }

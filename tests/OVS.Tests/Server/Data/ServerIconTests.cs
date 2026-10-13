@@ -38,19 +38,19 @@ public sealed class ServerIconTests
     {
         var (server, admin, guest) = await StartAsync();
         await using var _ = server;
-        await using var a = admin;
-        await using var g = guest;
+        await using var client = admin;
+        await using var testClient = guest;
         var png = Png(256, 256);
 
         await admin.SendAsync(new SetServerIcon(Convert.ToBase64String(png)) { RequestId = "r1" });
-        var changed = await guest.WaitForAsync<ServerSettingsChanged>(m => m.Settings.IconHash is not null);
+        var changed = await guest.WaitForAsync<ServerSettingsChanged>(serverSettingsChanged => serverSettingsChanged.Settings.IconHash is not null);
         Assert.Equal(ServerIconFormat.ComputeHash(png), changed.Settings.IconHash);
 
         await guest.SendAsync(new GetServerIcon { RequestId = "r2" });
         var icon = await guest.WaitForAsync<ServerIcon>();
         Assert.Equal(("r2", changed.Settings.IconHash), (icon.RequestId, icon.Hash));
         Assert.Equal(png, Convert.FromBase64String(icon.PngBase64!));
-        Assert.Contains(server.Log, l => l.Contains("Server-Logo geändert von chef"));
+        Assert.Contains(server.Log, line => line.Contains("Server-Logo geändert von chef"));
     }
 
     public static TheoryData<string, string, string> Invalid => new()
@@ -70,8 +70,8 @@ public sealed class ServerIconTests
     {
         var (server, admin, guest) = await StartAsync();
         await using var _ = server;
-        await using var a = admin;
-        await using var g = guest;
+        await using var client = admin;
+        await using var testClient = guest;
         var payload = what switch
         {
             "zu gross" => Convert.ToBase64String(Png(256, 256, ServerIconFormat.MaxBytes + 1)),
@@ -99,7 +99,7 @@ public sealed class ServerIconTests
         await using (var admin = await TestClient.ConnectAsync(server, "chef", adminId))
         {
             await admin.SendAsync(new SetServerIcon(Convert.ToBase64String(png)));
-            await admin.WaitForAsync<ServerSettingsChanged>(m => m.Settings.IconHash is not null);
+            await admin.WaitForAsync<ServerSettingsChanged>(serverSettingsChanged => serverSettingsChanged.Settings.IconHash is not null);
         }
 
         server = await server.RestartAsync();
@@ -108,8 +108,8 @@ public sealed class ServerIconTests
         Assert.Equal(ServerIconFormat.ComputeHash(png), again.Welcome.Snapshot.Settings.IconHash);
 
         await again.SendAsync(new SetServerIcon(null));
-        await again.WaitForAsync<ServerSettingsChanged>(m => m.Settings.IconHash is null);
+        await again.WaitForAsync<ServerSettingsChanged>(serverSettingsChanged => serverSettingsChanged.Settings.IconHash is null);
         Assert.False(File.Exists(Path.Combine(server.DataDir, ServerIconStore.FileName)));
-        Assert.Contains(server.Log, l => l.Contains("Server-Logo entfernt von chef"));
+        Assert.Contains(server.Log, line => line.Contains("Server-Logo entfernt von chef"));
     }
 }

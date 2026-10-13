@@ -15,8 +15,8 @@ public class VoicePacketTests
         var header = new VoiceHeader(PacketType.Voice, 7, 42, VoiceHeader.TargetLinked);
         var packet = crypto.Seal(PacketDirection.ClientToServer, header, Opus);
 
-        Assert.True(crypto.TryOpen(PacketDirection.ClientToServer, packet, out var h, out var plain));
-        Assert.Equal(header, h);
+        Assert.True(crypto.TryOpen(PacketDirection.ClientToServer, packet, out var voiceHeader, out var plain));
+        Assert.Equal(header, voiceHeader);
         Assert.Equal(Opus, plain);
     }
 
@@ -95,8 +95,8 @@ public class VoicePacketTests
         using var crypto = new VoiceCrypto(Key);
         var packet = crypto.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Hello, 1, 0, 0), []);
         Assert.Equal(26, packet.Length);
-        Assert.True(crypto.TryOpen(PacketDirection.ClientToServer, packet, out var h, out var plain));
-        Assert.Equal(PacketType.Hello, h.Type);
+        Assert.True(crypto.TryOpen(PacketDirection.ClientToServer, packet, out var voiceHeader, out var plain));
+        Assert.Equal(PacketType.Hello, voiceHeader.Type);
         Assert.Empty(plain);
     }
 
@@ -105,21 +105,21 @@ public class VoicePacketTests
     {
         using var crypto = new VoiceCrypto(Key);
         var packet = crypto.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Voice, 7, 42, 0), Opus);
-        for (int i = 0; i < packet.Length; i++)
+        for (int index = 0; index < packet.Length; index++)
         {
             var tampered = (byte[])packet.Clone();
-            tampered[i] ^= 0x01;
-            Assert.False(crypto.TryOpen(PacketDirection.ClientToServer, tampered, out _, out _), $"byte {i}");
+            tampered[index] ^= 0x01;
+            Assert.False(crypto.TryOpen(PacketDirection.ClientToServer, tampered, out _, out _), $"byte {index}");
         }
     }
 
     [Fact]
     public void TryOpen_WrongKey_False()
     {
-        using var a = new VoiceCrypto(Key);
-        using var b = new VoiceCrypto(RandomNumberGenerator.GetBytes(32));
-        var packet = a.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Voice, 1, 1, 0), Opus);
-        Assert.False(b.TryOpen(PacketDirection.ClientToServer, packet, out _, out _));
+        using var voiceCrypto = new VoiceCrypto(Key);
+        using var otherVoiceCrypto = new VoiceCrypto(RandomNumberGenerator.GetBytes(32));
+        var packet = voiceCrypto.Seal(PacketDirection.ClientToServer, new VoiceHeader(PacketType.Voice, 1, 1, 0), Opus);
+        Assert.False(otherVoiceCrypto.TryOpen(PacketDirection.ClientToServer, packet, out _, out _));
     }
 
     [Theory]
@@ -168,8 +168,8 @@ public class VoicePacketTests
     {
         var time = new OVS.Tests.TestSupport.ManualTimeProvider();
         var window = new LossWindow(time);
-        foreach (uint n in new uint[] { 0, 1, 3, 4 }) window.Count(7, n); // 2 missing
-        foreach (uint n in new uint[] { 10, 11, 12 }) window.Count(8, n); // another speaker, starting anywhere
+        foreach (uint number in new uint[] { 0, 1, 3, 4 }) window.Count(7, number); // 2 missing
+        foreach (uint number in new uint[] { 10, 11, 12 }) window.Count(8, number); // another speaker, starting anywhere
         Assert.Equal(new LossReport(8, 1), window.Report()); // the window so far, until the first one is complete
         window.Count(7, 2); // late after all
         Assert.Equal(new LossReport(8, 0), window.Report());

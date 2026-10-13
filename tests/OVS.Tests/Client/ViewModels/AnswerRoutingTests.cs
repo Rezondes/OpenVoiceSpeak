@@ -37,7 +37,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     [Fact]
     public async Task SendAsync_AnsweredBeforeTheIdReturns_ReachesTheRoute()
     {
-        var server = Server(reply: r => new BackupList(r.RequestId, []));
+        var server = Server(reply: request => new BackupList(request.RequestId, []));
 
         var id = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
 
@@ -148,16 +148,16 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     };
 
     static IEnumerable<Type> AnswerTypes() => typeof(Message).Assembly.GetTypes()
-        .Where(t => t.IsSubclassOf(typeof(Message)) && !t.IsAbstract && !t.IsSubclassOf(typeof(Request)) && t.GetProperty("RequestId") is not null)
-        .OrderBy(t => t.Name, StringComparer.Ordinal);
+        .Where(candidate => candidate.IsSubclassOf(typeof(Message)) && !candidate.IsAbstract && !candidate.IsSubclassOf(typeof(Request)) && candidate.GetProperty("RequestId") is not null)
+        .OrderBy(candidate => candidate.Name, StringComparer.Ordinal);
 
-    public static TheoryData<string> RoutedAnswerNames => new(AnswerTypes().Select(t => t.Name).Where(n => !AnswersNotRouted.ContainsKey(n)));
+    public static TheoryData<string> RoutedAnswerNames => new(AnswerTypes().Select(candidate => candidate.Name).Where(name => !AnswersNotRouted.ContainsKey(name)));
     public static TheoryData<string> NotRoutedAnswerNames => new(AnswersNotRouted.Keys);
 
     [Fact]
     public void AnswersNotRouted_EveryEntry_AnAnswerType()
     {
-        Assert.Subset(AnswerTypes().Select(t => t.Name).ToHashSet(), AnswersNotRouted.Keys.ToHashSet());
+        Assert.Subset(AnswerTypes().Select(candidate => candidate.Name).ToHashSet(), AnswersNotRouted.Keys.ToHashSet());
     }
 
     /// <summary>Every answer with a request id reaches the route of its request, unless listed above with its reason.</summary>
@@ -165,7 +165,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     [MemberData(nameof(RoutedAnswerNames))]
     public async Task Apply_EveryAnswerType_ReachesTheRouteOfItsRequest(string typeName)
     {
-        var type = AnswerTypes().Single(t => t.Name == typeName);
+        var type = AnswerTypes().Single(candidate => candidate.Name == typeName);
         var server = Server();
         var id = await Bound(server.SendAsync(new ListBackups(), route: received.Add));
         var answer = type == typeof(Error) ? new Error(id, ReasonCodes.InvalidValue) : (Message)RuntimeHelpers.GetUninitializedObject(type);
@@ -246,9 +246,9 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     [Fact]
     public void AnswersOf_RequestWithARoutedAnswer_InOwnersOrRequestsNotRouted()
     {
-        Assert.Equal(AnswerTypes().Where(t => t != typeof(Error)).Select(t => t.Name),
-            AnswersOf.Values.SelectMany(a => a).Select(t => t.Name).Distinct().Order(StringComparer.Ordinal));
-        var withRoutedAnswer = AnswersOf.Where(a => a.Value.Any(t => !AnswersNotRouted.ContainsKey(t.Name))).Select(a => a.Key.Name);
+        Assert.Equal(AnswerTypes().Where(candidate => candidate != typeof(Error)).Select(candidate => candidate.Name),
+            AnswersOf.Values.SelectMany(types => types).Select(candidate => candidate.Name).Distinct().Order(StringComparer.Ordinal));
+        var withRoutedAnswer = AnswersOf.Where(pair => pair.Value.Any(candidate => !AnswersNotRouted.ContainsKey(candidate.Name))).Select(pair => pair.Key.Name);
         Assert.All(withRoutedAnswer, name => Assert.True(Owners.ContainsKey(name) || RequestsNotRouted.ContainsKey(name), $"{name} is not decided"));
     }
 
@@ -260,20 +260,20 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     {
         var routes = new List<(Request Request, Action<Message>? Route)>();
         ServerViewModel server = null!;
-        server = Server(r =>
+        server = Server(request =>
         {
-            routes.Add((r, server.Routes.Find(r.RequestId!))); // a route is in place before the request goes out
-            return r switch
+            routes.Add((request, server.Routes.Find(request.RequestId!))); // a route is in place before the request goes out
+            return request switch
             {
-                ListUsers => new UserList(r.RequestId, [Xaver, Yvonne]),
-                ListBans => new BanList(r.RequestId, Xaver.Bans!),
-                ListBackups => new BackupList(r.RequestId, [Stored]),
-                ListLogs => new LogList(r.RequestId, [ServerLog]),
-                CreateGroup c => new GroupsChanged([.. server.Mirror.Groups, new GroupInfo(Team, c.Name, c.Permissions, true)]),
-                DownloadBackup => new BackupChunk(r.RequestId, Stored.FileName, 0, 3, "AQID", true),
-                UploadBackupChunk => new BackupUploaded(r.RequestId, Stored),
-                PrepareLogDownload => new LogDownloadReady(r.RequestId, "d1", "server.log", 3),
-                DownloadLogChunk => new LogChunk(r.RequestId, "d1", 0, 3, "AQID", true),
+                ListUsers => new UserList(request.RequestId, [Xaver, Yvonne]),
+                ListBans => new BanList(request.RequestId, Xaver.Bans!),
+                ListBackups => new BackupList(request.RequestId, [Stored]),
+                ListLogs => new LogList(request.RequestId, [ServerLog]),
+                CreateGroup createGroup => new GroupsChanged([.. server.Mirror.Groups, new GroupInfo(Team, createGroup.Name, createGroup.Permissions, true)]),
+                DownloadBackup => new BackupChunk(request.RequestId, Stored.FileName, 0, 3, "AQID", true),
+                UploadBackupChunk => new BackupUploaded(request.RequestId, Stored),
+                PrepareLogDownload => new LogDownloadReady(request.RequestId, "d1", "server.log", 3),
+                DownloadLogChunk => new LogChunk(request.RequestId, "d1", 0, 3, "AQID", true),
                 _ => null,
             };
         });
@@ -290,15 +290,15 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         File.WriteAllBytes(file, [1, 2, 3]);
 
         await Bound(page.RequestListsAsync());
-        KnownUserViewModel Card(string fingerprint) => page.UsersAndBans.Users.Single(u => u.Fingerprint == fingerprint);
+        KnownUserViewModel Card(string fingerprint) => page.UsersAndBans.Users.Single(knownUser => knownUser.Fingerprint == fingerprint);
         await Bound(Card("fpX").UnbanCommand.ExecuteAsync(null));
         await Bound(Card("fpX").LiftMuteCommand.ExecuteAsync(null));
         await Bound(Card("fpY").BanCommand.ExecuteAsync(null));
         await Bound(Card("fpY").DeleteCommand.ExecuteAsync(null));
-        var guest = Card("fpY").Toggles.Single(t => t.GroupId == WellKnownGroups.Guest);
+        var guest = Card("fpY").Toggles.Single(groupAssignment => groupAssignment.GroupId == WellKnownGroups.Guest);
         guest.IsChecked = false;
         await Bound(guest.ToggleCommand.ExecuteAsync(null));
-        var admin = Card("fpY").Toggles.Single(t => t.GroupId == WellKnownGroups.Admin);
+        var admin = Card("fpY").Toggles.Single(groupAssignment => groupAssignment.GroupId == WellKnownGroups.Admin);
         admin.IsChecked = true;
         await Bound(admin.ToggleCommand.ExecuteAsync(null));
         await Bound(page.UsersAndBans.Bans.Single().UnbanCommand.ExecuteAsync(null));
@@ -314,7 +314,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         page.Logs.SearchCommand.Execute(null);
         await Bound(page.GroupList.NewGroupCommand.ExecuteAsync(null));
         await Bound(page.GroupList.SaveGroupCommand.ExecuteAsync(null));
-        GroupEditViewModel TeamRow() => page.GroupList.Groups.Single(g => g.Id == Team);
+        GroupEditViewModel TeamRow() => page.GroupList.Groups.Single(groupEdit => groupEdit.Id == Team);
         page.GroupList.SelectedGroup = TeamRow();
         await Bound(page.GroupList.SaveGroupCommand.ExecuteAsync(null));
         await Bound(page.GroupList.MoveGroupAsync(TeamRow(), page.GroupList.Groups[0], after: false));
@@ -341,9 +341,9 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
             : route.Method.DeclaringType?.DeclaringType == typeof(AdminTransfer) ? "transfer" // a request's own closure in the transfer
             : "other";
         var owners = routes.GroupBy(r => r.Request.GetType().Name)
-            .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(r => OwnerOf(r.Route)).Distinct()));
+            .ToDictionary(grouping => grouping.Key, grouping => string.Join(", ", grouping.Select(r => OwnerOf(r.Route)).Distinct()));
         var expected = Owners.Concat(RequestsNotRouted.Keys.Select(name => KeyValuePair.Create(name, "none"))).ToDictionary();
-        Assert.Equal(expected.OrderBy(e => e.Key, StringComparer.Ordinal), owners.OrderBy(o => o.Key, StringComparer.Ordinal));
+        Assert.Equal(expected.OrderBy(pair => pair.Key, StringComparer.Ordinal), owners.OrderBy(pair => pair.Key, StringComparer.Ordinal));
     }
 
     [Fact]
@@ -380,7 +380,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
     [Fact]
     public async Task AdminPage_UploadStored_TheFollowingListShowsTheBackup()
     {
-        var server = Server(r => r is UploadBackupChunk ? new BackupUploaded(r.RequestId, Stored) : null);
+        var server = Server(request => request is UploadBackupChunk ? new BackupUploaded(request.RequestId, Stored) : null);
         var page = new AdminViewModel(server);
         var file = Path.Combine(dir, "up.ovsbackup");
         File.WriteAllBytes(file, [1, 2, 3]);
@@ -388,6 +388,6 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
 
         server.Apply(new BackupList(sent.OfType<UploadBackupChunk>().Single().RequestId, [Stored]));
 
-        Assert.Equal([Stored.FileName], page.BackupCard.Backups.Select(b => b.Info.FileName));
+        Assert.Equal([Stored.FileName], page.BackupCard.Backups.Select(backup => backup.Info.FileName));
     }
 }

@@ -23,7 +23,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         var lobby = Assert.Single(data.Channels);
         Assert.Equal("Lobby", lobby.Name);
         Assert.Equal(lobby.Id, data.DefaultChannelId);
-        Assert.Equal(["Gast", "Moderator", "Admin"], data.Groups.Select(g => g.Name));
+        Assert.Equal(["Gast", "Moderator", "Admin"], data.Groups.Select(groupRecord => groupRecord.Name));
         Assert.Equal("Mein Server", data.Settings.Name);
         Assert.True(data.Settings.CheckPassword("pw"));
         Assert.False(data.Settings.CheckPassword("nein"));
@@ -41,7 +41,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         store.Save(data);
 
         var loaded = new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException());
-        Assert.Equal(["Lobby", "Raid"], loaded.Channels.Select(c => c.Name));
+        Assert.Equal(["Lobby", "Raid"], loaded.Channels.Select(channel => channel.Name));
         Assert.Equal(data.Links, loaded.Links);
         Assert.Equal(data.Groups, loaded.Groups);
         Assert.Equal("ab", Assert.Single(loaded.Users).Fingerprint);
@@ -57,12 +57,12 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         data.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Order = 1, Kind = OVS.Shared.Protocol.Messages.Channels.ChannelKind.Separator });
         store.Save(data);
         Assert.Equal([OVS.Shared.Protocol.Messages.Channels.ChannelKind.Voice, OVS.Shared.Protocol.Messages.Channels.ChannelKind.Separator],
-            new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels.Select(c => c.Kind));
+            new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels.Select(channel => channel.Kind));
 
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
-        var channels = json.AsObject().First(p => p.Key.Equals("channels", StringComparison.OrdinalIgnoreCase)).Value!.AsArray();
+        var channels = json.AsObject().First(pair => pair.Key.Equals("channels", StringComparison.OrdinalIgnoreCase)).Value!.AsArray();
         channels.RemoveAt(1);
-        foreach (var channel in channels) channel!.AsObject().Remove(channel.AsObject().First(p => p.Key.Equals("kind", StringComparison.OrdinalIgnoreCase)).Key);
+        foreach (var channel in channels) channel!.AsObject().Remove(channel.AsObject().First(pair => pair.Key.Equals("kind", StringComparison.OrdinalIgnoreCase)).Key);
         File.WriteAllText(FilePath, json.ToJsonString());
         Assert.Equal(OVS.Shared.Protocol.Messages.Channels.ChannelKind.Voice, Assert.Single(new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels).Kind);
     }
@@ -75,14 +75,14 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         var data = store.LoadOrCreate(() => ServerData.CreateDefault(Config));
         data.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Name = "Raid", Order = 1, Bitrate = 96 });
         store.Save(data);
-        Assert.Equal([64, 96], new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels.Select(c => c.Bitrate));
+        Assert.Equal([64, 96], new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels.Select(channel => channel.Bitrate));
 
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
-        var channels = json.AsObject().First(p => p.Key.Equals("channels", StringComparison.OrdinalIgnoreCase)).Value!.AsArray();
-        foreach (var channel in channels) channel!.AsObject().Remove(channel.AsObject().First(p => p.Key.Equals("bitrate", StringComparison.OrdinalIgnoreCase)).Key);
+        var channels = json.AsObject().First(pair => pair.Key.Equals("channels", StringComparison.OrdinalIgnoreCase)).Value!.AsArray();
+        foreach (var channel in channels) channel!.AsObject().Remove(channel.AsObject().First(pair => pair.Key.Equals("bitrate", StringComparison.OrdinalIgnoreCase)).Key);
         File.WriteAllText(FilePath, json.ToJsonString());
         var old = new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException());
-        Assert.Equal([64, 64], old.Channels.Select(c => c.Bitrate));
+        Assert.Equal([64, 64], old.Channels.Select(channel => channel.Bitrate));
 
         // a backup is checked the same way: a voice channel outside 16 to 128 kbps is refused
         old.Users.Add(new UserRecord { Fingerprint = "ab", GroupIds = [PermissionRules.AdminGroupId] });
@@ -108,7 +108,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         var store = new DataStore(Path.Combine(serverDir, DataStore.FileName));
         var old = ServerData.CreateDefault(Config);
         old.DataVersion = 1;
-        int guest = old.Groups.FindIndex(g => g.Id == PermissionRules.GuestGroupId);
+        int guest = old.Groups.FindIndex(groupRecord => groupRecord.Id == PermissionRules.GuestGroupId);
         old.Groups[guest] = old.Groups[guest] with { Permissions = Permission.Speak };
         store.Save(old);
 
@@ -116,7 +116,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         await using (var server = await TestServer.StartAsync(dataDir: serverDir))
         {
             await using var client = await TestClient.ConnectAsync(server, "gast", password: "pw");
-            Assert.Equal(PermissionRules.GuestPermissions, client.Welcome.Snapshot.Users.Single(u => u.SessionId == client.Id).Permissions);
+            Assert.Equal(PermissionRules.GuestPermissions, client.Welcome.Snapshot.Users.Single(user => user.SessionId == client.Id).Permissions);
             migrated = store.LoadOrCreate(() => throw new InvalidOperationException()); // saved on startup
         }
         Assert.Equal(ServerData.CurrentVersion, migrated.DataVersion);
@@ -166,7 +166,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         // the user exactly as a file before Package 70 has it
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
         var user = json["users"]![0]!.AsObject();
-        foreach (var key in user.Select(p => p.Key).Except(["fingerprint", "lastNickname", "groupIds", "firstSeen"]).ToList()) user.Remove(key);
+        foreach (var key in user.Select(pair => pair.Key).Except(["fingerprint", "lastNickname", "groupIds", "firstSeen"]).ToList()) user.Remove(key);
         File.WriteAllText(FilePath, json.ToJsonString());
 
         var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
@@ -194,7 +194,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         // the ban exactly as a file before Package 80 has it
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
         var ban = json["bans"]![0]!.AsObject();
-        foreach (var key in ban.Select(p => p.Key).Except(["id", "fingerprint", "nickname", "ip", "reason", "createdBy", "expiresAt"]).ToList()) ban.Remove(key);
+        foreach (var key in ban.Select(pair => pair.Key).Except(["id", "fingerprint", "nickname", "ip", "reason", "createdBy", "expiresAt"]).ToList()) ban.Remove(key);
         File.WriteAllText(FilePath, json.ToJsonString());
 
         var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
@@ -230,13 +230,13 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
         Assert.True(loaded.Migrate(Config));
         Assert.Equal(ServerData.CurrentVersion, loaded.DataVersion);
-        var perms = loaded.Groups.ToDictionary(g => g.Name, g => g.Permissions);
+        var perms = loaded.Groups.ToDictionary(groupRecord => groupRecord.Name, groupRecord => groupRecord.Permissions);
         Assert.Equal(Permission.GroupsManage | Permission.Speak | Permission.GroupsView | Permission.GroupsCreate | Permission.GroupsDelete, perms["Verwalter"]);
         Assert.Equal(Permission.GroupsAssign | Permission.UsersView, perms["Zuweiser"]);
         Assert.Equal(Permission.UserBan | Permission.UserKick | Permission.BansView, perms["Banner"]);
         Assert.Equal(Permission.Speak | Permission.ChatChannel, perms["Normal"]);
         Assert.Equal(Permission.All & ~Permission.ChannelPasswordBypass, perms["Alles"]); // Package 94: only Admin gets the newest right
-        Assert.All(loaded.Groups.Where(g => g.Name != "Alles"), g => Assert.Equal(Permission.None, g.Permissions & (Permission.UserDelete | Permission.LogsView | Permission.LogsDownload)));
+        Assert.All(loaded.Groups.Where(groupRecord => groupRecord.Name != "Alles"), groupRecord => Assert.Equal(Permission.None, groupRecord.Permissions & (Permission.UserDelete | Permission.LogsView | Permission.LogsDownload)));
         Assert.False(loaded.Migrate(Config)); // once
     }
 
@@ -253,13 +253,13 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         store.Save(data);
         // "All" as a version 4 file stores it for every right of that time
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
-        json["groups"]!.AsArray().Single(g => g!["name"]!.GetValue<string>() == "Alles")!["permissions"] = "All";
+        json["groups"]!.AsArray().Single(jsonNode => jsonNode!["name"]!.GetValue<string>() == "Alles")!["permissions"] = "All";
         File.WriteAllText(FilePath, json.ToJsonString());
 
         var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
         Assert.True(loaded.Migrate(Config));
         Assert.Equal(ServerData.CurrentVersion, loaded.DataVersion);
-        var perms = loaded.Groups.ToDictionary(g => g.Name, g => g.Permissions);
+        var perms = loaded.Groups.ToDictionary(groupRecord => groupRecord.Name, groupRecord => groupRecord.Permissions);
         Assert.Equal(Permission.ServerConfig | Permission.Speak | Permission.BackupsManage, perms["Konfig"]);
         Assert.Equal(Permission.Speak | Permission.LogsView, perms["Normal"]);
         Assert.Equal(Permission.All & ~Permission.ChannelPasswordBypass, perms["Alles"]); // Package 94: not the newer right
@@ -269,7 +269,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         Assert.False(loaded.Migrate(Config)); // once
 
         // new servers: only Admin
-        Assert.Equal(["Admin"], ServerData.CreateDefault(Config).Groups.Where(g => g.Permissions.Has(Permission.BackupsManage)).Select(g => g.Name));
+        Assert.Equal(["Admin"], ServerData.CreateDefault(Config).Groups.Where(groupRecord => groupRecord.Permissions.Has(Permission.BackupsManage)).Select(groupRecord => groupRecord.Name));
     }
 
     /// <summary>
@@ -285,17 +285,17 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         data.Groups.Add(new GroupRecord(Guid.NewGuid(), "Alles", Permission.None));
         store.Save(data);
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
-        json["groups"]!.AsArray().Single(g => g!["name"]!.GetValue<string>() == "Alles")!["permissions"] = "All";
+        json["groups"]!.AsArray().Single(jsonNode => jsonNode!["name"]!.GetValue<string>() == "Alles")!["permissions"] = "All";
         File.WriteAllText(FilePath, json.ToJsonString());
 
         var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
         Assert.True(loaded.Migrate(Config));
         Assert.Equal(6, loaded.DataVersion);
-        var perms = loaded.Groups.ToDictionary(g => g.Name, g => g.Permissions);
+        var perms = loaded.Groups.ToDictionary(groupRecord => groupRecord.Name, groupRecord => groupRecord.Permissions);
         Assert.Equal(Permission.All & ~Permission.ChannelPasswordBypass, perms["Alles"]);
         Assert.Equal(Permission.All, perms["Admin"]);
         Assert.False(loaded.Migrate(Config)); // once
-        Assert.Equal(["Admin"], ServerData.CreateDefault(Config).Groups.Where(g => g.Permissions.Has(Permission.ChannelPasswordBypass)).Select(g => g.Name));
+        Assert.Equal(["Admin"], ServerData.CreateDefault(Config).Groups.Where(groupRecord => groupRecord.Permissions.Has(Permission.ChannelPasswordBypass)).Select(groupRecord => groupRecord.Name));
     }
 
     [Fact]

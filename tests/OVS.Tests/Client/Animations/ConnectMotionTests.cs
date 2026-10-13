@@ -23,11 +23,11 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         Dispatcher.UIThread.RunJobs();
     }
 
-    MainWindow Open(out MainViewModel vm, DisplayMode display = DisplayMode.Animated)
+    MainWindow Open(out MainViewModel viewModel, DisplayMode display = DisplayMode.Animated)
     {
         new ClientSettings { Display = display }.Save(dir);
-        vm = MainViewModelSetup.Create(dir, a => Dispatcher.UIThread.Post(a));
-        var main = new MainWindow { DataContext = vm, Width = 1100, Height = 700 };
+        viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
         main.Show();
         MotionWait.Settle(200);
         Motion.Apply(main, display);
@@ -35,16 +35,16 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     }
 
     static T Named<T>(MainWindow main, string name) where T : Control => main.FindControl<T>(name)!;
-    static double OffsetX(Visual v) => v.RenderTransform?.Value.M31 ?? 0;
-    static double OffsetY(Visual v) => v.RenderTransform?.Value.M32 ?? 0;
+    static double OffsetX(Visual visual) => visual.RenderTransform?.Value.M31 ?? 0;
+    static double OffsetY(Visual visual) => visual.RenderTransform?.Value.M32 ?? 0;
 
     [AvaloniaFact]
     public void Connecting_PulsesAndFailShakes()
     {
-        var main = Open(out var vm);
-        var logo = main.GetVisualDescendants().OfType<LogoMark>().First(l => l.Bounds.Width >= 64);
-        var bar = main.GetVisualDescendants().OfType<ProgressBar>().First(p => p.Classes.Contains("connect"));
-        vm.Connection.IsConnecting = true;
+        var main = Open(out var viewModel);
+        var logo = main.GetVisualDescendants().OfType<LogoMark>().First(logoMark => logoMark.Bounds.Width >= 64);
+        var bar = main.GetVisualDescendants().OfType<ProgressBar>().First(progressBar => progressBar.Classes.Contains("connect"));
+        viewModel.Connection.IsConnecting = true;
         // looked at after every frame until it shows: under load a single look can land where the loop is at rest
         bool breathes = false;
         MotionWait.Until(() => breathes |= (logo.RenderTransform?.Value.M11 ?? 1) > 1.001 || logo.Opacity < 0.999);
@@ -56,9 +56,9 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         var card = Named<StackPanel>(main, "StartCard");
         var status = Named<TextBlock>(main, "StatusText");
         var swings = MotionWait.Record(card, OffsetX);
-        var fades = MotionWait.Record(status, v => v.Opacity);
-        vm.Status = "Verbindung fehlgeschlagen";
-        vm.Connection.IsConnecting = false; // failed: no server
+        var fades = MotionWait.Record(status, visual => visual.Opacity);
+        viewModel.Status = "Verbindung fehlgeschlagen";
+        viewModel.Connection.IsConnecting = false; // failed: no server
         MotionWait.Until(() => swings.Any(x => Math.Abs(x) > 2) && (OffsetX(card), status.Opacity) == (0d, 1d), atLeast: 450);
         double shook = swings.Select(x => Math.Abs(x)).DefaultIfEmpty(0).Max(), faded = fades.DefaultIfEmpty(1).Min();
         Assert.True(shook > 2, $"the start card shakes ({shook})");
@@ -72,27 +72,27 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     [AvaloniaFact]
     public void Connect_SequenceWithin700ms()
     {
-        var main = Open(out var vm);
+        var main = Open(out var viewModel);
         var tree = Named<ItemsControl>(main, "ChannelItems");
         bool pageLeft = false, bookmarksLeft = false, chatCameUp = false, nameFaded = false, builtUp = false;
         // every value they take, not only the ones a frame happens to see: on a busy machine the first frame after the
         // connect can take longer than a whole fade (the crowded tree builds up in it)
-        Named<Border>(main, "PageGhost").PropertyChanged += (_, e) => pageLeft |= e.Property == Visual.IsVisibleProperty && e.NewValue is true;
-        Named<Border>(main, "TreeGhost").PropertyChanged += (_, e) => bookmarksLeft |= e.Property == Visual.IsVisibleProperty && e.NewValue is true;
-        Named<Panel>(main, "PageHost").PropertyChanged += (_, e) => chatCameUp |= OffsetY(Named<Panel>(main, "PageHost")) > 0;
-        Named<Border>(main, "ServerHeader").PropertyChanged += (_, e) => nameFaded |= e.Property == Visual.OpacityProperty && e.NewValue is double o && o < 1;
+        Named<Border>(main, "PageGhost").PropertyChanged += (_, args) => pageLeft |= args.Property == Visual.IsVisibleProperty && args.NewValue is true;
+        Named<Border>(main, "TreeGhost").PropertyChanged += (_, args) => bookmarksLeft |= args.Property == Visual.IsVisibleProperty && args.NewValue is true;
+        Named<Panel>(main, "PageHost").PropertyChanged += (_, args) => chatCameUp |= OffsetY(Named<Panel>(main, "PageHost")) > 0;
+        Named<Border>(main, "ServerHeader").PropertyChanged += (_, args) => nameFaded |= args.Property == Visual.OpacityProperty && args.NewValue is double o && o < 1;
         var entered = new HashSet<Control>(); // every row that came in entering
-        tree.ContainerPrepared += (_, e) =>
+        tree.ContainerPrepared += (_, args) =>
         {
             void Seen()
             {
-                if (e.Container.Classes.Contains("entering")) entered.Add(e.Container);
+                if (args.Container.Classes.Contains("entering")) entered.Add(args.Container);
             }
             Seen();
-            e.Container.Classes.CollectionChanged += (_, _) => Seen();
+            args.Container.Classes.CollectionChanged += (_, _) => Seen();
         };
         bool Done() => pageLeft && bookmarksLeft && chatCameUp && nameFaded && entered.Count > 1 && MotionWait.IsConnected(main);
-        MainViewModelSetup.ShowServer(vm, FakeServers.Crowded());
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Crowded());
         // all done within 700 ms. The bound is wall clock time, but an animation can only end on a frame, and its clock
         // starts with the first frame after it began: on a loaded machine frames come late. So it runs until the sequence
         // is over and allows four times the longest gap between two frames on top (on an idle machine a few ms)
@@ -116,20 +116,20 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         Assert.False(Named<Border>(main, "PageGhost").IsVisible);
         Assert.False(Named<Border>(main, "TreeGhost").IsVisible);
         Assert.Equal((0d, 1d), (OffsetY(Named<Panel>(main, "PageHost")), Named<Border>(main, "ServerHeader").Opacity));
-        Assert.All(tree.GetRealizedContainers(), c => Assert.Equal(1, c.Opacity, 2));
-        Assert.DoesNotContain(tree.GetRealizedContainers(), c => c.Classes.Contains("entering"));
+        Assert.All(tree.GetRealizedContainers(), control => Assert.Equal(1, control.Opacity, 2));
+        Assert.DoesNotContain(tree.GetRealizedContainers(), control => control.Classes.Contains("entering"));
         main.Close();
     }
 
     [AvaloniaFact]
     public void Disconnect_FoldsAwayHomeWithReason()
     {
-        var main = Open(out var vm);
-        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+        var main = Open(out var viewModel);
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
         MotionWait.Settle(700);
         MotionWait.Connected(main);
-        vm.Status = "Verbindung verloren";
-        MainViewModelSetup.ShowServer(vm, null);
+        viewModel.Status = "Verbindung verloren";
+        MainViewModelSetup.ShowServer(viewModel, null);
         Frame();
         Assert.True(Named<Border>(main, "PageGhost").IsVisible && Named<Border>(main, "TreeGhost").IsVisible, "the server folds away as a picture");
         var picture = (Image)Named<Border>(main, "PageGhost").Child!;
@@ -148,12 +148,12 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     [AvaloniaFact]
     public void ServerSwitch_NoBlankFrame()
     {
-        var main = Open(out var vm);
-        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+        var main = Open(out var viewModel);
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
         MotionWait.Settle(700);
         MotionWait.Connected(main);
-        MainViewModelSetup.ShowServer(vm, null);
-        MainViewModelSetup.ShowServer(vm, FakeServers.Crowded());
+        MainViewModelSetup.ShowServer(viewModel, null);
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Crowded());
         Assert.True(Named<Border>(main, "PageGhost").IsVisible); // the old server's picture covers the change at once
         Frame();
         MotionWait.Eventually(() =>
@@ -167,16 +167,16 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     [AvaloniaFact]
     public void Simplified_Instant()
     {
-        var main = Open(out var vm, DisplayMode.Simplified);
-        vm.Connection.IsConnecting = true;
+        var main = Open(out var viewModel, DisplayMode.Simplified);
+        viewModel.Connection.IsConnecting = true;
         Frame();
-        Assert.Equal(1, main.GetVisualDescendants().OfType<LogoMark>().First(l => l.Bounds.Width >= 64).RenderTransform?.Value.M11 ?? 1);
-        vm.Connection.IsConnecting = false;
-        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+        Assert.Equal(1, main.GetVisualDescendants().OfType<LogoMark>().First(logoMark => logoMark.Bounds.Width >= 64).RenderTransform?.Value.M11 ?? 1);
+        viewModel.Connection.IsConnecting = false;
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
         Frame();
         Assert.False(Named<Border>(main, "PageGhost").IsVisible);
         Assert.Equal((0d, 1d), (OffsetY(Named<Panel>(main, "PageHost")), Named<Border>(main, "ServerHeader").Opacity));
-        Assert.DoesNotContain(Named<ItemsControl>(main, "ChannelItems").GetRealizedContainers(), c => c.Classes.Contains("entering"));
+        Assert.DoesNotContain(Named<ItemsControl>(main, "ChannelItems").GetRealizedContainers(), control => control.Classes.Contains("entering"));
         main.Close();
     }
 
@@ -184,18 +184,18 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     [AvaloniaFact]
     public void ConnectedWithDrawerClosed_NoLateBuildUp()
     {
-        var main = Open(out var vm);
+        var main = Open(out var viewModel);
         main.Width = 360;
         MotionWait.Settle(100);
-        MainViewModelSetup.ShowServer(vm, FakeServers.Admin());
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
         MotionWait.Settle(800); // longer than the build-up waits for a tree to show (500 ms)
         MotionWait.Connected(main);
-        var menu = main.GetVisualDescendants().OfType<Button>().Single(b => b.IsEffectivelyVisible
-            && Avalonia.Automation.AutomationProperties.GetName(b) == OVS.Client.Localization.Strings.Ui_ShowChannels);
+        var menu = main.GetVisualDescendants().OfType<Button>().Single(button => button.IsEffectivelyVisible
+            && Avalonia.Automation.AutomationProperties.GetName(button) == OVS.Client.Localization.Strings.Ui_ShowChannels);
         menu.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
         Frame();
         Frame();
-        Assert.DoesNotContain(Named<ItemsControl>(main, "ChannelItems").GetRealizedContainers(), c => c.Classes.Contains("entering"));
+        Assert.DoesNotContain(Named<ItemsControl>(main, "ChannelItems").GetRealizedContainers(), control => control.Classes.Contains("entering"));
         main.Close();
     }
 }

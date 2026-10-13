@@ -27,8 +27,8 @@ public class ChatViewModelTests
         public void Receive(ChatTarget target, uint from, string text, Guid? channel = null, uint? to = null) =>
             Server.Apply(new ChatMessage(target, from, from == 1 ? "ich" : "bert", channel, to, text, DateTimeOffset.UtcNow));
 
-        public UserViewModel User(uint id) => Server.Tree.Channels.SelectMany(c => c.Users).Single(u => u.SessionId == id);
-        public ChatTabViewModel? Private(string title) => Chat.Tabs.SingleOrDefault(t => t.IsPrivate && t.Title == title);
+        public UserViewModel User(uint id) => Server.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == id);
+        public ChatTabViewModel? Private(string title) => Chat.Tabs.SingleOrDefault(chatTab => chatTab.IsPrivate && chatTab.Title == title);
     }
 
     static Fixture Create(P selfPerms = Guest, IEnumerable<Notice>? earlier = null)
@@ -38,9 +38,9 @@ public class ChatViewModelTests
             [new GroupInfo(WellKnownGroups.Guest, "Gast", Guest)],
             [User(1, "ich", Lobby, selfPerms), User(2, "bert", Lobby, Guest)]);
         var sent = new List<Request>();
-        var server = new ServerViewModel(Mirror(snapshot), r =>
+        var server = new ServerViewModel(Mirror(snapshot), request =>
         {
-            sent.Add(r);
+            sent.Add(request);
             return Task.CompletedTask;
         }, new ManualTimeProvider(DateTimeOffset.UtcNow));
         return new Fixture(new ChatViewModel(server, earlier), server, sent);
@@ -49,211 +49,211 @@ public class ChatViewModelTests
     [Fact]
     public void Tabs_GeneralAndCurrentChannel()
     {
-        var f = Create();
-        Assert.Equal(["Allgemein", "Lobby"], f.Chat.Tabs.Select(t => t.Title));
-        Assert.Same(f.Chat.General, f.Chat.Selected);
+        var fixture = Create();
+        Assert.Equal(["Allgemein", "Lobby"], fixture.Chat.Tabs.Select(chatTab => chatTab.Title));
+        Assert.Same(fixture.Chat.General, fixture.Chat.Selected);
 
-        f.Server.Apply(new ChannelUpdated(new ChannelInfo(Lobby, "Halle", "", 0)));
-        Assert.Equal("Halle", f.Chat.ChannelTab.Title);
-        f.Server.Apply(new UserUpdated(User(1, "ich", Bravo, Guest)));
-        Assert.Equal("Bravo", f.Chat.ChannelTab.Title);
+        fixture.Server.Apply(new ChannelUpdated(new ChannelInfo(Lobby, "Halle", "", 0)));
+        Assert.Equal("Halle", fixture.Chat.ChannelTab.Title);
+        fixture.Server.Apply(new UserUpdated(User(1, "ich", Bravo, Guest)));
+        Assert.Equal("Bravo", fixture.Chat.ChannelTab.Title);
     }
 
     [Fact]
     public void Notices_AppearInGeneral()
     {
-        var f = Create(earlier: [new Notice(DateTime.Now, "vorher", NoticeKind.Warning)]);
-        f.Chat.AddNotice(new Notice(DateTime.Now, "Getrennt", NoticeKind.Error));
+        var fixture = Create(earlier: [new Notice(DateTime.Now, "vorher", NoticeKind.Warning)]);
+        fixture.Chat.AddNotice(new Notice(DateTime.Now, "Getrennt", NoticeKind.Error));
 
-        Assert.Equal(["vorher", "Getrennt"], f.Chat.General.Entries.Select(e => e.Text));
-        Assert.True(f.Chat.General.Entries[1] is { IsNotice: true, IsError: true, IsMessage: false });
-        Assert.Equal(0, f.Chat.General.Unread); // the open tab counts nothing
+        Assert.Equal(["vorher", "Getrennt"], fixture.Chat.General.Entries.Select(chatEntry => chatEntry.Text));
+        Assert.True(fixture.Chat.General.Entries[1] is { IsNotice: true, IsError: true, IsMessage: false });
+        Assert.Equal(0, fixture.Chat.General.Unread); // the open tab counts nothing
     }
 
     /// <summary>Own messages and the chat's markers carry the local time of the connection's clock.</summary>
     [Fact]
     public async Task Entries_ClockMovedOn_StampedWithItsLocalTime()
     {
-        var f = Create(Guest | P.ChatServer);
-        var time = (ManualTimeProvider)f.Server.Time;
+        var fixture = Create(Guest | P.ChatServer);
+        var time = (ManualTimeProvider)fixture.Server.Time;
         time.Advance(TimeSpan.FromHours(3)); // far from the machine's own clock
         var now = time.GetLocalNow().DateTime;
 
-        f.Chat.Draft = "Hallo";
-        await f.Chat.SendCommand.ExecuteAsync(null);
-        f.User(2).MessageCommand.Execute(null);
-        f.Server.Apply(new UserLeft(2)); // "offline" in the private tab
-        f.Server.Apply(new UserUpdated(User(1, "ich", Bravo, Guest | P.ChatServer))); // "entered" in the channel tab
+        fixture.Chat.Draft = "Hallo";
+        await fixture.Chat.SendCommand.ExecuteAsync(null);
+        fixture.User(2).MessageCommand.Execute(null);
+        fixture.Server.Apply(new UserLeft(2)); // "offline" in the private tab
+        fixture.Server.Apply(new UserUpdated(User(1, "ich", Bravo, Guest | P.ChatServer))); // "entered" in the channel tab
 
-        Assert.Equal(now, f.Chat.General.Entries[^1].Time);
-        Assert.Equal(now, f.Private("@bert")!.Entries[^1].Time);
-        Assert.Equal(now, f.Chat.ChannelTab.Entries[^1].Time);
-        Assert.Equal(DateTimeKind.Local, f.Chat.General.Entries[^1].Time.Kind);
+        Assert.Equal(now, fixture.Chat.General.Entries[^1].Time);
+        Assert.Equal(now, fixture.Private("@bert")!.Entries[^1].Time);
+        Assert.Equal(now, fixture.Chat.ChannelTab.Entries[^1].Time);
+        Assert.Equal(DateTimeKind.Local, fixture.Chat.General.Entries[^1].Time.Kind);
     }
 
     /// <summary>Package 98 (AC2): a sent message shows at once, greyed until the server's echo; refused, it can be sent again.</summary>
     [Fact]
     public async Task SentMessage_PendingUntilEcho_ErrorRetry()
     {
-        var f = Create(Guest | P.ChatServer);
-        var time = (ManualTimeProvider)f.Server.Time;
-        f.Chat.Draft = "Hallo";
-        await f.Chat.SendCommand.ExecuteAsync(null);
-        var first = Assert.Single(f.Chat.General.Entries);
+        var fixture = Create(Guest | P.ChatServer);
+        var time = (ManualTimeProvider)fixture.Server.Time;
+        fixture.Chat.Draft = "Hallo";
+        await fixture.Chat.SendCommand.ExecuteAsync(null);
+        var first = Assert.Single(fixture.Chat.General.Entries);
         Assert.True(first is { IsOwnMessage: true, Text: "Hallo" });
         Assert.True(first.Sending!.IsWaiting);
-        f.Receive(ChatTarget.Server, 1, "Hallo"); // the echo: no second copy
-        Assert.Same(first, Assert.Single(f.Chat.General.Entries));
+        fixture.Receive(ChatTarget.Server, 1, "Hallo"); // the echo: no second copy
+        Assert.Same(first, Assert.Single(fixture.Chat.General.Entries));
         Assert.False(first.Sending.IsWaiting || first.Sending.IsFailed);
 
         // refused: "nicht gesendet" with a retry, the text stays
-        f.Chat.Draft = "Zweite";
-        await f.Chat.SendCommand.ExecuteAsync(null);
-        var second = f.Chat.General.Entries[^1];
-        f.Server.Apply(new Error(f.LastChat.RequestId, ReasonCodes.RateLimited));
+        fixture.Chat.Draft = "Zweite";
+        await fixture.Chat.SendCommand.ExecuteAsync(null);
+        var second = fixture.Chat.General.Entries[^1];
+        fixture.Server.Apply(new Error(fixture.LastChat.RequestId, ReasonCodes.RateLimited));
         Assert.True(second.Sending!.IsFailed);
         Assert.False(second.Sending.IsWaiting);
         Assert.Equal("Zweite", second.Text);
         await second.Sending.RetryCommand.ExecuteAsync(null);
-        Assert.Equal(2, f.Sent.OfType<SendChat>().Count(c => c.Text == "Zweite"));
+        Assert.Equal(2, fixture.Sent.OfType<SendChat>().Count(request => request.Text == "Zweite"));
         Assert.True(second.Sending.IsWaiting);
-        f.Receive(ChatTarget.Server, 1, "Zweite");
+        fixture.Receive(ChatTarget.Server, 1, "Zweite");
         Assert.False(second.Sending.IsWaiting || second.Sending.IsFailed);
-        Assert.Equal(2, f.Chat.General.Entries.Count);
+        Assert.Equal(2, fixture.Chat.General.Entries.Count);
 
         // no echo within 10 s: not sent either
-        f.Chat.Draft = "Dritte";
-        await f.Chat.SendCommand.ExecuteAsync(null);
+        fixture.Chat.Draft = "Dritte";
+        await fixture.Chat.SendCommand.ExecuteAsync(null);
         time.Advance(TimeSpan.FromSeconds(10));
-        Assert.True(f.Chat.General.Entries[^1].Sending!.IsFailed);
+        Assert.True(fixture.Chat.General.Entries[^1].Sending!.IsFailed);
     }
 
     [Fact]
     public async Task Send_EmptyIgnored_TooLongBlocked()
     {
-        var f = Create(Guest | P.ChatServer);
-        Assert.False(f.Chat.SendCommand.CanExecute(null));
-        f.Chat.Draft = "   \n ";
-        Assert.False(f.Chat.SendCommand.CanExecute(null));
+        var fixture = Create(Guest | P.ChatServer);
+        Assert.False(fixture.Chat.SendCommand.CanExecute(null));
+        fixture.Chat.Draft = "   \n ";
+        Assert.False(fixture.Chat.SendCommand.CanExecute(null));
 
-        f.Chat.Draft = " Hallo alle \n";
-        await f.Chat.SendCommand.ExecuteAsync(null);
-        Assert.Equal((ChatTarget.Server, "Hallo alle"), (f.LastChat.Target, f.LastChat.Text));
-        Assert.Equal("", f.Chat.Draft);
+        fixture.Chat.Draft = " Hallo alle \n";
+        await fixture.Chat.SendCommand.ExecuteAsync(null);
+        Assert.Equal((ChatTarget.Server, "Hallo alle"), (fixture.LastChat.Target, fixture.LastChat.Text));
+        Assert.Equal("", fixture.Chat.Draft);
 
-        f.Chat.Selected = f.Chat.ChannelTab;
-        f.Chat.Draft = "im Channel";
-        await f.Chat.SendCommand.ExecuteAsync(null);
-        Assert.Equal(ChatTarget.Channel, f.LastChat.Target);
+        fixture.Chat.Selected = fixture.Chat.ChannelTab;
+        fixture.Chat.Draft = "im Channel";
+        await fixture.Chat.SendCommand.ExecuteAsync(null);
+        Assert.Equal(ChatTarget.Channel, fixture.LastChat.Target);
 
-        f.Chat.Draft = new string('x', ChatViewModel.CounterFrom - 1);
-        Assert.False(f.Chat.ShowCounter);
-        f.Chat.Draft = new string('x', ProtocolLimits.MaxChatLength);
-        Assert.True(f.Chat.ShowCounter);
-        Assert.True(f.Chat.SendCommand.CanExecute(null));
-        f.Chat.Draft += "x";
-        Assert.True(f.Chat.IsTooLong);
-        Assert.Equal("2001 / 2000", f.Chat.CounterText);
-        Assert.False(f.Chat.SendCommand.CanExecute(null));
+        fixture.Chat.Draft = new string('x', ChatViewModel.CounterFrom - 1);
+        Assert.False(fixture.Chat.ShowCounter);
+        fixture.Chat.Draft = new string('x', ProtocolLimits.MaxChatLength);
+        Assert.True(fixture.Chat.ShowCounter);
+        Assert.True(fixture.Chat.SendCommand.CanExecute(null));
+        fixture.Chat.Draft += "x";
+        Assert.True(fixture.Chat.IsTooLong);
+        Assert.Equal("2001 / 2000", fixture.Chat.CounterText);
+        Assert.False(fixture.Chat.SendCommand.CanExecute(null));
     }
 
     [Fact]
     public void Composer_DisabledWithoutRight()
     {
-        var f = Create(P.Speak | P.ChatChannel);
-        f.Chat.Draft = "hallo";
-        Assert.False(f.Chat.CanWrite);
-        Assert.Contains("serverweit", f.Chat.NoRightHint);
-        Assert.False(f.Chat.SendCommand.CanExecute(null));
+        var fixture = Create(P.Speak | P.ChatChannel);
+        fixture.Chat.Draft = "hallo";
+        Assert.False(fixture.Chat.CanWrite);
+        Assert.Contains("serverweit", fixture.Chat.NoRightHint);
+        Assert.False(fixture.Chat.SendCommand.CanExecute(null));
 
-        f.Chat.Selected = f.Chat.ChannelTab;
-        Assert.True(f.Chat.CanWrite);
-        Assert.Null(f.Chat.NoRightHint);
-        Assert.Equal("Nachricht an Lobby", f.Chat.Placeholder);
+        fixture.Chat.Selected = fixture.Chat.ChannelTab;
+        Assert.True(fixture.Chat.CanWrite);
+        Assert.Null(fixture.Chat.NoRightHint);
+        Assert.Equal("Nachricht an Lobby", fixture.Chat.Placeholder);
 
-        f.Server.Apply(new UserUpdated(User(1, "ich", Lobby, P.Speak))); // right taken away while the tab is open
-        Assert.False(f.Chat.CanWrite);
-        Assert.Contains("im Channel", f.Chat.NoRightHint);
-        Assert.False(f.Chat.SendCommand.CanExecute(null));
+        fixture.Server.Apply(new UserUpdated(User(1, "ich", Lobby, P.Speak))); // right taken away while the tab is open
+        Assert.False(fixture.Chat.CanWrite);
+        Assert.Contains("im Channel", fixture.Chat.NoRightHint);
+        Assert.False(fixture.Chat.SendCommand.CanExecute(null));
     }
 
     [Fact]
     public void ChannelTab_ResetsOnSwitch()
     {
-        var f = Create();
-        var joined = Assert.Single(f.Chat.ChannelTab.Entries);
+        var fixture = Create();
+        var joined = Assert.Single(fixture.Chat.ChannelTab.Entries);
         Assert.True(joined.IsMarker);
         Assert.Contains("\"Lobby\" betreten", joined.Text);
 
-        f.Receive(ChatTarget.Channel, 2, "hallo Lobby", Lobby);
-        Assert.Equal(2, f.Chat.ChannelTab.Entries.Count);
+        fixture.Receive(ChatTarget.Channel, 2, "hallo Lobby", Lobby);
+        Assert.Equal(2, fixture.Chat.ChannelTab.Entries.Count);
 
-        f.Server.Apply(new UserUpdated(User(1, "ich", Bravo, Guest)));
-        Assert.Contains("\"Bravo\" betreten", Assert.Single(f.Chat.ChannelTab.Entries).Text);
-        Assert.Equal(0, f.Chat.ChannelTab.Unread);
-        f.Receive(ChatTarget.Channel, 2, "zu spät", Lobby); // still on the way from the old channel
-        Assert.Single(f.Chat.ChannelTab.Entries);
+        fixture.Server.Apply(new UserUpdated(User(1, "ich", Bravo, Guest)));
+        Assert.Contains("\"Bravo\" betreten", Assert.Single(fixture.Chat.ChannelTab.Entries).Text);
+        Assert.Equal(0, fixture.Chat.ChannelTab.Unread);
+        fixture.Receive(ChatTarget.Channel, 2, "zu spät", Lobby); // still on the way from the old channel
+        Assert.Single(fixture.Chat.ChannelTab.Entries);
     }
 
     [Fact]
     public void Unread_CountsAndClears()
     {
-        var f = Create();
-        f.Receive(ChatTarget.Channel, 2, "eins", Lobby);
-        f.Receive(ChatTarget.Channel, 2, "zwei", Lobby);
-        f.Receive(ChatTarget.Channel, 1, "eigene", Lobby);
-        Assert.Equal(2, f.Chat.ChannelTab.Unread);
-        Assert.True(f.Chat.ChannelTab.HasUnread);
-        Assert.True(f.Chat.ChannelTab.Entries[^1] is { IsOwn: true, From: "ich" });
-        Assert.False(f.Chat.ChannelTab.Entries[1].IsOwn);
+        var fixture = Create();
+        fixture.Receive(ChatTarget.Channel, 2, "eins", Lobby);
+        fixture.Receive(ChatTarget.Channel, 2, "zwei", Lobby);
+        fixture.Receive(ChatTarget.Channel, 1, "eigene", Lobby);
+        Assert.Equal(2, fixture.Chat.ChannelTab.Unread);
+        Assert.True(fixture.Chat.ChannelTab.HasUnread);
+        Assert.True(fixture.Chat.ChannelTab.Entries[^1] is { IsOwn: true, From: "ich" });
+        Assert.False(fixture.Chat.ChannelTab.Entries[1].IsOwn);
 
-        f.Chat.Selected = f.Chat.ChannelTab;
-        Assert.Equal(0, f.Chat.ChannelTab.Unread);
-        f.Receive(ChatTarget.Server, 2, "an alle");
-        f.Chat.AddNotice(new Notice(DateTime.Now, "Warnung", NoticeKind.Warning));
-        Assert.Equal(2, f.Chat.General.Unread);
-        f.Chat.Selected = f.Chat.General;
-        Assert.False(f.Chat.General.HasUnread);
+        fixture.Chat.Selected = fixture.Chat.ChannelTab;
+        Assert.Equal(0, fixture.Chat.ChannelTab.Unread);
+        fixture.Receive(ChatTarget.Server, 2, "an alle");
+        fixture.Chat.AddNotice(new Notice(DateTime.Now, "Warnung", NoticeKind.Warning));
+        Assert.Equal(2, fixture.Chat.General.Unread);
+        fixture.Chat.Selected = fixture.Chat.General;
+        Assert.False(fixture.Chat.General.HasUnread);
     }
 
     [Fact]
     public async Task ServerError_ShownAtComposer()
     {
-        var f = Create();
+        var fixture = Create();
         var notices = new List<string>();
-        f.Server.Notice += notices.Add;
-        f.Chat.Selected = f.Chat.ChannelTab;
-        f.Chat.Draft = "zu viel";
-        await f.Chat.SendCommand.ExecuteAsync(null);
+        fixture.Server.Notice += notices.Add;
+        fixture.Chat.Selected = fixture.Chat.ChannelTab;
+        fixture.Chat.Draft = "zu viel";
+        await fixture.Chat.SendCommand.ExecuteAsync(null);
 
-        f.Server.Apply(new Error(f.LastChat.RequestId, ReasonCodes.RateLimited, null));
-        Assert.Equal(ErrorTexts.For(ReasonCodes.RateLimited, null), f.Chat.ComposerError);
+        fixture.Server.Apply(new Error(fixture.LastChat.RequestId, ReasonCodes.RateLimited, null));
+        Assert.Equal(ErrorTexts.For(ReasonCodes.RateLimited, null), fixture.Chat.ComposerError);
         Assert.Empty(notices);
 
-        f.Server.Apply(new Error("r99", ReasonCodes.PermissionDenied, null)); // not a chat request: stays a notice
+        fixture.Server.Apply(new Error("r99", ReasonCodes.PermissionDenied, null)); // not a chat request: stays a notice
         Assert.Single(notices);
-        f.Chat.Selected = f.Chat.General;
-        Assert.Null(f.Chat.ComposerError);
+        fixture.Chat.Selected = fixture.Chat.General;
+        Assert.Null(fixture.Chat.ComposerError);
     }
     // ---- Package 33: private tabs ----
 
     [Fact]
     public void Private_OpenFromUser_ActivatesTab()
     {
-        var f = Create();
-        Assert.False(f.User(1).CanMessage); // not to oneself
-        Assert.True(f.User(2).CanMessage);
+        var fixture = Create();
+        Assert.False(fixture.User(1).CanMessage); // not to oneself
+        Assert.True(fixture.User(2).CanMessage);
 
-        f.User(2).MessageCommand.Execute(null);
-        var tab = f.Private("@bert");
+        fixture.User(2).MessageCommand.Execute(null);
+        var tab = fixture.Private("@bert");
         Assert.NotNull(tab);
-        Assert.Same(tab, f.Chat.Selected);
-        Assert.Equal("Nachricht an @bert", f.Chat.Placeholder);
+        Assert.Same(tab, fixture.Chat.Selected);
+        Assert.Equal("Nachricht an @bert", fixture.Chat.Placeholder);
 
-        f.Chat.Selected = f.Chat.General;
-        f.User(2).MessageCommand.Execute(null); // again: the same tab, no second one
-        Assert.Same(tab, f.Chat.Selected);
-        Assert.Equal(3, f.Chat.Tabs.Count);
+        fixture.Chat.Selected = fixture.Chat.General;
+        fixture.User(2).MessageCommand.Execute(null); // again: the same tab, no second one
+        Assert.Same(tab, fixture.Chat.Selected);
+        Assert.Equal(3, fixture.Chat.Tabs.Count);
 
         Assert.False(Create(P.Speak | P.ChatChannel).User(2).CanMessage); // without the right
     }
@@ -261,88 +261,88 @@ public class ChatViewModelTests
     [Fact]
     public async Task Private_Incoming_OpensInBackground()
     {
-        var f = Create();
-        f.Receive(ChatTarget.Private, 2, "psst", to: 1);
-        var tab = f.Private("@bert")!;
-        Assert.Same(f.Chat.General, f.Chat.Selected);
+        var fixture = Create();
+        fixture.Receive(ChatTarget.Private, 2, "psst", to: 1);
+        var tab = fixture.Private("@bert")!;
+        Assert.Same(fixture.Chat.General, fixture.Chat.Selected);
         Assert.Equal(1, tab.Unread);
 
-        f.Chat.Selected = tab;
-        f.Chat.Draft = "ja?";
-        await f.Chat.SendCommand.ExecuteAsync(null);
-        Assert.Equal((ChatTarget.Private, 2u, "ja?"), (f.LastChat.Target, f.LastChat.ToSessionId!.Value, f.LastChat.Text));
-        f.Receive(ChatTarget.Private, 1, "ja?", to: 2); // the server's echo lands in the same tab
-        Assert.Equal(["psst", "ja?"], tab.Entries.Select(e => e.Text));
+        fixture.Chat.Selected = tab;
+        fixture.Chat.Draft = "ja?";
+        await fixture.Chat.SendCommand.ExecuteAsync(null);
+        Assert.Equal((ChatTarget.Private, 2u, "ja?"), (fixture.LastChat.Target, fixture.LastChat.ToSessionId!.Value, fixture.LastChat.Text));
+        fixture.Receive(ChatTarget.Private, 1, "ja?", to: 2); // the server's echo lands in the same tab
+        Assert.Equal(["psst", "ja?"], tab.Entries.Select(chatEntry => chatEntry.Text));
         Assert.True(tab.Entries[1].IsOwn);
     }
 
     [Fact]
     public void Private_CloseAndReopen_KeepsHistory()
     {
-        var f = Create();
-        f.User(2).MessageCommand.Execute(null);
-        var tab = f.Private("@bert")!;
-        f.Receive(ChatTarget.Private, 2, "eins", to: 1);
+        var fixture = Create();
+        fixture.User(2).MessageCommand.Execute(null);
+        var tab = fixture.Private("@bert")!;
+        fixture.Receive(ChatTarget.Private, 2, "eins", to: 1);
 
         tab.CloseCommand.Execute(null);
-        Assert.DoesNotContain(tab, f.Chat.Tabs);
-        Assert.Same(f.Chat.General, f.Chat.Selected);
-        Assert.False(f.Chat.General.IsPrivate); // the fixed tabs have no close button
+        Assert.DoesNotContain(tab, fixture.Chat.Tabs);
+        Assert.Same(fixture.Chat.General, fixture.Chat.Selected);
+        Assert.False(fixture.Chat.General.IsPrivate); // the fixed tabs have no close button
 
-        f.Receive(ChatTarget.Private, 2, "zwei", to: 1);
-        Assert.Same(tab, f.Private("@bert"));
-        Assert.Equal(["eins", "zwei"], tab.Entries.Select(e => e.Text));
+        fixture.Receive(ChatTarget.Private, 2, "zwei", to: 1);
+        Assert.Same(tab, fixture.Private("@bert"));
+        Assert.Equal(["eins", "zwei"], tab.Entries.Select(chatEntry => chatEntry.Text));
     }
 
     [Fact]
     public async Task Private_PartnerOfflineAndBack()
     {
-        var f = Create();
-        f.User(2).MessageCommand.Execute(null);
-        var tab = f.Private("@bert")!;
-        f.Chat.Draft = "bist du da?";
+        var fixture = Create();
+        fixture.User(2).MessageCommand.Execute(null);
+        var tab = fixture.Private("@bert")!;
+        fixture.Chat.Draft = "bist du da?";
 
-        f.Server.Apply(new UserLeft(2));
+        fixture.Server.Apply(new UserLeft(2));
         Assert.False(tab.IsOnline);
-        Assert.False(f.Chat.CanWrite);
-        Assert.Equal("@bert ist nicht online.", f.Chat.NoRightHint);
-        Assert.False(f.Chat.SendCommand.CanExecute(null));
+        Assert.False(fixture.Chat.CanWrite);
+        Assert.Equal("@bert ist nicht online.", fixture.Chat.NoRightHint);
+        Assert.False(fixture.Chat.SendCommand.CanExecute(null));
         Assert.Equal("@bert ist offline.", tab.Entries[^1].Text);
 
         // back with a new session, same identity
-        f.Server.Apply(new UserJoined(new UserInfo(7, "fp2", "bert", Lobby, false, false, false, Guest, [WellKnownGroups.Guest])));
+        fixture.Server.Apply(new UserJoined(new UserInfo(7, "fp2", "bert", Lobby, false, false, false, Guest, [WellKnownGroups.Guest])));
         Assert.True(tab.IsOnline);
-        Assert.True(f.Chat.CanWrite);
+        Assert.True(fixture.Chat.CanWrite);
         Assert.Equal("@bert ist wieder online.", tab.Entries[^1].Text);
-        await f.Chat.SendCommand.ExecuteAsync(null);
-        Assert.Equal(7u, f.LastChat.ToSessionId);
+        await fixture.Chat.SendCommand.ExecuteAsync(null);
+        Assert.Equal(7u, fixture.LastChat.ToSessionId);
     }
 
     [Fact]
     public void Private_NicknameChange_UpdatesTitle()
     {
-        var f = Create();
-        f.User(2).MessageCommand.Execute(null);
-        f.Server.Apply(new UserUpdated(new UserInfo(2, "fp2", "berta", Lobby, false, false, false, Guest, [WellKnownGroups.Guest])));
-        Assert.NotNull(f.Private("@berta"));
-        Assert.Null(f.Private("@bert"));
+        var fixture = Create();
+        fixture.User(2).MessageCommand.Execute(null);
+        fixture.Server.Apply(new UserUpdated(new UserInfo(2, "fp2", "berta", Lobby, false, false, false, Guest, [WellKnownGroups.Guest])));
+        Assert.NotNull(fixture.Private("@berta"));
+        Assert.Null(fixture.Private("@bert"));
     }
 
     /// <summary>Package 83: control and bidi characters are refused before sending, the draft stays.</summary>
     [Fact]
     public async Task Send_ForbiddenCharacters_ErrorDraftKept()
     {
-        var f = Create(Guest | P.ChatServer);
+        var fixture = Create(Guest | P.ChatServer);
         var draft = "a" + (char)0x202E + "b";
-        f.Chat.Draft = draft;
-        await f.Chat.SendCommand.ExecuteAsync(null);
-        Assert.Equal(OVS.Client.Localization.Strings.Chat_InvalidChars, f.Chat.ComposerError);
-        Assert.Equal(draft, f.Chat.Draft);
-        Assert.Empty(f.Sent.OfType<SendChat>());
+        fixture.Chat.Draft = draft;
+        await fixture.Chat.SendCommand.ExecuteAsync(null);
+        Assert.Equal(OVS.Client.Localization.Strings.Chat_InvalidChars, fixture.Chat.ComposerError);
+        Assert.Equal(draft, fixture.Chat.Draft);
+        Assert.Empty(fixture.Sent.OfType<SendChat>());
 
-        f.Chat.Draft = "zwei\r\nZeilen";
-        await f.Chat.SendCommand.ExecuteAsync(null);
-        Assert.Equal("zwei\nZeilen", f.LastChat.Text);
-        Assert.Null(f.Chat.ComposerError);
+        fixture.Chat.Draft = "zwei\r\nZeilen";
+        await fixture.Chat.SendCommand.ExecuteAsync(null);
+        Assert.Equal("zwei\nZeilen", fixture.LastChat.Text);
+        Assert.Null(fixture.Chat.ComposerError);
     }
 }

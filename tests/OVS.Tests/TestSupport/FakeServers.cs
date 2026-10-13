@@ -44,10 +44,10 @@ public static class FakeServers
                 new UserInfo(2, "fp2", "anna", Raid, true, true, true, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true),
             ]);
         ServerViewModel? server = null;
-        server = new ServerViewModel(Snapshots.Mirror(snapshot), r =>
+        server = new ServerViewModel(Snapshots.Mirror(snapshot), request =>
         {
-            sent?.Add(r);
-            if (reply?.Invoke(r) is { } answer) server!.Apply(answer);
+            sent?.Add(request);
+            if (reply?.Invoke(request) is { } answer) server!.Apply(answer);
             return Task.CompletedTask;
         }, time ?? TimeProvider.System, dialogs);
         return server;
@@ -56,8 +56,8 @@ public static class FakeServers
     /// <summary>Package 67: own user "ich" (admin) in the first channel, which is the default; all channels linked with each other.</summary>
     public static ServerViewModel WithChannels(params string[] names)
     {
-        var channels = names.Select((n, i) => new ChannelInfo(Guid.NewGuid(), n, "", i)).ToList();
-        var links = channels.SelectMany((a, i) => channels.Skip(i + 1).Select(b => new LinkInfo(a.Id, b.Id))).ToList();
+        var channels = names.Select((name, index) => new ChannelInfo(Guid.NewGuid(), name, "", index)).ToList();
+        var links = channels.SelectMany((channel, index) => channels.Skip(index + 1).Select(channelInfo => new LinkInfo(channel.Id, channelInfo.Id))).ToList();
         var snapshot = Snapshots.Snapshot("Gilde", "", channels[0].Id, channels,
             [AdminGroup],
             [new UserInfo(1, "fp1", "ich", channels[0].Id, false, false, false, Permission.All, [WellKnownGroups.Admin])], links: links);
@@ -67,8 +67,8 @@ public static class FakeServers
     /// <summary>Package 78: 8 channels (all linked), four groups and 20 users; own user "ich" is admin.</summary>
     public static ServerViewModel Crowded()
     {
-        var channels = Enumerable.Range(1, 8).Select(i => new ChannelInfo(Guid.NewGuid(), i == 1 ? "Lobby" : $"Raidgruppe Nummer {i}", "", i)).ToList();
-        var links = channels.SelectMany((a, i) => channels.Skip(i + 1).Select(b => new LinkInfo(a.Id, b.Id))).ToList();
+        var channels = Enumerable.Range(1, 8).Select(index => new ChannelInfo(Guid.NewGuid(), index == 1 ? "Lobby" : $"Raidgruppe Nummer {index}", "", index)).ToList();
+        var links = channels.SelectMany((channel, index) => channels.Skip(index + 1).Select(channelInfo => new LinkInfo(channel.Id, channelInfo.Id))).ToList();
         var groups = new List<GroupInfo>
         {
             GuestGroup,
@@ -76,9 +76,9 @@ public static class FakeServers
             new(Guid.NewGuid(), "Veteranen der alten Gilde", Permission.Speak, true),
             AdminGroup,
         };
-        var users = Enumerable.Range(1, 20).Select(i => new UserInfo((uint)i, $"fp{i}", i == 1 ? "ich" : $"Mitspieler{i}",
-            channels[i % 8].Id, false, false, false, i == 1 ? Permission.All : Permission.None, // Package 92: others without rights
-            [i == 1 ? WellKnownGroups.Admin : WellKnownGroups.Guest], CanBeModeratedByMe: i != 1)).ToList();
+        var users = Enumerable.Range(1, 20).Select(index => new UserInfo((uint)index, $"fp{index}", index == 1 ? "ich" : $"Mitspieler{index}",
+            channels[index % 8].Id, false, false, false, index == 1 ? Permission.All : Permission.None, // Package 92: others without rights
+            [index == 1 ? WellKnownGroups.Admin : WellKnownGroups.Guest], CanBeModeratedByMe: index != 1)).ToList();
         var snapshot = new ServerSnapshot(new ServerSettingsInfo("Gilde", "Hallo", true, null, new ServerLimits(50, 30, true, true, new TimeOnly(4, 0))),
             channels[0].Id, channels, links, groups, users);
         return new ServerViewModel(Snapshots.Mirror(snapshot), _ => Task.CompletedTask, TimeProvider.System);
@@ -94,16 +94,16 @@ public static class FakeServers
     /// <summary>The welcome of <see cref="Large"/>, for two servers with the same channels (the mirror copies it).</summary>
     public static Welcome LargeWelcome()
     {
-        var channels = Enumerable.Range(1, 40).Select(i => new ChannelInfo(Guid.NewGuid(), i == 1 ? "Lobby" : $"Raid {i}", "", i)).ToList();
-        var links = channels.Skip(1).Select((b, i) => new LinkInfo(channels[i].Id, b.Id)).ToList();
+        var channels = Enumerable.Range(1, 40).Select(index => new ChannelInfo(Guid.NewGuid(), index == 1 ? "Lobby" : $"Raid {index}", "", index)).ToList();
+        var links = channels.Skip(1).Select((channel, index) => new LinkInfo(channels[index].Id, channel.Id)).ToList();
         var groups = new List<GroupInfo>
         {
             GuestGroup,
             AdminGroup,
         };
-        var users = Enumerable.Range(1, 400).Select(i => new UserInfo((uint)i, $"fp{i}", i == 1 ? "ich" : $"Spieler{i:000}",
-            channels[(i - 1) % 40].Id, false, false, false, i == 1 ? Permission.All : Permission.None,
-            [i == 1 ? WellKnownGroups.Admin : WellKnownGroups.Guest], CanBeModeratedByMe: i != 1)).ToList();
+        var users = Enumerable.Range(1, 400).Select(index => new UserInfo((uint)index, $"fp{index}", index == 1 ? "ich" : $"Spieler{index:000}",
+            channels[(index - 1) % 40].Id, false, false, false, index == 1 ? Permission.All : Permission.None,
+            [index == 1 ? WellKnownGroups.Admin : WellKnownGroups.Guest], CanBeModeratedByMe: index != 1)).ToList();
         var snapshot = Snapshots.Snapshot("Gilde", "", channels[0].Id, channels, groups, users, links: links);
         return Snapshots.Welcome(snapshot);
     }

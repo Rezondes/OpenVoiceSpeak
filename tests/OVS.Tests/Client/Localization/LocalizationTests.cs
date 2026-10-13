@@ -12,9 +12,9 @@ public class LocalizationTests
 {
     static Dictionary<string, string> Read(string file) =>
         XDocument.Load(Path.Combine(RepoPaths.ClientSource, "Localization", file)).Root!.Elements("data")
-            .ToDictionary(d => (string)d.Attribute("name")!, d => (string?)d.Element("value") ?? "");
+            .ToDictionary(xElement => (string)xElement.Attribute("name")!, xElement => (string?)xElement.Element("value") ?? "");
 
-    static string Placeholders(string text) => string.Join(",", Regex.Matches(text, @"\{\d+(:[^}]*)?\}").Select(m => m.Value.Split(':')[0]).Order());
+    static string Placeholders(string text) => string.Join(",", Regex.Matches(text, @"\{\d+(:[^}]*)?\}").Select(match => match.Value.Split(':')[0]).Order());
 
     [Fact]
     public void Resources_SameKeys_NoneEmpty_SamePlaceholders()
@@ -50,11 +50,11 @@ public class LocalizationTests
         Assert.Equal("Upload and restore ...", TestCulture.With("en-US", () => Strings.Ui_UploadAndRestore));
         Assert.Equal("Uploading: 42 %", TestCulture.With("en-US", () => string.Format(Strings.Backup_Uploading, 42)));
         // Package 81: the log viewer
-        Assert.Equal("Logs ansehen", PermissionLabels.All.Single(p => p.Value == OVS.Shared.Permissions.Permission.LogsView).Label);
-        Assert.Equal("View logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(p => p.Value == OVS.Shared.Permissions.Permission.LogsView).Label));
+        Assert.Equal("Logs ansehen", PermissionLabels.All.Single(choice => choice.Value == OVS.Shared.Permissions.Permission.LogsView).Label);
+        Assert.Equal("View logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(choice => choice.Value == OVS.Shared.Permissions.Permission.LogsView).Label));
         Assert.Equal("Page 2 of 3", TestCulture.With("en-US", () => string.Format(Strings.Ui_LogPage, 2, 3)));
         // Package 82: the log download
-        Assert.Equal("Download logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(p => p.Value == OVS.Shared.Permissions.Permission.LogsDownload).Label));
+        Assert.Equal("Download logs", TestCulture.With("en-US", () => PermissionLabels.All.Single(choice => choice.Value == OVS.Shared.Permissions.Permission.LogsDownload).Label));
         Assert.Equal("Die Auswahl ist grösser als 200 MB. Wähle einen kürzeren Zeitraum.", ErrorTexts.For(ReasonCodes.LogsTooLarge));
         Assert.Equal("The selection is larger than 200 MB. Choose a shorter period.", TestCulture.With("en-US", () => ErrorTexts.For(ReasonCodes.LogsTooLarge)));
         Assert.Equal("Downloading logs: 42 %", TestCulture.With("en-US", () => string.Format(Strings.Logs_Downloading, 42)));
@@ -85,8 +85,8 @@ public class LocalizationTests
         var attribute = new Regex(@"\b(Text|Header|Content|ToolTip\.Tip|Watermark|AutomationProperties\.Name|PlaceholderText)=""([^""{][^""]*)""");
         var format = new Regex(@"(?:StringFormat|FallbackValue)='([^']*[A-Za-zÄÖÜäöü][^']*)'");
         var found = XamlFiles()
-            .SelectMany(file => attribute.Matches(File.ReadAllText(Path.Combine(RepoPaths.ClientSource, file))).Select(m => m.Groups[2].Value)
-                .Concat(format.Matches(File.ReadAllText(Path.Combine(RepoPaths.ClientSource, file))).Select(m => m.Groups[1].Value))
+            .SelectMany(file => attribute.Matches(File.ReadAllText(Path.Combine(RepoPaths.ClientSource, file))).Select(match => match.Groups[2].Value)
+                .Concat(format.Matches(File.ReadAllText(Path.Combine(RepoPaths.ClientSource, file))).Select(match => match.Groups[1].Value))
                 .Where(text => !allowed.Contains(text))
                 .Select(text => $"{file}: {text}"))
             .ToList();
@@ -101,7 +101,7 @@ public class LocalizationTests
         void Walk(string dir)
         {
             expected.AddRange(Directory.GetFiles(dir, "*.axaml").Select(file => Path.GetRelativePath(RepoPaths.ClientSource, file).Replace('\\', '/')));
-            foreach (var sub in Directory.GetDirectories(dir).Where(d => Path.GetFileName(d) is not ("bin" or "obj"))) Walk(sub);
+            foreach (var sub in Directory.GetDirectories(dir).Where(directory => Path.GetFileName(directory) is not ("bin" or "obj"))) Walk(sub);
         }
         Walk(RepoPaths.ClientSource);
         var scanned = XamlFiles();
@@ -117,7 +117,7 @@ public class LocalizationTests
         var german = Read("Strings.resx");
         var english = Read("Strings.en.resx");
         var englishValues = english.Values.ToHashSet();
-        return german.Where(p => p.Value != english[p.Key] && !englishValues.Contains(p.Value)).Select(p => p.Value).ToHashSet();
+        return german.Where(pair => pair.Value != english[pair.Key] && !englishValues.Contains(pair.Value)).Select(pair => pair.Value).ToHashSet();
     }
 
     /// <summary>A45: German server details stay out of the UI, except the reason a person typed for kick and ban.</summary>

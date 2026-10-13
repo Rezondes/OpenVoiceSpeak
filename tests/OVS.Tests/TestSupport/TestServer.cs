@@ -115,8 +115,8 @@ public sealed class TestServer : IAsyncDisposable
 
     public static Action<ServerData> Grant(ClientIdentity identity, string groupName) => data =>
     {
-        var groupId = data.Groups.Single(g => g.Name == groupName).Id;
-        var user = data.Users.FirstOrDefault(u => u.Fingerprint == identity.Fingerprint);
+        var groupId = data.Groups.Single(groupRecord => groupRecord.Name == groupName).Id;
+        var user = data.Users.FirstOrDefault(userRecord => userRecord.Fingerprint == identity.Fingerprint);
         if (user is null)
         {
             user = new UserRecord { Fingerprint = identity.Fingerprint, LastNickname = groupName };
