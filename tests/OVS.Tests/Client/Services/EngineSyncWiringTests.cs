@@ -47,7 +47,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
     static async Task OpenSettingsWithMicrophoneAsync(MainViewModel mainViewModel, FakeAudioHardware hardware)
     {
         mainViewModel.PageFlow.OpenSettings();
-        await AsyncWait.Until(() => hardware.Counts.MicsOpen == 1);
+        await AsyncWait.UntilAsync(() => hardware.Counts.MicsOpen == 1);
     }
 
     [Fact]
@@ -283,7 +283,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
     {
         using var later = new ManualResetEventSlim();
         await using var mainViewModel = CreateMainViewModel(CreateHardwareWhoseLaterListsWait(later, ListOneEach));
-        await AsyncWait.Until(() => mainViewModel.Devices.Known is not null); // the list loads in the background
+        await AsyncWait.UntilAsync(() => mainViewModel.Devices.Known is not null); // the list loads in the background
 
         mainViewModel.PageFlow.OpenSettings(); // its own refresh waits
 
@@ -322,7 +322,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         mainViewModel.PageFlow.OpenSettings(); // nothing is known yet
 
         later.Set();
-        await AsyncWait.Until(() => mainViewModel.PageFlow.SettingsPage!.Outputs.Count == 2);
+        await AsyncWait.UntilAsync(() => mainViewModel.PageFlow.SettingsPage!.Outputs.Count == 2);
 
         Assert.Equal<string?>([null, Headset.Id], mainViewModel.PageFlow.SettingsPage!.Inputs.Select(option => option.Id));
         Assert.Equal<string?>([null, Speakers.Id], mainViewModel.PageFlow.SettingsPage.Outputs.Select(option => option.Id));
@@ -334,11 +334,11 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         using var later = new ManualResetEventSlim();
         await using var mainViewModel = CreateMainViewModel(CreateHardwareWhoseLaterListsWait(later,
             direction => direction == AudioDirection.Input ? [Webcam] : [MonitorOutput]));
-        await AsyncWait.Until(() => mainViewModel.Devices.Known is not null);
+        await AsyncWait.UntilAsync(() => mainViewModel.Devices.Known is not null);
         mainViewModel.PageFlow.OpenSettings(); // shows the list from the start, its own refresh waits
 
         later.Set();
-        await AsyncWait.Until(() => mainViewModel.PageFlow.SettingsPage!.Inputs.Any(option => option.Id == Webcam.Id));
+        await AsyncWait.UntilAsync(() => mainViewModel.PageFlow.SettingsPage!.Inputs.Any(option => option.Id == Webcam.Id));
 
         Assert.Equal<string?>([null, Webcam.Id], mainViewModel.PageFlow.SettingsPage!.Inputs.Select(option => option.Id));
     }

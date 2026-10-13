@@ -29,14 +29,12 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
     async Task<string> Eventually(Func<Task>? each, params string[] expected)
     {
         var text = "";
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (true)
+        await AsyncWait.UntilAsync(async () =>
         {
             if (each is not null) await each();
             text = LogText();
-            if (expected.All(text.Contains) || watch.ElapsedMilliseconds > 15_000) break;
-            await Task.Delay(50);
-        }
+            return expected.All(text.Contains);
+        }, TimeSpan.FromSeconds(15));
         foreach (var value in expected) Assert.Contains(value, text);
         return text;
     }
@@ -199,8 +197,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
             await Eventually(null, "Audio-Debug: PTT gedrückt");
             // The rate comes from a real one-second timer: on a busy runner a single second may be stretched,
             // so wait (at most 15 s) for a full second of PTT instead of sampling a fixed one.
-            var watch = System.Diagnostics.Stopwatch.StartNew();
-            while (!Rates(LogText()).Any(value => value is >= 45 and <= 55) && watch.ElapsedMilliseconds < 15_000) await Task.Delay(100);
+            await AsyncWait.UntilAsync(() => Rates(LogText()).Any(value => value is >= 45 and <= 55), TimeSpan.FromSeconds(15));
             keys.Simulate(ptt: false);
             await Eventually(null, "Audio-Debug: PTT losgelassen");
         }

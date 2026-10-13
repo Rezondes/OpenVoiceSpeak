@@ -24,11 +24,13 @@ public sealed class FakeKeys
                 else down.Remove(vk);
     }
 
-    /// <summary>Waits (at most 5 s) for two more capture sweeps: the second one surely started after the last change.</summary>
-    public async Task NextSweep()
+    /// <summary>
+    /// Waits for two more capture sweeps (the second one surely started after the last change), or until
+    /// <paramref name="captured"/> holds: a capture that found its chord sweeps no more.
+    /// </summary>
+    public async Task NextSweep(Func<bool>? captured = null)
     {
         int target = Volatile.Read(ref sweeps) + 2;
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (Volatile.Read(ref sweeps) < target && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+        await AsyncWait.UntilAsync(() => Volatile.Read(ref sweeps) >= target || captured?.Invoke() == true);
     }
 }

@@ -410,7 +410,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         Assert.Equal(closedBefore + 1, await rig.ReadAsync(() => rig.AdminClosedCount));
         Assert.Null(await rig.ReadAsync(() => rig.Shown));
         Assert.Null(await rig.ReadAsync(() => rig.Connection.ConnectionTime));
-        await AsyncWait.Until(() => server.State.SessionCount == 0);
+        await AsyncWait.UntilAsync(() => server.State.SessionCount == 0);
     }
 
     // ---- The server logo tracking ends with the session ----
@@ -592,7 +592,7 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         await HangGuard.Bound(rig.Seam.WaitForAttemptAsync(2));
 
         Assert.True(await rig.ReadUntilAsync(() => rig.LogLines.Contains("Reconnect failed: InvalidOperationException: Dialoge kaputt"), logged => logged));
-        await AsyncWait.Until(() => server.State.SessionCount == 0); // the connection of the failed attempt was closed
+        await AsyncWait.UntilAsync(() => server.State.SessionCount == 0); // the connection of the failed attempt was closed
         Assert.Null(await rig.ReadAsync(() => rig.Shown));
         Assert.True(await rig.ReadAsync(() => rig.Connection.IsReconnecting));
 

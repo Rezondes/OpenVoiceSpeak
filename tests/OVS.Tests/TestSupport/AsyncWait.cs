@@ -9,11 +9,23 @@ static class AsyncWait
     /// Waits up to 10 s by the clock (not by a loop count: Task.Delay(20) may take far longer on a busy runner) and fails
     /// when the condition still does not hold, naming it.
     /// </summary>
-    public static async Task Until(Func<bool> condition, [CallerArgumentExpression(nameof(condition))] string? expression = null)
+    public static async Task UntilAsync(Func<bool> condition, [CallerArgumentExpression(nameof(condition))] string? expression = null) =>
+        await UntilAsync(condition, TimeSpan.FromSeconds(10), expression);
+
+    /// <summary>As <see cref="UntilAsync(Func{bool}, TimeSpan, string?)"/>, for a condition read through an await (the UI thread, a callback).</summary>
+    public static async Task UntilAsync(Func<Task<bool>> condition, TimeSpan within, [CallerArgumentExpression(nameof(condition))] string? expression = null)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!condition() && watch.ElapsedMilliseconds < 10_000) await Task.Delay(20);
-        Assert.True(condition(), $"Not reached within 10 s: {expression}");
+        while (!await condition() && watch.Elapsed < within) await Task.Delay(20);
+        Assert.True(await condition(), $"Not reached within {within.TotalSeconds:0} s: {expression}");
+    }
+
+    /// <summary>As <see cref="UntilAsync(Func{bool}, string?)"/>, for work known to take longer: waits up to <paramref name="within"/>.</summary>
+    public static async Task UntilAsync(Func<bool> condition, TimeSpan within, [CallerArgumentExpression(nameof(condition))] string? expression = null)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!condition() && watch.Elapsed < within) await Task.Delay(20);
+        Assert.True(condition(), $"Not reached within {within.TotalSeconds:0} s: {expression}");
     }
 
     /// <summary>

@@ -78,7 +78,7 @@ public sealed class CaptureSourceTests : IDisposable
         lock (gate) source.Open("headset", []);
 
         Assert.Same(Assert.Single(configured), source.Capture);
-        await AsyncWait.Until(() => Volatile.Read(ref levels) > 0); // started: its thread delivers frames
+        await AsyncWait.UntilAsync(() => Volatile.Read(ref levels) > 0); // started: its thread delivers frames
         Assert.Equal((0, 0, 0, 0), hardware.Counts);
     }
 

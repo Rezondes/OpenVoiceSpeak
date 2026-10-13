@@ -70,8 +70,7 @@ public class AdminViewModelTests
         {
             lock (sent) return sent.OfType<ListUsers>().Count();
         }
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (Count() < count && watch.ElapsedMilliseconds < 10_000) await Task.Delay(10);
+        await AsyncWait.UntilAsync(() => Count() >= count);
     }
 
     [Fact]

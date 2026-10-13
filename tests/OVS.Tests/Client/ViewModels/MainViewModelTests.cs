@@ -672,8 +672,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         viewModel.Keys.Simulate(action, true);
         try
         {
-            var watch = System.Diagnostics.Stopwatch.StartNew();
-            while (!await OnUi(done) && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+            await AsyncWait.UntilAsync(() => OnUi(done), TimeSpan.FromSeconds(10));
         }
         finally
         {
@@ -940,7 +939,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
                 return 0;
             });
         }
-        await AsyncWait.Until(() => relay.PassedUpVoice == 8);
+        await AsyncWait.UntilAsync(() => relay.PassedUpVoice == 8);
         serverTime.Advance(TimeSpan.FromMilliseconds(200)); // tokens for the ping
         int answers = await OnUi(() =>
         {
@@ -1700,8 +1699,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: new FakeAudioHardware());
         engine.ApplyLive(new ClientSettings { InputGain = 0.5f, VadThresholdDb = -25, NoiseSuppression = false, AutoGain = true });
         engine.LevelMeter = true;
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (engine.DeviceLifecycle.CaptureSource.Capture is null && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+        await AsyncWait.UntilAsync(() => engine.DeviceLifecycle.CaptureSource.Capture is not null);
         var capture = engine.DeviceLifecycle.CaptureSource.Capture!;
         Assert.Equal((0.5f, -25f, false, true), (capture.Gain, capture.Vad.ThresholdDb, capture.NoiseSuppression, capture.AutoGain));
 

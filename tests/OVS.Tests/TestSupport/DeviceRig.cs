@@ -39,7 +39,7 @@ internal sealed class DeviceRig : IDisposable
     public async Task ConnectAsync()
     {
         Engine.Connected = true;
-        await SendPathTests.Until(() => Hardware.Counts is { MicsOpen: 1, SpeakersOpen: 1 });
+        await AsyncWait.UntilAsync(() => Hardware.Counts is { MicsOpen: 1, SpeakersOpen: 1 });
         Assert.Equal((1, 1, 1, 1), Hardware.Counts);
     }
 

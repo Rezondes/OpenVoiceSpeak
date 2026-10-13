@@ -144,7 +144,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         var hardware = new FakeAudioHardware();
         await using var viewModel = WithOwnParts(action => action(), hardware: hardware);
         viewModel.PageFlow.OpenSettings(); // the level meter opens the microphone
-        await AsyncWait.Until(() => hardware.Counts.MicsOpen == 1);
+        await AsyncWait.UntilAsync(() => hardware.Counts.MicsOpen == 1);
 
         hardware.OpenGate.Reset(); // the restart's open waits, so a restart on this thread would not return
         var applying = viewModel.ApplySettingsAsync(new ClientSettings());
@@ -166,7 +166,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
             return false;
         });
         var viewModel = WithOwnParts(action => action(), keys: keys, hardware: hardware);
-        await AsyncWait.Until(() => poller is not null);
+        await AsyncWait.UntilAsync(() => poller is not null);
 
         await viewModel.DisposeAsync();
 

@@ -108,9 +108,9 @@ public class SoundTests
         async Task PressAndRelease(KeyAction action, int expected)
         {
             keys.Simulate(action, true);
-            await AsyncWait.Until(() => keys.IsDown(action));
+            await AsyncWait.UntilAsync(() => keys.IsDown(action));
             keys.Simulate(action, false);
-            await AsyncWait.Until(() => engine.Sounds.Recent.Count >= expected && !keys.IsDown(action));
+            await AsyncWait.UntilAsync(() => engine.Sounds.Recent.Count >= expected && !keys.IsDown(action));
             await AsyncWait.AssertStaysFalseAsync(() => engine.Sounds.Recent.Count > expected, TimeSpan.FromMilliseconds(50), "a few more polls: nothing else plays");
         }
         await PressAndRelease(KeyAction.PushToTalk, 0);

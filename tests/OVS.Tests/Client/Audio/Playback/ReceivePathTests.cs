@@ -648,12 +648,11 @@ public class ReceivePathTests
         {
             if (active.Count > 0) Interlocked.CompareExchange(ref heardAt, engine.MixCount, -1);
         };
-        await Task.Delay(500);
+        await AsyncWait.AssertStaysFalseAsync(() => engine.MixCount > 0, TimeSpan.FromMilliseconds(500), "nothing to play: nothing is mixed");
         Assert.Equal(0, engine.MixCount);
 
         engine.OnVoice(5, 0, VoiceHeader.TargetChannel, Frame(0));
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (Interlocked.Read(ref heardAt) < 0 && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+        await AsyncWait.UntilAsync(() => Interlocked.Read(ref heardAt) >= 0);
         // the first mix right away; the lone frame plays once the jitter buffer's start delay (40 ms) has passed
         Assert.InRange(Interlocked.Read(ref heardAt), 1, JitterBuffer.StartDelay);
     }

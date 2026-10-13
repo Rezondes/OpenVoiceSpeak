@@ -689,7 +689,7 @@ public sealed class GroupListViewModelTests
         rig.Server.Apply(new Error(newerRequestId, ReasonCodes.PermissionDenied));
 
         // both orders wait on one completion: the later waiter, which puts the order back, is queued to the pool
-        await AsyncWait.Until(() => Names(rig) is ["Gast", "Team", "Admin"]);
+        await AsyncWait.UntilAsync(() => Names(rig) is ["Gast", "Team", "Admin"]);
     }
 
     // ---- deleting ----

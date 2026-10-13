@@ -63,7 +63,7 @@ public sealed class EngineSyncTests : IDisposable
         hardware = new FakeAudioHardware();
         var withDevices = new AudioEngine(keys, clock, hardware);
         withDevices.LevelMeter = true;
-        await AsyncWait.Until(() => hardware.Counts.MicsOpen == 1);
+        await AsyncWait.UntilAsync(() => hardware.Counts.MicsOpen == 1);
         return withDevices;
     }
 

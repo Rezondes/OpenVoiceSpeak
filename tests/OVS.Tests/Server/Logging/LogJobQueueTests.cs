@@ -80,7 +80,7 @@ public sealed class LogJobQueueTests : IDisposable
         first.Release.Set();
         var ran = NewEvent();
         bool queued = false;
-        await AsyncWait.Until(() => queued || (queued = queue.TryQueue(ran.Set)));
+        await AsyncWait.UntilAsync(() => queued || (queued = queue.TryQueue(ran.Set)));
         Assert.True(ran.Wait(Timeout));
     }
 

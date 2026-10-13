@@ -670,8 +670,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         missing.DeviceLifecycle.SetTone(440);
         int levels = 0;
         missing.InputLevel += _ => Interlocked.Increment(ref levels);
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (Volatile.Read(ref levels) == 0 && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+        await AsyncWait.UntilAsync(() => Volatile.Read(ref levels) > 0);
         Assert.True(Volatile.Read(ref levels) > 0, "the capture stopped");
         Assert.Null(missing.DeviceLifecycle.CaptureSource.Capture!.Canceller);
     }

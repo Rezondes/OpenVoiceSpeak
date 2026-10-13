@@ -58,12 +58,12 @@ public class SendPathTests
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -10f, VadAutomatic = false }); // test tone is -13.5 dBFS: below
         engine.DeviceLifecycle.SetTone(440);
         keys.Simulate(ptt: true);
-        await Until(() => keys.IsDown(KeyAction.PushToTalk)); // the key thread saw it
-        if (expectFrames) await Until(() => engine.FramesSent > 0);
+        await AsyncWait.UntilAsync(() => keys.IsDown(KeyAction.PushToTalk)); // the key thread saw it
+        if (expectFrames) await AsyncWait.UntilAsync(() => engine.FramesSent > 0);
         else
         {
             await CaptureRunning(engine); // otherwise the silence below proves nothing
-            await Task.Delay(400);
+            await AsyncWait.AssertStaysFalseAsync(() => engine.FramesSent > 0, TimeSpan.FromMilliseconds(400), "the tone stays below the threshold");
         }
         keys.Simulate(ptt: false);
         Assert.Equal(expectFrames, engine.FramesSent > 0);
@@ -80,14 +80,14 @@ public class SendPathTests
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -40f }); // tone at -13.5 dBFS: well above
         keys.Simulate(KeyAction.PushToMute, true);
         keys.Simulate(ptt: true);
-        await Until(() => keys.MuteHeld && keys.IsDown(KeyAction.PushToTalk)); // the key thread saw both (it polls every 10 ms, when it gets a turn)
+        await AsyncWait.UntilAsync(() => keys.MuteHeld && keys.IsDown(KeyAction.PushToTalk)); // the key thread saw both (it polls every 10 ms, when it gets a turn)
         engine.DeviceLifecycle.SetTone(440);
         await CaptureRunning(engine);
-        await Task.Delay(400);
+        await AsyncWait.AssertStaysFalseAsync(() => engine.FramesSent > 0, TimeSpan.FromMilliseconds(400), "push to mute holds the voice back");
         Assert.Equal(0, engine.FramesSent);
 
         keys.Simulate(KeyAction.PushToMute, false);
-        await Until(() => engine.FramesSent > 0);
+        await AsyncWait.UntilAsync(() => engine.FramesSent > 0);
         Assert.True(engine.FramesSent > 0); // released: sending again
     }
 
@@ -100,11 +100,11 @@ public class SendPathTests
         engine.Configure(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40f });
         engine.DeviceLifecycle.SetTone(440);
         await CaptureRunning(engine);
-        await Task.Delay(400);
+        await AsyncWait.AssertStaysFalseAsync(() => engine.FramesSent > 0, TimeSpan.FromMilliseconds(400), "a muted channel sends nothing");
         Assert.Equal(0, engine.FramesSent);
 
         engine.ChannelMuted = false;
-        await Until(() => engine.FramesSent > 0);
+        await AsyncWait.UntilAsync(() => engine.FramesSent > 0);
         Assert.True(engine.FramesSent > 0);
     }
 
@@ -313,19 +313,13 @@ public class SendPathTests
     static float[] Constant(float value) => Enumerable.Repeat(value, AudioFormat.FrameSamples).ToArray();
 
     /// <summary>Waits until the condition holds (at most 5 s): the audio and key threads may get their turn late on a busy machine.</summary>
-    internal static async Task Until(Func<bool> done, int milliseconds = 5000)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!done() && watch.ElapsedMilliseconds < milliseconds) await Task.Delay(10);
-    }
-
     /// <summary>Waits until the tone thread has fed frames through the gate, so a silence check that follows proves something.</summary>
     static async Task CaptureRunning(AudioEngine engine)
     {
         int levels = 0;
         void Count(float _) => Interlocked.Increment(ref levels);
         engine.InputLevel += Count;
-        await Until(() => Volatile.Read(ref levels) > 0);
+        await AsyncWait.UntilAsync(() => Volatile.Read(ref levels) > 0);
         engine.InputLevel -= Count;
         Assert.True(Volatile.Read(ref levels) > 0, "the capture thread never ran");
     }
@@ -333,7 +327,7 @@ public class SendPathTests
     /// <summary>The output gets at least this loud within 5 s (positive checks wait, silence checks keep their fixed window).</summary>
     static async Task<bool> GetsLouderThan(AudioEngine engine, float db)
     {
-        await Until(() => engine.LastOutputLevelDb > db);
+        await AsyncWait.UntilAsync(() => engine.LastOutputLevelDb > db);
         return engine.LastOutputLevelDb > db;
     }
 
@@ -671,7 +665,7 @@ public class SendPathTests
         Assert.False(engine.FramesReceived.ContainsKey(5));
 
         engine.SelfTest = false;
-        await Until(() => engine.LastOutputLevelDb < -100); // the loopback speaker times out (late on a busy machine)
+        await AsyncWait.UntilAsync(() => engine.LastOutputLevelDb < -100); // the loopback speaker times out (late on a busy machine)
         Assert.True(await LoudestOutput(engine, 300) < -100);
         Assert.Equal(0, sent);
     }
@@ -710,7 +704,7 @@ public class SendPathTests
         Assert.True(await GetsLouderThan(engine, -20));
 
         Volatile.Write(ref held, false);
-        await Until(() => engine.LastOutputLevelDb < -100); // the loopback speaker times out (late on a busy machine)
+        await AsyncWait.UntilAsync(() => engine.LastOutputLevelDb < -100); // the loopback speaker times out (late on a busy machine)
         Assert.True(await LoudestOutput(engine, 300) < -100);
     }
 
@@ -725,13 +719,13 @@ public class SendPathTests
         {
             lock (levels) levels.Add(db);
         };
-        await Until(() =>
+        await AsyncWait.UntilAsync(() =>
         {
             lock (levels) return levels.Count > 0;
         }); // the capture runs before the change, so the change has to reach a running pipeline
         engine.ApplyLive(new ClientSettings { InputGain = 0.5f, OutputVolume = 0.3f, VadThresholdDb = -25, Mode = VoiceActivation });
         lock (levels) levels.Clear();
-        await Until(() =>
+        await AsyncWait.UntilAsync(() =>
         {
             lock (levels) return levels.Count > 0 && levels[^1] is >= -21f and <= -18f;
         });
@@ -831,8 +825,7 @@ public class SendPathTests
         {
             var answer = serverCrypto.Seal(PacketDirection.ServerToClient, new VoiceHeader(PacketType.Ping, 5, serverSeq.Next(), 0), new PingPayload(0, uplink).Build());
             await server.SendAsync(answer, from);
-            var watch = System.Diagnostics.Stopwatch.StartNew();
-            while (client.UplinkLoss != uplink && watch.ElapsedMilliseconds < 10_000) await Task.Delay(10);
+            await AsyncWait.UntilAsync(() => client.UplinkLoss == uplink);
             Assert.Equal(uplink, client.UplinkLoss);
         }
         var frames = Enumerable.Range(0, 10).Select(_ => RandomNumberGenerator.GetBytes(40)).ToArray();
@@ -977,7 +970,7 @@ public class SendPathTests
         rig.Hardware.DefaultMic = rig.Hardware.DefaultSpeaker = null;
 
         rig.Engine.Connected = true;
-        await Until(() => rig.Notices.Count == 2);
+        await AsyncWait.UntilAsync(() => rig.Notices.Count == 2);
 
         Assert.Equal((0, 0, 0, 0), rig.Hardware.Counts);
         Assert.Equivalent(new[] { string.Format(Strings.Audio_MicFailed, "no microphone"), string.Format(Strings.Audio_SpeakerFailed, "no speaker") },
@@ -1001,7 +994,7 @@ public class SendPathTests
 
             await rig.ConnectAsync();
             rig.Engine.Connected = false;
-            await Until(() => rig.Hardware.Counts.MicsOpen == 0 && !rig.Engine.PlaybackRunning);
+            await AsyncWait.UntilAsync(() => rig.Hardware.Counts.MicsOpen == 0 && !rig.Engine.PlaybackRunning);
             Assert.Equal((1, 0, 1, 0), rig.Hardware.Counts);
             rig.Change();
             Assert.Equal((1, 0, 1, 0), rig.Hardware.Counts);
@@ -1388,7 +1381,7 @@ public class SendPathTests
         public async Task Key(int vk, bool isDown, KeyAction action)
         {
             Fake.Set(isDown, vk);
-            await Until(() => Keys.IsDown(action) == isDown);
+            await AsyncWait.UntilAsync(() => Keys.IsDown(action) == isDown);
             Assert.Equal(isDown, Keys.IsDown(action));
         }
 

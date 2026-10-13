@@ -53,7 +53,7 @@ public sealed class VoiceLinkTests : IDisposable
     {
         await server.WaitForAsync(PacketType.Hello, hellosSoFar);
         await server.AnswerAsync();
-        await AsyncWait.Until(() => link.Reachable == true);
+        await AsyncWait.UntilAsync(() => link.Reachable == true);
     }
 
     /// <summary>Waits for the <paramref name="hellosSoFar"/>th Hello, has the server answer it with <paramref name="uplink"/> and waits until the client counted <paramref name="answersSoFar"/> answers.</summary>
@@ -61,7 +61,7 @@ public sealed class VoiceLinkTests : IDisposable
     {
         await server.WaitForAsync(PacketType.Hello, hellosSoFar);
         await server.AnswerAsync(uplink);
-        await AsyncWait.Until(() => link.ReadFigures().RoundTripCount == answersSoFar);
+        await AsyncWait.UntilAsync(() => link.ReadFigures().RoundTripCount == answersSoFar);
     }
 
     /// <summary>A first client answered once and fed to the adapter, stopped, and a second client started and said Hello; nothing reported yet counts.</summary>
@@ -106,7 +106,7 @@ public sealed class VoiceLinkTests : IDisposable
 
         await server.SendVoiceAsync(speaker: 9, frameNumber: 0, EngineProbe.SilentFrame());
 
-        await AsyncWait.Until(() => engine.FramesReceived.ContainsKey(9));
+        await AsyncWait.UntilAsync(() => engine.FramesReceived.ContainsKey(9));
         Assert.Equal(1, engine.FramesReceived[9]);
     }
 
@@ -457,7 +457,7 @@ public sealed class VoiceLinkTests : IDisposable
         time.Advance(TimeSpan.FromMilliseconds(40));
         await server.SendVoiceAsync(speaker: 9, frameNumber: 0, EngineProbe.SilentFrame());
         await server.SendVoiceAsync(speaker: 9, frameNumber: 2, EngineProbe.SilentFrame());
-        await AsyncWait.Until(() => engine.FramesReceived.GetValueOrDefault(9u) == 2);
+        await AsyncWait.UntilAsync(() => engine.FramesReceived.GetValueOrDefault(9u) == 2);
         await AnswerAndWaitUntilCountedAsync(hellosSoFar: 1, answersSoFar: 1);
 
         var figures = link.ReadFigures();

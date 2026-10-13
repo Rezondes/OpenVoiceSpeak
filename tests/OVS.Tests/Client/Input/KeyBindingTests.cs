@@ -111,7 +111,7 @@ public class KeyBindingTests
             {
                 Assert.False(chord.IsCompleted); // not while a modifier is still down
                 fake.Set(isDown, vks);
-                await fake.NextSweep();
+                await fake.NextSweep(() => chord.IsCompleted);
             }
             return chord.IsCompleted ? await chord : null;
         }

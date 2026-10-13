@@ -296,10 +296,6 @@
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Until",
-    "Count": 1
-  },
-  {
     "Key": "RL154|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|TalkRig.Key",
     "Count": 1
   },
@@ -553,10 +549,6 @@
   },
   {
     "Key": "RL154|tests/OVS.Tests/Shared/Protocol/Framing/FrameCodecTests.cs|FrameCodecTests.Encode",
-    "Count": 1
-  },
-  {
-    "Key": "RL154|tests/OVS.Tests/TestSupport/AsyncWait.cs|AsyncWait.Until",
     "Count": 1
   },
   {
@@ -7960,35 +7952,7 @@
     "Count": 2
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Playback_IdleDoesNotMix_WakesOnVoice:Task.Delay",
-    "Count": 2
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.MissingNativeLibrary_CaptureRunsWithoutSuppressor:Task.Delay",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.ChannelMuted_SendsNothing:Task.Delay",
-    "Count": 1
-  },
-  {
     "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.LoudestOutput:Task.Delay",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.PttKey_BelowThreshold_SendsOnlyInPttMode:Task.Delay",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.PushToMute_Held_SendsNothing:Task.Delay",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Sender_AddsCopyOnlyOnLoss:Task.Delay",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Until:Task.Delay",
     "Count": 1
   },
   {
@@ -8020,14 +7984,6 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/Logging/ClientLogTests.cs|ClientLogTests.AudioDebug_WritesToClientLog:Task.Delay",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/Logging/ClientLogTests.cs|ClientLogTests.Eventually:Task.Delay",
-    "Count": 1
-  },
-  {
     "Key": "RL603|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.Deafened_FramesKeptAway_NotDownlinkLoss:Task.Delay",
     "Count": 1
   },
@@ -8048,15 +8004,7 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/Settings/SettingsTests.cs|SettingsTests.EchoCancellation_DefaultLiveMissingLib:Task.Delay",
-    "Count": 1
-  },
-  {
     "Key": "RL603|tests/OVS.Tests/Client/SplashTests.cs|SplashTests.Shows_ThenCloseEndsIt:Thread.Sleep",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.ListUsersSent:Task.Delay",
     "Count": 1
   },
   {
@@ -8084,15 +8032,7 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.AudioEngine_LiveSettingsBeforeMicOpen_Applied:Task.Delay",
-    "Count": 1
-  },
-  {
     "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Devices_WhileNeeded_OpenAndCloseAgain:Task.Delay",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.PressUntil:Task.Delay",
     "Count": 1
   },
   {
@@ -8276,8 +8216,8 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/TestSupport/AsyncWait.cs|AsyncWait.Until:Task.Delay",
-    "Count": 1
+    "Key": "RL603|tests/OVS.Tests/TestSupport/AsyncWait.cs|AsyncWait.UntilAsync:Task.Delay",
+    "Count": 2
   },
   {
     "Key": "RL603|tests/OVS.Tests/TestSupport/AsyncWaitTests.cs|AsyncWaitTests.AssertStaysFalse_TurnsTrue_FailsBeforeTheEndWithTheReason:Task.Delay",
@@ -8285,10 +8225,6 @@
   },
   {
     "Key": "RL603|tests/OVS.Tests/TestSupport/DialogCaseTable.cs|DialogCaseTable.All:DateTimeOffset.UtcNow",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/TestSupport/FakeKeys.cs|FakeKeys.NextSweep:Task.Delay",
     "Count": 1
   },
   {

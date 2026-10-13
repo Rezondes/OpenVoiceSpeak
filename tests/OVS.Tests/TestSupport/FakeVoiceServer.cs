@@ -49,7 +49,7 @@ sealed class FakeVoiceServer : IDisposable
     }
 
     /// <summary>Waits until <paramref name="count"/> packets of <paramref name="type"/> came in.</summary>
-    public Task WaitForAsync(PacketType type, int count = 1) => AsyncWait.Until(() => Received.Count(header => header.Type == type) >= count);
+    public Task WaitForAsync(PacketType type, int count = 1) => AsyncWait.UntilAsync(() => Received.Count(header => header.Type == type) >= count);
 
     /// <summary>
     /// Answers the client's last packet with a ping that echoes the time the client sent and reports <see cref="UplinkLoss"/>,
@@ -69,7 +69,7 @@ sealed class FakeVoiceServer : IDisposable
     {
         int before = Volatile.Read(ref fencesSeen);
         await fence.SendAsync(new byte[1], EndPoint);
-        await AsyncWait.Until(() => Volatile.Read(ref fencesSeen) > before);
+        await AsyncWait.UntilAsync(() => Volatile.Read(ref fencesSeen) > before);
     }
 
     Task SendAsync(PacketType type, byte[] payload, uint sessionId = SessionId)

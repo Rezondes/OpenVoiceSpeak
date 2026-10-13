@@ -66,7 +66,7 @@ public sealed class ListRefreshTests
         Assert.Equal(1, SentCount);
         clock.Advance(TimeSpan.FromMilliseconds(1));
 
-        await AsyncWait.Until(() => SentCount == 2); // the delayed send continues on the pool
+        await AsyncWait.UntilAsync(() => SentCount == 2); // the delayed send continues on the pool
         Assert.Equal(["u1", "u2"], sent);
     }
 

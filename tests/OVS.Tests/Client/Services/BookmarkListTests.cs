@@ -134,7 +134,7 @@ public sealed class BookmarkListTests
         Assert.Single(list.Items);
         Assert.Empty(list.Items.Live());
         time.Advance(TimeSpan.FromSeconds(1));
-        await AsyncWait.Until(() => list.Items.Count == 0);
+        await AsyncWait.UntilAsync(() => list.Items.Count == 0);
     }
 
     // ---- remembering a server that was connected to ----

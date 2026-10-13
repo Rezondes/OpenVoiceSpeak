@@ -275,7 +275,7 @@ public sealed class DeviceLifecycleTests : IDisposable
         {
             devices.SetTone(440);
 
-            await AsyncWait.Until(() => Volatile.Read(ref levels) > 0); // started: its thread delivers frames
+            await AsyncWait.UntilAsync(() => Volatile.Read(ref levels) > 0); // started: its thread delivers frames
             Assert.Equal((0, 0, 0, 0), hardware.Counts);
         }
         finally

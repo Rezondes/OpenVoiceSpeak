@@ -5,6 +5,7 @@ using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
 using OVS.Client.Settings;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.Audio.Processing;
 
@@ -342,8 +343,7 @@ public class VoiceFilterTests
         engine.DeviceLifecycle.SetTone(440);
         int levels = 0;
         engine.InputLevel += _ => Interlocked.Increment(ref levels);
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (Volatile.Read(ref levels) == 0 && watch.ElapsedMilliseconds < 5000) await Task.Delay(10);
+        await AsyncWait.UntilAsync(() => Volatile.Read(ref levels) > 0);
         Assert.True(Volatile.Read(ref levels) > 0, "the capture stopped");
         Assert.Null(engine.DeviceLifecycle.CaptureSource.Capture!.Suppressor);
     }

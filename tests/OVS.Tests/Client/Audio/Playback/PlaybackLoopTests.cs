@@ -58,7 +58,7 @@ public sealed class PlaybackLoopTests : IDisposable
     public async Task Kick_NothingQueuedNorNeeded_OpensTheSpeakerThenClosesItAndEnds()
     {
         loop.Kick();
-        await AsyncWait.Until(() => !loop.Running);
+        await AsyncWait.UntilAsync(() => !loop.Running);
 
         Assert.Equal((1, 0), (hardware.Counts.Speakers, hardware.Counts.SpeakersOpen));
         Assert.Equal(0, loop.MixCount);
@@ -70,7 +70,7 @@ public sealed class PlaybackLoopTests : IDisposable
         sounds.Add(Tone(3), 1f);
 
         loop.Kick();
-        await AsyncWait.Until(() => !loop.Running);
+        await AsyncWait.UntilAsync(() => !loop.Running);
 
         Assert.Equal(3, loop.MixCount);
         Assert.Equal(0, sounds.Count);
@@ -82,11 +82,11 @@ public sealed class PlaybackLoopTests : IDisposable
     {
         needed = true;
         loop.Kick();
-        await AsyncWait.Until(() => hardware.Counts.SpeakersOpen == 1);
+        await AsyncWait.UntilAsync(() => hardware.Counts.SpeakersOpen == 1);
         sounds.Add(Tone(1), 1f);
 
         loop.Kick();
-        await AsyncWait.Until(() => loop.MixCount == 1);
+        await AsyncWait.UntilAsync(() => loop.MixCount == 1);
 
         Assert.True(loop.Running, "still needed: the loop waits again instead of ending");
         Assert.Equal((1, 1), (hardware.Counts.Speakers, hardware.Counts.SpeakersOpen));
@@ -97,11 +97,11 @@ public sealed class PlaybackLoopTests : IDisposable
     {
         needed = true;
         loop.Kick();
-        await AsyncWait.Until(() => hardware.Counts.SpeakersOpen == 1);
+        await AsyncWait.UntilAsync(() => hardware.Counts.SpeakersOpen == 1);
 
         needed = false;
         loop.Wake();
-        await AsyncWait.Until(() => !loop.Running);
+        await AsyncWait.UntilAsync(() => !loop.Running);
 
         Assert.Equal((1, 0), (hardware.Counts.Speakers, hardware.Counts.SpeakersOpen));
     }
@@ -117,13 +117,13 @@ public sealed class PlaybackLoopTests : IDisposable
         };
         Talk(7, frames: JitterBuffer.MaxFrames); // 200 ms
         loop.Kick();
-        await AsyncWait.Until(() =>
+        await AsyncWait.UntilAsync(() =>
         {
             lock (reported) return reported.Count > 0;
         });
 
         mixer.Clear(); // as deafening does: nothing left to play, but the UI still shows the speaker
-        await AsyncWait.Until(() => !loop.Running);
+        await AsyncWait.UntilAsync(() => !loop.Running);
 
         lock (reported)
         {
@@ -137,7 +137,7 @@ public sealed class PlaybackLoopTests : IDisposable
     {
         needed = true;
         loop.Kick();
-        await AsyncWait.Until(() => hardware.Counts.SpeakersOpen == 1);
+        await AsyncWait.UntilAsync(() => hardware.Counts.SpeakersOpen == 1);
 
         loop.Stop();
         sounds.Add(Tone(1), 1f);
@@ -152,7 +152,7 @@ public sealed class PlaybackLoopTests : IDisposable
     public async Task Stop_LoopEnded_LaterKickStartsNoThread()
     {
         loop.Kick();
-        await AsyncWait.Until(() => !loop.Running);
+        await AsyncWait.UntilAsync(() => !loop.Running);
 
         loop.Stop();
         loop.Kick();
@@ -168,7 +168,7 @@ public sealed class PlaybackLoopTests : IDisposable
         var watch = Stopwatch.StartNew();
 
         loop.Kick();
-        await AsyncWait.Until(() => loop.MixCount >= 10);
+        await AsyncWait.UntilAsync(() => loop.MixCount >= 10);
         long mixed = loop.MixCount;
         var elapsed = watch.Elapsed;
 
@@ -183,7 +183,7 @@ public sealed class PlaybackLoopTests : IDisposable
         int target = (int)(PlaybackLoop.TargetBufferMs / AudioFormat.FrameDuration.TotalMilliseconds);
 
         loop.Kick();
-        await AsyncWait.Until(() => loop.MixCount >= target);
+        await AsyncWait.UntilAsync(() => loop.MixCount >= target);
         await AsyncWait.AssertStaysFalseAsync(() => loop.MixCount > target, TimeSpan.FromMilliseconds(200), "a loop that ignores the target would go on mixing at once");
 
         Assert.Equal(target, loop.MixCount);

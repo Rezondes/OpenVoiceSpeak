@@ -461,7 +461,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     static async Task SwitchToTcpAsync(TestServer on, TestClient client)
     {
         await client.SendAsync(new VoiceUp(0, VoiceHeader.TargetChannel, ""));
-        await AsyncWait.Until(() => on.State.FindSession(client.Id)!.Voice.TcpVoice);
+        await AsyncWait.UntilAsync(() => on.State.FindSession(client.Id)!.Voice.TcpVoice);
     }
 
     static async Task HeardTcp(TestClient at, uint speaker, uint seq, byte[] opus, byte target = VoiceHeader.TargetChannel) =>
@@ -582,7 +582,7 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         Assert.Null(await vb.ReceiveVoiceAsync(300));
 
         await SendTcpAsync(first, 1, Opus);
-        await AsyncWait.Until(() => session.Voice.TcpVoice);
+        await AsyncWait.UntilAsync(() => session.Voice.TcpVoice);
         Assert.NotNull(await vb.ReceiveVoiceAsync());
     }
 
