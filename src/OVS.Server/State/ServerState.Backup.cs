@@ -111,11 +111,9 @@ public sealed partial class ServerState
     /// </summary>
     void OnUploadBackupChunk(Session session, UploadBackupChunk request)
     {
-        if (!RequireAdminGroup(session, request))
-        {
-            DropUpload(session);
-            return;
-        }
+        // Step 30: the file goes before the refusal is sent; a client that looks at once must not still see it
+        if (!session.GroupIds.Contains(WellKnownGroups.Admin)) DropUpload(session);
+        if (!RequireAdminGroup(session, request)) return;
         if (!UploadFolder.IsValidId(request.UploadId) || request.DataBase64.Length > Base64Text.Encoded(ProtocolLimits.BackupChunkBytes))
         {
             Fail(session, request, ReasonCodes.InvalidValue);
