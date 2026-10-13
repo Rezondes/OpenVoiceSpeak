@@ -365,7 +365,7 @@ public sealed class ServerTuningTests
     [Fact]
     public void Outbox_ByteCap_Disconnects()
     {
-        var session = new Session(1, "fp", "gast", IPAddress.Loopback, new byte[32], TimeProvider.System);
+        using var session = new Session(1, "fp", "gast", IPAddress.Loopback, new byte[32], TimeProvider.System);
         var big = new ServerIcon(null, null, new string('A', 700_000));
         for (int index = 0; index < 20; index++) session.Outbox.Send(big);
 

@@ -52,7 +52,7 @@ public sealed class UserStatsTests
     public async Task Login_User_SetsLastLoginCountAndIp()
     {
         var time = new ManualTimeProvider();
-        var anna = ClientIdentity.Create();
+        using var anna = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(time: time);
         var first = time.GetUtcNow();
         await ConnectOnceAsync(server, anna, "anna");
@@ -69,7 +69,7 @@ public sealed class UserStatsTests
     [Fact]
     public async Task NicknameChange_Many_KeepsFiveNewestDistinct()
     {
-        var anna = ClientIdentity.Create();
+        using var anna = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync();
         foreach (var name in new[] { "a", "b", "c", "a", "d", "e", "f", "g" })
             await ConnectOnceAsync(server, anna, name);
@@ -83,7 +83,7 @@ public sealed class UserStatsTests
     public async Task Disconnect_Session_AddsOnlineSpeechAndChat()
     {
         var time = new ManualTimeProvider();
-        var anna = ClientIdentity.Create();
+        using var anna = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(time: time);
         var client = await TestClient.ConnectAsync(server, "anna", anna);
         await using var testClient = await TestClient.ConnectAsync(server, "bert");
@@ -113,7 +113,7 @@ public sealed class UserStatsTests
     public async Task Speech_MutedChannel_NotCounted()
     {
         var admin = ClientIdentity.Create();
-        var anna = ClientIdentity.Create();
+        using var anna = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
         await using var ad = await TestClient.ConnectAsync(server, "admin", admin);
         var client = await TestClient.ConnectAsync(server, "anna", anna);
@@ -137,8 +137,8 @@ public sealed class UserStatsTests
     {
         var time = new ManualTimeProvider();
         var admin = ClientIdentity.Create();
-        var anna = ClientIdentity.Create();
-        var offline = ClientIdentity.Create();
+        using var anna = ClientIdentity.Create();
+        using var offline = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(
             TestServer.Grant(admin, "Admin") + TestServer.Grant(offline, "Gast"), time: time);
         await using var ad = await TestClient.ConnectAsync(server, "admin", admin);
@@ -178,7 +178,7 @@ public sealed class UserStatsTests
     public async Task Shutdown_OpenSessions_Persisted()
     {
         var time = new ManualTimeProvider();
-        var anna = ClientIdentity.Create();
+        using var anna = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(time: time);
         await using var client = await TestClient.ConnectAsync(server, "anna", anna);
         await client.SendAsync(new SendChat(ChatTarget.Channel, null, "tschuess"));

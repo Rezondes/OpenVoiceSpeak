@@ -21,7 +21,8 @@ public sealed class LogFileLoggerProviderTests() : TempDirectoryTest("ovs-provid
     [Fact]
     public void Log_ServerCategory_FileAndConsole()
     {
-        Provider().CreateLogger(LogFileLoggerProvider.ServerCategory).LogInformation("Server startet");
+        using var provider = Provider();
+        provider.CreateLogger(LogFileLoggerProvider.ServerCategory).LogInformation("Server startet");
 
         Assert.Equal($"{Stamp} Server startet{Environment.NewLine}", Text("server", FileName));
         Assert.Equal([$"{Stamp} Server startet"], console);
@@ -30,7 +31,8 @@ public sealed class LogFileLoggerProviderTests() : TempDirectoryTest("ovs-provid
     [Fact]
     public void Log_ConsoleOnlyOrFileOnlyEvent_GoesOnlyThere()
     {
-        var server = Provider().CreateLogger(LogFileLoggerProvider.ServerCategory);
+        using var provider = Provider();
+        var server = provider.CreateLogger(LogFileLoggerProvider.ServerCategory);
 
         server.Log(LogLevel.Information, LogFileLoggerProvider.ConsoleOnly, "Admin-Token: geheim", null, (text, _) => text);
         server.Log(LogLevel.Information, LogFileLoggerProvider.FileOnly, "nur in die Datei", null, (text, _) => text);
@@ -44,7 +46,8 @@ public sealed class LogFileLoggerProviderTests() : TempDirectoryTest("ovs-provid
     {
         var channel = Guid.Parse("11111111-2222-3333-4444-555555555555");
 
-        Provider().CreateLogger(LogFileLoggerProvider.ChannelCategory(channel)).LogInformation("[Raid] anna betritt den Channel");
+        using var provider = Provider();
+        provider.CreateLogger(LogFileLoggerProvider.ChannelCategory(channel)).LogInformation("[Raid] anna betritt den Channel");
 
         Assert.Equal($"{Stamp} [Raid] anna betritt den Channel{Environment.NewLine}", Text("channels", channel.ToString(), FileName));
         Assert.Empty(console);
@@ -53,7 +56,8 @@ public sealed class LogFileLoggerProviderTests() : TempDirectoryTest("ovs-provid
     [Fact]
     public void Log_OtherCategory_Nothing()
     {
-        var logger = Provider().CreateLogger("Microsoft.Hosting.Lifetime");
+        using var provider = Provider();
+        var logger = provider.CreateLogger("Microsoft.Hosting.Lifetime");
 
         logger.LogInformation("Application started");
 

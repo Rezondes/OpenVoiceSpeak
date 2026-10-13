@@ -11,8 +11,16 @@ public abstract class TempDirectoryTest(string prefix, bool quiet) : IDisposable
 {
     protected readonly string dir = Directory.CreateTempSubdirectory(prefix).FullName;
 
-    public virtual void Dispose()
+    public void Dispose()
     {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>Deletes the folder; a test class that adds clean-up overrides it and calls it last.</summary>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing) return;
         if (!quiet)
         {
             Directory.Delete(dir, true);

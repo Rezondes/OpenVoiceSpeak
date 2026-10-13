@@ -44,8 +44,10 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
     async Task<ClientRig> StartAsync(string password = "")
     {
         using var identity = IdentityFile.LoadOrCreate(dir);
+#pragma warning disable CA2000 // handed to the rig; the test stops it
         var server = await TestServer.StartAsync(TestServer.Grant(identity, "Admin"), password: password);
         var ui = new TestDispatcher();
+#pragma warning restore CA2000
         var viewModel = await ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(dir, ui.Post, trustServers: true)));
         return new ClientRig(server, ui, viewModel);
     }

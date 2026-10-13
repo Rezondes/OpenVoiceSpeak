@@ -69,7 +69,7 @@ public class IdleCostTests
         // packets, nothing more (in at least one window).
         var encoder = new VoiceEncoder();
         var packets = Enumerable.Range(0, WarmUp + Windows * Runs + 3).Select(count => encoder.Encode(Sine(count))).ToList();
-        var bare = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2); // Package 142: the decoders are stereo
+        using var bare = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2); // Package 142: the decoders are stereo
         var pcm = new float[AudioFormat.StereoFrameSamples];
         int bareNext = 0;
         var concentus = Allocated(() => bare.Decode(packets[bareNext++], pcm, AudioFormat.FrameSamples, false));
@@ -87,7 +87,7 @@ public class IdleCostTests
         // runtime allocates while Concentus warms up shifts between loops measured one after the other (seen with stereo)
         var ticks = new long[Windows]; // tick i decodes packet i, as the bare decoder beside it does
         var beside = new long[Windows];
-        var bareBeside = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
+        using var bareBeside = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
         for (int index = 0; index < WarmUp + Windows * Runs; index++, seq++)
         {
             mixer.Push(1, (uint)seq, packets[seq], false);
@@ -108,7 +108,7 @@ public class IdleCostTests
         Assert.Contains(true, Enumerable.Range(0, Windows).Select(value => ticks[value] <= 2 * beside[value]));
 
         var decoder = new VoiceDecoder();
-        var bareTurns = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
+        using var bareTurns = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
         long[] decodes = new long[Windows], bareDecodes = new long[Windows];
         for (int index = 0; index < WarmUp + Windows * Runs; index++)
         {

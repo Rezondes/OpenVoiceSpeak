@@ -84,7 +84,9 @@ sealed class WasapiHardware : IAudioHardware
     {
         var device = Open(deviceId, AudioDirection.Output, warnings);
         var output = device is null
+            #pragma warning disable CA2000 // handed to the PlaybackBuffer, which disposes it; the catch below disposes it when the set-up fails
             ? new WasapiOut(AudioClientShareMode.Shared, SpeakerBufferMs)
+            #pragma warning restore CA2000
             : new WasapiOut(device, AudioClientShareMode.Shared, true, SpeakerBufferMs);
         output.PlaybackStopped += (_, args) =>
         {

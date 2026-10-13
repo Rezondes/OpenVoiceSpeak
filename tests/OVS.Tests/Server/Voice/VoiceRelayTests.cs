@@ -13,7 +13,9 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests.Server.Voice;
 
 /// <summary>A (admin) and B share the lobby, C sits in another channel. Real UDP on loopback.</summary>
+#pragma warning disable CA1001 // its voice clients are disposed in DisposeAsync (IAsyncLifetime)
 public sealed class VoiceRelayTests : IAsyncLifetime
+#pragma warning restore CA1001
 {
     readonly ClientIdentity adminId = ClientIdentity.Create();
     TestServer server = null!;

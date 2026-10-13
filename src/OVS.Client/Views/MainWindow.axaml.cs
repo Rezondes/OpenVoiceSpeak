@@ -289,9 +289,12 @@ internal partial class MainWindow : Window
     }
 
     /// <summary>The untrimmed width of a text block's text in its current font.</summary>
-    static double TextWidth(TextBlock? text) => string.IsNullOrEmpty(text?.Text) ? 0
-        : new TextLayout(text.Text, new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch), text.FontSize, null)
-            .WidthIncludingTrailingWhitespace;
+    static double TextWidth(TextBlock? text)
+    {
+        if (string.IsNullOrEmpty(text?.Text)) return 0;
+        using var layout = new TextLayout(text.Text, new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch), text.FontSize, null);
+        return layout.WidthIncludingTrailingWhitespace;
+    }
 
     /// <summary>
     /// Package 113 (A121): the footer untrimmed: padding, avatar, the wider of the nickname and the talk hint (or the hint

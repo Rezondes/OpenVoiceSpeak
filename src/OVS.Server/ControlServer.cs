@@ -24,7 +24,9 @@ internal sealed class ControlServer(ServerState state, X509Certificate2 certific
     readonly byte[] certHash = CertFingerprint.Compute(certificate);
     readonly CancellationTokenSource stopping = new();
     readonly ConcurrentDictionary<Task, byte> connections = new();
+    #pragma warning disable CA2213 // handshakes still in flight release it after the server stopped; it hands out no wait handle
     SemaphoreSlim? handshakes; // Package 86: created on Start, after MaxPendingHandshakes is set
+    #pragma warning restore CA2213
     Task? acceptLoop;
 
     /// <summary>How long a client may take from connecting to the end of the handshake.</summary>
@@ -63,6 +65,7 @@ internal sealed class ControlServer(ServerState state, X509Certificate2 certific
     {
         await StopAsync();
         stopping.Dispose();
+        listener.Dispose();
     }
 
     async Task AcceptLoopAsync()

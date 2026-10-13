@@ -30,7 +30,9 @@ internal sealed class CapturePipeline : IDisposable
     Thread? toneThread;
     volatile bool running = true;
     // set by Dispose: ends the tone thread's wait for its next frame at once (never disposed: a late wait may still read it)
+    #pragma warning disable CA2213 // never disposed: the tone thread's last wait may still read it after Dispose
     readonly ManualResetEventSlim toneStop = new();
+    #pragma warning restore CA2213
 
     CapturePipeline() { }
 

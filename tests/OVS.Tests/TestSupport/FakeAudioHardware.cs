@@ -9,7 +9,9 @@ namespace OVS.Tests.TestSupport;
 /// Package 124: counts the microphones and speakers the engine opens and closes, without hardware. Package 137: knows
 /// which devices are plugged in and which are the defaults, falls back like the real one, and raises device changes.
 /// </summary>
+#pragma warning disable CA1001 // a test fake; its gate only blocks briefly and needs no wait handle
 internal sealed class FakeAudioHardware : IAudioHardware
+#pragma warning restore CA1001
 {
     readonly List<(string Device, CapturePipeline Capture)> captures = [];
     readonly List<(string Device, FakeOutput Output)> outputs = [];

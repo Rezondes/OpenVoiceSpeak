@@ -41,7 +41,9 @@ public class VoiceRoutingTests
     public void Recipients_MutedChannel_NobodyHearsSender(byte target)
     {
         var admin = S(1, ChannelA, Permission.All);
-        var heard = VoiceRouting.Recipients([admin, S(2, ChannelA), S(3, ChannelB)], admin, target, Linked, ch => ch == ChannelA);
+        using var inA = S(2, ChannelA);
+        using var inB = S(3, ChannelB);
+        var heard = VoiceRouting.Recipients([admin, inA, inB], admin, target, Linked, ch => ch == ChannelA);
         Assert.Empty(heard);
     }
 
@@ -51,7 +53,9 @@ public class VoiceRoutingTests
     public void Recipients_LinkIntoMutedChannel_Heard(bool tcp)
     {
         var sender = S(1, ChannelB, tcp: tcp);
-        var heard = VoiceRouting.Recipients([sender, S(2, ChannelA, tcp: tcp), S(3, ChannelB, tcp: tcp)], sender, VoiceHeader.TargetLinked, Linked, ch => ch == ChannelA);
+        using var inA = S(2, ChannelA, tcp: tcp);
+        using var inB = S(3, ChannelB, tcp: tcp);
+        var heard = VoiceRouting.Recipients([sender, inA, inB], sender, VoiceHeader.TargetLinked, Linked, ch => ch == ChannelA);
         Assert.Equal([2u, 3u], heard.Select(session => session.Id).Order());
     }
 

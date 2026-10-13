@@ -37,7 +37,7 @@ public sealed class PersistenceTests
         using var harness = new StateHarness(TestServer.Grant(admin, "Admin"));
         File.WriteAllBytes(Path.Combine(harness.DataDir, ServerCertificate.FileName), [1]); // the archive takes the certificate file along
         var session = harness.Admit("admin", admin.Fingerprint);
-        var newcomer = ClientIdentity.Create();
+        using var newcomer = ClientIdentity.Create();
         harness.Admit("neu", newcomer.Fingerprint); // a login is saved debounced, so only the pending save holds it
 
         harness.Handle(session, new CreateBackup { RequestId = "b" });

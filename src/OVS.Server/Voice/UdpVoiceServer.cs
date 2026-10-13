@@ -19,7 +19,9 @@ internal sealed class UdpVoiceServer : IDisposable
     readonly Socket socket;
     readonly CancellationTokenSource stopping = new();
     // Package 141: the sessions' voice state is touched by the UDP loop and by VoiceUp from the control connections, one at a time
+    #pragma warning disable CA2213 // requests still in flight release it after the loop ended; it hands out no wait handle
     readonly SemaphoreSlim gate = new(1, 1);
+    #pragma warning restore CA2213
     Task? loop;
 
     /// <param name="time">The clock the state runs on: it counts the seconds of the bad packets' budget.</param>

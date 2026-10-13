@@ -460,7 +460,9 @@ public sealed class DebugApiTests : IAsyncLifetime
     {
         readonly TestDispatcher ui = new();
         readonly string dir = Directory.CreateTempSubdirectory("ovs-debug-").FullName;
+#pragma warning disable CA2213 // disposed on the UI thread in DisposeAsync
         MainViewModel viewModel = null!;
+#pragma warning restore CA2213
         DebugApi api = null!;
         public HttpClient Http { get; private set; } = null!;
         public int Port { get; private set; }
@@ -473,7 +475,7 @@ public sealed class DebugApiTests : IAsyncLifetime
             // API binds it; then a new port is probed (at most 5 tries)
             for (int attempt = 1; ; attempt++)
             {
-                var probe = new TcpListener(IPAddress.Loopback, 0);
+                using var probe = new TcpListener(IPAddress.Loopback, 0);
                 probe.Start();
                 instance.Port = ((IPEndPoint)probe.LocalEndpoint).Port;
                 probe.Stop();

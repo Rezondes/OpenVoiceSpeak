@@ -28,11 +28,12 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
         Dispatcher.UIThread.RunJobs();
     }
 
-    MainWindow Open(out MainViewModel viewModel, DisplayMode display = DisplayMode.Animated, double width = 1100)
+    MainWindow Open(DisplayMode display = DisplayMode.Animated, double width = 1100)
     {
         new ClientSettings { Display = display }.Save(dir);
-        viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
         var main = new MainWindow { DataContext = viewModel, Width = width, Height = 700 };
+        main.Closed += (_, _) => { _ = viewModel.DisposeAsync().AsTask(); }; // the window owns its view model
         main.Show();
         MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
         MotionWait.Settle(700); // connecting builds the tree up (Package 106)
@@ -51,7 +52,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     [AvaloniaFact]
     public void Open_ScrimFadesCardPops_CloseReverses()
     {
-        var main = Open(out _);
+        var main = Open();
         var overlay = main.Overlay;
         // the smallest values seen while it opens, every value as it happens: under load one frame can outlast the pop
         var scrims = MotionWait.Record(Scrim(overlay), visual => visual.Opacity);
@@ -80,7 +81,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     [AvaloniaFact]
     public async Task Queued_StartsWhenTheLastHasGone_NeverTwoCards()
     {
-        var main = Open(out _);
+        var main = Open();
         var overlay = main.Overlay;
         var first = ConfirmDialog.ShowAsync(overlay, "Erste Frage?");
         var second = ConfirmDialog.ShowAsync(overlay, "Zweite Frage?"); // waits its turn
@@ -124,7 +125,8 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     [AvaloniaFact]
     public void DialogCard_Refused_Shakes()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         var overlay = main.Overlay;
         _ = ConnectDialog.ShowAsync(overlay, viewModel.Bookmarks.Saved, null); // nothing filled in
         MotionWait.Settle(350);
@@ -208,7 +210,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     [AvaloniaFact]
     public void Popup_ClosedForADialog_NoPictureOverIt()
     {
-        var main = Open(out _);
+        var main = Open();
         var row = main.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("row") && border.ContextMenu is not null);
         row.ContextMenu!.Open(row);
         MotionWait.Settle(300);
@@ -228,7 +230,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     [AvaloniaFact]
     public void Drawer_OpenedAndClosed_SlidesInAndOut()
     {
-        var main = Open(out _, width: 360);
+        var main = Open(width: 360);
         var sidebar = main.FindControl<Border>("Sidebar")!;
         var scrim = main.FindControl<Border>("DrawerScrim")!;
         // every value as it happens: under load one frame can outlast the whole slide
@@ -256,7 +258,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     [AvaloniaFact]
     public void Motion_SimplifiedDisplay_Instant()
     {
-        var main = Open(out _, DisplayMode.Simplified, width: 360);
+        var main = Open(DisplayMode.Simplified, width: 360);
         var overlay = main.Overlay;
         _ = ConfirmDialog.ShowAsync(overlay, "Weg damit?");
         Frame();
@@ -280,7 +282,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     [AvaloniaFact]
     public async Task NextDialog_AfterAFullClose_IsWhole()
     {
-        var main = Open(out _);
+        var main = Open();
         var overlay = main.Overlay;
         var first = ConfirmDialog.ShowAsync(overlay, "Erste Frage?");
         MotionWait.Settle(350);
@@ -304,7 +306,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     [AvaloniaFact]
     public void Drawer_SecondTimeAndWide_AreWhole()
     {
-        var main = Open(out _, width: 360);
+        var main = Open(width: 360);
         var sidebar = main.FindControl<Border>("Sidebar")!;
         var scrim = main.FindControl<Border>("DrawerScrim")!;
         for (int round = 0; round < 2; round++)

@@ -34,7 +34,9 @@ internal static class IconImport
         try
         {
             using var stream = file.OpenRead();
+            #pragma warning disable CA2000 // disposed by the using block below
             image = new Bitmap(stream);
+            #pragma warning restore CA2000
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {

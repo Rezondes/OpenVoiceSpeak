@@ -26,11 +26,12 @@ namespace OVS.Tests.Client.Layout;
 [Collection(MotionCollection.Name)]
 public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: true)
 {
-    MainWindow Open(double width, ServerViewModel? server, out MainViewModel viewModel)
+    MainWindow Open(double width, ServerViewModel? server)
     {
         // the device list loads in the background (Package 52): its result comes back through the dispatcher, not on a pool thread
-        viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
         var main = new MainWindow { DataContext = viewModel, Width = width, Height = 700 };
+        main.Closed += (_, _) => { _ = viewModel.DisposeAsync().AsTask(); }; // the window owns its view model
         main.Show();
         MainViewModelSetup.ShowServer(viewModel, server);
         Dispatcher.UIThread.RunJobs();
@@ -121,7 +122,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void Sidebar_DraggedWide_HeaderButtonsStayVisible()
     {
-        var main = Open(776, FakeServers.Admin(), out _);
+        var main = Open(776, FakeServers.Admin());
         var splitter = main.GetVisualDescendants().OfType<GridSplitter>().Single();
         SidebarColumn(main).Width = new GridLength(600);
         splitter.RaiseEvent(new VectorEventArgs { RoutedEvent = Avalonia.Controls.Primitives.Thumb.DragCompletedEvent });
@@ -141,7 +142,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData("en-US")]
     public void Reconnecting_At360_StatusAndCancelFit(string culture) => TestCulture.With(culture, () =>
     {
-        var main = Open(360, null, out var viewModel);
+        var main = Open(360, null);
+        var viewModel = (MainViewModel)main.DataContext!;
         viewModel.Status = string.Format(CultureInfo.InvariantCulture, Strings.Status_Reconnecting, 16);
         viewModel.Connection.IsReconnecting = true;
         Dispatcher.UIThread.RunJobs();
@@ -158,7 +160,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void WidthClasses_WindowResized_Follow()
     {
-        var main = Open(1100, FakeServers.Admin(), out _);
+        var main = Open(1100, FakeServers.Admin());
         Assert.DoesNotContain("compact", main.Classes);
         Assert.DoesNotContain("narrow", main.Classes);
         Resize(main, 650);
@@ -178,7 +180,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void Compact_SidebarAsOverlay_OpenClose()
     {
-        var main = Open(360, FakeServers.Admin(), out var viewModel);
+        var main = Open(360, FakeServers.Admin());
+        var viewModel = (MainViewModel)main.DataContext!;
         Assert.False(Sidebar(main).IsEffectivelyVisible);
         var scrim = main.FindControl<Border>("DrawerScrim")!;
 
@@ -237,7 +240,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         var server = FakeServers.Admin();
         server.IsAdmin = admin; // not admin: "Admin-Token einlösen" joins the header
-        var main = Open(360, server, out var viewModel);
+        var main = Open(360, server);
+        var viewModel = (MainViewModel)main.DataContext!;
         viewModel.Connection.PingText = "23 ms";
         Dispatcher.UIThread.RunJobs();
 
@@ -275,7 +279,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void Sidebar_WindowShrinks_GivesWay()
     {
-        var main = Open(1100, FakeServers.Admin(), out _);
+        var main = Open(1100, FakeServers.Admin());
         var splitter = main.GetVisualDescendants().OfType<GridSplitter>().Single();
         SidebarColumn(main).Width = new GridLength(350);
         splitter.RaiseEvent(new VectorEventArgs { RoutedEvent = Avalonia.Controls.Primitives.Thumb.DragCompletedEvent });
@@ -298,7 +302,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var settings = new ClientSettings();
         settings.Bookmarks.Add(new Bookmark("Gilde", "gilde.example.org", 7000, "ich"));
         settings.Save(dir);
-        var main = Open(360, null, out _);
+        var main = Open(360, null);
         Assert.Contains("compact", main.Classes);
         Assert.False(Sidebar(main).IsEffectivelyVisible);
         LayoutAssert.FitsHorizontally(main);
@@ -326,7 +330,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         var settings = new ClientSettings { KeyBindings = [new OVS.Client.Input.KeyBinding(KeyAction.ToggleMute, new KeyChord(0x70))], Display = display };
         settings.Save(dir);
-        var main = Open(width, null, out var viewModel);
+        var main = Open(width, null);
+        var viewModel = (MainViewModel)main.DataContext!;
         Assert.Equal(display == DisplayMode.Animated, Motion.IsAnimated(main)); // the window took the display from the settings
         viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
@@ -431,7 +436,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     MainWindow OpenAdmin(double width, out AdminView page)
     {
         var server = FakeServers.Crowded();
-        var main = Open(width, server, out var viewModel);
+        var main = Open(width, server);
+        var viewModel = (MainViewModel)main.DataContext!;
         _ = viewModel.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
         var admin = (AdminViewModel)main.GetVisualDescendants().OfType<AdminView>().Single().DataContext!;
@@ -785,7 +791,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Dialogs_At360_Fit(string dialog, string culture) => TestCulture.With(culture, () =>
     {
         SaveThreeBookmarks();
-        var main = Open(1100, FakeServers.Crowded(), out var viewModel);
+        var main = Open(1100, FakeServers.Crowded());
+        var viewModel = (MainViewModel)main.DataContext!;
         foreach (var width in new[] { 360.0, 480, 1100 })
         {
             Resize(main, width);
@@ -810,7 +817,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData(1100, "en-US")]
     public void UserContextMenu_At360_Fits(double width, string culture) => TestCulture.With(culture, () =>
     {
-        var main = Open(width, FakeServers.Admin(), out _);
+        var main = Open(width, FakeServers.Admin());
         if (width < 700)
         {
             OpenDrawer(main); // the channel tree lives in the drawer
@@ -849,7 +856,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Dialog_TallerThanWindow_ContentScrollsButtonsVisible(string dialog)
     {
         SaveThreeBookmarks();
-        var main = Open(360, FakeServers.Crowded(), out var viewModel);
+        var main = Open(360, FakeServers.Crowded());
+        var viewModel = (MainViewModel)main.DataContext!;
         main.Height = 480;
         Dispatcher.UIThread.RunJobs();
         _ = OpenDialogAsync(dialog, main.Overlay, viewModel.Settings, viewModel.Server!);
@@ -882,7 +890,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData(1100, "en-US")]
     public void UpdateCard_Shown_Fits(double width, string culture) => TestCulture.With(culture, () =>
     {
-        var main = Open(width, FakeServers.Admin(), out var viewModel);
+        var main = Open(width, FakeServers.Admin());
+        var viewModel = (MainViewModel)main.DataContext!;
         viewModel.Update.Progress = new OVS.Client.Net.Updates.UpdateProgress("290926.0lh6", OVS.Client.Net.Updates.UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
         Dispatcher.UIThread.RunJobs();
         var layer = main.FindControl<Panel>("UpdateLayer")!;
@@ -902,7 +911,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Chat_Narrow_TabsScrollAndSendVisible(double width, string culture) => TestCulture.With(culture, () =>
     {
         var server = FakeServers.Crowded();
-        var main = Open(width, server, out var viewModel);
+        var main = Open(width, server);
+        var viewModel = (MainViewModel)main.DataContext!;
         var text = string.Join(" ", Enumerable.Repeat("Eine recht lange Nachricht, die umbrechen muss.", 12));
         server.Apply(new OVS.Shared.Protocol.Messages.Chat.ChatMessage(OVS.Shared.Protocol.Messages.Chat.ChatTarget.Server, 3, "Mitspieler3", null, null, text, DateTimeOffset.Now));
         server.Apply(new OVS.Shared.Protocol.Messages.Chat.ChatMessage(OVS.Shared.Protocol.Messages.Chat.ChatTarget.Server, 1, "ich", null, null, new string('y', 400), DateTimeOffset.Now));
@@ -1038,7 +1048,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void StartScreen_At360_Fits(double width, string culture) => TestCulture.With(culture, () =>
     {
         SaveThreeBookmarks();
-        var main = Open(width, null, out var viewModel);
+        var main = Open(width, null);
+        var viewModel = (MainViewModel)main.DataContext!;
         viewModel.Status = "Verbindung zu raidgruppe-am-donnerstagabend.example.org:7000 fehlgeschlagen: Zeitüberschreitung";
         Dispatcher.UIThread.RunJobs();
         var start = main.GetVisualDescendants().OfType<StackPanel>().Single(stackPanel => stackPanel.Classes.Contains("startScreen"));
@@ -1071,7 +1082,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     /// <summary>The text block shows its whole text: its untrimmed width fits its bounds.</summary>
     static void Untrimmed(TextBlock text)
     {
-        var layout = new Avalonia.Media.TextFormatting.TextLayout(text.Text, new Avalonia.Media.Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch),
+        using var layout = new Avalonia.Media.TextFormatting.TextLayout(text.Text, new Avalonia.Media.Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch),
             text.FontSize, null);
         Assert.True(layout.WidthIncludingTrailingWhitespace <= text.Bounds.Width + 0.5, $"{text.Name} {text.Text}: {layout.WidthIncludingTrailingWhitespace} in {text.Bounds.Width}");
     }
@@ -1079,7 +1090,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void Connected_LongNickname_FooterNotTrimmed()
     {
-        var main = Open(1100, ShortChannelsLongNick(), out _);
+        var main = Open(1100, ShortChannelsLongNick());
         MotionWait.WaitFor(() => false, 200);
         Assert.Equal(LongNick, Footer(main, "SelfName").Text);
         Untrimmed(Footer(main, "SelfName"));
@@ -1091,7 +1102,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void SendButton_Sending_WidthStays()
     {
-        var main = Open(1100, FakeServers.WithChannels("A", "B"), out var viewModel);
+        var main = Open(1100, FakeServers.WithChannels("A", "B"));
+        var viewModel = (MainViewModel)main.DataContext!;
         MotionWait.WaitFor(() => false, 200);
         var before = Sidebar(main).Bounds.Width;
         viewModel.TransmitText = Strings.Transmit_Linked;
@@ -1107,7 +1119,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void Settings_TransmitModeChanged_Refits()
     {
-        var main = Open(1100, FakeServers.WithChannels("A", "B"), out var viewModel);
+        var main = Open(1100, FakeServers.WithChannels("A", "B"));
+        var viewModel = (MainViewModel)main.DataContext!;
         viewModel.ApplySettings(new ClientSettings { Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation });
         MotionWait.WaitFor(() => false, 200);
         Assert.Equal("ich", Footer(main, "SelfName").Text);
@@ -1131,7 +1144,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void SidebarMax_NarrowWindow_StillWins()
     {
-        var main = Open(760, ShortChannelsLongNick(), out _);
+        var main = Open(760, ShortChannelsLongNick());
         MotionWait.WaitFor(() => false, 200);
         var max = Responsive.SidebarMax(main.FindControl<Grid>("Shell")!.Bounds.Width, main.GetVisualDescendants().OfType<GridSplitter>().Single().Width,
             0);
@@ -1143,7 +1156,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void SidebarDrag_TowardsFooter_StopsAbove()
     {
-        var main = Open(1100, ShortChannelsLongNick(), out _);
+        var main = Open(1100, ShortChannelsLongNick());
         MotionWait.WaitFor(() => false, 200);
         var fitted = Sidebar(main).Bounds.Width;
         var splitter = main.GetVisualDescendants().OfType<GridSplitter>().Single();

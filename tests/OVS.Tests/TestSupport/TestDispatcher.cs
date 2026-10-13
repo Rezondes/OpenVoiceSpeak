@@ -5,7 +5,9 @@ namespace OVS.Tests.TestSupport;
 /// <summary>A single "UI thread" with its own SynchronizationContext, standing in for Avalonia's dispatcher.</summary>
 internal sealed class TestDispatcher : IDisposable
 {
+#pragma warning disable CA2213 // the worker thread may still drain it after Dispose completed the adding
     readonly BlockingCollection<Action> queue = new();
+#pragma warning restore CA2213
     readonly Thread thread;
 
     public TestDispatcher()

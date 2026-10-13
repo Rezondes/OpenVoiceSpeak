@@ -34,7 +34,8 @@ public class AdminCommandTests
         await using (var fresh = await TestServer.StartAsync())
             Assert.NotNull(fresh.State.PendingAdminToken);
 
-        await using var withAdmin = await TestServer.StartAsync(TestServer.Grant(ClientIdentity.Create(), "Admin"));
+        using var adminId = ClientIdentity.Create();
+        await using var withAdmin = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"));
         Assert.Null(withAdmin.State.PendingAdminToken);
     }
 

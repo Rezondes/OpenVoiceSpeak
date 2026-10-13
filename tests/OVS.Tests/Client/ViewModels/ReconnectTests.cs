@@ -19,7 +19,9 @@ namespace OVS.Tests.Client.ViewModels;
 /// on a manual clock and the connect seam (moved here from <c>MainViewModelTests</c> in 25g5b). The connection's own
 /// facts, without a main view model, are in <see cref="ConnectionViewModelTests"/>.
 /// </summary>
+#pragma warning disable CA1001 // its dispatcher is disposed in DisposeAsync (IAsyncLifetime)
 public sealed class ReconnectTests : IAsyncLifetime
+#pragma warning restore CA1001
 {
     readonly TestDispatcher ui = new();
     readonly string dir = Directory.CreateTempSubdirectory("ovs-reconnect-").FullName;

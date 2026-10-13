@@ -42,7 +42,7 @@ public sealed class DispatchTests
         Assert.True(Factories.TryGetValue(type, out var create), $"No factory entry for {typeName}");
         var request = create() with { RequestId = "r" };
         Assert.Null(RequestShape.Problem(request)); // a malformed request would be answered before the dispatch
-        var admin = ClientIdentity.Create();
+        using var admin = ClientIdentity.Create();
         using var harness = new StateHarness(TestServer.Grant(admin, "Admin"));
         var session = harness.Admit("admin", admin.Fingerprint); // a fresh session: no request budget used yet
         StateHarness.Drain(session);
@@ -59,7 +59,8 @@ public sealed class DispatchTests
     public void Handle_PastTheRequestBudget_OnlyTransfersPass()
     {
         using var harness = new StateHarness();
-        var anna = ClientIdentity.Create().Fingerprint; // one identity, so the nickname stays hers
+        using var annaId = ClientIdentity.Create(); // one identity, so the nickname stays hers
+        var anna = annaId.Fingerprint;
         var passed = new List<string>();
         foreach (var type in RequestTypes())
         {

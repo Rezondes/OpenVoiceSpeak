@@ -346,7 +346,8 @@ public sealed class ChannelLockTests : IAsyncLifetime
         foreach (var file in Directory.GetFiles(Path.Combine(server.DataDir, "logs"), "*", SearchOption.AllDirectories))
         {
             using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            var text = await new StreamReader(stream).ReadToEndAsync();
+            using var reader = new StreamReader(stream);
+            var text = await reader.ReadToEndAsync();
             Assert.DoesNotContain("falsch0", text, StringComparison.Ordinal);
             Assert.DoesNotContain("geheim1", text, StringComparison.Ordinal);
         }

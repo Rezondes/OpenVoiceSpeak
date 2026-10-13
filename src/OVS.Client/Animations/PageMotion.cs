@@ -196,7 +196,9 @@ internal static class PageMotion
 
     // ---- pages ----
 
+    #pragma warning disable CA1001 // a CancellationTokenSource without a timer holds nothing to free; it is only cancelled
     sealed class Switching
+    #pragma warning restore CA1001
     {
         public CancellationTokenSource Cancel = new();
         public bool Pending;

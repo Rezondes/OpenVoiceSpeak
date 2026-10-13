@@ -18,7 +18,9 @@ namespace OVS.Client.Controls;
 /// Package 105: in the animated display the scrim fades in and the card pops (0.94 to full size); closing plays it
 /// back, and the next dialog waits until it has gone. A refused input shakes the card.
 /// </summary>
+#pragma warning disable CA1001 // a control: its cancellation sources have no timer and its gate hands out no wait handle, so nothing needs freeing
 internal sealed class OverlayHost : Panel
+#pragma warning restore CA1001
 {
     /// <summary>The scale a dialog card pops in from.</summary>
     public const double PopFrom = 0.94;

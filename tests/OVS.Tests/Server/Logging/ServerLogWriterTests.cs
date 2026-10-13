@@ -29,7 +29,8 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     static string ReadShared(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        return new StreamReader(stream).ReadToEnd();
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     [Fact]
@@ -304,7 +305,9 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
     public async Task ServerLog_ConnectDisconnectRejected_Logged()
     {
         await using var server = await TestServer.StartAsync();
+#pragma warning disable CA2000 // disposed in the test: its disconnect is part of what is logged
         var anna = await TestClient.ConnectAsync(server, "anna");
+#pragma warning restore CA2000
         await using (var dup = await TestClient.OpenAsync(server.Port))
             Assert.IsType<Rejected>(await dup.HandshakeAsync("ANNA"));
         await anna.DisposeAsync();
@@ -319,8 +322,10 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var adminId = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"));
         await using var admin = await TestClient.ConnectAsync(server, "chef", adminId);
+#pragma warning disable CA2000 // disposed at the end of the test, after the kick and the ban
         var g1 = await TestClient.ConnectAsync(server, "gast1");
         var g2 = await TestClient.ConnectAsync(server, "gast2");
+#pragma warning restore CA2000
 
         await admin.SendAsync(new CreateGroup("Team", Permission.Speak));
         var team = (await admin.WaitForAsync<GroupsChanged>()).Groups.Single(groupInfo => groupInfo.Name == "Team");
@@ -358,7 +363,9 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         await using var server = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"));
         await using var admin = await TestClient.ConnectAsync(server, "chef", adminId);
         var lobby = admin.Welcome.Snapshot.DefaultChannelId;
+#pragma warning disable CA2000 // disposed in the test: its leaving is part of what is logged
         var gast = await TestClient.ConnectAsync(server, "gast");
+#pragma warning restore CA2000
         await admin.SendAsync(new CreateChannel("Raid", ""));
         var raid = (await admin.WaitForAsync<ChannelAdded>()).Channel.Id;
 

@@ -209,8 +209,9 @@ public sealed class RequestValidationTests
         // the offline owner's name is not free for a new identity, in any case or compatibility form
         foreach (var name in new[] { "Boss", "boss", "\uFF42\uFF4F\uFF53\uFF53" }) // the last one fullwidth
         {
-            var other = await TestClient.OpenAsync(server.Port);
-            await using (other)
+#pragma warning disable CA2000 // disposed by the await using itself
+            await using (var other = await TestClient.OpenAsync(server.Port))
+#pragma warning restore CA2000
                 Assert.Equal(ReasonCodes.NicknameTaken, Assert.IsType<Rejected>(await other.HandshakeAsync(name, pump: false)).Code);
         }
 

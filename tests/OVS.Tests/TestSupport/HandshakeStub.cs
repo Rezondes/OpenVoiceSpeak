@@ -70,7 +70,7 @@ sealed class HandshakeStub : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await stop.CancelAsync();
-        listener.Stop();
+        listener.Dispose();
         try
         {
             await serving;

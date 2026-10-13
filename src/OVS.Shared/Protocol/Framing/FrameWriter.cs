@@ -6,7 +6,9 @@ using OVS.Shared.Protocol.Messages;
 namespace OVS.Shared.Protocol.Framing;
 
 /// <summary>Writes frames. Safe for concurrent callers.</summary>
+#pragma warning disable CA1001 // its gate hands out no wait handle, so nothing needs freeing
 public sealed class FrameWriter(Stream stream)
+#pragma warning restore CA1001
 {
     readonly SemaphoreSlim gate = new(1, 1);
 

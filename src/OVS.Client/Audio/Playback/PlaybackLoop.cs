@@ -14,7 +14,9 @@ namespace OVS.Client.Audio.Playback;
 /// any more. The speaker is the <see cref="DeviceLifecycle"/>'s: opened at the thread's start, closed at its end under
 /// the engine's lock, which it is handed. The engine's flags reach it through readers.
 /// </summary>
+#pragma warning disable CA1001 // one wake event per audio engine for the life of the app; the playback thread may still wait on it after a stop
 internal sealed class PlaybackLoop
+#pragma warning restore CA1001
 {
     /// <summary>How much the loop keeps buffered for the speaker; the echo canceller's delay hint starts from it.</summary>
     internal const int TargetBufferMs = 40;

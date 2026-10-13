@@ -51,7 +51,9 @@ internal sealed class CaptureSource
     {
         Debug.Assert(Monitor.IsEntered(gate));
         Debug.Assert(capture is null);
+        #pragma warning disable CA2000 // kept in the capture field; Close disposes it
         var opening = ToneHz is { } hz ? CapturePipeline.FromTone(hz) : hardware?.OpenInput(inputId, opened);
+        #pragma warning restore CA2000
         if (opening is null) return;
         try
         {

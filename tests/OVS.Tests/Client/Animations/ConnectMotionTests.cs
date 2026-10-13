@@ -23,11 +23,12 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
         Dispatcher.UIThread.RunJobs();
     }
 
-    MainWindow Open(out MainViewModel viewModel, DisplayMode display = DisplayMode.Animated)
+    MainWindow Open(DisplayMode display = DisplayMode.Animated)
     {
         new ClientSettings { Display = display }.Save(dir);
-        viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
         var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
+        main.Closed += (_, _) => { _ = viewModel.DisposeAsync().AsTask(); }; // the window owns its view model
         main.Show();
         MotionWait.Settle(200);
         Motion.Apply(main, display);
@@ -39,7 +40,8 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     [AvaloniaFact]
     public void Connecting_PendingOrFailed_PulsesOrShakes()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         var logo = main.GetVisualDescendants().OfType<LogoMark>().First(logoMark => logoMark.Bounds.Width >= 64);
         var bar = main.GetVisualDescendants().OfType<ProgressBar>().First(progressBar => progressBar.Classes.Contains("connect"));
         viewModel.Connection.IsConnecting = true;
@@ -70,7 +72,8 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     [AvaloniaFact]
     public void Connect_Animated_SequenceWithin700ms()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         var tree = Named<ItemsControl>(main, "ChannelItems");
         bool pageLeft = false, bookmarksLeft = false, chatCameUp = false, nameFaded = false, builtUp = false;
         // every value they take, not only the ones a frame happens to see: on a busy machine the first frame after the
@@ -122,7 +125,8 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     [AvaloniaFact]
     public void Disconnect_WithReason_FoldsAwayToHome()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
         MotionWait.Settle(700);
         MotionWait.Connected(main);
@@ -146,7 +150,8 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     [AvaloniaFact]
     public void ServerSwitch_BookmarkWhileConnected_NoBlankFrame()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
         MotionWait.Settle(700);
         MotionWait.Connected(main);
@@ -165,7 +170,8 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     [AvaloniaFact]
     public void Motion_SimplifiedDisplay_Instant()
     {
-        var main = Open(out var viewModel, DisplayMode.Simplified);
+        var main = Open(DisplayMode.Simplified);
+        var viewModel = (MainViewModel)main.DataContext!;
         viewModel.Connection.IsConnecting = true;
         Frame();
         Assert.Equal(1, MotionWait.Scale(main.GetVisualDescendants().OfType<LogoMark>().First(logoMark => logoMark.Bounds.Width >= 64)));
@@ -182,7 +188,8 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     [AvaloniaFact]
     public void Connect_DrawerClosed_NoLateBuildUp()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         main.Width = 360;
         MotionWait.Settle(100);
         MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());

@@ -9,7 +9,9 @@ namespace OVS.Server.Logging;
 /// A failing disk never takes the server down: the first write error is reported on the console.
 /// Step 31: the lines are the logger messages of <see cref="ServerLogLines"/> and <see cref="ChannelLogLines"/>.
 /// </summary>
+#pragma warning disable CA1001 // the logger provider holds nothing to free (its Dispose is empty)
 internal sealed class ServerLogWriter
+#pragma warning restore CA1001
 {
     readonly LogFileWriter files;
     readonly LogFileLoggerProvider provider;

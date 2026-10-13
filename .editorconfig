@@ -30,8 +30,11 @@ dotnet_diagnostic.CA2007.severity = none
 # CA1062: nullable reference types already say which arguments may be null.
 dotnet_diagnostic.CA1062.severity = none
 
+# CA2000: a disposable handed to a constructor or a method belongs to the receiver from then on (the owner disposes it).
+dotnet_code_quality.CA2000.dispose_ownership_transfer_at_constructor = true
+dotnet_code_quality.CA2000.dispose_ownership_transfer_at_method_call = true
+
 # Step 38 pending: rules whose findings are still being fixed; each sub-step removes its lines.
-dotnet_diagnostic.CA2000.severity = none
 dotnet_diagnostic.CA1863.severity = none
 dotnet_diagnostic.CA1002.severity = none
 dotnet_diagnostic.CA1716.severity = none
@@ -44,8 +47,6 @@ dotnet_diagnostic.CA1031.severity = none
 dotnet_diagnostic.CA1819.severity = none
 dotnet_diagnostic.CA2227.severity = none
 dotnet_diagnostic.CA1806.severity = none
-dotnet_diagnostic.CA1001.severity = none
-dotnet_diagnostic.CA2213.severity = none
 dotnet_diagnostic.CA1032.severity = none
 dotnet_diagnostic.CA1725.severity = none
 dotnet_diagnostic.CA1051.severity = none
@@ -60,13 +61,11 @@ dotnet_diagnostic.CA5359.severity = none
 dotnet_diagnostic.CA2025.severity = none
 dotnet_diagnostic.CA1826.severity = none
 dotnet_diagnostic.CA1068.severity = none
-dotnet_diagnostic.CA1063.severity = none
 dotnet_diagnostic.CA1030.severity = none
 dotnet_diagnostic.CA1028.severity = none
 dotnet_diagnostic.CA2208.severity = none
 dotnet_diagnostic.CA2201.severity = none
 dotnet_diagnostic.CA1869.severity = none
-dotnet_diagnostic.CA1816.severity = none
 dotnet_diagnostic.CA1724.severity = none
 dotnet_diagnostic.CA1044.severity = none
 

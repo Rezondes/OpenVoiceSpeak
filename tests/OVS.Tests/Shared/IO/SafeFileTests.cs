@@ -6,10 +6,10 @@ namespace OVS.Tests.Shared.IO;
 
 public sealed class SafeFileTests() : TempDirectoryTest("ovs-safefile-", quiet: false)
 {
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        foreach (var file in Directory.GetFiles(dir)) File.SetAttributes(file, FileAttributes.Normal);
-        base.Dispose();
+        if (disposing) foreach (var file in Directory.GetFiles(dir)) File.SetAttributes(file, FileAttributes.Normal);
+        base.Dispose(disposing);
     }
 
     [Fact]

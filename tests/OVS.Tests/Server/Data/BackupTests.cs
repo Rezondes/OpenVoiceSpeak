@@ -469,7 +469,9 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             int port = Random.Shared.Next(20_000, 45_000);
             var env = new Dictionary<string, string> { ["OVS_DATA_DIR"] = dataDir, ["OVS_PORT"] = port.ToString(CultureInfo.InvariantCulture) };
             var output = new ConcurrentQueue<string>();
+#pragma warning disable CA2000 // handed to the Host, which cancels and disposes it
             var stop = new CancellationTokenSource();
+#pragma warning restore CA2000
             var run = ServerHost.RunAsync(env.GetValueOrDefault, IPAddress.Loopback, TimeProvider.System, output.Enqueue, output.Enqueue, stop.Token, afterWait);
             try
             {
@@ -495,7 +497,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     [Fact]
     public async Task Restore_ValidBackup_ReplacesStateKeepsSafetyBackupAndRestarts()
     {
-        var adminId = ClientIdentity.Create();
+        using var adminId = ClientIdentity.Create();
         SeedAdmin(dir, adminId);
         string backup;
         byte[] backupCertHash;
@@ -515,7 +517,8 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         await using (host)
         {
             Assert.NotEqual(backupCertHash, admin2.ServerCertHash);
-            await using var anna = await ConnectWhenUpAsync(host.Port, "anna", ClientIdentity.Create(), host.Run);
+            using var annaId = ClientIdentity.Create();
+            await using var anna = await ConnectWhenUpAsync(host.Port, "anna", annaId, host.Run);
             await admin2.SendAsync(new CreateChannel("Neu", ""));
             await admin2.WaitForAsync<ChannelAdded>();
 
@@ -545,7 +548,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     [Fact]
     public async Task Restore_ArrivingWhileShuttingDown_Applied()
     {
-        var adminId = ClientIdentity.Create();
+        using var adminId = ClientIdentity.Create();
         SeedAdmin(dir, adminId);
         var gap = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var sent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -582,7 +585,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
     [Fact]
     public async Task Restore_OlderDataVersion_Migrated()
     {
-        var adminId = ClientIdentity.Create();
+        using var adminId = ClientIdentity.Create();
         SeedAdmin(dir, adminId);
         var (host, admin) = await StartHostAsync(dir, adminId);
         await using (host)

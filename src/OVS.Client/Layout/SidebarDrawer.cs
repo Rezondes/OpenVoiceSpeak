@@ -10,7 +10,9 @@ namespace OVS.Client.Layout;
 /// Package 68, 105: below the compact width the sidebar is a drawer over the page. The window carries the class
 /// "drawer" while it shows; it slides in from the left with its scrim and slides out again.
 /// </summary>
+#pragma warning disable CA1001 // its cancellation sources have no timer, so nothing needs freeing
 internal sealed class SidebarDrawer
+#pragma warning restore CA1001
 {
     readonly Window window;
     readonly Control sidebar;

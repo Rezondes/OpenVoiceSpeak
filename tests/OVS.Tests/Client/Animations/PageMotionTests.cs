@@ -24,11 +24,12 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         Dispatcher.UIThread.RunJobs();
     }
 
-    MainWindow Open(out MainViewModel viewModel, DisplayMode display = DisplayMode.Animated, double height = 700)
+    MainWindow Open(DisplayMode display = DisplayMode.Animated, double height = 700)
     {
         new ClientSettings { Display = display }.Save(dir);
-        viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
+        var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
         var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = height };
+        main.Closed += (_, _) => { _ = viewModel.DisposeAsync().AsTask(); }; // the window owns its view model
         main.Show();
         MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
         MotionWait.Settle(700); // connecting builds the tree up (Package 106)
@@ -49,7 +50,8 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public void OpenSettings_SlidesInFromRight_CloseReverses()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         // every value as it happens: under load one frame can outlast the whole change
         var slides = MotionWait.Record(Host(main), MotionWait.OffsetX);
         var fades = MotionWait.Record(Host(main), visual => visual.Opacity);
@@ -77,7 +79,8 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public async Task PageSwitch_Rapid_EndsClean()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         viewModel.PageFlow.OpenSettings();
         Frame();
         viewModel.PageFlow.CloseWithoutAsking();
@@ -102,7 +105,8 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [InlineData(DisplayMode.Simplified)]
     public async Task PageSwitch_Animated_KeepsState(DisplayMode display)
     {
-        var main = Open(out var viewModel, display);
+        var main = Open(display);
+        var viewModel = (MainViewModel)main.DataContext!;
         await viewModel.PageFlow.OpenAdminAsync();
         MotionWait.Settle(400);
         var tabs = main.GetVisualDescendants().OfType<AdminView>().Single().FindControl<TabControl>("Tabs")!;
@@ -118,7 +122,8 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public async Task AdminAndChatTabs_FadeIn_MarkFlies()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         await viewModel.PageFlow.OpenAdminAsync();
         MotionWait.Settle(400);
         Switched(main);
@@ -163,7 +168,8 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public async Task TabChange_ListInsideTab_NotAnimated()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         await viewModel.PageFlow.OpenAdminAsync();
         MotionWait.Settle(400);
         var admin = main.GetVisualDescendants().OfType<AdminView>().Single();
@@ -183,7 +189,8 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public void PagePicture_TransitionEnded_NeverComesBack()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         viewModel.PageFlow.OpenSettings();
         var layer = main.FindControl<Border>("PageGhost")!;
         double last = 1;
@@ -206,7 +213,8 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public void SettingsSections_Opened_FadeUpOnce()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         viewModel.PageFlow.OpenSettings();
         MotionWait.Settle(500);
         Switched(main);
@@ -234,7 +242,8 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public async Task Motion_SimplifiedDisplay_Instant()
     {
-        var main = Open(out var viewModel, DisplayMode.Simplified);
+        var main = Open(DisplayMode.Simplified);
+        var viewModel = (MainViewModel)main.DataContext!;
         viewModel.PageFlow.OpenSettings();
         Frame();
         Assert.False(PageGhostShown(main));
@@ -255,7 +264,8 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public void SettingsSections_SwitchToSimplified_WaitingOnesShown()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         viewModel.PageFlow.OpenSettings();
         MotionWait.Settle(500);
         Switched(main);
@@ -298,7 +308,8 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public async Task PagePicture_PageSwitch_TakenWhileThePageIsStillThere()
     {
-        var main = Open(out var viewModel);
+        var main = Open();
+        var viewModel = (MainViewModel)main.DataContext!;
         var layer = main.FindControl<Border>("PageGhost")!;
         var seen = new List<(Page Page, bool HasSettings)>();
         layer.PropertyChanged += (_, args) =>
@@ -328,7 +339,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public void PagePicture_DrawerOrDialogOpen_StaysBelow()
     {
-        var main = Open(out _);
+        var main = Open();
         var layer = main.FindControl<Border>("PageGhost")!;
         var area = (Panel)layer.Parent!;
         Assert.Same(Host(main).Parent, area);

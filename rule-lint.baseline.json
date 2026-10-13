@@ -116,10 +116,6 @@
     "Count": 1
   },
   {
-    "Key": "RL212|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.Open:viewModel",
-    "Count": 1
-  },
-  {
     "Key": "RL212|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.Connected:server",
     "Count": 1
   },
@@ -136,19 +132,7 @@
     "Count": 1
   },
   {
-    "Key": "RL212|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.Open:viewModel",
-    "Count": 1
-  },
-  {
     "Key": "RL212|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.Shown:slid",
-    "Count": 1
-  },
-  {
-    "Key": "RL212|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.Open:viewModel",
-    "Count": 1
-  },
-  {
-    "Key": "RL212|tests/OVS.Tests/Client/Layout/ResponsiveTests.cs|ResponsiveTests.Open:viewModel",
     "Count": 1
   },
   {

@@ -65,11 +65,15 @@ internal partial class App : Application
             DebugApi? debugApi = null;
             if (options.DebugApiPort is { } port)
             {
+                #pragma warning disable CA2000 // disposed when the app exits (desktop.Exit below)
                 debugApi = new DebugApi(viewModel, viewModel.Keys, viewModel.Audio, port, work => Dispatcher.UIThread.InvokeAsync(work), hardware.ListActive);
+                #pragma warning restore CA2000
                 window.Title += $" (Debug-API :{port})";
             }
             var audioDebug = options.AudioDebug
+                #pragma warning disable CA2000 // disposed when the app exits (desktop.Exit below)
                 ? new AudioDebugLog(viewModel.Keys, viewModel.Audio, log)
+                #pragma warning restore CA2000
                 : null;
             var overlay = window.Overlay; // every dialog lives inside the main window (A20)
             viewModel.Dialogs = OverlayDialogs.Create(overlay, () => viewModel.Server?.Mirror.Groups);
@@ -79,7 +83,9 @@ internal partial class App : Application
             timer.Start();
 
             // Package 43: updates from the GitHub releases, restarted with the same command line
+            #pragma warning disable CA2000 // one HTTP client for the life of the app, used by the update check and the installer
             var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+            #pragma warning restore CA2000
             var checker = new UpdateChecker(http, BuildInfo.Current);
             UpdateInstaller? installer = null;
             if (Environment.ProcessPath is { } exe)

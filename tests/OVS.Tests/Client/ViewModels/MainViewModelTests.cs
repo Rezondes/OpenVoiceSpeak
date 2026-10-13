@@ -28,7 +28,9 @@ using OVS.Tests.TestSupport;
 namespace OVS.Tests.Client.ViewModels;
 
 /// <summary>Application shell against a real server, without audio devices.</summary>
+#pragma warning disable CA1001 // its dispatcher is disposed in DisposeAsync (IAsyncLifetime)
 public sealed class MainViewModelTests : IAsyncLifetime
+#pragma warning restore CA1001
 {
     readonly TestDispatcher ui = new();
     readonly string dir = Directory.CreateTempSubdirectory("ovs-mvm-").FullName;
@@ -517,7 +519,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
                 new { name = "OVS.Client.exe.sha256", browser_download_url = "https://example.org/OVS.Client.exe.sha256" },
             },
         };
-        var http = new FakeHttp(_ => FakeHttp.Json(release));
+        using var http = new FakeHttp(_ => FakeHttp.Json(release));
         var offered = new List<string>();
         var running = new OVS.Shared.BuildInfo(DateTimeOffset.UtcNow.AddDays(-1), "aaaaaaa", IsCi: true);
         await OnUiAsync(() =>
@@ -566,7 +568,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
                 new { name = "OVS.Client.exe.sha256", browser_download_url = "https://example.org/OVS.Client.exe.sha256" },
             },
         };
-        var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.Host == "api.github.com" ? FakeHttp.Json(release)
+        using var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.Host == "api.github.com" ? FakeHttp.Json(release)
             : httpRequestMessage.RequestUri.AbsolutePath.EndsWith(".sha256", StringComparison.Ordinal) ? FakeHttp.Bytes(System.Text.Encoding.ASCII.GetBytes(new string('0', 64)))
             : FakeHttp.Bytes(new byte[200_000]));
         var running = new OVS.Shared.BuildInfo(DateTimeOffset.UtcNow.AddDays(-1), "aaaaaaa", IsCi: true);
