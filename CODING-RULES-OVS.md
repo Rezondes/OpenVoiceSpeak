@@ -153,7 +153,7 @@ Root namespace `OVS.Tools`, one type per file: `LogoRenderer`, `SmallIconMetrics
 - Test methods may be renamed and split (N21); a test is split only when its name names two outcomes and its setup is cheap (no TLS server, under 100 ms, N24). Every test name has three parts, `Subject_Condition_Outcome`; without a condition the middle part names the state (N22). The test class `WebsiteShots` keeps its name for the README filter (L4).
 - Links from acceptance criteria to tests live only in PLAN.md, in the Tests section of each package, in these forms: `Class > "Method"`, `File.cs > "Method"`, a header line with the methods as bullets below it, `[Theory] "Name"`, a class alone (it covers the criterion), and `file > "text"` for the website (the file exists and contains the text). `PlanReferenceTests` resolves every reference by reflection (N19); it also reads `Class.Method`, takes a method without a class from the class named before it on its line or on the last header or numbered item, skips note lines starting with "(" (such as "(as built: ...)", also indented) and a test named after "ersetzt" or "replaces", lists a reference that no test covers any more, with its reason, in `Uncovered`, and a span that looks like a test but is none, with its reason, in `NoTest`. That every checked criterion has a reference, and the exemption list for a criterion that no test can check and that has no `(manuell|manual|spike ...)` marker right after its ID (with a one-line reason each, N20), are not yet introduced.
 - PLAN.md changes only in the test name and path references of its Tests sections, never in the text of an acceptance criterion (N21, L1).
-- Waiting (N23): no src seam exists only for waiting. A fixed wait becomes a clock advance plus a drain; a check that something does not happen uses `AssertStaysFalse(condition, duration, reason)` (not yet introduced); poll loops use `AsyncWait`; an awaited task that a broken build would leave pending (a test on a manual clock) is bounded with `HangGuard.Bound`; the `Thread.Sleep(1)` yields in UI poll loops stay.
+- Waiting (N23): no src seam exists only for waiting. A fixed wait becomes a clock advance plus a drain; a check that something does not happen uses `AsyncWait.AssertStaysFalseAsync(condition, duration, reason)`; poll loops use `AsyncWait`; an awaited task that a broken build would leave pending (a test on a manual clock) is bounded with `HangGuard.Bound`; the `Thread.Sleep(1)` yields in UI poll loops stay.
 
 ## Nested types
 
@@ -262,7 +262,7 @@ The review answers every point of `CODING-RULES.md` §Review checklist. This sec
 - The domain words are those of the protocol and PLAN.md (Channel, Link, Group, Lock, Separator, Ban, ServerMute, Deafen).
 
 **TDD (N23)**
-- Waiting: clock advance plus drain, `AssertStaysFalse` (not yet introduced), `AsyncWait`, `HangGuard.Bound`; only the `Thread.Sleep(1)` yields of UI poll loops stay.
+- Waiting: clock advance plus drain, `AsyncWait.AssertStaysFalseAsync`, `AsyncWait`, `HangGuard.Bound`; only the `Thread.Sleep(1)` yields of UI poll loops stay.
 
 **BDD (N19, N22)**
 - Each acceptance criterion of the package has a test that the package's Tests section in PLAN.md references (N19); the test code carries no criterion comments or traits. Each manual check is listed as manual in PLAN.md.
@@ -311,7 +311,7 @@ The IDs N1 to N30 used in this file refer to these decisions of the second refac
 | N20 | delegated (keeps N21) | Acceptance criteria that no test can check and that carry no `(manuell\|manual\|spike ...)` marker right after the ID go into an exemption list in the test file, each with a one-line reason |
 | N21 | user | Test methods may be renamed and split; PLAN.md may change in test name and path references only, never in the text of an acceptance criterion |
 | N22 | user | Every test name has three parts, `Subject_Condition_Outcome`; without a condition the middle part names the state. A reflection test enforces it once all names follow it |
-| N23 | delegated (TDD, KISS) | No src seams only for waiting. Fixed waits become a clock advance plus a drain; the rest goes through `AssertStaysFalse(condition, duration, reason)`; poll loops use `AsyncWait`; the `Thread.Sleep(1)` yields in UI poll loops stay |
+| N23 | delegated (TDD, KISS) | No src seams only for waiting. Fixed waits become a clock advance plus a drain; the rest goes through `AssertStaysFalseAsync(condition, duration, reason)`; poll loops use `AsyncWait`; the `Thread.Sleep(1)` yields in UI poll loops stay |
 | N24 | delegated (KISS) | A test is split only when its name names two outcomes and its setup is cheap (no TLS server, under 100 ms) |
 | N25 | user | Working mode as in the first refactoring: an implementing agent per step, an independent review within the time budget, and the orchestrating agent commits on `main` after the review in the repository's commit message format without a trailer (the user authorized these commits for the refactoring; implementers never commit). The agent instructions are kept outside the repository with the working plan (K4), with a checklist per kind of step |
 | N26 | user | Nothing is pushed by the refactoring; the user pushes by hand. Every commit message stands alone as a release note line, since every push to `main` is a release |

@@ -4,6 +4,7 @@ using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
 using OVS.Client.Settings;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.Audio.Sounds;
 
@@ -107,10 +108,10 @@ public class SoundTests
         async Task PressAndRelease(KeyAction action, int expected)
         {
             keys.Simulate(action, true);
-            await Until(() => keys.IsDown(action));
+            await AsyncWait.Until(() => keys.IsDown(action));
             keys.Simulate(action, false);
-            await Until(() => engine.Sounds.Recent.Count >= expected && !keys.IsDown(action));
-            await Task.Delay(50); // a few more polls: nothing else plays
+            await AsyncWait.Until(() => engine.Sounds.Recent.Count >= expected && !keys.IsDown(action));
+            await AsyncWait.AssertStaysFalseAsync(() => engine.Sounds.Recent.Count > expected, TimeSpan.FromMilliseconds(50), "a few more polls: nothing else plays");
         }
         await PressAndRelease(KeyAction.PushToTalk, 0);
         Assert.Empty(engine.Sounds.Recent); // off by default
@@ -123,11 +124,5 @@ public class SoundTests
         engine.Connected = false; // not connected: the keys do nothing, so no tone
         await PressAndRelease(KeyAction.PushToTalk, 4);
         Assert.Equal(4, engine.Sounds.Recent.Count);
-    }
-
-    static async Task Until(Func<bool> done)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!done() && watch.ElapsedMilliseconds < 5000) await Task.Delay(5);
     }
 }

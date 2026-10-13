@@ -143,7 +143,7 @@ public sealed class PlaybackLoopTests : IDisposable
         loop.Stop();
         sounds.Add(Tone(1), 1f);
         loop.Wake();
-        await Task.Delay(200); // a thread still running would mix the tone at once: the fake speaker never fills
+        await AsyncWait.AssertStaysFalseAsync(() => loop.MixCount > 0, TimeSpan.FromMilliseconds(200), "a thread still running would mix the tone at once: the fake speaker never fills");
 
         Assert.Equal((0, 1), (loop.MixCount, sounds.Count));
         Assert.Equal((1, 1), (hardware.Counts.Speakers, hardware.Counts.SpeakersOpen));
@@ -185,7 +185,7 @@ public sealed class PlaybackLoopTests : IDisposable
 
         loop.Kick();
         await AsyncWait.Until(() => loop.MixCount >= target);
-        await Task.Delay(200); // a loop that ignores the target would go on mixing at once
+        await AsyncWait.AssertStaysFalseAsync(() => loop.MixCount > target, TimeSpan.FromMilliseconds(200), "a loop that ignores the target would go on mixing at once");
 
         Assert.Equal(target, loop.MixCount);
     }
