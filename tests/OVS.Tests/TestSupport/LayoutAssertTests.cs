@@ -9,7 +9,7 @@ namespace OVS.Tests.TestSupport;
 public sealed class LayoutAssertTests
 {
     [AvaloniaFact]
-    public void DetectsClippedButton()
+    public void FitsHorizontally_ClippedButton_Throws()
     {
         var button = new Button { Content = "Datei wählen", Width = 120 };
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Children = { new Border { Width = 300 }, button } };

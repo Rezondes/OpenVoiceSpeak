@@ -676,7 +676,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerConfigTests"`
 ### Tests (TDD)
 
 1. `ClientIdentityTests.cs` (AC13):
-   - `"SaveLoad_KeepsFingerprint"`
+   - `"ExportAndLoad_Identity_KeepsFingerprint"`
    - `"Verify_OwnSignature_True"`
    - `"Verify_TamperedData_False"`
 2. `HandshakeTests.cs > "ServerCertificate_LoadOrCreateTwice_SameThumbprint"` (AC12)
@@ -4423,7 +4423,7 @@ Bug-Reproduktion zuerst:
 4. `ResponsiveTests > "Narrow_HeaderIconOnly_NothingClipped"` (AC4, AC6): 360 px, Admin und Nicht-Admin (mit "Admin-Token einlösen"), `LayoutAssert.FitsHorizontally`
 5. `ResponsiveTests > "WindowShrinks_SidebarGivesWay"` (AC2): Seitenleiste 350 px, Fenster von 1100 auf 760 px, Buttons sichtbar, Seitenleiste mindestens 200 px
 6. `ResponsiveTests > "StartScreen_SameRules"` (AC5)
-7. `LayoutAssertTests > "DetectsClippedButton"`: ein absichtlich zu breites Panel wird erkannt (die Hilfe selbst ist korrekt)
+7. `LayoutAssertTests > "FitsHorizontally_ClippedButton_Throws"`: ein absichtlich zu breites Panel wird erkannt (die Hilfe selbst ist korrekt)
 8. `LocalizationTests` bleiben grün
 
 Testbefehl: `dotnet test`
@@ -7873,7 +7873,7 @@ OVS shows only the control connection's TCP ping (`ClientConnection.cs:142`, `Ma
 
 ### Tests (TDD)
 
-1. `VoicePacketTests > "PingPayload_RoundTrip"` (AC7)
+1. `VoicePacketTests > "PingPayload_BuiltAndSealed_RoundTrips"` (AC7)
 2. `ClientNetTests > "VoiceRoundTrip_Measured"` (AC1): a delaying relay in `TestSupport` (from 126).
 3. `VoiceRelayTests > "Ping_UplinkLoss_Reported"` and `ClientNetTests > "DownlinkLoss_ReportedBothSides"` (AC2)
 4. `ReceivePathTests > "Jitter_Estimated"` (AC3) and `"TalkPause_NotLoss"` (AC6)
@@ -8016,7 +8016,7 @@ Opus FEC rebuilds a lost frame only as a coarse copy, and only from the next pac
 
 ### Tests (TDD)
 
-1. `VoicePacketTests > "RelayPayload_WithCopy_RoundTrip_SizeLimit"` (AC1, AC6)
+1. `VoicePacketTests > "RelayPayload_WithOrWithoutCopy_RoundTripsWithinSizeLimit"` (AC1, AC6)
 2. `ReceivePathTests > "LostFrame_PlayedFromCopy_FewerConcealed"` (AC4)
 3. `ReceivePathTests > "Copy_NeverReplacesOrDuplicates"` (AC5)
 4. `SendPathTests > "Sender_AddsCopyOnlyOnLoss"` (AC2)

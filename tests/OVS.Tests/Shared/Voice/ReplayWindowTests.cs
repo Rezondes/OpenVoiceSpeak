@@ -5,7 +5,7 @@ namespace OVS.Tests.Shared.Voice;
 public class ReplayWindowTests
 {
     [Fact]
-    public void NewSeq_Accepted()
+    public void Accept_NewNumber_Accepted()
     {
         var replayWindow = new ReplayWindow();
         Assert.True(replayWindow.Accept(0));
@@ -14,7 +14,7 @@ public class ReplayWindowTests
     }
 
     [Fact]
-    public void Duplicate_Rejected()
+    public void Accept_Duplicate_Rejected()
     {
         var replayWindow = new ReplayWindow();
         Assert.True(replayWindow.Accept(10));
@@ -22,7 +22,7 @@ public class ReplayWindowTests
     }
 
     [Fact]
-    public void UpTo63Behind_AcceptedOnce()
+    public void Accept_UpTo63Behind_AcceptedOnce()
     {
         var replayWindow = new ReplayWindow();
         Assert.True(replayWindow.Accept(100));
@@ -32,7 +32,7 @@ public class ReplayWindowTests
     }
 
     [Fact]
-    public void Older64_Rejected()
+    public void Accept_64Behind_Rejected()
     {
         var replayWindow = new ReplayWindow();
         Assert.True(replayWindow.Accept(100));
@@ -40,7 +40,7 @@ public class ReplayWindowTests
     }
 
     [Fact]
-    public void BigJump_ShiftsWindow()
+    public void Accept_BigJump_ShiftsWindow()
     {
         var replayWindow = new ReplayWindow();
         Assert.True(replayWindow.Accept(1));

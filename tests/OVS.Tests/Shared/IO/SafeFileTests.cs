@@ -37,7 +37,7 @@ public sealed class SafeFileTests() : TempDirectoryTest("ovs-safefile-", quiet: 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void WriteAtomic_ReplacesAndLeavesNoTmp(bool flushToDisk)
+    public void WriteAtomic_ExistingFile_ReplacedWithNoTmpLeft(bool flushToDisk)
     {
         var path = Path.Combine(dir, "daten.bin");
         File.WriteAllBytes(path, [1, 2, 3, 4, 5]);
@@ -68,7 +68,7 @@ public sealed class SafeFileTests() : TempDirectoryTest("ovs-safefile-", quiet: 
     }
 
     [Fact]
-    public void ReadChunk_OutsideAndInside()
+    public void ReadChunk_OffsetOutsideOrInside_NullOrTheChunk()
     {
         var path = Path.Combine(dir, "gross.bin");
         var content = new byte[ProtocolLimits.BackupChunkBytes + 10];

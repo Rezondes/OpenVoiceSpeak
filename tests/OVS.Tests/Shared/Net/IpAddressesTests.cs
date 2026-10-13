@@ -7,7 +7,7 @@ namespace OVS.Tests.Shared.Net;
 public class IpAddressesTests
 {
     [Fact]
-    public void Unmap_MappedAndPlain()
+    public void Unmap_MappedOrPlain_IPv4OrUnchanged()
     {
         var unmapped = IpAddresses.Unmap(IPAddress.Parse("::ffff:192.0.2.7"));
         Assert.Equal(AddressFamily.InterNetwork, unmapped.AddressFamily);

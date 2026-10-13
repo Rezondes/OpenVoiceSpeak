@@ -5,7 +5,7 @@ namespace OVS.Tests.Shared.Identity;
 public class ClientIdentityTests
 {
     [Fact]
-    public void SaveLoad_KeepsFingerprint()
+    public void ExportAndLoad_Identity_KeepsFingerprint()
     {
         using var id = ClientIdentity.Create();
         using var loaded = ClientIdentity.FromPkcs8(id.ExportPkcs8());

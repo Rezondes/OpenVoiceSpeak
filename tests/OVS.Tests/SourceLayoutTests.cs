@@ -9,21 +9,21 @@ namespace OVS.Tests;
 public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet: false)
 {
     [Fact]
-    public void Repository_FollowsLayoutRules()
+    public void Repository_Scanned_FollowsLayoutRules()
     {
         var problems = SourceLayout.Check(RepoPaths.Root);
         Assert.True(problems.Count == 0, $"{problems.Count} layout rule violations:\n" + string.Join("\n", problems));
     }
 
     [Fact]
-    public void Scanner_FindsSecondTopLevelType()
+    public void Scanner_SecondTopLevelType_Found()
     {
         Write("src/OVS.Shared/Voice/Pair.cs", "namespace OVS.Shared.Voice;\n\npublic sealed class Pair;\n\npublic sealed class Other\n{\n}\n");
         Assert.Contains(Check(), path => path.StartsWith("src/OVS.Shared/Voice/Pair.cs: one type per file"));
     }
 
     [Fact]
-    public void Scanner_FindsFileNameMismatch()
+    public void Scanner_FileNameMismatch_Found()
     {
         Write("src/OVS.Shared/Voice/Packet.cs", "namespace OVS.Shared.Voice;\n\npublic sealed class VoicePacket\n{\n}\n");
         Write("src/OVS.Shared/Voice/Packet.Extra.cs", "namespace OVS.Shared.Voice;\n\npublic partial class Packet\n{\n}\n");
@@ -33,7 +33,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_FindsNamespaceFolderMismatch()
+    public void Scanner_NamespaceFolderMismatch_Found()
     {
         Write("src/OVS.Server/Data/Records/UserRecord.cs", "namespace OVS.Server.Data\n{\n    public sealed record UserRecord(string Fingerprint);\n}\n");
         Write("src/OVS.Server/Limits.cs", "public static class Limits\n{\n}\n");
@@ -43,7 +43,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_FindsNonPrivateNestedType()
+    public void Scanner_NonPrivateNestedType_Found()
     {
         Write("src/OVS.Client/Audio/Playback/Gauge.cs",
             "namespace OVS.Client.Audio.Playback;\n\npublic sealed class Gauge\n{\n    sealed class Speaker;\n\n    private enum Mode { A, B }\n\n    internal sealed record Slot(int Index);\n}\n");
@@ -52,7 +52,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_FindsMissingViewSuffix()
+    public void Scanner_MissingViewSuffix_Found()
     {
         Write("src/OVS.Client/Views/Admin.axaml", "<UserControl xmlns=\"https://github.com/avaloniaui\" x:Class=\"OVS.Client.Views.Admin\" />\n");
         Write("src/OVS.Client/Views/Admin.axaml.cs", "namespace OVS.Client.Views;\n\npublic partial class Admin : UserControl\n{\n}\n");
@@ -62,7 +62,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_FindsMissingViewModelSuffix()
+    public void Scanner_MissingViewModelSuffix_Found()
     {
         Write("src/OVS.Client/ViewModels/ChatTab.cs", "namespace OVS.Client.ViewModels;\n\npublic sealed class ChatTab\n{\n}\n");
         Write("tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs", "namespace OVS.Tests.Client.ViewModels;\n\npublic sealed class ChatViewModelTests\n{\n}\n");
@@ -70,7 +70,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_FindsIgnoredFolderName()
+    public void Scanner_IgnoredFolderName_Found()
     {
         Write("src/OVS.Server/Logs/LogReader.cs", "namespace OVS.Server.Logs;\n\npublic static class LogReader\n{\n}\n");
         Write("src/OVS.Server/Backups/BackupStore.cs", "namespace OVS.Server.Backups;\n\npublic sealed class BackupStore\n{\n}\n");
@@ -80,7 +80,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_FindsNamespaceNamedLikeType()
+    public void Scanner_NamespaceNamedLikeType_Found()
     {
         Write("src/OVS.Server/ServerSettings/Limits.cs", "namespace OVS.Server.ServerSettings;\n\npublic static class Limits\n{\n}\n");
         Write("src/OVS.Server/Data/Records/ServerSettings.cs", "namespace OVS.Server.Data.Records;\n\npublic sealed class ServerSettings\n{\n}\n");
@@ -88,7 +88,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_AllowsServerStateParts()
+    public void Scanner_ServerStateParts_Allowed()
     {
         Write("src/OVS.Server/State/ServerState.cs", "namespace OVS.Server.State;\n\npublic sealed partial class ServerState\n{\n}\n");
         Write("src/OVS.Server/State/ServerState.Admin.cs", "namespace OVS.Server.State;\n\npublic sealed partial class ServerState\n{\n    void OnAdmin() { }\n}\n");
@@ -99,7 +99,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_AllowsGenericFileName()
+    public void Scanner_GenericFileName_Allowed()
     {
         Write("src/OVS.Client/Models/Choice.cs", "namespace OVS.Client.Models;\n\npublic sealed record Choice<T>(T Value, string Label)\n    where T : class, new();\n");
         Write("src/OVS.Client/Collections/PagedListCollector.cs",
@@ -108,7 +108,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_AllowsMainWindowAndAxamlCodeBehind()
+    public void Scanner_MainWindowAndAxamlCodeBehind_Allowed()
     {
         Write("src/OVS.Client/Views/MainWindow.axaml", "<Window xmlns=\"https://github.com/avaloniaui\" x:Class=\"OVS.Client.Views.MainWindow\" />\n");
         Write("src/OVS.Client/Views/MainWindow.axaml.cs", "namespace OVS.Client.Views;\n\npublic partial class MainWindow : Window\n{\n}\n");
@@ -119,7 +119,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_AllowsTopLevelStatements()
+    public void Scanner_TopLevelStatements_Allowed()
     {
         Write("src/OVS.Server/Program.cs",
             "using OVS.Server;\n\nif (args is [\"--version\"])\n{\n    return 0;\n}\n\nusing var stop = new CancellationTokenSource();\nvar record = args.Length;\nforeach (var arg in args) { Console.WriteLine(arg); }\nreturn await ServerHost.RunAsync(c => { c.Cancel = true; });\n");
@@ -129,7 +129,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_AllowsRecordsAndAttributes()
+    public void Scanner_RecordsAndAttributes_Allowed()
     {
         Write("src/OVS.Shared/Protocol/Messages/Users/UserInfo.cs",
             "using System.Text.Json.Serialization;\n\nnamespace OVS.Shared.Protocol.Messages.Users;\n\n/// <summary>A user (class Other {}).</summary>\n[JsonConverter(typeof(Foo))]\n[Obsolete(\"use class Other\")]\npublic sealed record UserInfo(\n    [property: JsonPropertyName(\"id\")] int Id,\n    string Nickname = \"\") : Base(Id)\n{\n    public int[] Values { get; init; } = [1, 2];\n    public static UserInfo Empty { get; } = new(0) { Values = [] };\n}\n");
@@ -143,7 +143,7 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
     }
 
     [Fact]
-    public void Scanner_IgnoresBracesInStringsAndComments()
+    public void Scanner_BracesInStringsAndComments_Ignored()
     {
         Write("src/OVS.Shared/Protocol/TextRules.cs",
             "namespace OVS.Shared.Protocol;\n\n// } a stray brace in a comment\npublic static class TextRules\n{\n" +

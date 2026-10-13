@@ -35,7 +35,7 @@ public class VoicePacketTests
 
     /// <summary>Package 136 (A145): [frameSeq 4][length of current 2][current][previous, optional], both within the limits.</summary>
     [Fact]
-    public void RelayPayload_WithCopy_RoundTrip_SizeLimit()
+    public void RelayPayload_WithOrWithoutCopy_RoundTripsWithinSizeLimit()
     {
         Assert.True(OVS.Shared.Protocol.WireProtocol.Version >= 14); // 14 brought the copy; SmokeTests pins the current one
         var previous = RandomNumberGenerator.GetBytes(50);
@@ -142,7 +142,7 @@ public class VoicePacketTests
 
     /// <summary>Package 133 (A142): the ping carries the sender's time and the loss it sees from the other side.</summary>
     [Fact]
-    public void PingPayload_RoundTrip()
+    public void PingPayload_BuiltAndSealed_RoundTrips()
     {
         var ping = new PingPayload(1_234_567_890_123, new LossReport(250, 25));
         var bytes = ping.Build();
@@ -164,7 +164,7 @@ public class VoicePacketTests
 
     /// <summary>Package 133: gaps in a stream's frame numbers are losses, per 5 s window; a talk pause has no gap.</summary>
     [Fact]
-    public void LossWindow_CountsGapsPerStream()
+    public void LossWindow_GapsInSeveralStreams_CountedPerStream()
     {
         var time = new OVS.Tests.TestSupport.ManualTimeProvider();
         var window = new LossWindow(time);

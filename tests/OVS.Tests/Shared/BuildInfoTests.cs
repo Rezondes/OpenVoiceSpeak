@@ -22,7 +22,7 @@ public class BuildInfoTests
     }
 
     [Fact]
-    public void FromMetadata_CiValues()
+    public void FromMetadata_CiValues_DateVersionAndShortCommit()
     {
         var info = BuildInfo.FromMetadata(new Dictionary<string, string?>
         {

@@ -5,7 +5,7 @@ namespace OVS.Tests.Shared.Protocol;
 public class Base64TextTests
 {
     [Fact]
-    public void Encoded_And_Decoded_MatchConvert()
+    public void EncodedAndDecoded_LengthsUpTo1000_MatchConvert()
     {
         for (int bytes = 0; bytes <= 1000; bytes++)
         {

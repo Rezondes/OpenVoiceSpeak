@@ -39,7 +39,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void MainOnline(string lang, string theme) => Hero(ShotWriter.Folder!, lang, theme);
+    public void MainOnline_EachVariant_Saved(string lang, string theme) => Hero(ShotWriter.Folder!, lang, theme);
 
     // ---- Package 117: every important feature, for players and for server admins ----
 
@@ -71,7 +71,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void MainPrivate(string lang, string theme)
+    public void MainPrivate_EachVariant_Saved(string lang, string theme)
     {
         using var scene = new WebsiteScene(lang, theme);
         var showcase = scene.Connect();
@@ -89,7 +89,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void Start(string lang, string theme)
+    public void Start_EachVariant_Saved(string lang, string theme)
     {
         using var scene = new WebsiteScene(lang, theme, settings: clientSettings =>
         {
@@ -124,7 +124,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void SettingsAudio(string lang, string theme)
+    public void SettingsAudio_EachVariant_Saved(string lang, string theme)
     {
         using var scene = new WebsiteScene(lang, theme, 760, clientSettings => clientSettings.Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation);
         scene.Connect();
@@ -135,7 +135,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void SettingsLook(string lang, string theme)
+    public void SettingsLook_EachVariant_Saved(string lang, string theme)
     {
         using var scene = new WebsiteScene(lang, theme, 760);
         scene.Connect();
@@ -147,7 +147,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void UserVolume(string lang, string theme)
+    public void UserVolume_EachVariant_Saved(string lang, string theme)
     {
         using var scene = new WebsiteScene(lang, theme);
         var showcase = scene.Connect();
@@ -165,7 +165,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void ChannelDialogLocks(string lang, string theme)
+    public void ChannelDialogLocks_EachVariant_Saved(string lang, string theme)
     {
         using var scene = new WebsiteScene(lang, theme, 760);
         var showcase = scene.Connect();
@@ -197,7 +197,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void AdminGroups(string lang, string theme)
+    public void AdminGroups_EachVariant_Saved(string lang, string theme)
     {
         var (scene, _) = Admin(lang, theme, 0);
         using (scene)
@@ -212,7 +212,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void AdminUsers(string lang, string theme)
+    public void AdminUsers_EachVariant_Saved(string lang, string theme)
     {
         var (scene, _) = Admin(lang, theme, 1);
         using (scene)
@@ -225,7 +225,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void AdminBans(string lang, string theme)
+    public void AdminBans_EachVariant_Saved(string lang, string theme)
     {
         var (scene, _) = Admin(lang, theme, 2);
         using (scene)
@@ -238,7 +238,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void Links(string lang, string theme)
+    public void Links_EachVariant_Saved(string lang, string theme)
     {
         var (scene, _) = Admin(lang, theme, 3);
         using (scene)
@@ -254,7 +254,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void AdminServer(string lang, string theme)
+    public void AdminServer_EachVariant_Saved(string lang, string theme)
     {
         var (scene, _) = Admin(lang, theme, 4);
         using (scene)
@@ -271,7 +271,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void AdminLogs(string lang, string theme)
+    public void AdminLogs_EachVariant_Saved(string lang, string theme)
     {
         var (scene, _) = Admin(lang, theme, 5);
         using (scene)
@@ -293,7 +293,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void ClipSwitch(string lang, string theme)
+    public void ClipSwitch_EachVariant_Saved(string lang, string theme)
     {
         using var scene = new WebsiteScene(lang, theme);
         var showcase = scene.Connect();
@@ -311,7 +311,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void ClipConnect(string lang, string theme)
+    public void ClipConnect_EachVariant_Saved(string lang, string theme)
     {
         using var scene = new WebsiteScene(lang, theme, settings: clientSettings => clientSettings.Bookmarks.Add(new Bookmark("Gilde Nordlicht", "voice.example.org", 7000, "Steffi")));
         var showcase = new ShowcaseServer(scene.English);
@@ -324,7 +324,7 @@ public sealed class WebsiteShots
 
     [AvaloniaTheory]
     [ShotVariants]
-    public void ClipPages(string lang, string theme)
+    public void ClipPages_EachVariant_Saved(string lang, string theme)
     {
         using var scene = new WebsiteScene(lang, theme);
         var showcase = scene.Connect();

@@ -25,7 +25,7 @@ public sealed class WebsiteShotsTests() : TempDirectoryTest("ovs-shots-test-", q
     }
 
     [Fact]
-    public void Scenes_SkippedWithoutEnvironment()
+    public void Scenes_NoEnvironment_Skipped()
     {
         var before = Environment.GetEnvironmentVariable("OVS_SHOTS");
         Environment.SetEnvironmentVariable("OVS_SHOTS", null);
@@ -46,7 +46,7 @@ public sealed class WebsiteShotsTests() : TempDirectoryTest("ovs-shots-test-", q
     /// real time and Avalonia's animation clock cannot be driven from outside, so the check renders the hero without it.
     /// </summary>
     [AvaloniaFact]
-    public void SameScene_TwiceIdentical()
+    public void Hero_SameSceneTwice_Identical()
     {
         var first = File.ReadAllBytes(WebsiteShots.Hero(Directory.CreateDirectory(Path.Combine(dir, "a")).FullName, "de", "light", speaking: false));
         var second = File.ReadAllBytes(WebsiteShots.Hero(Directory.CreateDirectory(Path.Combine(dir, "b")).FullName, "de", "light", speaking: false));
@@ -54,7 +54,7 @@ public sealed class WebsiteShotsTests() : TempDirectoryTest("ovs-shots-test-", q
     }
 
     [AvaloniaFact]
-    public void ShowcaseServer_EnglishHasNoGermanText()
+    public void ShowcaseServer_English_NoGermanText()
     {
         using var scene = new WebsiteScene("en", "light");
         var showcase = scene.Connect();
@@ -71,7 +71,7 @@ public sealed class WebsiteShotsTests() : TempDirectoryTest("ovs-shots-test-", q
 
     /// <summary>Package 117: the images show a made-up server only: no profile or debug title, example addresses, invented people.</summary>
     [AvaloniaFact]
-    public void ShowcaseServer_NoRealData()
+    public void ShowcaseServer_Connected_NoRealData()
     {
         using var scene = new WebsiteScene("de", "light");
         var showcase = scene.Connect();
