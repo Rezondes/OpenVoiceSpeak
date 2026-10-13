@@ -10,6 +10,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using OVS.Client.Animations;
 using OVS.Client.Behaviors;
+using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
 using OVS.Shared.Permissions;
@@ -22,8 +23,11 @@ namespace OVS.Tests.Client.Behaviors;
 
 /// <summary>Package 120 (A129): a user row dragged onto a channel moves that user there, my own row joins it.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: true)
+public sealed class UserDragTests : TempDirectoryTest
 {
+    /// <summary>Animated, as the drop flights need (A114: the default is simplified).</summary>
+    public UserDragTests() : base("ovs-userdrag-", quiet: true) => new ClientSettings { Display = DisplayMode.Animated }.Save(dir);
+
     /// <summary>Animated, as in the app: a drop must hold a flight that would really play. Waits until the tree has built up.</summary>
     Tree Open(ServerViewModel? server = null, List<Request>? sent = null)
     {

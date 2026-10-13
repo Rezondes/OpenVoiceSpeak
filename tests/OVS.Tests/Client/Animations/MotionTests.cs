@@ -117,14 +117,15 @@ public sealed class MotionTests() : TempDirectoryTest("ovs-motion-", quiet: true
         var main = new MainWindow { DataContext = viewModel };
         main.Show();
         Dispatcher.UIThread.RunJobs();
-        Assert.Contains("animated", main.Classes); // the default (A114)
-
-        viewModel.Appearance = viewModel.Appearance with { Display = DisplayMode.Simplified };
-        Assert.DoesNotContain("animated", main.Classes);
+        Assert.DoesNotContain("animated", main.Classes); // the default (A114, A135 step 4)
         Assert.False(Motion.IsAnimated(main));
 
         viewModel.Appearance = viewModel.Appearance with { Display = DisplayMode.Animated };
         Assert.Contains("animated", main.Classes);
+
+        viewModel.Appearance = viewModel.Appearance with { Display = DisplayMode.Simplified };
+        Assert.DoesNotContain("animated", main.Classes);
+        Assert.False(Motion.IsAnimated(main));
         main.Close();
     }
 }

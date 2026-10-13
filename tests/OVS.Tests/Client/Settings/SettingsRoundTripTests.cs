@@ -45,7 +45,7 @@ public sealed class SettingsRoundTripTests
         UserVolumes = new() { ["fingerprint"] = 0.5f },
         BackgroundOpacity = 0.5f,
         BlurBackground = true,
-        Display = DisplayMode.Simplified,
+        Display = DisplayMode.Animated,
     };
 
     static SettingsViewModel Page(ClientSettings settings) =>
@@ -84,7 +84,7 @@ public sealed class SettingsRoundTripTests
         ["echo cancellation"] = new(page => page.EchoCancellation = false, previewed => !previewed.EchoCancellation),
         ["music"] = new(page => page.IsMusic = true, previewed => previewed.AudioContent == AudioContent.Music),
         ["automatic threshold"] = new(page => page.VadAutomatic = false, previewed => !previewed.VadAutomatic),
-        ["display"] = new(page => page.SelectedDisplay = SettingsViewModel.Displays.Single(option => option.Value == DisplayMode.Simplified), previewed => previewed.Display == DisplayMode.Simplified),
+        ["display"] = new(page => page.SelectedDisplay = SettingsViewModel.Displays.Single(option => option.Value == DisplayMode.Animated), previewed => previewed.Display == DisplayMode.Animated),
         ["input gain"] = new(page => page.InputGainPercent = 50, previewed => previewed.InputGain == 0.5f),
         ["output volume"] = new(page => page.OutputVolumePercent = 150, previewed => previewed.OutputVolume == 1.5f),
         ["release delay"] = new(page => page.PttReleaseDelayMs = 120, previewed => previewed.PttReleaseDelayMs == 120),

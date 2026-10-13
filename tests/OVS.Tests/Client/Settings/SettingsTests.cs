@@ -432,14 +432,37 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal(100, settings.BackgroundOpacityPercent);
     }
 
-    /// <summary>Package 99 (A114): animated by default, also for a settings file from before.</summary>
+    /// <summary>A114, A135 step 4: simplified by default, also for a settings file from before.</summary>
     [Fact]
-    public void Display_NewOrOldFile_Animated()
+    public void Display_NewOrOldFile_Simplified()
     {
-        Assert.Equal(DisplayMode.Animated, new ClientSettings().Display);
+        Assert.Equal(DisplayMode.Simplified, new ClientSettings().Display);
+        Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
-        Assert.Equal(DisplayMode.Animated, ClientSettings.Load(dir, out _).Display);
-        Assert.Equal(DisplayMode.Animated, Vm(new ClientSettings()).SelectedDisplay.Value);
+        Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
+        Assert.Equal(DisplayMode.Simplified, Vm(new ClientSettings()).SelectedDisplay.Value);
+    }
+
+    /// <summary>
+    /// A135 step 4: a file that chose the animated display before step 4 is set to the simplified one exactly once;
+    /// chosen again afterwards, the animated display stays.
+    /// </summary>
+    [Fact]
+    public void Migration_AnimatedDisplay_SimplifiedOnce()
+    {
+        var path = Path.Combine(dir, ClientSettings.FileName);
+        foreach (var file in new[] { """{ "settingsVersion": 3, "display": "Animated" }""", """{ "display": "Animated" }""" })
+        {
+            File.WriteAllText(path, file);
+            var old = ClientSettings.Load(dir, out _);
+            Assert.Equal((DisplayMode.Simplified, ClientSettings.CurrentVersion), (old.Display, old.SettingsVersion));
+            Assert.Contains("\"Simplified\"", File.ReadAllText(path), StringComparison.Ordinal); // saved migrated
+        }
+
+        var settings = Vm(ClientSettings.Load(dir, out _));
+        settings.SelectedDisplay = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Animated);
+        settings.ToSettings(ClientSettings.Load(dir, out _)).Save(dir); // the user chooses the animated display again
+        for (var start = 0; start < 2; start++) Assert.Equal(DisplayMode.Animated, ClientSettings.Load(dir, out _).Display);
     }
 
     /// <summary>Package 99 (A114): "Vereinfacht" survives a restart.</summary>

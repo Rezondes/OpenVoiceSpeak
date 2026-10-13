@@ -25,6 +25,7 @@ internal sealed class ClientSettings : IJsonOnDeserializing
         clientSettings => clientSettings.AutoGain = true, // 1 (Package 127, A136): automatic gain on for everyone once
         clientSettings => clientSettings.ResetVolumesAbove100(), // 2 (Package 128, A137): 200 % now means four times
         clientSettings => clientSettings.InferVadAutomatic(), // 3 (Package 129, A138): a tuned threshold stays manual
+        clientSettings => clientSettings.Display = DisplayMode.Simplified, // 4 (A114): the simplified display for everyone once
     ];
 
     /// <summary>The number of migration steps; a new file starts there.</summary>
@@ -133,8 +134,8 @@ internal sealed class ClientSettings : IJsonOnDeserializing
     /// <summary>What shows through the backgrounds is blurred.</summary>
     public bool BlurBackground { get; set; }
 
-    /// <summary>Package 99 (A114): the animated display, or today's plain look. A file from before has no key and loads animated.</summary>
-    public DisplayMode Display { get; set; } = DisplayMode.Animated;
+    /// <summary>Package 99 (A114): today's plain look by default, or the animated display. A file from before has no key and loads simplified.</summary>
+    public DisplayMode Display { get; set; } = DisplayMode.Simplified;
 
     /// <summary>Brings every value into its range and returns these settings.</summary>
     public ClientSettings Clamp()

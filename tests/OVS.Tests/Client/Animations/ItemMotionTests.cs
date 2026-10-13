@@ -26,8 +26,11 @@ namespace OVS.Tests.Client.Animations;
 
 /// <summary>Package 101: new entries slide in, first fills and rebuilds do not replay it.</summary>
 [Collection(MotionCollection.Name)]
-public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: true)
+public sealed class ItemMotionTests : TempDirectoryTest
 {
+    /// <summary>The main windows of these tests run animated (A114: the default is simplified).</summary>
+    public ItemMotionTests() : base("ovs-items-", quiet: true) => new ClientSettings { Display = DisplayMode.Animated }.Save(dir);
+
     static void Frame()
     {
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -271,7 +274,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     [AvaloniaFact]
     public void Bookmarks_ListReplaced_OnlyTheNewOneSlidesIn()
     {
-        var settings = new ClientSettings();
+        var settings = new ClientSettings { Display = DisplayMode.Animated };
         settings.Bookmarks.Add(new Bookmark("Alt", "alt.example.org", 7000, "ich"));
         settings.Save(dir);
         var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));

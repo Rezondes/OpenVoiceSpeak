@@ -1231,27 +1231,27 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Fact]
     public async Task DisplayMode_PreviewThenDiscardOrSave_RestoredOrKept()
     {
-        var simplified = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified);
-        Assert.Equal(DisplayMode.Animated, await OnUiAsync(() => viewModel.Appearance.Display));
-        Assert.Equal(DisplayMode.Simplified, await OnUiAsync(() =>
+        var animated = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Animated);
+        Assert.Equal(DisplayMode.Simplified, await OnUiAsync(() => viewModel.Appearance.Display));
+        Assert.Equal(DisplayMode.Animated, await OnUiAsync(() =>
         {
             viewModel.PageFlow.OpenSettings();
-            viewModel.PageFlow.SettingsPage!.SelectedDisplay = simplified;
+            viewModel.PageFlow.SettingsPage!.SelectedDisplay = animated;
             return viewModel.Appearance.Display;
         }));
-        Assert.Equal(DisplayMode.Animated, await OnUiAsync(() =>
+        Assert.Equal(DisplayMode.Simplified, await OnUiAsync(() =>
         {
             viewModel.PageFlow.SettingsPage!.CancelCommand.Execute(null);
             return viewModel.Appearance.Display;
         }));
-        Assert.Equal(DisplayMode.Simplified, await OnUiAsync(() =>
+        Assert.Equal(DisplayMode.Animated, await OnUiAsync(() =>
         {
             viewModel.PageFlow.OpenSettings();
-            viewModel.PageFlow.SettingsPage!.SelectedDisplay = simplified;
+            viewModel.PageFlow.SettingsPage!.SelectedDisplay = animated;
             viewModel.PageFlow.SettingsPage.SaveAndCloseCommand.Execute(null);
             return viewModel.Appearance.Display;
         }));
-        Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
+        Assert.Equal(DisplayMode.Animated, ClientSettings.Load(dir, out _).Display);
     }
 
     /// <summary>The settings page captures keys through the key poller: a key pressed while its dialog captures is the chord it gets.</summary>
@@ -1346,13 +1346,13 @@ public sealed class MainViewModelTests : IAsyncLifetime
         var after = await OnUiAsync(() =>
         {
             viewModel.PageFlow.OpenSettings();
-            viewModel.PageFlow.SettingsPage!.SelectedDisplay = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified);
+            viewModel.PageFlow.SettingsPage!.SelectedDisplay = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Animated);
             viewModel.PageFlow.SettingsPage.BlurBackground = true;
             viewModel.PageFlow.CloseWithoutAsking(); // what Esc does
             return viewModel.Appearance;
         });
-        Assert.Equal(new BackgroundAppearance(1f, false, DisplayMode.Animated), after);
-        Assert.Equal(DisplayMode.Animated, ClientSettings.Load(dir, out _).Display);
+        Assert.Equal(new BackgroundAppearance(1f, false, DisplayMode.Simplified), after);
+        Assert.Equal(DisplayMode.Simplified, ClientSettings.Load(dir, out _).Display);
     }
 
     /// <summary>Package 53: the self test mutes and deafens (also at the server) and puts everything back afterwards.</summary>
