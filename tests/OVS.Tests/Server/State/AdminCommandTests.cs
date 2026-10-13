@@ -181,7 +181,7 @@ public class AdminCommandTests
         await using var again = await TestClient.OpenAsync(server.Port, id);
         var welcome = Assert.IsType<Welcome>(await again.HandshakeAsync("anna", "geheim"));
         Assert.Equal(Permission.All, welcome.Snapshot.Users.Single(user => user.SessionId == welcome.SessionId).Permissions);
-        Assert.DoesNotContain("geheim", File.ReadAllText(Path.Combine(server.DataDir, "server-data.json")));
+        Assert.DoesNotContain("geheim", await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")));
     }
 
     [Theory]

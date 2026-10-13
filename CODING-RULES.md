@@ -48,7 +48,7 @@ General rules for C# projects with an Avalonia UI: how the source is laid out an
 ## Async and concurrency
 
 1. Async all the way: no `.Result`, `.Wait()` or `GetAwaiter().GetResult()` outside `Main` and the synchronous adapters of tests.
-2. Every async method that does IO takes a `CancellationToken` as its last parameter and passes it on.
+2. **Async variants and the token, wherever possible:** where an API has an async variant, code that can await uses it (`File.ReadAllBytesAsync`, `CancelAsync`, `ReadToEndAsync`), and a method that has a `CancellationToken` passes it on to every call that takes one. Every async method that does IO takes a `CancellationToken` as its last parameter. The built-in analyzers check it as errors: CA1849 (a blocking call where an async variant exists) and CA2016 (a token not passed on).
 3. No `async void` except event handlers.
 4. A lock is held as briefly as possible and never across an `await`. A new synchronisation scheme needs a comment that explains it and a test that proves it.
 5. **Never `Thread.Sleep`:** not in production code, not in tools, not in tests, also not `Thread.Sleep(0)` or a wait marked as real time. Code that must wait awaits (`Task.Delay(delay, timeProvider, token)`), arms a timer of the injected clock, or (a test on the UI thread) runs the dispatcher. A dedicated thread (audio, input, a log writer's retry) that must pause waits on a wait handle that stop and wake can end (`WaitHandle.WaitOne(timeout)` or `ManualResetEventSlim.Wait(timeout)`), so stopping never waits for a sleep to run out and its `Join` needs no timeout that exists only because a sleep cannot be woken; such a blocking wait is marked `// clock: real time`.
@@ -97,7 +97,7 @@ Every review of new or changed code answers each point below for that change, na
 - Is no exception caught that the code cannot handle? Is every swallowed exception logged or commented with its reason?
 
 **Async (§Async and concurrency)**
-- Async all the way, a `CancellationToken` as the last parameter of every async method that does IO, no `async void` except event handlers?
+- Async all the way, the async variant wherever one exists, the `CancellationToken` passed on and as the last parameter of every async method that does IO, no `async void` except event handlers?
 - No lock held across an `await`? A new synchronisation scheme is the KISS red flag.
 - No `Thread.Sleep` anywhere, not even in a test; a dedicated thread waits on a wait handle marked `// clock: real time`?
 

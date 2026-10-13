@@ -397,7 +397,7 @@ public sealed class ModerationTests : IAsyncLifetime
         await admin.SendAsync(new DeleteKnownUser(guestId.Fingerprint));
         Assert.DoesNotContain(await UsersAsync(admin), knownUser => knownUser.Fingerprint == guestId.Fingerprint);
         Assert.Empty(await BansAsync(admin));
-        Assert.DoesNotContain(guestId.Fingerprint, File.ReadAllText(Path.Combine(server.DataDir, "server-data.json")));
+        Assert.DoesNotContain(guestId.Fingerprint, await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")));
         Assert.Contains(server.Log, line => line.Contains("Nutzerdaten von gast gelöscht von admin"));
 
         time.Advance(TimeSpan.FromMinutes(5));

@@ -311,7 +311,7 @@ public sealed class BackupCardViewModelTests() : TempDirectoryTest("ovs-backup-c
         await BoundAsync(rig.Section.DownloadBackupAsync(rig.Section.Backups[0], target));
 
         Assert.Equal(Newer.FileName, Assert.Single(sent.OfType<DownloadBackup>()).FileName);
-        Assert.Equal(Archive, File.ReadAllBytes(target));
+        Assert.Equal(Archive, await File.ReadAllBytesAsync(target));
     }
 
     [Fact]

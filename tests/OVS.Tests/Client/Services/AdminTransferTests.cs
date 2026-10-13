@@ -96,7 +96,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
 
         await BoundAsync(DownloadAsync(logs, target));
 
-        Assert.Equal(Content, File.ReadAllBytes(target));
+        Assert.Equal(Content, await File.ReadAllBytesAsync(target));
         Assert.Equal([0L, 524_288L, 1_048_576L], sent.Select(ChunkOffset).OfType<long>());
         Assert.Equal([0d, 43.7, 87.4], seen.Select(value => Math.Round(value.Percent, 1)));
         Assert.Equal(string.Format(format, 44), seen[1].Text);
@@ -120,13 +120,13 @@ public sealed class AdminTransferTests : TempDirectoryTest
     public async Task Download_ErrorForASecondChunk_OldFileKeptWithoutNotice(bool logs)
     {
         var target = Target();
-        File.WriteAllText(target, "alt");
+        await File.WriteAllTextAsync(target, "alt");
         answer = request => ChunkOffset(request) is 0 or null ? Serve(request) : new Error(request.RequestId, ReasonCodes.NotFound); // the server shows its own
 
         await BoundAsync(DownloadAsync(logs, target));
 
         Assert.Equal([0L, 524_288L], sent.Select(ChunkOffset).OfType<long>());
-        Assert.Equal("alt", File.ReadAllText(target));
+        Assert.Equal("alt", await File.ReadAllTextAsync(target));
         Assert.Equal([target], Directory.GetFiles(dir));
         Assert.Empty(notices);
         Assert.False(transfer.IsRunning);
@@ -160,7 +160,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     public async Task Download_ChunkNotBase64_StopsWithItsNoticeAndOldFileKept(bool logs)
     {
         var target = Target();
-        File.WriteAllText(target, "alt");
+        await File.WriteAllTextAsync(target, "alt");
         answer = request => Serve(request) switch
         {
             BackupChunk backupChunk => backupChunk with { DataBase64 = "%%%" },
@@ -171,7 +171,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         await BoundAsync(DownloadAsync(logs, target));
 
         Assert.Equal([logs ? Strings.Logs_TransferFailed : Strings.Backup_TransferFailed], notices);
-        Assert.Equal("alt", File.ReadAllText(target));
+        Assert.Equal("alt", await File.ReadAllTextAsync(target));
         Assert.Equal([target], Directory.GetFiles(dir));
         Assert.False(transfer.IsRunning);
     }
@@ -226,7 +226,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     public async Task Cancel_AnswerAwaited_StopsWithoutNotice()
     {
         var target = Target();
-        File.WriteAllText(target, "alt");
+        await File.WriteAllTextAsync(target, "alt");
         var download = transfer.DownloadBackupAsync("b.ovsbackup", target);
 
         transfer.Cancel();
@@ -234,7 +234,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
 
         Assert.Empty(notices);
         Assert.False(transfer.IsRunning);
-        Assert.Equal("alt", File.ReadAllText(target));
+        Assert.Equal("alt", await File.ReadAllTextAsync(target));
         Assert.Equal([target], Directory.GetFiles(dir));
     }
 
@@ -279,7 +279,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     {
         var content = RandomBytes(1_100_000);
         var path = Target("up.ovsbackup");
-        File.WriteAllBytes(path, content);
+        await File.WriteAllBytesAsync(path, content);
         var stored = new BackupInfo("hochgeladen_2026-01-01_12-00-00.ovsbackup", time.GetUtcNow(), content.Length, "dev.0000");
         var received = new MemoryStream();
         var seen = new List<(bool Running, double Percent)>();
@@ -326,7 +326,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
     public async Task UploadBackupAsync_FirstChunkRefused_NullWithoutNotice()
     {
         var path = Target("up.ovsbackup");
-        File.WriteAllBytes(path, new byte[ProtocolLimits.BackupChunkBytes + 1]);
+        await File.WriteAllBytesAsync(path, new byte[ProtocolLimits.BackupChunkBytes + 1]);
         answer = request => new Error(request.RequestId, ReasonCodes.InvalidBackup); // the server shows its own
 
         Assert.Null(await BoundAsync(transfer.UploadBackupAsync(path, followUps.Add)));
@@ -378,7 +378,7 @@ public sealed class AdminTransferTests : TempDirectoryTest
         server.Apply(new BackupChunk(request.RequestId, "b.ovsbackup", 0, Content.Length, Convert.ToBase64String(Content), true));
         await BoundAsync(download);
 
-        Assert.Equal(Content, File.ReadAllBytes(target));
+        Assert.Equal(Content, await File.ReadAllBytesAsync(target));
         Assert.False(page.Transfer.IsRunning);
     }
 

@@ -397,7 +397,7 @@ public sealed class MotionCoverageTests
         yield return new("open the settings", walk => walk.Vm.PageFlow.OpenSettings());
         foreach (var step in SettingsControls(otherWalk)) yield return step;
         foreach (var step in Dialog("key binding", walk => walk.Vm.PageFlow.SettingsPage!.AddKeyBindingCommand.Execute(null))) yield return step;
-        yield return new("close the settings", walk => walk.Vm.PageFlow.ClosePage());
+        yield return new("close the settings", walk => walk.Vm.PageFlow.CloseWithoutAsking());
 
         // ---- connected: channels ----
         yield return new("connect", walk =>
@@ -564,7 +564,7 @@ public sealed class MotionCoverageTests
             walk.Admin.Logs.NewerCommand.Execute(null);
             walk.Server.Apply(new LogPage(walk.Sent.LastRequestId<ReadLog>(), "server-1", 2, 2, 3, ["Zeile 3"]));
         });
-        yield return new("close the administration", walk => walk.Vm.PageFlow.ClosePage());
+        yield return new("close the administration", walk => walk.Vm.PageFlow.CloseWithoutAsking());
 
         // ---- narrow window: the drawer ----
         yield return new("open the drawer", walk => walk.Main.GetVisualDescendants().OfType<Button>()

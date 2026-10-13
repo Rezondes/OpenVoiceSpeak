@@ -54,7 +54,9 @@ public sealed class OverlayHost : Panel
     /// <param name="content">The dialog card.</param>
     public async Task ShowAsync(Control content, Action onEnter, Control? focus = null)
     {
-        closing?.Cancel(); // the next dialog is here: the last one finishes going at once, never two cards
+#pragma warning disable CA1849 // Cancel, not CancelAsync: the closing card must finish going before this line returns, never two cards
+        closing?.Cancel(); // the next dialog is here: the last one finishes going at once
+#pragma warning restore CA1849
         await turn.WaitAsync();
         try
         {

@@ -112,7 +112,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     internal void OpenSettings()
     {
         if (Page == Page.Settings) return;
-        ClosePage();
+        CloseWithoutAsking();
         var newPage = new SettingsViewModel(settings(), knownDevices()?.Inputs, knownDevices()?.Outputs, time, captureChord)
         {
             EditKeyBinding = dialogs().EditKeyBinding,
@@ -164,7 +164,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     {
         if (shownServer() is not { CanAdminister: true } server || Page == Page.Admin) return;
         if (!await ConfirmLeaveAsync()) return; // Package 114
-        ClosePage();
+        CloseWithoutAsking();
         var newPage = new AdminViewModel(server, adminDialogs());
         Show(newPage, Page.Admin); // Package 114
         await newPage.RequestListsAsync();
@@ -210,11 +210,11 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     /// <summary>Esc, the X and the administration's close button: ask first, then leave the page.</summary>
     internal async Task ClosePageAsync()
     {
-        if (!IsHomePage && await ConfirmLeaveAsync()) ClosePage();
+        if (!IsHomePage && await ConfirmLeaveAsync()) CloseWithoutAsking();
     }
 
     /// <summary>Esc: leaves settings without saving, or the administration.</summary>
-    internal void ClosePage()
+    internal void CloseWithoutAsking()
     {
         if (ShownPage is { } shown) Close(shown);
     }

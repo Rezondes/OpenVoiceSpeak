@@ -79,7 +79,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         await admin.SendAsync(new CreateChannel("  Raid  ", "Beschreibung"));
         var added = await guest.WaitForAsync<ChannelAdded>();
         Assert.Equal("Raid", added.Channel.Name);
-        Assert.Contains("Raid", File.ReadAllText(Path.Combine(server.DataDir, "server-data.json")));
+        Assert.Contains("Raid", await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")));
     }
 
     [Theory]
@@ -140,7 +140,7 @@ public sealed class ChannelCommandTests : IAsyncLifetime
             Assert.Equal(96, late.Welcome.Snapshot.Channels.Single(channel => channel.Id == music.Id).Bitrate);
         var log = Directory.GetFiles(Path.Combine(server.DataDir, "logs", "channels", music.Id.ToString())).Single();
         using (var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
-            Assert.Contains("Qualität 96 kbps", new StreamReader(stream).ReadToEnd());
+            Assert.Contains("Qualität 96 kbps", await new StreamReader(stream).ReadToEndAsync());
 
         await admin.SendAsync(new CreateChannel("Zu leise", "", Bitrate: 15) { RequestId = "c" });
         Assert.Equal(ReasonCodes.InvalidValue, (await admin.ErrorAsync("c")).Code);
@@ -202,10 +202,10 @@ public sealed class ChannelCommandTests : IAsyncLifetime
 
         await using var late = await TestClient.ConnectAsync(server, "spaet");
         Assert.True(late.Welcome.Snapshot.Channels.Single(channel => channel.Id == raid.Id).IsMuted);
-        Assert.Contains("\"isMuted\": true", File.ReadAllText(Path.Combine(server.DataDir, "server-data.json")));
+        Assert.Contains("\"isMuted\": true", await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")));
         var log = Directory.GetFiles(Path.Combine(server.DataDir, "logs", "channels", raid.Id.ToString())).Single();
         using var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        Assert.Contains("stumm geschaltet", new StreamReader(stream).ReadToEnd());
+        Assert.Contains("stumm geschaltet", await new StreamReader(stream).ReadToEndAsync());
     }
 
     // ---- Package 35: slot limit ----

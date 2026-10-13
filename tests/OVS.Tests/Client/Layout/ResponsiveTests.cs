@@ -218,7 +218,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         AssertDrawerClosed(main);
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
 
         // wide again: the sidebar is back in its column
         OpenDrawer(main);

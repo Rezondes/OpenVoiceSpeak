@@ -639,7 +639,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     public async Task EchoCancellation_DefaultLiveOrLibMissing_Followed()
     {
         Assert.True(new ClientSettings().EchoCancellation);
-        File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
+        await File.WriteAllTextAsync(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
         var old = ClientSettings.Load(dir, out _);
         Assert.True(old.EchoCancellation);
         var settings = Vm(old);

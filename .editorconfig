@@ -17,3 +17,7 @@ dotnet_naming_rule.types_and_members_are_pascal.style = pascal
 dotnet_naming_rule.types_and_members_are_pascal.severity = error
 
 dotnet_diagnostic.IDE1006.severity = error
+
+# Async rule 2 (the user, 13 October 2026): the async variant wherever one exists, and the CancellationToken passed on.
+dotnet_diagnostic.CA1849.severity = error
+dotnet_diagnostic.CA2016.severity = error

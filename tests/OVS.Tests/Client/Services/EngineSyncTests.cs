@@ -446,7 +446,7 @@ public sealed class EngineSyncTests : IDisposable
         using var withDevices = await OpenEngineWithMicrophoneAsync();
         var sync = CreateSync(withDevices);
 
-        var warning = sync.Configure(new ClientSettings { InputDeviceId = "gone" });
+        var warning = await sync.ConfigureAsync(new ClientSettings { InputDeviceId = "gone" });
 
         Assert.Equal(Strings.Audio_DeviceFallback, warning);
     }

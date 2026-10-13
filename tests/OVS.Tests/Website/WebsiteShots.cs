@@ -337,6 +337,6 @@ public sealed class WebsiteShots
             (400, () => _ = scene.Vm.PageFlow.OpenAdminAsync()),
             (1700, () => Page().FindControl<TabControl>("Tabs")!.SelectedIndex = 1),
             (2900, () => Page().FindControl<TabControl>("Tabs")!.SelectedIndex = 2),
-            (4300, () => scene.Vm.PageFlow.ClosePage()));
+            (4300, () => scene.Vm.PageFlow.CloseWithoutAsking()));
     }
 }

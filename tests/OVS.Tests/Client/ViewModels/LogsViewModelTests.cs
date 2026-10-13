@@ -250,7 +250,7 @@ public class LogsViewModelTests
             await HangGuard.BoundAsync(logs.DownloadAsync(target));
 
             Assert.Equal([ServerFile.Id, RaidFile.Id], Assert.Single(sent.OfType<PrepareLogDownload>()).FileIds);
-            Assert.Equal(zip, File.ReadAllBytes(target));
+            Assert.Equal(zip, await File.ReadAllBytesAsync(target));
         }
         finally
         {

@@ -51,7 +51,9 @@ internal sealed class SidebarDrawer
     /// </summary>
     async Task SlideAsync(bool open)
     {
+#pragma warning disable CA1849 // Cancel, not CancelAsync: the running slide must stop before the new one starts below
         cancel?.Cancel();
+#pragma warning restore CA1849
         var slideCancel = cancel = new CancellationTokenSource();
         if (open) window.Classes.Set("drawer", true);
         sidebar.IsHitTestVisible = open;

@@ -28,7 +28,7 @@ public sealed class TestServer : IAsyncDisposable
     public int Port => Control.LocalEndPoint.Port;
     public IPEndPoint VoiceEndPoint => Voice.LocalEndPoint;
 
-    public static Task<TestServer> StartAsync(
+    public static async Task<TestServer> StartAsync(
         Action<ServerData>? seed = null, string? dataDir = null, int maxUsers = 50, string password = "",
         TimeProvider? time = null, TimeSpan? idleTimeout = null, TimeSpan? handshakeTimeout = null,
         TimeSpan? writeTimeout = null, int? maxPendingHandshakes = null, int? port = null)
@@ -76,14 +76,14 @@ public sealed class TestServer : IAsyncDisposable
             }
             catch (SocketException) when (attempt < 100 && port is null)
             {
-                control.DisposeAsync().AsTask().Wait();
+                await control.DisposeAsync();
                 continue;
             }
             voice.Start();
-            return Task.FromResult(new TestServer
+            return new TestServer
             {
                 DataDir = dataDir, State = state, Stores = stores, Control = control, Voice = voice, Certificate = certificate, Log = log,
-            });
+            };
         }
     }
 

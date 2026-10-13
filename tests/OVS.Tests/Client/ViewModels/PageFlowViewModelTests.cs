@@ -70,7 +70,7 @@ public sealed class PageFlowViewModelTests
         Assert.All(bindings, binding => Assert.Contains(binding, rig.Changes));
 
         rig.Changes.Clear();
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
         Assert.All(bindings, binding => Assert.Contains(binding, rig.Changes));
     }
 
@@ -100,7 +100,7 @@ public sealed class PageFlowViewModelTests
         var rig = new PageFlowRig();
         rig.Flow.OpenSettings();
 
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
 
         Assert.NotNull(rig.StartedHandler);
         Assert.Equal(rig.StartedHandler, rig.StoppedHandler);
@@ -188,7 +188,7 @@ public sealed class PageFlowViewModelTests
         var levelBefore = page.InputLevelDb;
         rig.StartedHandler!(-20f);
 
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
         rig.RunPosted();
 
         Assert.Equal(levelBefore, page.InputLevelDb);
@@ -201,7 +201,7 @@ public sealed class PageFlowViewModelTests
         var rig = new PageFlowRig();
         rig.OpenEditedSettings();
 
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
 
         Assert.Equal(["applyLive", "setKeyBindings", "showAppearance", "setSelfTest False", "stopLevelMeter"], rig.Calls);
         Assert.Same(rig.Settings, rig.AppliedLive.Last());
@@ -219,7 +219,7 @@ public sealed class PageFlowViewModelTests
         rig.Flow.OpenSettings();
         rig.AssertChangedBefore(nameof(PageFlowViewModel.SettingsPage), nameof(PageFlowViewModel.Page));
 
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
         rig.Changes.Clear();
         await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
         rig.AssertChangedBefore(nameof(PageFlowViewModel.AdminPage), nameof(PageFlowViewModel.Page));
@@ -232,12 +232,12 @@ public sealed class PageFlowViewModelTests
         rig.ShowAdminServer();
         rig.Flow.OpenSettings();
         rig.Changes.Clear();
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
         rig.AssertChangedBefore(nameof(PageFlowViewModel.SettingsPage), nameof(PageFlowViewModel.Page));
 
         await HangGuard.BoundAsync(rig.Flow.OpenAdminAsync());
         rig.Changes.Clear();
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
         rig.AssertChangedBefore(nameof(PageFlowViewModel.AdminPage), nameof(PageFlowViewModel.Page));
     }
 
@@ -246,7 +246,7 @@ public sealed class PageFlowViewModelTests
     {
         var rig = new PageFlowRig();
 
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
         await HangGuard.BoundAsync(rig.Flow.ClosePageAsync());
 
         Assert.Empty(rig.Changes);
@@ -357,8 +357,8 @@ public sealed class PageFlowViewModelTests
         var rig = new PageFlowRig();
         rig.OpenEditedSettings();
 
-        rig.Flow.ClosePage();
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
+        rig.Flow.CloseWithoutAsking();
 
         Assert.Equal(["applyLive", "setKeyBindings", "showAppearance", "setSelfTest False", "stopLevelMeter"], rig.Calls);
         Assert.True(rig.Flow.IsHomePage);
@@ -370,10 +370,10 @@ public sealed class PageFlowViewModelTests
         var rig = new PageFlowRig();
         rig.ShowAdminServer();
         await rig.OpenEditedAdminAsync();
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
         rig.Changes.Clear();
 
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
 
         Assert.Empty(rig.Changes);
         Assert.Null(rig.Flow.AdminPage);
@@ -403,7 +403,7 @@ public sealed class PageFlowViewModelTests
         var page = rig.OpenEditedSettings();
         rig.ApplyLiveThrows = true;
 
-        Assert.Throws<InvalidOperationException>(rig.Flow.ClosePage);
+        Assert.Throws<InvalidOperationException>(rig.Flow.CloseWithoutAsking);
         Assert.Same(page, rig.Flow.SettingsPage);
         Assert.True(rig.Flow.IsSettingsPage);
     }
@@ -469,7 +469,7 @@ public sealed class PageFlowViewModelTests
         var rig = new PageFlowRig();
         rig.Flow.OpenSettings();
         var page1 = rig.Flow.SettingsPage!;
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
         rig.Flow.OpenSettings();
         var page2 = rig.Flow.SettingsPage;
         rig.Calls.Clear();
@@ -615,7 +615,7 @@ public sealed class PageFlowViewModelTests
         rig.ShowAdminServer();
         await rig.OpenEditedAdminAsync();
         rig.Answers.Enqueue(LeaveChoice.Save);
-        rig.WhileAsked = rig.Flow.ClosePage;
+        rig.WhileAsked = rig.Flow.CloseWithoutAsking;
 
         Assert.True(await HangGuard.BoundAsync(rig.Flow.ConfirmLeaveAsync()));
         Assert.DoesNotContain(rig.Sent, request => request is UpdateServerSettings);
@@ -659,7 +659,7 @@ public sealed class PageFlowViewModelTests
         Assert.All(bindings, binding => Assert.Contains(binding, rig.Changes));
 
         rig.Changes.Clear();
-        rig.Flow.ClosePage();
+        rig.Flow.CloseWithoutAsking();
         Assert.All(bindings, binding => Assert.Contains(binding, rig.Changes));
     }
 }

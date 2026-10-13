@@ -78,7 +78,7 @@ public sealed class RestartScheduleTests
         await using var server = await TestServer.StartAsync(time: time);
         using var stop = new CancellationTokenSource();
         var restart = RestartSchedule.WaitAsync(server.State, time, new ServerLogWriter(server.DataDir, 0, time, _ => { }), stop.Token);
-        stop.Cancel();
+        await stop.CancelAsync();
         Assert.False(await restart.WaitAsync(TimeSpan.FromSeconds(30)));
     }
 }

@@ -136,7 +136,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         await using var mainViewModel = CreateMainViewModel();
         var settings = new ClientSettings();
         settings.SetVolume("fp2", 2f);
-        mainViewModel.ApplySettings(settings);
+        await mainViewModel.ApplySettingsAsync(settings);
 
         MainViewModelSetup.ShowServer(mainViewModel, FakeServers.Admin());
 
@@ -227,7 +227,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
     {
         await using var mainViewModel = CreateMainViewModel();
 
-        mainViewModel.ApplySettings(new ClientSettings { OutputVolume = 9f });
+        await mainViewModel.ApplySettingsAsync(new ClientSettings { OutputVolume = 9f });
 
         Assert.Equal(2f, mainViewModel.Audio.Mixer.Volume);
     }
@@ -237,7 +237,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
     {
         await using var mainViewModel = CreateMainViewModel();
 
-        mainViewModel.ApplySettings(new ClientSettings { Mode = TransmitMode.VoiceActivation });
+        await mainViewModel.ApplySettingsAsync(new ClientSettings { Mode = TransmitMode.VoiceActivation });
 
         Assert.Equal(TransmitMode.VoiceActivation, mainViewModel.Audio.Mode);
     }
@@ -259,7 +259,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
         await using var mainViewModel = CreateMainViewModel(hardware);
         await OpenSettingsWithMicrophoneAsync(mainViewModel, hardware);
 
-        mainViewModel.ApplySettings(new ClientSettings { InputDeviceId = "gone" });
+        await mainViewModel.ApplySettingsAsync(new ClientSettings { InputDeviceId = "gone" });
 
         var notice = Assert.Single(mainViewModel.Notices);
         Assert.Equal((Strings.Audio_DeviceFallback, NoticeKind.Warning), (notice.Text, notice.Kind));

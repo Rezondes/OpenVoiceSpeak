@@ -334,7 +334,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         var meter = main.GetVisualDescendants().OfType<ProgressBar>().Single(progressBar => progressBar.Minimum == -60 && progressBar.Maximum == -10);
         Assert.True(meter.IsEffectivelyVisible);
         Assert.Equal(-60, meter.Value);
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
         MotionWait.Settle(600); // the hidden meter loses its model
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible);
 
@@ -404,7 +404,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         MotionWait.Settle(400);
         MotionWait.Eventually(() => Assert.Contains(main.GetVisualDescendants().OfType<BusySpinner>(),
             busySpinner => busySpinner.Classes.Contains(BusySpinner.TurningClass) && busySpinner.FindAncestorOfType<AdminView>() is not null));
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
         MotionWait.Settle(800);
 
         // nobody speaks, nothing is busy: nothing on the screen changes from frame to frame

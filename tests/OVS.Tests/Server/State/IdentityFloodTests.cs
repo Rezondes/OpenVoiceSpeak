@@ -153,7 +153,7 @@ public sealed class IdentityFloodTests
         var logDir = Path.Combine(server.DataDir, "logs", "server");
         Directory.CreateDirectory(logDir);
         var start = new DateTime(2025, 1, 1);
-        for (int index = 0; index < 2000; index++) File.WriteAllText(Path.Combine(logDir, $"{start.AddHours(index):yyyy-MM-dd_HH-mm-ss}.log"), "x\n");
+        for (int index = 0; index < 2000; index++) await File.WriteAllTextAsync(Path.Combine(logDir, $"{start.AddHours(index):yyyy-MM-dd_HH-mm-ss}.log"), "x\n");
 
         await using var client = await TestClient.ConnectAsync(server, "chef", admin);
         // a save of this much data, or a scan of 2000 log files, can hold the server for seconds on a slow CI disk

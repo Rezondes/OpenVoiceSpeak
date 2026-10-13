@@ -735,7 +735,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         var data = Directory.CreateTempSubdirectory("ovs-logo-server-").FullName;
         var png = TestImages.Encode(128, 128);
-        File.WriteAllBytes(Path.Combine(data, "server-icon.png"), png);
+        await File.WriteAllBytesAsync(Path.Combine(data, "server-icon.png"), png);
         await using var logoServer = await TestServer.StartAsync(dataDir: data);
         Task ConnectAsync() => ui.InvokeAsync<object?>(async () =>
         {
@@ -1167,7 +1167,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         gate.Reset();
         var again = await OnUiAsync(() =>
         {
-            main.PageFlow.ClosePage();
+            main.PageFlow.CloseWithoutAsking();
             main.PageFlow.OpenSettings();
             return main.PageFlow.SettingsPage!.Inputs.Select(audioDeviceOption => audioDeviceOption.Name).ToList();
         });
@@ -1308,7 +1308,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
         }));
         Assert.Empty(await OnUiAsync(() =>
         {
-            viewModel.PageFlow.ClosePage(); // what Esc does
+            viewModel.PageFlow.CloseWithoutAsking(); // what Esc does
             return viewModel.Keys.Bindings;
         }));
 
@@ -1330,7 +1330,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             viewModel.PageFlow.OpenSettings();
             viewModel.PageFlow.SettingsPage!.SelectedDisplay = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified);
             viewModel.PageFlow.SettingsPage.BlurBackground = true;
-            viewModel.PageFlow.ClosePage(); // what Esc does
+            viewModel.PageFlow.CloseWithoutAsking(); // what Esc does
             return viewModel.Appearance;
         });
         Assert.Equal(new BackgroundAppearance(1f, false, DisplayMode.Animated), after);
@@ -1402,7 +1402,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             return 0;
         });
         Assert.Equal(1f, await OnUiAsync(() => viewModel.Audio.Mixer.SpeakerGain(9)));
-        Assert.DoesNotContain("fp2", File.ReadAllText(Path.Combine(dir, ClientSettings.FileName)));
+        Assert.DoesNotContain("fp2", await File.ReadAllTextAsync(Path.Combine(dir, ClientSettings.FileName)));
     }
 
     [Fact]
@@ -1646,7 +1646,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     {
         await ui.InvokeAsync<object?>(async () =>
         {
-            viewModel.ApplySettings(new ClientSettings
+            await viewModel.ApplySettingsAsync(new ClientSettings
             {
                 Mode = TransmitMode.VoiceActivation,
                 VadThresholdDb = -50,
@@ -1747,7 +1747,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             Assert.Equal(new DeviceCounts(1, 1, 0, 0, false), await SettledAsync(new DeviceCounts(1, 1, 0, 0, false))); // the level meter
             await DoAsync(() =>
             {
-                main.PageFlow.ClosePage();
+                main.PageFlow.CloseWithoutAsking();
                 return Task.CompletedTask;
             });
             Assert.Equal(new DeviceCounts(1, 0, 0, 0, false), await SettledAsync(new DeviceCounts(1, 0, 0, 0, false)));

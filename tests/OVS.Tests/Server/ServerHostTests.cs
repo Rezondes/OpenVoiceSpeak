@@ -45,7 +45,7 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
             Assert.Equal(1, await host);
         }
 
-        stop.Cancel();
+        await stop.CancelAsync();
         Assert.Equal(0, await host.WaitAsync(TimeSpan.FromSeconds(30)));
         Assert.Contains(output, line => line.Contains($"Listening on 127.0.0.1:{port}"));
         Assert.Contains(output, line => System.Text.RegularExpressions.Regex.IsMatch(line, "Zertifikat-Fingerprint: [0-9a-f]{64}$"));
@@ -114,7 +114,7 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
         Assert.NotNull(bert);
         await bert.DisposeAsync();
 
-        stop.Cancel();
+        await stop.CancelAsync();
         Assert.Equal(0, await host.WaitAsync(TimeSpan.FromSeconds(30)));
 
         var files = Directory.GetFiles(Path.Combine(dir, "logs", "server")).Order().Select(File.ReadAllText).ToList();

@@ -169,8 +169,8 @@ public sealed class LogCommandTests
         await using var client = admin;
         await using var guest = await TestClient.ConnectAsync(server, "gast");
         var dir = ServerLogDir(server);
-        File.WriteAllText(Path.Combine(dir, "notiz.txt"), "keine Logdatei");
-        File.WriteAllText(Path.Combine(server.DataDir, "logs", "wurzel.log"), "nicht unter server oder channels");
+        await File.WriteAllTextAsync(Path.Combine(dir, "notiz.txt"), "keine Logdatei");
+        await File.WriteAllTextAsync(Path.Combine(server.DataDir, "logs", "wurzel.log"), "nicht unter server oder channels");
 
         foreach (var request in new Request[] { new ListLogs(), new ReadLog("server/x.log"), new SearchLogs("x") })
         {
@@ -351,7 +351,7 @@ public sealed class LogCommandTests
         {
             var file = Path.Combine(server.DataDir, "logs", id);
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-            File.WriteAllText(file, text);
+            await File.WriteAllTextAsync(file, text);
         }
         File.SetLastWriteTime(Path.Combine(dir, "2025-01-01_00-00-00.log"), new DateTime(2025, 1, 1, 12, 0, 0));
         File.SetLastWriteTime(Path.Combine(server.DataDir, "logs", "channels", raid.ToString(), "2025-02-01_00-00-00.log"), new DateTime(2025, 2, 1, 12, 0, 0));
@@ -383,7 +383,7 @@ public sealed class LogCommandTests
         Assert.Empty(Directory.GetFiles(ExportDir(server)));
 
         // what a crash left behind is removed at the next start
-        File.WriteAllText(Path.Combine(ExportDir(server), "0123456789abcdef0123456789abcdef.zip"), "rest");
+        await File.WriteAllTextAsync(Path.Combine(ExportDir(server), "0123456789abcdef0123456789abcdef.zip"), "rest");
         await using var restarted = await server.RestartAsync();
         Assert.Empty(Directory.GetFiles(ExportDir(restarted)));
     }
@@ -438,7 +438,7 @@ public sealed class LogCommandTests
         await using var other = await TestClient.ConnectAsync(server, "anna");
         var content = new byte[3 * ProtocolLimits.BackupChunkBytes / 2 + 17];
         Random.Shared.NextBytes(content);
-        File.WriteAllBytes(Path.Combine(ServerLogDir(server), "2025-01-01_00-00-00.log"), content);
+        await File.WriteAllBytesAsync(Path.Combine(ServerLogDir(server), "2025-01-01_00-00-00.log"), content);
         using var entered = new SemaphoreSlim(0);
         using var release = new ManualResetEventSlim();
         server.Stores.LogExporter.ReadHook = _ =>

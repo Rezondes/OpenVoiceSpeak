@@ -96,7 +96,7 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
         await using var mainViewModel = CreateOnSettingsPage([]);
         await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
 
-        mainViewModel.PageFlow.ClosePage();
+        mainViewModel.PageFlow.CloseWithoutAsking();
 
         Assert.False(mainViewModel.Audio.SelfTest);
     }
@@ -109,7 +109,7 @@ public sealed class SelfTestWiringTests() : TempDirectoryTest("ovs-self-test-", 
         await mainViewModel.PageFlow.SettingsPage!.ToggleSelfTestCommand.ExecuteAsync(null);
         int sentBefore = MainViewModelSetup.ReadSelfStatesSent(sent).Count;
 
-        mainViewModel.PageFlow.ClosePage();
+        mainViewModel.PageFlow.CloseWithoutAsking();
 
         Assert.Equal([new SelfState(false, false)], MainViewModelSetup.ReadSelfStatesSent(sent).Skip(sentBefore));
     }

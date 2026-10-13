@@ -64,7 +64,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         Assert.True(slides.Any(slide => slide > 0) && fades.Any(fade => fade < 1), "the settings come in from the right");
 
         slides.Clear();
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
         MotionWait.Eventually(() =>
         {
             Assert.True(slides.Any(slide => slide < 0), "going back comes in from the left");
@@ -80,7 +80,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         var main = Open(out var viewModel);
         viewModel.PageFlow.OpenSettings();
         Frame();
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
         Frame();
         await viewModel.PageFlow.OpenAdminAsync();
         MotionWait.Eventually(() =>
@@ -107,7 +107,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         MotionWait.Settle(400);
         var tabs = main.GetVisualDescendants().OfType<AdminView>().Single().FindControl<TabControl>("Tabs")!;
         tabs.SelectedIndex = 1;
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
         MotionWait.Settle(400);
         await viewModel.PageFlow.OpenAdminAsync();
         MotionWait.Settle(400);
@@ -142,7 +142,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
             Assert.Equal((1d, 1d), (content.Opacity, pipe.Opacity));
         });
 
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
         MotionWait.Settle(450);
         Switched(main);
         var chat = main.GetVisualDescendants().OfType<ChatView>().Single();
@@ -241,7 +241,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         Assert.Equal((0d, 1d), (MotionWait.OffsetX(Host(main)), Host(main).Opacity));
         var scroll = main.GetVisualDescendants().OfType<SettingsView>().Single().GetVisualDescendants().OfType<ScrollViewer>().First(scrollViewer => PageMotion.GetReveal(scrollViewer));
         Assert.All(((Panel)scroll.Content!).Children, control => Assert.Equal(1, control.Opacity));
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
         await viewModel.PageFlow.OpenAdminAsync();
         Frame();
         var tabs = main.GetVisualDescendants().OfType<AdminView>().Single().FindControl<TabControl>("Tabs")!;
@@ -308,7 +308,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         viewModel.PageFlow.OpenSettings();
         Switched(main);
         seen.Clear();
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
         Assert.Equal([(Page.Settings, true)], seen);
         Switched(main);
 

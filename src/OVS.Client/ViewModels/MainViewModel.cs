@@ -166,7 +166,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             confirmLeave: () => PageFlow.ConfirmLeaveAsync(adminOnly: true),
             closeAdmin: () =>
             {
-                if (PageFlow.Page == Page.Admin) PageFlow.ClosePage();
+                if (PageFlow.Page == Page.Admin) PageFlow.CloseWithoutAsking();
             });
         if (audio.DeviceLifecycle.OpensDevices) Devices.RefreshAsync();
         hints = new VoiceHints(

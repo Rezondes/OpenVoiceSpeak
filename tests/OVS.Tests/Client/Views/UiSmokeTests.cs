@@ -156,10 +156,10 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Show();
         var settings = viewModel.Settings;
         settings.Display = DisplayMode.Simplified; // saved, so closing the settings page keeps it
-        viewModel.ApplySettings(settings);
+        await viewModel.ApplySettingsAsync(settings);
         Assert.DoesNotContain("animated", main.Classes);
         var styles = Application.Current!.Styles;
-        var motion = (Avalonia.Styling.Styles)styles[MotionStylesIndex(File.ReadAllText(AppXamlPath()))];
+        var motion = (Avalonia.Styling.Styles)styles[MotionStylesIndex(await File.ReadAllTextAsync(AppXamlPath()))];
         // A115: every part of every selector list starts with the class on the window
         Assert.All(AllStyles(motion).SelectMany(style => style.Selector!.ToString()!.Split(',')), part => Assert.StartsWith("Window.animated", part.Trim()));
 
@@ -182,7 +182,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         LooksLikeBefore("server");
         viewModel.PageFlow.OpenSettings();
         LooksLikeBefore("settings");
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
         await viewModel.PageFlow.OpenAdminAsync();
         // the waiting states show 150 ms after their request (Package 97); they must not appear between the frames, so every
         // list still loading shows its state first (a fixed pause was too short for a late timer on a busy machine)
@@ -275,7 +275,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Contains($"OpenVoiceSpeak {OVS.Shared.BuildInfo.Current.Version}", Texts(main));
         Assert.Contains("Nach Updates suchen", Texts(main)); // Package 43
         Assert.Contains("Tastenaktion hinzufügen", Texts(main));
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
 
         _ = viewModel.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
@@ -308,7 +308,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         foreach (var text in new[] { "1 von 1 Bans", "troll", "Spam", "aktiv", "10.0.0.3", "Blockierte Versuche", "Erstellt von", "anna", "Aktive Bans" })
             Assert.Contains(text, Texts(main));
         Assert.Single(main.GetVisualDescendants().OfType<TextBox>(), textBox => AutomationProperties.GetName(textBox) == "Name, IP, Grund, Moderator suchen");
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
 
         void Dialog(Func<OverlayHost, Task> open, string title)
         {
@@ -1230,7 +1230,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             viewModel.PageFlow.OpenSettings();
             Dispatcher.UIThread.RunJobs();
             seen.AddRange(AllUserTexts(main));
-            viewModel.PageFlow.ClosePage();
+            viewModel.PageFlow.CloseWithoutAsking();
             _ = viewModel.PageFlow.OpenAdminAsync();
             Dispatcher.UIThread.RunJobs();
             foreach (var tab in main.GetVisualDescendants().OfType<TabControl>().First().Items.OfType<TabItem>())
@@ -1239,7 +1239,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
                 Dispatcher.UIThread.RunJobs();
                 seen.AddRange(AllUserTexts(main));
             }
-            viewModel.PageFlow.ClosePage();
+            viewModel.PageFlow.CloseWithoutAsking();
             foreach (var open in new Func<OverlayHost, Task>[]
             {
                 overlayHost => ConnectDialog.ShowAsync(overlayHost, viewModel.Bookmarks.Saved), overlayHost => BanDialog.ShowAsync(overlayHost, "anna"), overlayHost => ConfirmDialog.ShowAsync(overlayHost, "?"),
@@ -1508,7 +1508,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             admin.Logs.SearchText = "fehler";
             _ = admin.Logs.SearchCommand.ExecuteAsync(null);
         }, () => [new LogSearchResult(Last<SearchLogs>().RequestId, [], false, false)]);
-        viewModel.PageFlow.ClosePage();
+        viewModel.PageFlow.CloseWithoutAsking();
 
         // ---- the settings: saving while the audio devices restart, the update check ----
         var restart = new TaskCompletionSource();

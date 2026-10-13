@@ -89,8 +89,8 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         var neu = Encoding.ASCII.GetBytes("neu");
         var (installer, exe, restarted) = Installer(neu, Sha(neu));
         Assert.Null(await installer.InstallAsync(Offer));
-        Assert.Equal("neu", File.ReadAllText(exe));
-        Assert.Equal("alt", File.ReadAllText(exe + ".old"));
+        Assert.Equal("neu", await File.ReadAllTextAsync(exe));
+        Assert.Equal("alt", await File.ReadAllTextAsync(exe + ".old"));
         Assert.Equal([exe], restarted);
 
         Assert.Equal("Alte Version entfernt", await UpdateInstaller.CleanupOldAsync(exe, TimeProvider.System)); // next start
@@ -103,7 +103,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     {
         var (installer, exe, restarted) = Installer(Encoding.ASCII.GetBytes("manipuliert"), Sha(Encoding.ASCII.GetBytes("neu")));
         Assert.Contains("Prüfsumme", await installer.InstallAsync(Offer));
-        Assert.Equal("alt", File.ReadAllText(exe));
+        Assert.Equal("alt", await File.ReadAllTextAsync(exe));
         Assert.Equal([Path.GetFileName(exe)], Directory.GetFiles(dir).Select(Path.GetFileName));
         Assert.Empty(restarted);
     }
@@ -113,7 +113,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     {
         var (installer, exe, restarted) = Installer([], "", exeFails: true);
         Assert.Contains("nicht installiert", await installer.InstallAsync(Offer));
-        Assert.Equal("alt", File.ReadAllText(exe));
+        Assert.Equal("alt", await File.ReadAllTextAsync(exe));
         Assert.Empty(restarted);
     }
 
@@ -143,7 +143,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     {
         var neu = Encoding.ASCII.GetBytes("neu ohne Laenge");
         var exe = Path.Combine(dir, "OVS.Client.exe");
-        File.WriteAllText(exe, "alt");
+        await File.WriteAllTextAsync(exe, "alt");
         var http = new FakeHttp(httpRequestMessage => httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256")
             ? FakeHttp.Bytes(Encoding.ASCII.GetBytes(Sha(neu)))
             : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new Unseekable(neu)) });
@@ -155,7 +155,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         Assert.All(loading, updateProgress => Assert.Null(updateProgress.Total));
         Assert.True(loading[^1].IsIndeterminate);
         Assert.Equal(neu.Length, loading[^1].Bytes);
-        Assert.Equal("neu ohne Laenge", File.ReadAllText(exe));
+        Assert.Equal("neu ohne Laenge", await File.ReadAllTextAsync(exe));
     }
 
     // ---- restart and cleanup (Package 63) ----
@@ -166,14 +166,14 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     {
         var neu = Encoding.ASCII.GetBytes("neu");
         var exe = Path.Combine(dir, "OVS.Client.exe");
-        File.WriteAllText(exe, "alt");
+        await File.WriteAllTextAsync(exe, "alt");
         var http = new FakeHttp(httpRequestMessage => FakeHttp.Bytes(httpRequestMessage.RequestUri!.AbsolutePath.EndsWith(".sha256") ? Encoding.ASCII.GetBytes(Sha(neu)) : neu));
         var installer = new UpdateInstaller(new HttpClient(http), exe, _ => throw new FileNotFoundException("System.Diagnostics.Process fehlt"));
 
         var result = await installer.InstallAsync(Offer);
         Assert.NotNull(result);
         Assert.Contains("System.Diagnostics.Process fehlt", result);
-        Assert.Equal("neu", File.ReadAllText(exe)); // installed; the next start by hand uses it
+        Assert.Equal("neu", await File.ReadAllTextAsync(exe)); // installed; the next start by hand uses it
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     public async Task CleanupOld_WaitsForLockedFile_ThenDeletes()
     {
         var exe = Path.Combine(dir, "OVS.Client.exe");
-        File.WriteAllText(exe + ".old", "alt");
+        await File.WriteAllTextAsync(exe + ".old", "alt");
         var locked = new FileStream(exe + ".old", FileMode.Open, FileAccess.Read, FileShare.None);
         _ = Task.Delay(700).ContinueWith(_ => locked.Dispose());
 
@@ -210,7 +210,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     public async Task CleanupOld_LockedFile_RetriedAfterThePauseOnTheClock()
     {
         var exe = Path.Combine(dir, "OVS.Client.exe");
-        File.WriteAllText(exe + ".old", "alt");
+        await File.WriteAllTextAsync(exe + ".old", "alt");
         var time = new ManualTimeProvider();
         Task<string?> cleanup;
         using (new FileStream(exe + ".old", FileMode.Open, FileAccess.Read, FileShare.None))
@@ -225,7 +225,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     public async Task CleanupOld_StillLocked_ReportsReason()
     {
         var exe = Path.Combine(dir, "OVS.Client.exe");
-        File.WriteAllText(exe + ".old", "alt");
+        await File.WriteAllTextAsync(exe + ".old", "alt");
         using var locked = new FileStream(exe + ".old", FileMode.Open, FileAccess.Read, FileShare.None);
         var clock = System.Diagnostics.Stopwatch.StartNew();
 
@@ -239,7 +239,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     public async Task CleanupOld_ProcessRunning_WaitsForExit()
     {
         var exe = Path.Combine(dir, "OVS.Client.exe");
-        File.WriteAllText(exe + ".old", "alt");
+        await File.WriteAllTextAsync(exe + ".old", "alt");
         using var old = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c ping -n 2 127.0.0.1 >nul")
         {
             UseShellExecute = false,

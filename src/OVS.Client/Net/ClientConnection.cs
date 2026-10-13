@@ -260,14 +260,14 @@ public sealed class ClientConnection : IAsyncDisposable
     {
         Interlocked.Exchange(ref disconnectRaised, 1); // a deliberate disconnect is not an event
         // No more pings: writing after the TLS shutdown throws.
-        pingCts.Cancel();
+        await pingCts.CancelAsync();
         if (pingLoop is not null) await pingLoop;
         if (voiceLoop is not null) await voiceLoop; // Package 141: like the pings, nothing is written after the TLS shutdown
         await CloseGracefullyAsync(ssl);
         // Wait until the server has read the close_notify and closed its side. Closing the socket while its last
         // messages are still unread makes Windows send a reset, and the server logs "Verbindung abgebrochen".
         if (receiveLoop is not null) await Task.WhenAny(receiveLoop, Task.Delay(TimeSpan.FromSeconds(1))); // clock: real time
-        stopping.Cancel();
+        await stopping.CancelAsync();
         tcp.Dispose();
         if (receiveLoop is not null) await receiveLoop;
         await ssl.DisposeAsync();

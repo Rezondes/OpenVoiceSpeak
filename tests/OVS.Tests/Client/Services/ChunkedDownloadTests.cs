@@ -24,7 +24,7 @@ public sealed class ChunkedDownloadTests() : TempDirectoryTest("ovs-chunked-", q
 
         Assert.True(await ChunkedDownload.RunAsync(Target, ServeAsync, (done, total) => progress.Add((done, total))));
 
-        Assert.Equal(Content, File.ReadAllBytes(Target));
+        Assert.Equal(Content, await File.ReadAllBytesAsync(Target));
         Assert.False(File.Exists(Target + ".part"));
         Assert.Equal([(3L, 7L), (6L, 7L), (7L, 7L)], progress);
     }
@@ -36,7 +36,7 @@ public sealed class ChunkedDownloadTests() : TempDirectoryTest("ovs-chunked-", q
 
         Assert.False(await ChunkedDownload.RunAsync(Target, offset => offset == 0 ? ServeAsync(0) : Task.FromResult<DownloadChunk?>(null), (_, _) => { }));
 
-        Assert.Equal([9, 9], File.ReadAllBytes(Target));
+        Assert.Equal([9, 9], await File.ReadAllBytesAsync(Target));
         Assert.False(File.Exists(Target + ".part"));
     }
 
