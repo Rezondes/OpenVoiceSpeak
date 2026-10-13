@@ -48,7 +48,7 @@ public class IdleCostTests
     const byte VoiceHeaderTarget = OVS.Shared.Voice.VoiceHeader.TargetChannel;
 
     [Fact]
-    public void SteadyState_AllocatesNothing()
+    public void Engine_SteadyState_AllocatesNothing()
     {
         // capture while not sending: 10 ms of 16 bit stereo at 44.1 kHz per callback (mono, resampler, chunker, VAD) ...
         var pcm16 = new WaveFormat(44_100, 16, 2);

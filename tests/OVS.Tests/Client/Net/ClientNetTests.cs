@@ -36,11 +36,11 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     [Theory]
     [InlineData(TofuResult.Unknown, true)]
     [InlineData(TofuResult.Mismatch, false)] // a changed certificate must not be accepted by just pressing Enter
-    public void TofuPrompt_DefaultButton(TofuResult result, bool acceptIsDefault) =>
+    public void TofuPrompt_ChangedCertificate_DefaultButtonRefuses(TofuResult result, bool acceptIsDefault) =>
         Assert.Equal(acceptIsDefault, new TofuPrompt("h", 1, "fp", result).AcceptIsDefault);
 
     [Fact]
-    public void Identity_LoadOrCreate_Twice_SameFingerprint()
+    public void Identity_LoadOrCreateTwice_SameFingerprint()
     {
         using var clientIdentity = IdentityFile.LoadOrCreate(dir);
         using var otherClientIdentity = IdentityFile.LoadOrCreate(dir);
@@ -67,7 +67,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     }
 
     [Fact]
-    public async Task ChangedCert_Mismatch_Refused_NoHelloSent()
+    public async Task Connect_ChangedCertRefused_NoHelloSent()
     {
         await using var server = await TestServer.StartAsync();
         var known = Known();
@@ -198,7 +198,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     }
 
     [Fact]
-    public async Task ServerKick_RaisesDisconnectedWithReason()
+    public async Task Disconnected_ServerKick_RaisedWithReason()
     {
         var admin = ClientIdentity.Create();
         await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
@@ -223,7 +223,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     }
 
     [Fact]
-    public async Task Voice_SendFromA_ReceivedByB_Identical()
+    public async Task Voice_SentByA_ReceivedIdenticalByB()
     {
         await using var server = await TestServer.StartAsync();
         await using var clientConnection = await Connect(server, "a");
@@ -288,7 +288,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
 
     /// <summary>Package 126: a lost first Hello used to leave the session without voice for good.</summary>
     [Fact]
-    public async Task FirstHelloLost_StillGetsVoice()
+    public async Task Voice_FirstHelloLost_StillArrives()
     {
         await using var server = await TestServer.StartAsync();
         await using var clientConnection = await Connect(server, "a");
@@ -316,7 +316,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
 
     /// <summary>Package 126: 20 s without any packet, then the network is back.</summary>
     [Fact]
-    public async Task UdpOutage_Recovers()
+    public async Task VoiceLink_UdpOutage_Recovers()
     {
         await using var server = await TestServer.StartAsync();
         await using var clientConnection = await Connect(server, "a");
@@ -345,7 +345,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     /// 2 s instead of 5 s.
     /// </summary>
     [Fact]
-    public async Task TwoLostPings_StayReachable()
+    public async Task VoiceLink_TwoLostPings_StaysReachable()
     {
         await using var server = await TestServer.StartAsync();
         await using var clientConnection = await Connect(server, "a");
@@ -367,7 +367,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
 
     /// <summary>Package 126: once reachable, only pings, one per ping interval (Package 133: 2 s).</summary>
     [Fact]
-    public async Task Reachable_SendsOnlyPings()
+    public async Task VoiceLink_Reachable_SendsOnlyPings()
     {
         await using var server = await TestServer.StartAsync();
         await using var clientConnection = await Connect(server, "a");
@@ -391,7 +391,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
 
     /// <summary>Package 133 (AC1): the ping carries the client's time and the server echoes it; the relay waits 50 ms each way.</summary>
     [Fact]
-    public async Task VoiceRoundTrip_Measured()
+    public async Task RoundTrip_Pings_Measured()
     {
         await using var server = await TestServer.StartAsync();
         await using var clientConnection = await Connect(server, "a");
@@ -426,7 +426,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     /// is no loss.
     /// </summary>
     [Fact]
-    public async Task DownlinkLoss_ReportedBothSides()
+    public async Task DownlinkLoss_Measured_ReportedBothSides()
     {
         var time = new ManualTimeProvider(); // server and clients on one clock: 20 ms per frame, 5 s windows
         await using var server = await TestServer.StartAsync(time: time);
@@ -538,7 +538,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
 
     /// <summary>Package 141 (AC1, AC6): with all UDP blocked, voice goes over the control connection 5 s after the start.</summary>
     [Fact]
-    public async Task UdpBlocked_VoiceOverTcp()
+    public async Task Voice_UdpBlocked_GoesOverTcp()
     {
         Assert.Equal(15, WireProtocol.Version);
         await using var server = await TestServer.StartAsync();
@@ -586,7 +586,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     /// within 30 s) voice comes back to UDP, the next ping moves the server's side back, and no frame arrives twice.
     /// </summary>
     [Fact]
-    public async Task UdpBack_SwitchesBack()
+    public async Task Voice_UdpBack_SwitchesBackWithoutDuplicates()
     {
         await using var server = await TestServer.StartAsync();
         await using var clientConnection = await Connect(server, "a");

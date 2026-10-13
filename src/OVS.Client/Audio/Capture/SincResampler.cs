@@ -16,7 +16,7 @@ namespace OVS.Client.Audio.Capture;
 public sealed class SincResampler
 {
     // WDL interpolates linearly in its coefficient table; at its default of 32 steps that error alone left a folded
-    // 20 kHz tone 45 dB louder (SendPathTests.Resampler_NoAliasing). The table costs 65 KB once.
+    // 20 kHz tone 45 dB louder (SendPathTests.Resampler_ToneAbove24k_NoAliasing). The table costs 65 KB once.
     const int Taps = 64, Oversampling = 256;
     const int Block = 48; // output samples per step, 1 ms at 48 kHz
 

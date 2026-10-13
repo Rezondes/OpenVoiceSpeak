@@ -41,7 +41,7 @@ public class SoundTests
     }
 
     [Fact]
-    public void Queue_MixesIntoBuffer_WithVolume_Overlaps()
+    public void Queue_OverlappingSounds_MixedWithVolume()
     {
         var queue = new SoundQueue();
         queue.Add([0.5f, 0.5f, 0.5f], gain: 0.5f);

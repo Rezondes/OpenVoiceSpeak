@@ -93,7 +93,7 @@ public class SendPathTests
 
     /// <summary>Package 34: in a muted channel nobody would hear it, so the client sends nothing.</summary>
     [Fact]
-    public async Task ChannelMuted_SendsNothing()
+    public async Task Send_MutedChannel_Nothing()
     {
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, ChannelMuted = true, Send = (_, _) => { } };
@@ -110,7 +110,7 @@ public class SendPathTests
 
     /// <summary>Package 130 (A139): after the talk key is let go, frames go out for the release delay, then stop.</summary>
     [Fact]
-    public async Task PttRelease_KeepsSendingForDelay()
+    public async Task Ptt_Released_KeepsSendingForDelay()
     {
         using var rig = new TalkRig(300);
         await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
@@ -131,7 +131,7 @@ public class SendPathTests
 
     /// <summary>Package 130: pressed again within the delay, sending just goes on: no gap and no second pre-roll frame.</summary>
     [Fact]
-    public async Task PttRepressWithinDelay_NoGap()
+    public async Task Ptt_PressedAgainWithinDelay_NoGap()
     {
         using var rig = new TalkRig(300);
         await rig.Key(TalkRig.Ptt, true, KeyAction.PushToTalk);
@@ -196,7 +196,7 @@ public class SendPathTests
     /// move to another one and for link push-to-talk (the own channel, not the linked ones); the self test uses 64 kbps.
     /// </summary>
     [Fact]
-    public async Task Encoder_FollowsChannelBitrate()
+    public async Task Encoder_ChannelBitrate_Followed()
     {
         using var rig = new TalkRig(0);
         var random = new Random(132);
@@ -245,7 +245,7 @@ public class SendPathTests
     /// adapted, and an edit of the channel keeps it lowered, at most the new value.
     /// </summary>
     [Fact]
-    public async Task ChannelChange_ResetsAdaptedBitrate()
+    public async Task AdaptedBitrate_ChannelChangeOrEdit_ResetOrKeptLowered()
     {
         using var rig = new TalkRig(0);
         rig.Engine.ChannelBitrate = 96;
@@ -274,7 +274,7 @@ public class SendPathTests
     /// the capture thread.
     /// </summary>
     [Fact]
-    public async Task Encoder_UsesAdaptedValues()
+    public async Task Encoder_AdaptedValues_Used()
     {
         using var rig = new TalkRig(0);
         var opus = rig.Pipeline.Encoder.Opus;
@@ -332,7 +332,7 @@ public class SendPathTests
     }
 
     [Fact]
-    public void Vad_SilenceInactive_LoudActive_Hangover9Frames()
+    public void Vad_SilenceOrLoud_InactiveOrActiveWith9FrameHangover()
     {
         var vad = new VoiceActivityDetector();
         Assert.False(vad.Process(Constant(0f)));
@@ -428,7 +428,7 @@ public class SendPathTests
 
     /// <summary>Package 129 (A138): while the floor is unknown (0.3 s), the manual threshold applies.</summary>
     [Fact]
-    public void VadAuto_ManualDuringLearning()
+    public void VadAuto_Learning_ManualThresholdApplies()
     {
         var vad = new VoiceActivityDetector { Automatic = true, ThresholdDb = -60 };
         var random = new Random(3);
@@ -448,7 +448,7 @@ public class SendPathTests
     }
 
     [Fact]
-    public void Vad_LevelDb()
+    public void Vad_Frame_LevelInDb()
     {
         Assert.Equal(-20f, VoiceActivityDetector.LevelDb(Constant(0.1f)), 2);
         Assert.Equal(-120f, VoiceActivityDetector.LevelDb(Constant(0f)));
@@ -470,7 +470,7 @@ public class SendPathTests
     }
 
     [Fact]
-    public void FrameChunker_IrregularInput_ExactFrames_NoLoss()
+    public void FrameChunker_IrregularInput_ExactFramesWithoutLoss()
     {
         var chunker = new FrameChunker();
         var frames = new List<float[]>();
@@ -515,7 +515,7 @@ public class SendPathTests
 
     /// <summary>Package 138 (AC1): a 1 kHz tone from a 44.1 kHz microphone stays a 1 kHz tone at the same level.</summary>
     [Fact]
-    public void Resampler_KeepsTone()
+    public void Resampler_Tone44k1_KeptAt48k()
     {
         var output = Resample(Sine(1000, 44_100, 1), 44_100);
         var steady = output.AsSpan(4800, 48 * 800); // past the start, a whole number of 1 kHz periods
@@ -572,7 +572,7 @@ public class SendPathTests
     // above 24 kHz all that comes out is folded back (to 18 kHz): linear keeps all of it, the sinc about -45 dB, the
     // ceiling of 64 taps whose transition band reaches past 24 kHz
     [InlineData(96_000, 30_000, 24_000, 40)]
-    public void Resampler_NoAliasing(int rate, double tone, double below, double betterDb)
+    public void Resampler_ToneAbove24k_NoAliasing(int rate, double tone, double below, double betterDb)
     {
         var input = Sine(tone, rate, 0.5);
         double linear = EnergyBelow(ResampleLinear(input, rate).AsSpan(4800, 9600), below);
@@ -584,7 +584,7 @@ public class SendPathTests
 
     /// <summary>Package 138 (AC3): 10 s in uneven chunks give 10 s at 48 kHz (no drift); 48 kHz passes untouched.</summary>
     [Fact]
-    public void Resampler_LengthAndPassThrough()
+    public void Resampler_UnevenChunksOr48k_NoDriftOrPassThrough()
     {
         var resampler = new SincResampler(44_100, AudioFormat.SampleRate);
         int[] sizes = [441, 440, 1000, 3, 448, 1];
@@ -607,7 +607,7 @@ public class SendPathTests
 
     /// <summary>Package 138 (AC4): resampling a capture chunk allocates nothing once warmed up (Package 124).</summary>
     [Fact]
-    public void Resampler_AllocatesNothing()
+    public void Resampler_WarmedUp_AllocatesNothing()
     {
         var resampler = new SincResampler(44_100, AudioFormat.SampleRate);
         var input = Sine(1000, 44_100, 0.05);
@@ -647,7 +647,7 @@ public class SendPathTests
 
     /// <summary>Package 53: the self test plays the own voice back and sends nothing; nobody else is heard.</summary>
     [Fact]
-    public async Task SelfTest_PlaysOwnVoice_SendsNothing_OthersSilent()
+    public async Task SelfTest_Running_PlaysOwnVoiceOnly()
     {
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings { Mode = VoiceActivation, VadThresholdDb = -50 });
@@ -690,7 +690,7 @@ public class SendPathTests
     /// bindings like a real one (a fake key state, not <see cref="KeyPoller.Simulate(KeyAction, bool)"/>).
     /// </summary>
     [Fact]
-    public async Task SelfTest_PushToTalk_KeyHeld_PlaysBack()
+    public async Task SelfTest_PushToTalkKeyHeld_PlaysBack()
     {
         bool held = false;
         using var keys = new KeyPoller(TimeProvider.System, vk => vk == VirtualKeys.RControl && Volatile.Read(ref held));
@@ -755,7 +755,7 @@ public class SendPathTests
 
     /// <summary>Package 127 (A136): 200 % input gain on a signal peaking at 0.8 is rounded off above -3 dBFS instead of cut at 1.</summary>
     [Fact]
-    public void InputGain_SoftClips()
+    public void InputGain_200Percent_SoftClips()
     {
         var frame = new float[AudioFormat.FrameSamples];
         for (int index = 0; index < frame.Length; index++) frame[index] = 0.8f * MathF.Sin(2 * MathF.PI * 220 * index / AudioFormat.SampleRate);
@@ -803,7 +803,7 @@ public class SendPathTests
     /// missing. Against a stand-in server on loopback that answers pings by hand; the client's own timer never fires.
     /// </summary>
     [Fact]
-    public async Task Sender_AddsCopyOnlyOnLoss()
+    public async Task Sender_LossReported_OnlyThenAddsCopy()
     {
         var key = RandomNumberGenerator.GetBytes(32);
         using var server = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
@@ -891,7 +891,7 @@ public class SendPathTests
     /// change that would open the same devices (a monitor waking, a Bluetooth profile) reopens nothing.
     /// </summary>
     [Fact]
-    public async Task DefaultChanged_Follows()
+    public async Task DefaultDevice_Changed_Followed()
     {
         using var rig = new DeviceRig(new ClientSettings());
         await rig.ConnectAsync();
@@ -946,7 +946,7 @@ public class SendPathTests
     /// time on the engine's clock. Changes that keep coming are in <c>DeviceLifecycleTests</c>.
     /// </summary>
     [Fact]
-    public async Task Changes_Debounced()
+    public async Task DeviceChanges_Burst_Debounced()
     {
         using var rig = new DeviceRig(new ClientSettings());
         await rig.ConnectAsync();
@@ -983,7 +983,7 @@ public class SendPathTests
     /// stops listening when it goes away.
     /// </summary>
     [Fact]
-    public async Task Closed_ChangeOpensNothing()
+    public async Task DeviceChange_EngineClosed_OpensNothing()
     {
         var rig = new DeviceRig(new ClientSettings());
         try
@@ -1015,7 +1015,7 @@ public class SendPathTests
     /// there is no audio service (a build machine) Start gives null; either way nothing throws.
     /// </summary>
     [Fact]
-    public void DeviceWatcher_RegistersAndUnregisters()
+    public void DeviceWatcher_StartAndStop_RegistersAndUnregisters()
     {
         for (int index = 0; index < 3; index++)
         {
@@ -1061,7 +1061,7 @@ public class SendPathTests
     /// (Package 136) still fit one voice packet.
     /// </summary>
     [Fact]
-    public void MusicMode_StereoArrivesSeparated()
+    public void MusicMode_Stereo_ArrivesSeparated()
     {
         var rig = new MusicRig();
         for (int count = 0; count < 60; count++) rig.Feed(StereoTones(count), 2);
@@ -1234,7 +1234,7 @@ public class SendPathTests
     /// (that its canceller then gets no far end is the playback loop's rule, PlaybackLoopTests).
     /// </summary>
     [Fact]
-    public void MusicMode_FiltersOff()
+    public void MusicMode_On_FiltersOff()
     {
         const int delay = 3; // the echo comes back 60 ms later, at -6 dB
         var random = new Random(142);
@@ -1291,7 +1291,7 @@ public class SendPathTests
     /// activation measures the louder side, so music on one side alone opens it.
     /// </summary>
     [Fact]
-    public async Task MusicMode_PttAndVad()
+    public async Task MusicMode_PttOrVad_LouderSideOpens()
     {
         using var rig = new TalkRig(0);
         rig.Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = 0, AudioContent = AudioContent.Music });

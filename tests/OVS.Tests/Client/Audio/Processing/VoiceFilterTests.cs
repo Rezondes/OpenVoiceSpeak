@@ -72,7 +72,7 @@ public class VoiceFilterTests
     }
 
     [Fact]
-    public void NoiseSuppression_VadStaysClosedOnNoise()
+    public void NoiseSuppression_Noise_VadStaysClosed()
     {
         Assert.All(RunNoise(noiseSuppression: false), value => Assert.True(value.Voice)); // the noise alone opens it (default -40 dBFS)
         Assert.Equal(-40f, new VoiceActivityDetector().ThresholdDb);
@@ -81,7 +81,7 @@ public class VoiceFilterTests
     }
 
     [Fact]
-    public void AutoGain_RaisesQuiet_CapsLoud_HoldsInSilence()
+    public void AutoGain_QuietLoudOrSilent_RaisedCappedOrHeld()
     {
         // quiet: -40 dBFS rises to -20 dBFS within 3 s, never above -3 dBFS peak
         var gain = new AutoGain();
@@ -213,7 +213,7 @@ public class VoiceFilterTests
     /// speech stays at 0 dB.
     /// </summary>
     [Fact]
-    public void AutoGain_IgnoresNoiseRatedAsNoise()
+    public void AutoGain_NoiseRatedAsNoise_Ignored()
     {
         foreach (var (db, seed) in new[] { (-50f, 5), (-40f, 5), (-40f, 123), (-35f, 5), (-35f, 123) })
         {
@@ -290,7 +290,7 @@ public class VoiceFilterTests
     }
 
     [Fact]
-    public void Filters_AllocateNothingPerFrame()
+    public void Filters_PerFrame_AllocateNothing()
     {
         using var suppressor = NoiseSuppressor.Create(out var error);
         Assert.True(suppressor is not null, error);
@@ -332,7 +332,7 @@ public class VoiceFilterTests
     /// <c>NativeCaptureFiltersTests.AttachTo_LibrariesMissing_NoFiltersAndOneLogLineEach</c>).
     /// </summary>
     [Fact]
-    public async Task MissingNativeLibrary_CaptureRunsWithoutSuppressor()
+    public async Task Capture_NativeLibraryMissing_RunsWithoutSuppressor()
     {
         Assert.Null(NoiseSuppressor.Create(out var error, NativeCaptureFiltersTests.NoNoiseLibrary));
         Assert.False(string.IsNullOrEmpty(error));
@@ -352,7 +352,7 @@ public class VoiceFilterTests
 
     /// <summary>AC1: the wrapper DLL loads and processes a frame (far end, then near end) without changing its length.</summary>
     [Fact]
-    public void EchoCanceller_Loads()
+    public void EchoCanceller_Frame_LoadsAndKeepsLength()
     {
         using var canceller = EchoCanceller.Create(out var error);
         Assert.True(canceller is not null, error);

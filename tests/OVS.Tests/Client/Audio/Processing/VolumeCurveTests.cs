@@ -23,7 +23,7 @@ public class VolumeCurveTests
     }
 
     [Fact]
-    public void Combine_CapsAtTwelve()
+    public void Combine_LargeGains_CappedAtTwelve()
     {
         Assert.Equal(12f, VolumeCurve.Combine(2f, 2f), 4);
         Assert.Equal(VolumeCurve.MaxGain, VolumeCurve.Combine(10f, 10f));

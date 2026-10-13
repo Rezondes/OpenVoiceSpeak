@@ -24,7 +24,7 @@ public class StateMirrorTests
         [User(1, Lobby, "ich")]));
 
     [Fact]
-    public void Snapshot_IsMirrored()
+    public void Apply_Snapshot_Mirrored()
     {
         var stateMirror = Mirror();
         Assert.Equal("ich", stateMirror.Self!.Nickname);
@@ -33,7 +33,7 @@ public class StateMirrorTests
     }
 
     [Fact]
-    public void Apply_EachDelta()
+    public void Apply_EachDelta_Mirrored()
     {
         var stateMirror = Mirror();
         Assert.True(stateMirror.Apply(new ChannelAdded(new ChannelInfo(Raid, "Raid", "", 1))));

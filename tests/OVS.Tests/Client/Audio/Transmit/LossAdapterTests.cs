@@ -11,7 +11,7 @@ public class LossAdapterTests
 
     /// <summary>Package 135 (AC1, A144): the loss Opus is told to expect is clamp(round(1.5 x loss), 5, 30).</summary>
     [Fact]
-    public void LossHint_FromLoss()
+    public void LossHint_Loss_OneAndAHalfTimesClamped()
     {
         Assert.Equal(5, LossAdapter.HintFor(0));
         Assert.Equal(5, LossAdapter.HintFor(3));
@@ -104,7 +104,7 @@ public class LossAdapterTests
     /// neither up nor down; so does a new connection.
     /// </summary>
     [Fact]
-    public void Gap_EndsStreaks()
+    public void Streaks_GapOrNewConnection_Ended()
     {
         var time = new ManualTimeProvider();
         var adapter = new LossAdapter(time, 64);

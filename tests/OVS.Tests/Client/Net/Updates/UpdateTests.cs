@@ -30,7 +30,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
         new UpdateChecker(new HttpClient(new FakeHttp(_ => FakeHttp.Json(release))), running ?? Running).CheckAsync();
 
     [Fact]
-    public async Task NewerRelease_Offered()
+    public async Task Check_NewerRelease_Offered()
     {
         var offer = (await Check(Release("deploy-bbbbbbb", Built.AddHours(1)))).Offer;
         Assert.NotNull(offer);
@@ -39,7 +39,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     }
 
     [Fact]
-    public async Task SameCommit_OlderRelease_MissingAsset_NotOffered()
+    public async Task Check_SameCommitOlderOrMissingAsset_NotOffered()
     {
         Assert.Null((await Check(Release("deploy-aaaaaaa", Built.AddHours(1)))).Offer); // this very build
         Assert.Null((await Check(Release("deploy-bbbbbbb", Built.AddHours(-1)))).Offer); // older than this build
@@ -47,7 +47,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     }
 
     [Fact]
-    public async Task DevBuild_NeverAsks()
+    public async Task Check_DevBuild_NeverAsks()
     {
         var http = new FakeHttp(_ => throw new InvalidOperationException("darf nicht fragen"));
         var result = await new UpdateChecker(new HttpClient(http), Running with { IsCi = false }).CheckAsync();
@@ -84,7 +84,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     static string Sha(byte[] data) => Convert.ToHexStringLower(SHA256.HashData(data));
 
     [Fact]
-    public async Task Success_NewInPlace_OldRenamed_Restarted()
+    public async Task Install_Success_NewInPlaceOldRenamedAndRestarted()
     {
         var neu = Encoding.ASCII.GetBytes("neu");
         var (installer, exe, restarted) = Installer(neu, Sha(neu));
@@ -99,7 +99,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     }
 
     [Fact]
-    public async Task HashMismatch_NothingReplaced()
+    public async Task Install_HashMismatch_NothingReplaced()
     {
         var (installer, exe, restarted) = Installer(Encoding.ASCII.GetBytes("manipuliert"), Sha(Encoding.ASCII.GetBytes("neu")));
         Assert.Contains("Prüfsumme", await installer.InstallAsync(Offer));
@@ -109,7 +109,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     }
 
     [Fact]
-    public async Task DownloadFails_ExeUnchanged()
+    public async Task Install_DownloadFails_ExeUnchanged()
     {
         var (installer, exe, restarted) = Installer([], "", exeFails: true);
         Assert.Contains("nicht installiert", await installer.InstallAsync(Offer));
@@ -120,7 +120,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     // ---- progress (Package 62) ----
 
     [Fact]
-    public async Task Install_ReportsProgress_ThenVerify_ThenStart()
+    public async Task Install_Running_ProgressThenVerifyThenStart()
     {
         var neu = new byte[300_000];
         new Random(1).NextBytes(neu);
@@ -184,7 +184,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     }
 
     [Fact]
-    public void Parse_AfterUpdate()
+    public void Parse_AfterUpdateArgument_Recognized()
     {
         Assert.Equal(1234, OVS.Client.ClientOptions.Parse(["--after-update", "1234", "--no-audio"]).AfterUpdatePid);
         var invalid = OVS.Client.ClientOptions.Parse(["--after-update", "abc"]);
@@ -236,7 +236,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     }
 
     [Fact]
-    public async Task CleanupOld_WaitsForProcessExit()
+    public async Task CleanupOld_ProcessRunning_WaitsForExit()
     {
         var exe = Path.Combine(dir, "OVS.Client.exe");
         File.WriteAllText(exe + ".old", "alt");

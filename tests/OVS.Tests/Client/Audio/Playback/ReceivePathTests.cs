@@ -38,7 +38,7 @@ public class ReceivePathTests
     }
 
     [Fact]
-    public void BelowStartDelay_PullReturnsNull()
+    public void Pull_BelowStartDelay_ReturnsNull()
     {
         var jb = new JitterBuffer();
         jb.Push(0, Frame(0), false, Burst);
@@ -48,7 +48,7 @@ public class ReceivePathTests
     }
 
     [Fact]
-    public void ShortSpurt_PlaysAfterWaiting()
+    public void Buffer_ShortSpurt_PlaysAfterWaiting()
     {
         var jb = new JitterBuffer();
         jb.Push(0, Frame(0), false, Burst);
@@ -105,7 +105,7 @@ public class ReceivePathTests
     }
 
     [Fact]
-    public void LatePacket_Dropped()
+    public void Push_LatePacket_Dropped()
     {
         var jb = new JitterBuffer();
         foreach (uint number in new uint[] { 5, 6, 7 }) jb.Push(number, Frame(number), false, Burst);
@@ -116,7 +116,7 @@ public class ReceivePathTests
     }
 
     [Fact]
-    public void TalkPause_RebuffersAndContinuesAtSameSeq()
+    public void Buffer_TalkPause_RebuffersAndContinuesAtSameSeq()
     {
         var jb = new JitterBuffer();
         foreach (uint number in new uint[] { 0, 1, 2 }) jb.Push(number, Frame(number), false, Burst);
@@ -133,7 +133,7 @@ public class ReceivePathTests
     }
 
     [Fact]
-    public void Overflow_CappedAt10()
+    public void Buffer_Overflow_CappedAt10()
     {
         var jb = new JitterBuffer();
         for (uint number = 0; number < 15; number++) jb.Push(number, Frame(number), false, Burst);
@@ -145,7 +145,7 @@ public class ReceivePathTests
 
     /// <summary>Package 133 (AC3): the interarrival jitter of RFC 3550, from the arrival times against 20 ms per frame number.</summary>
     [Fact]
-    public void Jitter_Estimated()
+    public void Jitter_ArrivalTimes_EstimatedPerRfc3550()
     {
         var random = new Random(133);
         double Run(double spread)
@@ -185,7 +185,7 @@ public class ReceivePathTests
     /// conceals nothing that counts, and the jump in the arrival times is no jitter. A lost and a late frame do count.
     /// </summary>
     [Fact]
-    public void TalkPause_NotLoss()
+    public void Loss_TalkPause_NotCounted()
     {
         var jb = new JitterBuffer();
         double now = 0;
@@ -219,7 +219,7 @@ public class ReceivePathTests
     /// it starts anew instead of being a jitter sample of the pause's length.
     /// </summary>
     [Fact]
-    public void ShortPause_NoJitterSample()
+    public void Jitter_ShortPause_NoSample()
     {
         var jb = new JitterBuffer();
         double now = 0;
@@ -240,7 +240,7 @@ public class ReceivePathTests
     /// a jump beyond the cap, the frame numbers moved on elsewhere (another channel, deafened) and nothing counts.
     /// </summary>
     [Fact]
-    public void SpurtGap_CountedOnlyWhenClose()
+    public void SpurtGap_CloseOrFar_CountedOnlyWhenClose()
     {
         var jb = new JitterBuffer();
         double now = 0;
@@ -336,7 +336,7 @@ public class ReceivePathTests
 
     /// <summary>Package 134 (AC4): when the jitter calms inside a spurt, the buffer keeps its frames; nothing is dropped.</summary>
     [Fact]
-    public void NoDropInsideSpurt()
+    public void Buffer_JitterCalmsInsideSpurt_NothingDropped()
     {
         var jb = new JitterBuffer();
         var now = Spurt(jb, 0, 0, 500, Jittery);
@@ -417,7 +417,7 @@ public class ReceivePathTests
     }
 
     [Fact]
-    public void Mixer_SumsAndClamps()
+    public void Mixer_SeveralSpeakers_SumsAndClamps()
     {
         var mixer = new VoiceMixer();
         var (silence, active) = mixer.Tick();
@@ -494,7 +494,7 @@ public class ReceivePathTests
 
     /// <summary>Package 55: 200 % is louder still (Package 128: four times, +12 dB); loud parts stay below the limiter's threshold.</summary>
     [Fact]
-    public void Mixer_Volume200_FourTimes_Limited()
+    public void Mixer_Volume200_FourTimesAndLimited()
     {
         var (loud, _) = MixedAndDirect(0.1f, 2f);
         var (normal, _) = MixedAndDirect(0.1f, 1f);
@@ -560,7 +560,7 @@ public class ReceivePathTests
     }
 
     [Fact]
-    public void Limiter_LoudInput_NoHardClipping_RecoversAfterwards()
+    public void Limiter_LoudInput_NoHardClippingAndRecovers()
     {
         var limiter = new SoftLimiter();
         for (int count = 0; count < 5; count++)
@@ -614,7 +614,7 @@ public class ReceivePathTests
     /// anew for every talk spurt). Memory stays bounded: dropped after a long silence or when the user left.
     /// </summary>
     [Fact]
-    public void SpeakerPause_KeepsDecoder()
+    public void Decoder_SpeakerPauses_Kept()
     {
         var mixer = new VoiceMixer();
         for (uint number = 0; number < 3; number++) mixer.Push(1, number, Frame(number), false);
@@ -662,7 +662,7 @@ public class ReceivePathTests
     /// packet is concealed like a lost one instead of throwing on the playback thread.
     /// </summary>
     [Fact]
-    public void OneBytePacket_Concealed()
+    public void Decode_OneBytePacket_Concealed()
     {
         var jb = new JitterBuffer();
         jb.Push(0, Frame(0), false, Burst);
@@ -717,7 +717,7 @@ public class ReceivePathTests
 
     /// <summary>Package 136 (A145): a copy fills only a gap that is still to be played; whatever arrived itself wins, and nothing plays twice.</summary>
     [Fact]
-    public void Copy_NeverReplacesOrDuplicates()
+    public void Copy_GapOrArrivedFrame_NeverReplacesOrDuplicates()
     {
         static byte[] Copy(uint number) => Frame(number + 3); // recognisably not the frame itself
         var jb = new JitterBuffer();

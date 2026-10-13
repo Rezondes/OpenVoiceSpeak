@@ -284,15 +284,15 @@
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Sender_AddsCopyOnlyOnLoss.Receive",
+    "Key": "RL154|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Sender_LossReported_OnlyThenAddsCopy.Receive",
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Sender_AddsCopyOnlyOnLoss.Report",
+    "Key": "RL154|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Sender_LossReported_OnlyThenAddsCopy.Report",
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Sender_AddsCopyOnlyOnLoss.Send",
+    "Key": "RL154|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Sender_LossReported_OnlyThenAddsCopy.Send",
     "Count": 1
   },
   {
@@ -352,7 +352,7 @@
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.DownlinkLoss_ReportedBothSides.Talk",
+    "Key": "RL154|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.DownlinkLoss_Measured_ReportedBothSides.Talk",
     "Count": 1
   },
   {
@@ -360,7 +360,7 @@
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.VoiceRoundTrip_Measured.OneWay",
+    "Key": "RL154|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.RoundTrip_Pings_Measured.OneWay",
     "Count": 1
   },
   {
@@ -5600,230 +5600,6 @@
     "Count": 1
   },
   {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/IdleCostTests.cs|IdleCostTests.SteadyState_AllocatesNothing",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.BelowStartDelay_PullReturnsNull",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Copy_NeverReplacesOrDuplicates",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Jitter_Estimated",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.LatePacket_Dropped",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Limiter_LoudInput_NoHardClipping_RecoversAfterwards",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Mixer_SumsAndClamps",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Mixer_Volume200_FourTimes_Limited",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.NoDropInsideSpurt",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.OneBytePacket_Concealed",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.Overflow_CappedAt10",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.ShortPause_NoJitterSample",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.ShortSpurt_PlaysAfterWaiting",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.SpeakerPause_KeepsDecoder",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.SpurtGap_CountedOnlyWhenClose",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.TalkPause_NotLoss",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs|ReceivePathTests.TalkPause_RebuffersAndContinuesAtSameSeq",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.AutoGain_IgnoresNoiseRatedAsNoise",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.AutoGain_RaisesQuiet_CapsLoud_HoldsInSilence",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.EchoCanceller_Loads",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.Filters_AllocateNothingPerFrame",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.MissingNativeLibrary_CaptureRunsWithoutSuppressor",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs|VoiceFilterTests.NoiseSuppression_VadStaysClosedOnNoise",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Processing/VolumeCurveTests.cs|VolumeCurveTests.Combine_CapsAtTwelve",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Sounds/SoundImportTests.cs|SoundImportTests.CleanUp_RemovesCopiesNobodyUses",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Sounds/SoundImportTests.cs|SoundImportTests.CustomSound_MissingFile_FallsBackToDefault_LoggedOnce",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Sounds/SoundImportTests.cs|SoundImportTests.TooLong_NotAudio_WrongType_Missing_Rejected",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Sounds/SoundImportTests.cs|SoundImportTests.Wav_UpToFiveSeconds_Accepted_CopiedAsMono48k",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Sounds/SoundTests.cs|SoundTests.Queue_MixesIntoBuffer_WithVolume_Overlaps",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/LossAdapterTests.cs|LossAdapterTests.Gap_EndsStreaks",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/LossAdapterTests.cs|LossAdapterTests.LossHint_FromLoss",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Changes_Debounced",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.ChannelChange_ResetsAdaptedBitrate",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.ChannelMuted_SendsNothing",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Closed_ChangeOpensNothing",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.DefaultChanged_Follows",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.DeviceWatcher_RegistersAndUnregisters",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Encoder_FollowsChannelBitrate",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Encoder_UsesAdaptedValues",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.FrameChunker_IrregularInput_ExactFrames_NoLoss",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.InputGain_SoftClips",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.MusicMode_FiltersOff",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.MusicMode_PttAndVad",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.MusicMode_StereoArrivesSeparated",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.PttRelease_KeepsSendingForDelay",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.PttRepressWithinDelay_NoGap",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Resampler_AllocatesNothing",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Resampler_KeepsTone",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Resampler_LengthAndPassThrough",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Resampler_NoAliasing",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.SelfTest_PlaysOwnVoice_SendsNothing_OthersSilent",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.SelfTest_PushToTalk_KeyHeld_PlaysBack",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Sender_AddsCopyOnlyOnLoss",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.VadAuto_ManualDuringLearning",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Vad_LevelDb",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs|SendPathTests.Vad_SilenceInactive_LoudActive_Hangover9Frames",
-    "Count": 1
-  },
-  {
     "Key": "RL601|tests/OVS.Tests/Client/Behaviors/ReorderDragTests.cs|ReorderDragTests.DragToEnd_GapAndFrameBelowLastItem",
     "Count": 1
   },
@@ -6108,102 +5884,6 @@
     "Count": 1
   },
   {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.ChangedCert_Mismatch_Refused_NoHelloSent",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.DownlinkLoss_ReportedBothSides",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.FirstHelloLost_StillGetsVoice",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.Identity_LoadOrCreate_Twice_SameFingerprint",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.Reachable_SendsOnlyPings",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.ServerKick_RaisesDisconnectedWithReason",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.TofuPrompt_DefaultButton",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.TwoLostPings_StayReachable",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.UdpBack_SwitchesBack",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.UdpBlocked_VoiceOverTcp",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.UdpOutage_Recovers",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.VoiceRoundTrip_Measured",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.Voice_SendFromA_ReceivedByB_Identical",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/StateMirrorTests.cs|StateMirrorTests.Apply_EachDelta",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/StateMirrorTests.cs|StateMirrorTests.Snapshot_IsMirrored",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.CleanupOld_WaitsForProcessExit",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.DevBuild_NeverAsks",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.DownloadFails_ExeUnchanged",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.HashMismatch_NothingReplaced",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.Install_ReportsProgress_ThenVerify_ThenStart",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.NewerRelease_Offered",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.Parse_AfterUpdate",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.SameCommit_OlderRelease_MissingAsset_NotOffered",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.Success_NewInPlace_OldRenamed_Restarted",
-    "Count": 1
-  },
-  {
     "Key": "RL601|tests/OVS.Tests/Client/Services/ReconnectorTests.cs|ReconnectorTests.OutdatedAttempt_Ignored",
     "Count": 1
   },
@@ -6400,7 +6080,7 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.UdpBack_SwitchesBack:Task.Delay",
+    "Key": "RL603|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.Voice_UdpBack_SwitchesBackWithoutDuplicates:Task.Delay",
     "Count": 1
   },
   {

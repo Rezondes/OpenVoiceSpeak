@@ -26,7 +26,7 @@ public sealed class SoundImportTests() : TempDirectoryTest("ovs-sounds-", quiet:
     }
 
     [Fact]
-    public void Wav_UpToFiveSeconds_Accepted_CopiedAsMono48k()
+    public void Import_WavUpToFiveSeconds_CopiedAsMono48k()
     {
         var source = Wav("klick.wav", 1);
         var (file, error) = SoundImport.Prepare(source, Profile, SoundEvent.UserJoined);
@@ -42,7 +42,7 @@ public sealed class SoundImportTests() : TempDirectoryTest("ovs-sounds-", quiet:
     }
 
     [Fact]
-    public void TooLong_NotAudio_WrongType_Missing_Rejected()
+    public void Import_TooLongNotAudioWrongTypeOrMissing_Rejected()
     {
         Assert.Contains("5 Sekunden", SoundImport.Prepare(Wav("lang.wav", 6), Profile, SoundEvent.MicOn).Error);
         var fake = Path.Combine(dir, "kaputt.wav");
@@ -56,7 +56,7 @@ public sealed class SoundImportTests() : TempDirectoryTest("ovs-sounds-", quiet:
     }
 
     [Fact]
-    public void CustomSound_MissingFile_FallsBackToDefault_LoggedOnce()
+    public void CustomSound_MissingFile_DefaultPlayedAndLoggedOnce()
     {
         var logged = new List<string>();
         var library = new SoundLibrary(Profile, logged.Add);
@@ -68,7 +68,7 @@ public sealed class SoundImportTests() : TempDirectoryTest("ovs-sounds-", quiet:
     }
 
     [Fact]
-    public void CleanUp_RemovesCopiesNobodyUses()
+    public void CleanUp_UnusedCopies_Removed()
     {
         var (keep, _) = SoundImport.Prepare(Wav("a.wav", 0.3), Profile, SoundEvent.MicOn);
         var (drop, _) = SoundImport.Prepare(Wav("b.wav", 0.3), Profile, SoundEvent.MicOff);
