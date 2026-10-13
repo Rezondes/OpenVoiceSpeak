@@ -9,8 +9,8 @@ namespace OVS.Tests.TestSupport;
 /// The connect seam of the view model for a test: records every call as a <see cref="ConnectAttempt"/> and answers it as the
 /// test scripted (the next call fails, waits for a release, or every call fails); a call nothing is scripted for connects for real
 /// with the profile's identity. Hand <see cref="Connect"/> to <see cref="MainViewModelSetup"/>.
-/// Behind the seam the view model's own trusted fingerprints, its <c>ConfirmTofu</c> hook and the "Serverzertifikat" log line are
-/// skipped: the real connect trusts every certificate, and a refused certificate is scripted with <see cref="TofuRejectedException"/>.
+/// Behind the seam the real connect (<c>ServerConnector</c>: its trusted fingerprints, the view model's <c>ConfirmTofu</c> hook and the "Server certificate" log line) is
+/// skipped: the seam's own connect trusts every certificate, and a refused certificate is scripted with <see cref="TofuRejectedException"/>.
 /// </summary>
 sealed class ConnectSeam(string profileDir, TimeProvider time)
 {

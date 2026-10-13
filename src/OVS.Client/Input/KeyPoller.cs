@@ -87,7 +87,8 @@ public sealed class KeyPoller : IDisposable
         if (linkPtt is { } linkPushToTalkDown) Simulate(KeyAction.LinkPushToTalk, linkPushToTalkDown);
     }
 
-    static bool IsKeyDown(int vk) => vk != 0 && (NativeMethods.GetAsyncKeyState(vk) & 0x8000) != 0;
+    /// <summary>The keyboard's state of a virtual key, the real key state the app polls.</summary>
+    public static bool IsKeyDown(int vk) => vk != 0 && (NativeMethods.GetAsyncKeyState(vk) & 0x8000) != 0;
 
     ChordModifiers HeldModifiers() =>
         (keyState(VirtualKeys.Control) ? ChordModifiers.Ctrl : 0) |

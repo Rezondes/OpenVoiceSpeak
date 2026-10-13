@@ -181,7 +181,7 @@ public sealed class MainViewModelCompositionTests() : TempDirectoryTest("ovs-com
         var hardware = new FakeAudioHardware();
 
         Assert.ThrowsAny<Exception>(() => ClientServices.CreateMainViewModel(Profile, action => action(), time, new ClientLog(Parts, time), settings: null!, null,
-            hardware: hardware));
+            hardware: hardware, keyState: _ => false));
 
         Assert.Equal(0, hardware.Subscribers);
     }

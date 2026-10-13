@@ -8,6 +8,7 @@ using OVS.Client.Animations;
 using OVS.Client.Appearance;
 using OVS.Client.Audio.Devices;
 using OVS.Client.Diagnostics;
+using OVS.Client.Input;
 using OVS.Client.Dialogs;
 using OVS.Client.Interop;
 using OVS.Client.Logging;
@@ -47,7 +48,7 @@ public partial class App : Application
             // The view model's parts (keys, audio engine, stores, leave timer) are made by the ClientServices container on the one
             // clock; the view model disposes the keys and the audio engine with itself (desktop.Exit below).
             var viewModel = ClientServices.CreateMainViewModel(options.ProfileDir, action => Dispatcher.UIThread.Post(action), time, log, settings, settingsWarning,
-                options.UseAudioDevices ? hardware : null);
+                options.UseAudioDevices ? hardware : null, KeyPoller.IsKeyDown);
             ApplyTheme(viewModel.Settings.Theme);
             viewModel.PropertyChanged += (_, eventArgs) =>
             {

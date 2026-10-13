@@ -32,10 +32,10 @@ public static class ClientServices
     /// The microphones and speakers for the engine and the settings page: the system's in the app, fakes in tests; null
     /// runs without them (--no-audio, tests, debug API with test tone).
     /// </param>
-    /// <param name="keyState">The state of a virtual key, the keyboard by default (tests pass a fake one).</param>
-    /// <param name="connect">How a connection is opened, the real one by default (tests pass their own).</param>
+    /// <param name="keyState">The state of a virtual key: <see cref="KeyPoller.IsKeyDown"/> in the app, a fake one in tests.</param>
+    /// <param name="connect">How a connection is opened; null: the container's <see cref="ServerConnector"/> (tests pass their own).</param>
     public static MainViewModel CreateMainViewModel(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings,
-        string? settingsWarning, IAudioHardware? hardware, Func<int, bool>? keyState = null, OpenConnection? connect = null)
+        string? settingsWarning, IAudioHardware? hardware, Func<int, bool> keyState, OpenConnection? connect = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton(time);
@@ -48,10 +48,13 @@ public static class ClientServices
         services.AddSingleton(_ => new TrustedServerFingerprints(storageDir));
         services.AddSingleton(_ => new ServerIconCache(storageDir));
         services.AddSingleton(_ => new LeaveTimer(time, () => post));
+        // The certificate question is the view model's hook, which the window sets; asked at connect time, after the view model is made.
+        services.AddSingleton(provider => new ServerConnector(storageDir, provider.GetRequiredService<TrustedServerFingerprints>(),
+            prompt => provider.GetRequiredService<MainViewModel>().ConfirmTofu(prompt), log, time));
         services.AddSingleton(provider => new MainViewModel(storageDir, post, time, log, settings, settingsWarning,
-            provider.GetRequiredService<TrustedServerFingerprints>(), provider.GetRequiredService<ServerIconCache>(),
-            provider.GetRequiredService<SoundLibrary>(), provider.GetRequiredService<LeaveTimer>(), provider.GetRequiredService<KeyPoller>(),
-            provider.GetRequiredService<AudioEngine>(), hardware is null ? null : hardware.ListActive, connect));
+            provider.GetRequiredService<ServerIconCache>(), provider.GetRequiredService<SoundLibrary>(), provider.GetRequiredService<LeaveTimer>(),
+            provider.GetRequiredService<KeyPoller>(), provider.GetRequiredService<AudioEngine>(), connect ?? provider.GetRequiredService<ServerConnector>().OpenAsync,
+            hardware is null ? null : hardware.ListActive));
         // The provider is not disposed: the view model owns the key poller and the engine and disposes them itself.
         var provider = services.BuildServiceProvider();
         try

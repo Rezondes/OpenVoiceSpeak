@@ -22,7 +22,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 {
     readonly string storageDir;
     readonly Action<Action> post;
-    readonly TrustedServerFingerprints known;
     readonly SoundLibrary soundLibrary;
     readonly VoiceHints hints; // Packages 34 and 131: why nobody hears the user, shown as VoiceHint on every tick
 
@@ -51,23 +50,21 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <param name="listDevices">The active devices of a direction, for the settings page; null: none, an empty list.</param>
     /// <param name="connect">
     /// Opens the connection of every connect and every reconnect attempt (the attempts pass <see cref="CancellationToken.None"/>);
-    /// null: the identity file of <paramref name="storageDir"/> plus <see cref="ClientConnection.ConnectAsync"/>.
+    /// the real one is <see cref="ServerConnector.OpenAsync"/>, which asks <see cref="ConfirmTofu"/>.
     /// </param>
     /// <param name="storageDir">The profile folder.</param>
     /// <param name="post">Runs work on the UI thread.</param>
     /// <param name="log">The client's log.</param>
-    /// <param name="knownServers">The trusted server certificates.</param>
     /// <param name="icons">The cache of the server logos.</param>
     /// <param name="leave">How long a removed entry stays in its list.</param>
     public MainViewModel(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
-        TrustedServerFingerprints knownServers, ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio,
-        Func<AudioDirection, List<AudioDevice>>? listDevices, OpenConnection? connect = null)
+        ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio, OpenConnection connect,
+        Func<AudioDirection, List<AudioDevice>>? listDevices)
     {
         this.storageDir = storageDir;
         this.post = post;
         Time = time;
         Log = log;
-        known = knownServers;
         Settings = settings;
         if (settingsWarning is not null) AddNotice(settingsWarning, NoticeKind.Warning);
         Appearance = BackgroundAppearance.From(Settings); // the saved look from the start, not only after the next save
@@ -118,7 +115,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             readFigures: voiceLink.ReadFigures,
             readReceiveStats: () => audio.Mixer.Stats(),
             readEncoderBitrate: () => audio.EncoderBitrate);
-        Connection = new ConnectionViewModel(time: time, post: post, log: Log, openConnection: connect ?? OpenConnectionAsync, play: sound => audio.Sounds.Play(sound),
+        Connection = new ConnectionViewModel(time: time, post: post, log: Log, openConnection: connect, play: sound => audio.Sounds.Play(sound),
             voiceLink: voiceLink,
             engineSync: EngineSync, selfTest: SelfTest, bookmarks: Bookmarks, icons: icons, stats: Stats,
             askPassword: name => Dialogs.AskPassword?.Invoke(name) ?? Task.FromResult<PasswordAnswer?>(null), serverDialogs: () => Dialogs.Server,
@@ -256,21 +253,6 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         OnPropertyChanged(nameof(TalkHint));
         OnPropertyChanged(nameof(HasNoPttBinding));
         Bookmarks.Refresh();
-    }
-
-    /// <summary>The real connect: the profile's identity, the trusted fingerprints and the certificate question.</summary>
-    async Task<ClientConnection> OpenConnectionAsync(ConnectChoice choice, CancellationToken token)
-    {
-        using var identity = IdentityFile.LoadOrCreate(storageDir);
-        return await ClientConnection.ConnectAsync(choice.Host, choice.Port, identity, choice.Nickname,
-            choice.PasswordOrNull, known, ConfirmTofuLoggedAsync, Time, token);
-    }
-
-    async Task<bool> ConfirmTofuLoggedAsync(TofuPrompt prompt)
-    {
-        bool accepted = await ConfirmTofu(prompt);
-        Log.ServerCertificate(prompt.Result == TofuResult.Mismatch ? "CHANGED" : "new", prompt.Host, prompt.Port, prompt.Fingerprint, accepted ? "accepted" : "refused");
-        return accepted;
     }
 
     /// <summary>Every connection starts a fresh chat (A27), with the earlier notices so none get lost.</summary>
