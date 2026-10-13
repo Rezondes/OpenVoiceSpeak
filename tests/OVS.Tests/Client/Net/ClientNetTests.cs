@@ -632,7 +632,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
         await AsyncWait.UntilAsync(() => Volatile.Read(ref atA) == 2);
         va.SendVoice([1, 2, 3], VoiceHeader.TargetChannel);
         await AsyncWait.UntilAsync(() => relay.Count(PacketType.Voice) == 1 && Volatile.Read(ref atB) == 2);
-        await Task.Delay(300);
+        await AsyncWait.AssertStaysFalseAsync(() => Volatile.Read(ref atA) > 2, TimeSpan.FromMilliseconds(300), "the voice arrives once, on UDP only");
         Assert.Equal(2, Volatile.Read(ref atA)); // once, on UDP only
     }
 }

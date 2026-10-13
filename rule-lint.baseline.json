@@ -7957,7 +7957,7 @@
   },
   {
     "Key": "RL603|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|DebugApiTests.FullFlow_Linking_PttAndLinkPtt:Task.Delay",
-    "Count": 5
+    "Count": 1
   },
   {
     "Key": "RL603|tests/OVS.Tests/Client/Diagnostics/DebugApiTests.cs|Instance.Until:DateTime.UtcNow",
@@ -7989,7 +7989,7 @@
   },
   {
     "Key": "RL603|tests/OVS.Tests/Client/Net/ClientNetTests.cs|ClientNetTests.UdpBack_SwitchesBack:Task.Delay",
-    "Count": 2
+    "Count": 1
   },
   {
     "Key": "RL603|tests/OVS.Tests/Client/Net/Updates/UpdateTests.cs|UpdateTests.CleanupOld_WaitsForLockedFile_ThenDeletes:Task.Delay",
@@ -8001,14 +8001,6 @@
   },
   {
     "Key": "RL603|tests/OVS.Tests/Client/Services/UpdateFlowTests.cs|UpdateFlowTests.Release:DateTimeOffset.UtcNow",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/SplashTests.cs|SplashTests.Shows_ThenCloseEndsIt:Thread.Sleep",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.UnsavedGroup_Dropped_FoldsAway:Thread.Sleep",
     "Count": 1
   },
   {
@@ -8028,10 +8020,6 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.AudioEngine_DisposedWhileMicOpening_StaysClosed:Task.Delay",
-    "Count": 1
-  },
-  {
     "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Devices_WhileNeeded_OpenAndCloseAgain:Task.Delay",
     "Count": 1
   },
@@ -8046,14 +8034,6 @@
   {
     "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Update_Accepted_ShowsProgress_UntilFailure:DateTimeOffset.UtcNow",
     "Count": 2
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ReconnectTests.cs|ReconnectTests.Reconnect_ChannelGone_StaysInDefault:Task.Delay",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ReconnectTests.cs|ReconnectTests.Reconnect_ChosenMute_HeldKeyReleased_StaysMuted:Task.Delay",
-    "Count": 1
   },
   {
     "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.ChatMessages_SoundPerTarget_NotForOwn:DateTimeOffset.UtcNow",

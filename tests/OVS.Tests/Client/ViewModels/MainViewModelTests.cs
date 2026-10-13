@@ -1684,7 +1684,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             engine.LevelMeter = true;
             engine.Dispose();
         }
-        await Task.Delay(500); // the queued opens have run by now
+        await AsyncWait.AssertStaysFalseAsync(() => hardware.Counts.MicsOpen > 0, TimeSpan.FromMilliseconds(500), "a disposed engine's queued open opens no microphone");
         Assert.Equal(0, hardware.Counts.MicsOpen);
     }
 

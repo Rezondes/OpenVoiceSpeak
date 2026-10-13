@@ -191,7 +191,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         await anna.Post("tone", new { hz = 440 });
         await anna.Post("ptt", new { down = true });
         await anna.Until(otherElement => otherElement.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
-        await Task.Delay(300);
+        await AsyncWait.AssertStaysFalseAsync(async () => FramesFrom(await bert.State(), annaId) > 0, TimeSpan.FromMilliseconds(300), "bert in another channel hears nothing");
         Assert.Equal(0, FramesFrom(await bert.State(), annaId));
         await anna.Post("ptt", new { down = false });
 
@@ -201,7 +201,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         long sentUnlinked = (await anna.State()).GetProperty("audio").GetProperty("framesSent").GetInt64();
         await anna.Post("ptt", new { down = true });
         await anna.Until(otherElement => otherElement.GetProperty("audio").GetProperty("framesSent").GetInt64() > sentUnlinked + 10); // she really talks
-        await Task.Delay(300);
+        await AsyncWait.AssertStaysFalseAsync(async () => FramesFrom(await bert.State(), annaId) > 0, TimeSpan.FromMilliseconds(300), "plain push to talk stays in the own channel");
         Assert.Equal(0, FramesFrom(await bert.State(), annaId));
         await anna.Post("ptt", new { down = false });
 
@@ -210,7 +210,8 @@ public sealed class DebugApiTests : IAsyncLifetime
         var bertView = await bert.Until(otherElement => FramesFrom(otherElement, annaId) > 10 && User(otherElement, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
         Assert.Contains("Links", (await anna.State()).GetProperty("transmitText").GetString());
         // The indicator must stay on while anna keeps talking (it used to go dark for good after 300 ms).
-        // Polled, because a starved test machine may drop it for a moment; gone for good still fails.
+        // Polled, because a starved test machine may drop it for a moment; gone for good still fails. The 700 ms are the
+        // point of the check (real time: the indicator used to die after 300 ms), not a wait for something to happen.
         await Task.Delay(700);
         await bert.Until(otherElement => User(otherElement, annaId)?.GetProperty("isSpeakingViaLink").GetBoolean() == true);
         await anna.Post("linkptt", new { down = false });
@@ -221,7 +222,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         await bert.Post("linkptt", new { down = true });
         var bertState = await bert.Until(otherElement => otherElement.GetProperty("audio").GetProperty("framesSent").GetInt64() > 10);
         Assert.Contains("Kein Recht", bertState.GetProperty("voiceHint").GetString());
-        await Task.Delay(300);
+        await AsyncWait.AssertStaysFalseAsync(async () => FramesFrom(await anna.State(), bertId) > 0, TimeSpan.FromMilliseconds(300), "without the right nothing goes over the link");
         Assert.Equal(0, FramesFrom(await anna.State(), bertId));
         await bert.Post("linkptt", new { down = false });
 
@@ -241,7 +242,8 @@ public sealed class DebugApiTests : IAsyncLifetime
         long sentBefore = settled.GetProperty("audio").GetProperty("framesSent").GetInt64();
         await bert.Post("ptt", new { down = true });
         await bert.Until(otherElement => otherElement.GetProperty("audio").GetProperty("ptt").GetBoolean()); // the key thread saw it, so the silence proves something
-        await Task.Delay(300);
+        await AsyncWait.AssertStaysFalseAsync(async () => (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64() != sentBefore,
+            TimeSpan.FromMilliseconds(300), "a muted client sends nothing");
         Assert.Equal(sentBefore, (await bert.State()).GetProperty("audio").GetProperty("framesSent").GetInt64());
     }
 

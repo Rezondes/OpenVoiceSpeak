@@ -33,15 +33,20 @@ static class AsyncWait
     /// and fails at once, with <paramref name="reason"/>, when the condition turns true. Real time by nature: an absence
     /// can only be seen for a while.
     /// </summary>
-    public static async Task AssertStaysFalseAsync(Func<bool> condition, TimeSpan duration, string reason,
+    public static Task AssertStaysFalseAsync(Func<bool> condition, TimeSpan duration, string reason,
+        [CallerArgumentExpression(nameof(condition))] string? expression = null) =>
+        AssertStaysFalseAsync(() => Task.FromResult(condition()), duration, reason, expression);
+
+    /// <summary>As <see cref="AssertStaysFalseAsync(Func{bool}, TimeSpan, string, string?)"/>, for a condition read through an await (a request, the UI thread).</summary>
+    public static async Task AssertStaysFalseAsync(Func<Task<bool>> condition, TimeSpan duration, string reason,
         [CallerArgumentExpression(nameof(condition))] string? expression = null)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
         do
         {
-            Assert.False(condition(), $"{reason} ({expression} turned true after {watch.ElapsedMilliseconds} ms)");
+            Assert.False(await condition(), $"{reason} ({expression} turned true after {watch.ElapsedMilliseconds} ms)");
             await Task.Delay(10);
         } while (watch.Elapsed < duration);
-        Assert.False(condition(), $"{reason} ({expression} turned true at the end)");
+        Assert.False(await condition(), $"{reason} ({expression} turned true at the end)");
     }
 }

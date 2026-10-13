@@ -1,4 +1,5 @@
 using OVS.Client;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client;
 
@@ -8,12 +9,11 @@ public sealed class SplashTests
     static readonly string Exe = Path.Combine(AppContext.BaseDirectory, "OVS.Client.exe"); // the test host has no icon
 
     [Fact]
-    public void Shows_ThenCloseEndsIt()
+    public async Task Shows_ThenCloseEndsIt()
     {
         var shown = Splash.Show(Exe);
         // generous caps that end as soon as it happened: its thread and window take their time on a busy runner
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!Splash.IsShown && watch.ElapsedMilliseconds < 10_000) Thread.Sleep(5);
+        await AsyncWait.UntilAsync(() => Splash.IsShown);
         Assert.True(Splash.IsShown);
         Splash.Close();
         Assert.True(shown.Join(TimeSpan.FromSeconds(10)), "it fades out and ends");

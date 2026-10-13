@@ -1022,7 +1022,7 @@ public class AdminViewModelTests
 
     /// <summary>Package 109: a new group dropped before it was saved folds away like a deleted one.</summary>
     [Fact]
-    public void UnsavedGroup_Dropped_FoldsAway()
+    public async Task UnsavedGroup_Dropped_FoldsAway()
     {
         var (view, server, _) = Create(P.GroupsView | P.GroupsCreate | P.Speak);
         server.Post = action => action();
@@ -1039,8 +1039,7 @@ public class AdminViewModelTests
         server.Apply(new GroupsChanged(server.Mirror.Groups.ToList())); // a rebuild meanwhile does not bring it back
         Assert.DoesNotContain(fresh, view.GroupList.Groups.Live());
         ((ManualTimeProvider)server.Time).Advance(TimeSpan.FromMilliseconds(220));
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (view.GroupList.Groups.Contains(fresh) && watch.ElapsedMilliseconds < 5000) Thread.Sleep(10); // the removal runs on the pool
+        await AsyncWait.UntilAsync(() => !view.GroupList.Groups.Contains(fresh)); // the removal runs on the pool
         Assert.DoesNotContain(fresh, view.GroupList.Groups);
         Assert.Equal(["Gast", "Moderator", "Admin"], view.GroupList.Groups.Select(groupEdit => groupEdit.Name));
 

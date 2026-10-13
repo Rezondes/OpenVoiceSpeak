@@ -264,7 +264,8 @@ public sealed class ReconnectTests : IAsyncLifetime
         await ReconnectAsync(server);
         viewModel.Keys.Simulate(KeyAction.PushToMute, false);
         await OnUiUntil(() => viewModel.Keys.MuteHeld, value => !value);
-        await Task.Delay(200); // the release reaches the view model through the UI queue
+        await AsyncWait.AssertStaysFalseAsync(() => OnUi(() => !viewModel.Server!.SelfState.SelfMuted), TimeSpan.FromMilliseconds(200),
+            "the release, which reaches the view model through the UI queue, keeps the own mute");
         Assert.Equal((true, deafen), await OnUi(() => (viewModel.Server!.SelfState.SelfMuted, viewModel.Server.SelfState.SelfDeafened)));
         Assert.True(await OnUiUntil(() => viewModel.Server!.Mirror.Self is { SelfMuted: true } me && me.SelfDeafened == deafen, ok => ok));
     }
@@ -560,7 +561,8 @@ public sealed class ReconnectTests : IAsyncLifetime
         }
         reconnectTime.Advance(TimeSpan.FromSeconds(1));
         var notices = await OnUiUntil(() => viewModel.Notices.Take(viewModel.Notices.Count - before).Select(notice => notice.Text).ToList(), list => list.Count >= 2);
-        await Task.Delay(300); // nothing else follows
+        int shown = notices.Count;
+        await AsyncWait.AssertStaysFalseAsync(async () => (await NoticesSince(before)).Count > shown, TimeSpan.FromMilliseconds(300), "nothing else follows");
         notices = await NoticesSince(before);
 
         var (channel, defaultChannel) = await OnUi(() => (viewModel.Server!.Mirror.Self!.ChannelId, viewModel.Server.Mirror.DefaultChannelId));
