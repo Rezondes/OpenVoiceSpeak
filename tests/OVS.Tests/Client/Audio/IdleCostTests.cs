@@ -30,6 +30,19 @@ public class IdleCostTests
         return windows;
     }
 
+    /// <summary>
+    /// Whether <paramref name="measured"/> allocated what <paramref name="reference"/> did in more than half of the frames: what
+    /// the code under test adds would show in every frame, what the runtime allocates now and then on the same thread (tiered
+    /// compilation, more of it on a slow CI runner) only in some.
+    /// </summary>
+    static bool SameInMostFrames(long[] measured, long[] reference) => measured.Where((bytes, frame) => bytes == reference[frame]).Count() * 2 > measured.Length;
+
+    /// <summary>For the failure message: how many frames matched and the first differences.</summary>
+    static string Differences(long[] measured, long[] reference) =>
+        $"same in {measured.Where((bytes, frame) => bytes == reference[frame]).Count()} of {measured.Length} frames; first differences: " +
+        string.Join(", ", measured.Select((bytes, frame) => (bytes, frame)).Where(pair => pair.bytes != reference[pair.frame]).Take(10)
+            .Select(pair => $"frame {pair.frame}: {pair.bytes - reference[pair.frame]:+#;-#} bytes"));
+
     static float[] Sine(int frame) => TestTones.SineFrame(frame * AudioFormat.FrameSamples, 0.3f);
 
     /// <summary>Package 142: a different tone on each side, interleaved.</summary>
@@ -109,7 +122,7 @@ public class IdleCostTests
 
         var decoder = new VoiceDecoder();
         using var bareTurns = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
-        long[] decodes = new long[Windows], bareDecodes = new long[Windows];
+        long[] decodes = new long[Windows * Runs], bareDecodes = new long[Windows * Runs];
         for (int index = 0; index < WarmUp + Windows * Runs; index++)
         {
             long before = GC.GetAllocatedBytesForCurrentThread();
@@ -117,10 +130,10 @@ public class IdleCostTests
             long between = GC.GetAllocatedBytesForCurrentThread();
             decoder.Decode(packets[index]);
             if (index < WarmUp) continue;
-            bareDecodes[(index - WarmUp) / Runs] += between - before;
-            decodes[(index - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - between;
+            bareDecodes[index - WarmUp] = between - before;
+            decodes[index - WarmUp] = GC.GetAllocatedBytesForCurrentThread() - between;
         }
-        Assert.Contains(true, Enumerable.Range(0, Windows).Select(value => decodes[value] == bareDecodes[value]));
+        Assert.True(SameInMostFrames(decodes, bareDecodes), Differences(decodes, bareDecodes));
 
         // Package 142 (AC7): music mode captures in stereo, through the stereo resampler and chunker, also without allocating
         var music = CapturePipeline.Manual();
@@ -146,7 +159,7 @@ public class IdleCostTests
         own.Encode(new float[AudioFormat.StereoFrameSamples]);
         own.Encode(frames[0]);
         sender.Feed(frames[0], AudioFormat.SampleRate, 2);
-        long[] sends = new long[Windows], encodes = new long[Windows];
+        long[] sends = new long[Windows * Runs], encodes = new long[Windows * Runs];
         for (int index = 0; index < WarmUp + Windows * Runs; index++)
         {
             long before = GC.GetAllocatedBytesForCurrentThread();
@@ -154,10 +167,10 @@ public class IdleCostTests
             long between = GC.GetAllocatedBytesForCurrentThread();
             sender.Feed(frames[index + 1], AudioFormat.SampleRate, 2);
             if (index < WarmUp) continue;
-            encodes[(index - WarmUp) / Runs] += between - before;
-            sends[(index - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - between;
+            encodes[index - WarmUp] = between - before;
+            sends[index - WarmUp] = GC.GetAllocatedBytesForCurrentThread() - between;
         }
-        Assert.Contains(true, Enumerable.Range(0, Windows).Select(value => sends[value] == encodes[value]));
+        Assert.True(SameInMostFrames(sends, encodes), Differences(sends, encodes));
 
         // a key poll: resolving the bindings and telling presses from holds
         KeyBinding[] bindings =
