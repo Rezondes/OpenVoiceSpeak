@@ -466,12 +466,24 @@ public sealed class DebugApiTests : IAsyncLifetime
         {
             var instance = new Instance();
             instance.viewModel = await instance.ui.InvokeAsync(() => Task.FromResult(MainViewModelSetup.Create(instance.dir, instance.ui.Post)));
-            var probe = new TcpListener(IPAddress.Loopback, 0);
-            probe.Start();
-            instance.Port = ((IPEndPoint)probe.LocalEndpoint).Port;
-            probe.Stop();
-            // the debug API lists the system's devices while the view model runs without any, as with --no-audio
-            instance.api = new DebugApi(instance.viewModel, instance.viewModel.Keys, instance.viewModel.Audio, instance.Port, work => instance.ui.InvokeAsync(work), FakeAudioHardware.ListOneEach);
+            // Step 30: the port is free when probed, but another socket of the parallel run may take it before the debug
+            // API binds it; then a new port is probed (at most 5 tries)
+            for (int attempt = 1; ; attempt++)
+            {
+                var probe = new TcpListener(IPAddress.Loopback, 0);
+                probe.Start();
+                instance.Port = ((IPEndPoint)probe.LocalEndpoint).Port;
+                probe.Stop();
+                try
+                {
+                    // the debug API lists the system's devices while the view model runs without any, as with --no-audio
+                    instance.api = new DebugApi(instance.viewModel, instance.viewModel.Keys, instance.viewModel.Audio, instance.Port, work => instance.ui.InvokeAsync(work), FakeAudioHardware.ListOneEach);
+                    break;
+                }
+                catch (HttpListenerException) when (attempt < 5)
+                {
+                }
+            }
             instance.Http = new HttpClient { BaseAddress = new Uri($"http://localhost:{instance.Port}/") };
             instance.Http.DefaultRequestHeaders.Add(DebugApi.Header, "1");
             return instance;
