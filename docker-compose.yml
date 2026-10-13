@@ -19,6 +19,11 @@ services:
       # OVS_LOG_ROTATE_DAILY: "true"       # nach 00:00:00 neue Logdateien beginnen
       # OVS_LOG_DAYS: "30"                 # Aufbewahrung der Logs in Tagen, 0 = unbegrenzt
       TZ: "Europe/Berlin"   # Zeitzone für Neustart-Uhrzeit, Tageswechsel und Zeitstempel (ohne: UTC)
+      # Telemetrie, optional: ohne OTEL_EXPORTER_OTLP_ENDPOINT exportiert der Server nichts.
+      # OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"  # OTLP-Backend (Collector, Grafana, Aspire, Jaeger, Seq ...)
+      # OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"                        # oder "http/protobuf" (dann meist Port 4318)
+      # OTEL_SERVICE_NAME: "ovs-server"                            # Name im Backend
+      # OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=prod"    # weitere Attribute
     volumes:
       - ovs-data:/data
     # Alternative bei UDP-Problemen hinter Docker-NAT: Host-Netzwerk statt Port-Mappings

@@ -24,6 +24,8 @@ LABEL org.opencontainers.image.description="OpenVoiceSpeak server: self-hosted v
 # Named volumes inherit this ownership on first mount, so the non-root user can write /data.
 RUN mkdir /data && chown $APP_UID /data
 ENV OVS_DATA_DIR=/data
+# Package 145: telemetry is opt-in. Set OTEL_EXPORTER_OTLP_ENDPOINT (and, if needed, OTEL_EXPORTER_OTLP_PROTOCOL,
+# OTEL_EXPORTER_OTLP_HEADERS, OTEL_SERVICE_NAME, OTEL_RESOURCE_ATTRIBUTES) at run time to export over OTLP; unset, nothing is sent.
 VOLUME /data
 EXPOSE 7000/tcp 7000/udp
 USER $APP_UID

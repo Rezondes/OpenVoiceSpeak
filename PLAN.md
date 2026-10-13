@@ -8504,10 +8504,10 @@ Test command: `dotnet test OpenVoiceSpeak.slnx`
 **Affected files:**
 - `src/OVS.Server/OVS.Server.csproj` (change): `OpenTelemetry`, `OpenTelemetry.Extensions.Hosting`, `OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.19.1 (A155)
 - `src/OVS.Server/ServerTelemetry.cs` (new): `IsOn(getEnv)`, the copied `OTEL_*` variables, and `Add(services, getEnv)` with the resource (`service.name` `ovs-server` unless `OTEL_SERVICE_NAME` says otherwise, `service.version` = `BuildInfo.Current.Version`) and OTLP exporters for traces and metrics
-- `src/OVS.Server/ServerHost.cs` (change): `BuildRun` calls it; the variables go into the run's configuration
+- `src/OVS.Server/ServerHost.cs` (change): `BuildRun` (internal, with `getEnv`) calls it; the variables go into the run's configuration
 - `Dockerfile`, `docker-compose.yml` (change): the `OTEL_*` variables documented as comments
 - `README.md` (change): a short section on the opt-in
-- `tests/OVS.Tests/Server/ServerTelemetryTests.cs` (new), `TestSupport/OtlpReceiver.cs` (new): a minimal OTLP/HTTP receiver on localhost that counts and keeps the posted bodies
+- `tests/OVS.Tests/Server/ServerTelemetryTests.cs` (new), `TestSupport/OtlpReceiver.cs`, `TestSupport/OtlpExport.cs` (new): a minimal OTLP/HTTP receiver on localhost that counts and keeps the posted bodies
 
 ### Context
 
@@ -8515,23 +8515,25 @@ The server has no telemetry beyond its files. The user wants an optional backend
 
 ### Acceptance Criteria
 
-- [ ] AC1: Without `OTEL_EXPORTER_OTLP_ENDPOINT` (or with it empty) no tracer or meter provider exists and no OpenTelemetry package code runs.
-- [ ] AC2: With it, the resource carries `service.name` `ovs-server` and `service.version` of `BuildInfo.Current`; `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` apply.
-- [ ] AC3: A span of the server's source reaches a receiver at that endpoint (`OTEL_EXPORTER_OTLP_PROTOCOL` `http/protobuf` and `grpc` both work).
-- [ ] AC4: Two runs in one process (a restart) export each span exactly once; after a run's end its providers are disposed and flushed, and the source has no listener left.
-- [ ] AC5: An unreachable endpoint never stops or slows the server: requests are answered as without it.
-- [ ] AC6: `Dockerfile` and `docker-compose.yml` name the variables in comments; the default compose file starts no backend.
+- [x] AC1: Without `OTEL_EXPORTER_OTLP_ENDPOINT` (or with it empty) no tracer or meter provider exists and no OpenTelemetry package code runs.
+- [x] AC2: With it, the resource carries `service.name` `ovs-server` and `service.version` of `BuildInfo.Current`; `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` apply.
+- [x] AC3: A span of the server's source reaches a receiver at that endpoint (`OTEL_EXPORTER_OTLP_PROTOCOL` `http/protobuf` and `grpc` both work).
+- [x] AC4: Two runs in one process (a restart) export each span exactly once; after a run's end its providers are disposed and flushed, and the source has no listener left.
+- [x] AC5: An unreachable endpoint never stops or slows the server: requests are answered as without it.
+- [x] AC6: `Dockerfile` and `docker-compose.yml` name the variables in comments; the default compose file starts no backend.
 
 ### Tests (TDD)
 
 1. `ServerTelemetryTests > "Start_NoEndpoint_NoProviders"` (AC1)
 2. `ServerTelemetryTests > "Endpoint_Set_ResourceNamesServiceAndVersion"` (AC2)
-3. `ServerTelemetryTests > "Span_EndpointSet_ReachesTheReceiver"` (AC3): both protocols against `OtlpReceiver`.
+3. `ServerTelemetryTests > "Span_EndpointSet_ReachesTheReceiver"` (AC3): `http/protobuf` against `OtlpReceiver`; `grpc` is checked with the compose examples of Package 149.
 4. `ServerTelemetryTests > "Restart_EachSpanOnce_ProvidersDisposed"` (AC4)
    - Given: a run that makes one span, a restart, a run that makes another.
    - Expected: the receiver holds each span once; after the second run's end `HasListeners` of the source is false.
 5. `ServerTelemetryTests > "Endpoint_Down_RequestsStillAnswered"` (AC5): a closed port, then a request answered within its usual time.
 6. `ServerTelemetryTests > "Dockerfile_AndCompose_DocumentTheVariables"` (AC6)
+
+(as built: `ServerTelemetry.Add(builder, getEnv)` in `BuildRun` (now internal, with `getEnv`, so the tests build a run without starting it) does nothing without the endpoint; with it, it copies a fixed list of standard variables (`OTEL_EXPORTER_OTLP_*` with the per-signal ones, `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES`, the metric and batch intervals) from `getEnv` into the run's configuration, where the SDK reads them, and registers `AddOpenTelemetry()` with the resource (`AddService`, the name from `OTEL_SERVICE_NAME` or `ovs-server`, the version from `BuildInfo`), tracing with the server's source and the OTLP exporter, and metrics with the OTLP exporter. The `ActivitySource` "OVS.Server" (`ServerTelemetry.Source`) is already made here, so the export can be tested; Package 146 starts the spans. The providers live in the run's container: `StopAsync` and disposing the host flush and end them, so a second run in the same process exports only its own spans and a span after the end goes nowhere (`Restart_EachSpanOnce_ProvidersDisposed`, two runs built one after the other as `RunAsync` does). `OtlpReceiver` is a small OTLP/HTTP server on a `TcpListener` that answers 200 and keeps the bodies; the tests look for span names in the protobuf bytes. `grpc` would need an HTTP/2 server in the tests; it is the SDK's default and is used by the compose examples (149). An unreachable endpoint: three pings answered within 5 s each while spans are queued for it. The Dockerfile and `docker-compose.yml` name the variables in comments (the compose file in German like its other comments), the README has a section "Telemetrie (optional)" and a note on the error ID of 143.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

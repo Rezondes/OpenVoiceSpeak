@@ -92,6 +92,12 @@ docker run --rm -v openvoicespeak_ovs-data:/data alpine sh -c 'tail -n 50 "$(ls 
 
 Ohne Docker-Zugang geht es auch im Client: Unter "Verwaltung ...", Logs (Recht "Logs ansehen", standardmässig nur Admin) stehen alle Server- und Channel-Logs, neueste zuerst, filterbar nach Art (Server oder ein Channel) und Zeitraum. Eine Datei öffnet sich seitenweise mit 1000 Zeilen, die letzte Seite zuerst; ein Filter zeigt nur passende Zeilen mit markierten Treffern. Die Suche läuft auf dem Server über alle Dateien (Text ohne Gross- und Kleinschreibung, höchstens 500 Treffer, Abbruch nach 5 Sekunden), ein Klick auf einen Treffer öffnet die Datei an dieser Zeile. Mit dem Recht "Logs herunterladen" (ebenfalls nur Admin) wählst du Dateien per Häkchen aus ("Alle im Zeitraum" nimmt alle, die die Filter zeigen) und speicherst sie: eine Datei als `.log` unter ihrem Namen, mehrere als `ovs-logs_<von>_<bis>.zip` mit den Ordnern `server/` und `channels/<Channelname>_<ID>/`. Der Server nimmt den Stand zum Zeitpunkt der Anfrage, höchstens 200 MB, und überträgt ihn in Stücken wie ein Backup; den Zwischenstand in `logs-export/` löscht er danach wieder. Logs enthalten IPs, Fingerabdrücke und Chattexte, vergib das Recht also nur an Leute, denen du das anvertraust.
 
+Bei einem unerwarteten Fehler zeigt der Client unter der Meldung eine Fehler-ID und den Button "Fehler-ID kopieren". Dieselbe ID steht im Server-Log in der Zeile des Fehlers, mit dem vollständigen Stacktrace; die Log-Suche findet sie.
+
+### Telemetrie (optional)
+
+Ohne weitere Einstellung exportiert der Server nichts. Setzt du `OTEL_EXPORTER_OTLP_ENDPOINT` (in `docker-compose.yml` als Kommentar vorbereitet), sendet er Traces und Metriken per OTLP an dieses Backend, als Dienst `ovs-server` mit seiner Version; die übrigen Standardvariablen (`OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` und die Exportintervalle) gelten wie gewohnt. Ist das Backend nicht erreichbar, läuft der Server unverändert weiter. Der Client sendet nie Telemetrie.
+
 ### Daten, Backup, Update
 
 Alles Dauerhafte liegt im Volume `ovs-data`. Docker Compose stellt den Projektnamen voran, also den

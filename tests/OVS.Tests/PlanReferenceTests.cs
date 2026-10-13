@@ -16,18 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["ServerTelemetryTests > \"Start_NoEndpoint_NoProviders\""] =
-            "planned: Package 145 is not built yet",
-        ["ServerTelemetryTests > \"Endpoint_Set_ResourceNamesServiceAndVersion\""] =
-            "planned: Package 145 is not built yet",
-        ["ServerTelemetryTests > \"Span_EndpointSet_ReachesTheReceiver\""] =
-            "planned: Package 145 is not built yet",
-        ["ServerTelemetryTests > \"Restart_EachSpanOnce_ProvidersDisposed\""] =
-            "planned: Package 145 is not built yet",
-        ["ServerTelemetryTests > \"Endpoint_Down_RequestsStillAnswered\""] =
-            "planned: Package 145 is not built yet",
-        ["ServerTelemetryTests > \"Dockerfile_AndCompose_DocumentTheVariables\""] =
-            "planned: Package 145 is not built yet",
         ["ServerTracingTests > \"Request_OneSpan_TypeCodeFingerprintNoNickname\""] =
             "planned: Package 146 is not built yet",
         ["ServerTracingTests > \"Request_Throws_SpanFailsAndErrorIdIsTraceId\""] =

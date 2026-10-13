@@ -70,7 +70,7 @@ internal static class ServerHost
         logs.Server.Version(BuildInfo.Current.Version); // Package 42
 
         var endpoint = new IPEndPoint(bindAddress, config.Port);
-        var host = BuildRun(config, logs, time, endpoint);
+        var host = BuildRun(config, logs, time, endpoint, getEnv);
         try
         {
             ServerState state;
@@ -146,11 +146,13 @@ internal static class ServerHost
 
     /// <summary>
     /// Step 30d2: one host per run. Its container makes the run's stores, state, certificate and servers when first asked;
-    /// <see cref="ServerListeners"/> starts and stops the servers with the host.
+    /// <see cref="ServerListeners"/> starts and stops the servers with the host. Package 145: with
+    /// <see cref="ServerTelemetry.EndpointVariable"/> set it holds the OpenTelemetry SDK too, flushed and ended with the host.
     /// </summary>
-    static IHost BuildRun(ServerConfig config, ServerLogWriter logs, TimeProvider time, IPEndPoint endpoint)
+    internal static IHost BuildRun(ServerConfig config, ServerLogWriter logs, TimeProvider time, IPEndPoint endpoint, Func<string, string?> getEnv)
     {
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings());
+        ServerTelemetry.Add(builder, getEnv);
         var services = builder.Services;
         services.AddSingleton(time);
         services.AddSingleton(config);
