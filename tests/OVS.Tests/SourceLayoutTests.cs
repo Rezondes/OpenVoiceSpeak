@@ -8,6 +8,19 @@ namespace OVS.Tests;
 /// </summary>
 public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet: false)
 {
+    /// <summary>Package 1 (AC3): Server and Client build on Shared only, Shared on neither, the tests on all three.</summary>
+    [Fact]
+    public void Assemblies_ProductAndTests_ReferenceAsLayered()
+    {
+        static string[] Ours(Type type) =>
+            [.. type.Assembly.GetReferencedAssemblies().Select(name => name.Name!).Where(name => name.StartsWith("OVS.")).Order()];
+
+        Assert.Empty(Ours(typeof(OVS.Shared.BuildInfo)));
+        Assert.Equal(["OVS.Shared"], Ours(typeof(OVS.Server.ServerHost)));
+        Assert.Equal(["OVS.Shared"], Ours(typeof(OVS.Client.ClientOptions)));
+        Assert.Equal(["OVS.Client", "OVS.Server", "OVS.Shared"], Ours(typeof(SourceLayoutTests)));
+    }
+
     [Fact]
     public void Repository_Scanned_FollowsLayoutRules()
     {

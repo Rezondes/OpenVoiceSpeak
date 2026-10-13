@@ -21,6 +21,36 @@ public sealed class ServerHostTests() : TempDirectoryTest("ovs-host-", quiet: tr
         Assert.Equal(ReasonCodes.ServerRestart, rejected.Code);
     }
 
+    /// <summary>Package 4 (AC14): a start logs the address it listens on and the certificate's fingerprint.</summary>
+    [Fact]
+    public async Task Start_Run_LogsListeningAddressAndCertificateFingerprint()
+    {
+        var output = new ConcurrentQueue<string>();
+        using var stop = new CancellationTokenSource();
+        Task<int> host;
+        int port;
+        // Random ports clash with Windows' reserved ranges now and then: a run that cannot bind ends with 1, so try another.
+        for (int attempt = 0; ; attempt++)
+        {
+            port = Random.Shared.Next(20_000, 45_000);
+            var env = new Dictionary<string, string> { ["OVS_DATA_DIR"] = dir, ["OVS_PORT"] = port.ToString() };
+            host = ServerHost.RunAsync(env.GetValueOrDefault, IPAddress.Loopback, TimeProvider.System, output.Enqueue, output.Enqueue, stop.Token);
+            var anna = await ConnectWhenUpAsync(port, "anna", host);
+            if (anna is not null)
+            {
+                await anna.DisposeAsync();
+                break;
+            }
+            Assert.True(attempt < 20, string.Join("\n", output));
+            Assert.Equal(1, await host);
+        }
+
+        stop.Cancel();
+        Assert.Equal(0, await host.WaitAsync(TimeSpan.FromSeconds(30)));
+        Assert.Contains(output, line => line.Contains($"Listening on 127.0.0.1:{port}"));
+        Assert.Contains(output, line => System.Text.RegularExpressions.Regex.IsMatch(line, "Zertifikat-Fingerprint: [0-9a-f]{64}$"));
+    }
+
     static async Task<TestClient?> TryConnectAsync(int port, string nickname)
     {
         try

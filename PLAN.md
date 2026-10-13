@@ -458,6 +458,7 @@ Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refacto
    - AC1: Ausgabe von `dotnet build` prüfen.
    - AC3: `dotnet list tests/OVS.Tests reference` ausführen.
    - AC4: `git status` nach einem Build prüfen.
+3. `SourceLayoutTests > "Assemblies_ProductAndTests_ReferenceAsLayered"` (AC3)
 
 Testbefehl: `dotnet test`
 
@@ -695,6 +696,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ServerConfigTests"`
    - `ServerTuningTests > "Connection_OverLimit_ClosedBeforeTls"` (AC11)
      (Hinweis zur Referenz: Seit f598a4e wird eine Verbindung über dem Limit pro IP schon vor TLS geschlossen, statt `Rejected(TooManyConnections)` zu bekommen; der Test prüft das Schliessen.)
 4. Manueller Check zu AC14: `dotnet run --project src/OVS.Server` und die Logausgabe ansehen.
+5. `ServerHostTests > "Start_Run_LogsListeningAddressAndCertificateFingerprint"` (AC14)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~Handshake|FullyQualifiedName~ClientIdentity|FullyQualifiedName~ServerCertificate"`
 
@@ -1768,6 +1770,7 @@ Die manuellen Ende-zu-Ende-Checks brauchen sonst zwei Rechner, Headsets und echt
 ### Tests (TDD)
 
 `DebugApiTests.cs`: `"Request_MissingHeader_Forbidden"` (AC1), `"Devices_ViewModelWithoutAudio_ListsTheHardwaresDevices"`, `"Join_UnknownChannel_BadRequest"`, `"FullFlow_Linking_PttAndLinkPtt"` (AC2 bis AC4), `"DeafenedClient_HearsNothing_UntilUndeafened"` (AC4), `"AdminActions_ThroughApi_Applied"` (AC5). AC6 ist durch die zwei getrennten Profile in jedem dieser Tests abgedeckt. Der Hinweis ohne `SpeakLinked` (AC4) auch ohne Netz: `MainViewModelTests > "Tick_LinkKeyHeldWithoutLinkRight_ShowsTheNoLinkRightHint"`, `MainViewModelTests > "Tick_LinkKeyUpWithoutLinkRight_ShowsNothing"`, `VoiceHintsTests > "Evaluate_NoLinkRightWithLinkKeyDown_ShowsTheNoLinkRightHint"`, `VoiceHintsTests > "Evaluate_NoLinkRightWithoutLinkKeyDown_ShowsNothing"`, `VoiceHintsTests > "Evaluate_LinkRightWithLinkKeyDown_ShowsNothing"` (AC4).
+`ClientOptionsTests > "Parse_ProfileGiven_ProfileDirIsItsFullPath"` (AC6)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~DebugApiTests"`
 
@@ -1904,6 +1907,7 @@ Der Client zeigt heute nur einzelne Meldungen im Fenster, und `--audio-debug` sc
 5. `"PasswordAndToken_Sent_NeverLogged"` (AC3)
 6. `"AudioDebug_On_WritesToClientLog"` (AC4), ersetzt `MainViewModelTests.AudioDebugLog_RecordsKeysAndFrameRate`
 7. `"Write_FileFails_DoesNotThrow"` (AC5)
+8. `MainViewModelTests > "Notices_HaveKinds_ErrorAndDisconnect"` (AC6)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~ClientLogTests|FullyQualifiedName~ProtocolLogTextTests"`
 
@@ -2025,6 +2029,7 @@ Grundlage waren die Empfehlungen des Skills ui-ux-pro-max: Palette "Chat & Messa
 4. `MainViewModelTests > "StartScreen_BookmarkConnecting_ShowsState"` (AC3), `"Notices_HaveKinds_ErrorAndDisconnect"` (AC4)
 5. `SettingsTests > "Theme_DefaultSystem_SavedAndMapped"`, `"PushToTalkRadio_Toggled_OppositeOfVoiceActivation"` (AC5)
 6. `UiSmokeTests > "Avatar_SameNicknameSameColor_InitialUpperCase"` (AC2)
+7. `UiSmokeTests > "IconButtons_Connected_HaveTooltipAndNameAndDimWhenDisabled"` (AC6)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~UiSmokeTests|FullyQualifiedName~MainViewModelTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~SettingsTests"`
 
@@ -2065,6 +2070,7 @@ Neue Regeln in Prioritätsreihenfolge: stumm, dann Link-PTT, dann im PTT-Modus d
 2. Neue Zeilen für AC2 (`vad: true` mit `ptt: true` ergibt Target 0) und AC4 (bestehende PTT-Zeilen bleiben)
 3. Bestehende Zeile `{ VoiceActivation, false, true, true, ..., Link }` bleibt grün (AC3)
 4. `SendPathTests > "PttKey_BelowThreshold_SendsOnlyInPttMode"`: `AudioEngine` ohne Geräte, Testton (-13.5 dBFS), Schwelle -10 dBFS, `keys.Simulate(ptt: true)`, nach 400 ms hat die Sprachaktivierung 0 Frames gesendet, der PTT-Modus zur Gegenprobe mehr als 0 (AC1, AC4, Ende-zu-Ende im Client)
+5. `SendPathTests > "ChooseTarget_EachRuleRow_ReturnsExpectedTarget"` (AC2, AC3)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~SendPathTests"`
 
@@ -2172,6 +2178,7 @@ Seit Package 24 hat der Inhalt ein eigenes Design, der Rahmen ist aber der von W
 1. `UiSmokeTests > "TitleBar_ButtonsChangeWindowState_ShowsTitleAndServer"`: Gegeben das Hauptfenster headless. Klick auf Maximieren setzt `WindowState.Maximized` und wechselt das Icon, erneut `Normal`, Minimieren setzt `Minimized` (AC1, AC2)
 2. `UiSmokeTests > "Pages_BothDisplays_LoadAndShowTheirContent"` prüft zusätzlich, dass die Titelleiste den Servernamen zeigt (AC1)
 3. Manueller Check AC4 mit Eintrag in der Tabelle der manuellen Checks
+4. `UiSmokeTests > "IconButtons_Connected_HaveTooltipAndNameAndDimWhenDisabled"` (AC5)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~UiSmokeTests"`
 
@@ -2347,6 +2354,7 @@ Seitenleiste und Lesezeichen zeigen den ersten Buchstaben des Servernamens. Nach
 5. `UiSmokeTests`: mit Logo zeigt die Seitenleiste ein Bild statt des Buchstabens (AC3), Kachel mit Cache-Datei zeigt es ebenfalls (AC6)
 6. `ProtocolLogTextTests > "Describe_Request_NamesButNeverSecrets"` um die neuen Nachrichten erweitert
 7. `MainViewModelTests > "ServerIcon_SecondConnect_FromCacheAndShownOnTile"`: echter Server mit Logo, der erste Verbindungsaufbau lädt es, der zweite nimmt es aus dem Cache, die Kachel zeigt es (AC3, AC6), `ServerIconTrackerTests > "Receive_LogoOfTheServersHash_ShowsItCachesItAndRefreshesTheTiles"` und `ServerIconWiringTests > "Apply_LogoOfTheServersHash_ShowsItOnTheServerAndOnTheBookmarkTile"` (AC3, AC6), `ServerIconTrackerTests > "Sync_CachedLogoHasTheServersHash_ShowsItWithoutAsking"` (AC6), `ServerIconTrackerTests > "Sync_ServerHasNoLogo_RemovesTheCachedLogoShowsNoneAndAsksNothing"` (AC4), `ServerIconTrackerTests > "Receive_PictureNotBase64_ChangesNothing"`, `"Receive_EmptyPicture_ChangesNothing"`, `"Receive_MalformedThenTheRightLogo_TakesTheRightOne"` und `"Receive_PaddedLogo_IsTakenWhole"` und `ServerIconWiringTests > "Apply_MalformedLogoOfTheServersHash_ThrowsNothingShowsNothingAndCachesNothing"` (AC3); die Regeln (aus dem Cache oder beim Server holen, Wiederholung nach einer Ablehnung, Ankunft prüfen und ablegen) stehen in den übrigen Fakten von `ServerIconTrackerTests`, die Verdrahtung im Hauptmodell in `ServerIconWiringTests`
+8. `UiSmokeTests > "LogoDropZone_DragOver_Highlighted"` (AC1)
 
 **Umsetzungsnotizen:**
 - Die Tests der Oberfläche rendern jetzt mit Skia statt der Zeichen-Attrappe, damit Bilder wirklich dekodiert und skaliert werden.
@@ -4174,6 +4182,7 @@ Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refacto
    - Erwartet: gelöscht wird erst, nachdem der Prozess beendet ist
 7. Bestehender Test `UpdateTests > "Install_Success_NewInPlaceOldRenamedAndRestarted"` bleibt grün
 8. Manueller Check (AC3, AC5): echtes Update von einer Release-Version. Die neue Version öffnet sich von selbst, im Ordner liegt danach keine `.old` mehr, und das Log des alten Clients endet mit "Client beendet".
+9. `UpdateFlowTests > "CheckAsync_InstallFails_ReportsTheFailureOnEveryChannelAndClearsTheCard"` (AC4)
 
 Testbefehl: `dotnet test`
 
@@ -4494,6 +4503,7 @@ Testbefehl: `dotnet test`
 6. `ServerLogWriterTests > "Update_RetentionChangedAtRuntime_NextCleanupUsesIt"` (AC3)
 7. `ServerSettingsViewModelTests > "Save_EveryLimitEdited_SendsTheEditedLimitsWithNameAndWelcomeTextAndNoPassword"` (AC1), bestehende `ServerSettingsViewModelTests > [Theory] "Save_PasswordFieldsSet_SendsTheTypedPasswordTheEmptyOneToRemoveItOrNone"` bleibt grün
 8. `UiSmokeTests`: neue Felder im Server-Tab, `LocalizationTests` (AC6)
+9. `ServerConfigTests > "Load_EnvAndFile_EnvWins"` (AC5)
 
 Testbefehl: `dotnet test`
 
@@ -5776,6 +5786,7 @@ Every client receives all groups with their permission bitmasks in the Welcome a
 2. `StateSyncTests > "Flags_PerRecipient_RecomputedOnRightsChange"` (AC3)
 3. existing `ServerViewModelTests` and `AdminViewModelTests` adapted to flags stay green (AC4)
 4. `StateSyncTests > "Groups_ViewOnlyRight_SeesFullGroups"` (AC1)
+5. `src/OVS.Shared/Protocol/Messages/Users/UserInfo.cs > "public data"` (AC5)
 
 Test command: `dotnet test tests/OVS.Tests`
 
@@ -7562,6 +7573,7 @@ Testers had to set others to 200 %, and one still found someone too quiet. Fluxe
 3. `VoiceFilterTests > "AutoGain_NoiseRatedAsNoise_Ignored"` (AC3)
 4. `VoiceFilterTests > "AutoGain_CapsAt30dB_AndPeak"` (AC4)
 5. `SendPathTests > "InputGain_200Percent_SoftClips"` (AC5)
+6. `VoiceFilterTests > "Filters_PerFrame_AllocateNothing"` (AC6)
 
 (as built: `ClientSettings.Migrations` is an array of steps (`Action<ClientSettings>`), `CurrentVersion` is its length, so Packages 128 and 129 each add one line. `SettingsVersion` defaults to `CurrentVersion` for a new object (new profile, damaged file replaced by defaults) and is set to 0 in `IJsonOnDeserializing.OnDeserializing`, so a file without the key counts as 0. `Load` runs the missing steps after `MigrateKeys` and `Clamp` and saves the file only when a step ran; a failed save (read-only profile) is ignored and the steps run again next time with the same result; a file from a newer client (higher version) is left alone, a negative version counts as 0. `Program.cs` loads the settings once before `MainViewModel` does (for the language), so the migration runs and saves there. `NoiseSuppressor.Process` returns the lower rating of the two 10 ms halves; `AutoGain.Process(frame, voiceProbability = null)` uses `>= 0.5` when given and the -45 dBFS floor otherwise; `CapturePipeline.Feed` passes the rating only while noise suppression is on; a frame shorter than 10 ms gets no rating (null) rather than 1. `SettingsViewModel.ToSettings` carries the loaded `SettingsVersion` over, so saving the settings page does not set a newer client's file back (`ToSettings_LoadedVersion_Kept`), and the debug API's `/settings` keeps the current version when the body has none. The input gain moved into `CapturePipeline.ApplyGain(frame, gain)`: up to 100 % the plain multiplication with the clamp at ±1 as before (bit-transparent at 100 %); above 100 % samples below -3 dBFS are only multiplied and those above it become `knee + (1 - knee) * tanh((|x| - knee) / (1 - knee))` (same slope at the knee, flattening toward 1, which only rounding reaches). RNNoise rated the synthetic voice as speech, so no recorded sample was needed: the voice (eight harmonics of a pitch gliding 100 to 180 Hz, 200 ms syllables with 50 ms ramps and 50 ms gaps, syllable frames at -50 dBFS RMS) got a rating of at least 0.5 in 203 of 250 frames (median 1.0); pink noise at -50 dBFS was rated 0.13 at most, so the gain stayed at 0 dB. That the rating overrides the floor is checked with a fixed rating of 0.1 on pink noise at -40 dBFS (0 dB, while the floor rule alone raises it by more than 10 dB). Louder steady pink noise needed a second guard: at -42, -40 and -35 dBFS RNNoise rated 15 to 216 of 250 frames at least 0.5 after 1 to 4 s (two seeds), and at -40 dBFS the gain reached +9 dB, where the old floor rule held still. So `NoiseSuppressor.Process` returns 0 for a frame it cut by more than `NoiseCutDb` = 4 dB (energy before and after, summed in the loops it already has, nothing allocated). Measured cut of the speech-rated frames: the synthetic voice at -50, -40 and -30 dBFS median -0.1 dB, 90 % at most 3.8 dB (max 12.6, at the syllable ends); pink noise at -40 dBFS at least 4.1 dB (median 35 to 37), at -35 dBFS at least 4.9 dB (median 9), at -30 dBFS at least 8.2 dB. 6 dB, as first suggested, would have let pink noise at -35 dBFS through (frames cut by 4.9 to 6 dB). With the guard, pink noise at -50, -40 and -35 dBFS (two seeds) keeps the gain at exactly 0 dB. The guard leaves 183 of the voice's 250 frames as speech instead of 203, which at 0.15 dB per frame gave only +27.4 dB after 5 s (-24.5 dBFS, outside AC2), so the rise rate went from 0.15 to 0.2 dB per frame: +30 dB within 3 s of speech; the -50 dBFS voice now ends at -21.5 dBFS. A quiet voice in a loud room, which RNNoise also cuts by more than 4 dB, is not raised either; the manual check (AC7) should listen for both. AC4: a -70 dBFS sine rated as speech stops at exactly +30 dB, and louder words at that gain (-30, -15, -9 dBFS) peak at -3 dBFS at most; a word already peaking above -3 dBFS is left alone, as before (the gain never attenuates). AC6: `Filters_PerFrame_AllocateNothing` now also runs `ApplyGain` and passes the rating, still 0 bytes. The settings page needed no layout change: only the hint text says "Empfohlen" / "Recommended". Existing tests that assumed automatic gain off by default or the +18 dB cap (`VoiceFilters_NewOrOldFile_OnByDefaultAndRoundTrip`, `VoiceFilters_ToggledAndBack_LiveAndNoChangeLeft`, `ApplyLive_SwitchesFilters_WithoutRestart`, `AutoGain_QuietLoudOrSilent_RaisedCappedOrHeld`, `AutoGain_SwitchedOnAgain_StartsOver`) were adjusted: -40 dBFS now rises to -20 dBFS (+20 dB) instead of stopping at -22 dBFS. AC7 (manual check with a tester) is not done: it needs people on a real server and is left open for the user.)
 

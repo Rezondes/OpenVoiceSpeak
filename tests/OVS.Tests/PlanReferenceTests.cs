@@ -18,6 +18,36 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
     };
 
+    /// <summary>N20: checked criteria no test can check and without a manual marker, each with the reason.</summary>
+    static readonly Dictionary<string, string> NoTestPossible = new()
+    {
+        ["Package 1 AC1"] = "the build itself: every test run builds with TreatWarningsAsErrors",
+        ["Package 1 AC4"] = "what git status shows comes from .gitignore, not from code",
+        ["Package 5 AC2"] = "a running Docker container",
+        ["Package 5 AC3"] = "a running Docker container",
+        ["Package 5 AC4"] = "a running Docker container",
+        ["Package 5 AC5"] = "a running Docker container",
+        ["Package 5 AC6"] = "a running Docker container",
+        ["Package 19 AC1"] = "a multi-platform Docker build",
+        ["Package 19 AC2"] = "an arm64 Docker host or QEMU",
+        ["Package 19 AC3"] = "a Windows PC without .NET",
+        ["Package 19 AC4"] = "what the README says",
+        ["Package 27 AC3"] = "moving and maximizing the window is the window manager's",
+        ["Package 28 AC4"] = "the logo's contrast, measured once with a contrast tool",
+        ["Package 42 AC4"] = "the GitHub workflow, checked by its runs",
+        ["Package 42 AC5"] = "the GitHub workflow, checked by its runs",
+        ["Package 44 AC1"] = "the GitHub workflow, checked by its runs",
+        ["Package 44 AC2"] = "the published image",
+        ["Package 44 AC3"] = "a Docker compose run",
+        ["Package 44 AC4"] = "what the README says",
+        ["Package 45 AC6"] = "a limit of that package's scope, not a behaviour",
+        ["Package 49 AC5"] = "the GitHub workflow of the website, checked by its runs",
+        ["Package 58 AC2"] = "the whole suite staying green",
+        ["Package 63 AC1"] = "the process-wide exception handlers of Program.Main, which end the process",
+        ["Package 63 AC2"] = "an investigation, its result recorded in A77",
+        ["Package 140 AC5"] = "a timing measured once on the dev machine, in the notes",
+    };
+
     /// <summary>Spans in Tests sections that look like a test but are none, each with the reason.</summary>
     static readonly Dictionary<string, string> NoTest = new()
     {
@@ -41,6 +71,41 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
         Assert.Equal(NoTest.Keys.Order(), ignored.Select(value => value.Span).Distinct().Order());
         var problems = FindProblems(references, Uncovered, planReference => Resolves(planReference, tests, root));
         Assert.True(problems.Count == 0, $"{problems.Count} PLAN.md reference problems:\n" + string.Join("\n", problems));
+    }
+
+    /// <summary>
+    /// N20: every checked criterion carries a manual marker, is named by a resolving reference of its package, or stands
+    /// here with the reason no test can check it.
+    /// </summary>
+    [Fact]
+    public void Plan_EveryCheckedCriterion_CoveredMarkedOrExempt()
+    {
+        var root = RepoPaths.Root;
+        var plan = File.ReadAllText(Path.Combine(root, "PLAN.md"));
+        var tests = FindTestMethods(typeof(PlanReferenceTests).Assembly);
+        var covered = PlanReference.Parse(plan).References.Where(planReference => Resolves(planReference, tests, root))
+            .SelectMany(planReference => planReference.AcceptanceCriteria.Select(number => $"Package {planReference.Package} AC{number}")).ToHashSet();
+        var criteria = PlanCriterion.Parse(plan);
+        Assert.True(criteria.Count > 700, $"only {criteria.Count} checked criteria: did the package headings or the AC form change?");
+
+        var problems = FindUncovered(criteria, covered, NoTestPossible);
+        Assert.True(problems.Count == 0, $"{problems.Count} criterion problems:\n" + string.Join("\n", problems));
+    }
+
+    [Fact]
+    public void ParseCriteria_CheckedUncheckedAndMarked_OnlyCheckedWithTheirMarker()
+    {
+        var criteria = PlanCriterion.Parse("## Package 7: X\n\n- [x] AC1: a\n- [ ] AC2: b\n- [x] AC3 (manuell): c\n- [x] AC4 (spike): d\n## Other\n- [x] AC9: e");
+        Assert.Equal([(7, 1, 3, false), (7, 3, 5, true), (7, 4, 6, true)],
+            criteria.Select(criterion => (criterion.Package, criterion.Number, criterion.Line, criterion.IsManual)));
+    }
+
+    [Fact]
+    public void FindUncovered_UncoveredStaleAndMarked_ReportsOnlyTheFirstTwo()
+    {
+        PlanCriterion[] criteria = [new(1, 1, 10, false), new(1, 2, 11, false), new(1, 3, 12, true), new(1, 4, 13, false)];
+        var problems = FindUncovered(criteria, new HashSet<string> { "Package 1 AC1" }, new Dictionary<string, string> { ["Package 1 AC4"] = "reason", ["Package 9 AC9"] = "gone" });
+        Assert.Equal(["stale exemption (covered, marked or gone): Package 9 AC9", "not covered: PLAN.md:11 Package 1 AC2"], problems);
     }
 
     [Fact]
@@ -191,6 +256,18 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
         var broken = references.Where(planReference => !resolves(planReference)).ToList();
         var problems = uncovered.Keys.Except(broken.Select(planReference => planReference.Target)).Select(key => $"stale Uncovered entry (resolves or is gone): {key}").ToList();
         problems.AddRange(broken.Where(planReference => !uncovered.ContainsKey(planReference.Target)).Select(planReference => $"does not resolve: {planReference}"));
+        return problems;
+    }
+
+    /// <summary>
+    /// One line per stale entry of <paramref name="exempt"/> (its criterion is covered, marked or gone) and per checked,
+    /// unmarked criterion that neither <paramref name="covered"/> nor <paramref name="exempt"/> holds.
+    /// </summary>
+    static List<string> FindUncovered(IEnumerable<PlanCriterion> criteria, IReadOnlySet<string> covered, IReadOnlyDictionary<string, string> exempt)
+    {
+        var open = criteria.Where(criterion => !criterion.IsManual && !covered.Contains(criterion.Key)).ToList();
+        var problems = exempt.Keys.Except(open.Select(criterion => criterion.Key)).Select(key => $"stale exemption (covered, marked or gone): {key}").ToList();
+        problems.AddRange(open.Where(criterion => !exempt.ContainsKey(criterion.Key)).Select(criterion => $"not covered: PLAN.md:{criterion.Line} {criterion.Key}"));
         return problems;
     }
 

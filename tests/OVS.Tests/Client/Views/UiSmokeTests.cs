@@ -1066,6 +1066,31 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     static readonly string[] SquadChannels =
         ["Infantry Squad 1", "Infantry Squad 2", "Sabotage Squad", "Logistics and Support Squad", "Artillery", "FoB"];
 
+    /// <summary>
+    /// Packages 24 (AC6) and 27 (AC5): every icon button and every title bar button has a tooltip and a screen reader name;
+    /// a disabled icon button is dimmed.
+    /// </summary>
+    [AvaloniaFact]
+    public void IconButtons_Connected_HaveTooltipAndNameAndDimWhenDisabled()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
+        main.Show();
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.WithChannels(SquadChannels));
+        Dispatcher.UIThread.RunJobs();
+
+        var buttons = main.GetVisualDescendants().OfType<Button>()
+            .Where(button => button.IsEffectivelyVisible && (button.Classes.Contains("icon") || button.Classes.Contains("caption"))).ToList();
+        Assert.True(buttons.Count >= 5, $"only {buttons.Count} icon buttons");
+        Assert.All(buttons, button => Assert.False(string.IsNullOrEmpty(AutomationProperties.GetName(button)), $"{button.Name} has no name"));
+        Assert.All(buttons, button => Assert.False(ToolTip.GetTip(button) is null or "", $"{AutomationProperties.GetName(button)} has no tooltip"));
+
+        var icon = buttons.First(button => button.Classes.Contains("icon"));
+        icon.IsEnabled = false;
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(0.4, icon.Opacity);
+    }
+
     /// <summary>Package 67: after connecting, every channel name fits without trimming and the sidebar is not wider than needed.</summary>
     [AvaloniaFact]
     public void Sidebar_Connected_FitsLongestChannel()
