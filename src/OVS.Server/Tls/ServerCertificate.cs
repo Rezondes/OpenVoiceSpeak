@@ -16,7 +16,7 @@ public static class ServerCertificate
         {
             using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
             var request = new CertificateRequest("CN=OpenVoiceSpeak", key, HashAlgorithmName.SHA256);
-            using var cert = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(20));
+            using var cert = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(20)); // clock: real time, clients check the validity against their real clocks
             SafeFile.WriteAtomic(path, cert.Export(X509ContentType.Pfx), flushToDisk: false);
         }
         // Reloading from PFX matters on Windows: SslStream cannot use the ephemeral key of CreateSelfSigned.

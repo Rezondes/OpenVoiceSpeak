@@ -39,7 +39,7 @@ public sealed record BuildInfo(DateTimeOffset BuildTime, string Commit, bool IsC
         var time = metadata.GetValueOrDefault(TimeKey) is { } raw
                    && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed)
             ? parsed
-            : now ?? DateTimeOffset.UtcNow;
+            : now ?? DateTimeOffset.UtcNow; // clock: real time, a local build is stamped with the moment it runs
         return new BuildInfo(time, metadata.GetValueOrDefault(CommitKey) ?? "",
             string.Equals(metadata.GetValueOrDefault(CiKey), "true", StringComparison.OrdinalIgnoreCase));
     }

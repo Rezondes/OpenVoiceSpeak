@@ -47,7 +47,7 @@ public sealed class ControlServer(ServerState state, X509Certificate2 certificat
         if (stopping.IsCancellationRequested) return;
         listener.Stop(); // first, so nobody new connects to a server that is going away
         state.CloseAll(new Disconnected(restart ? ReasonCodes.ServerRestart : ReasonCodes.ServerShutdown));
-        await Task.WhenAny(Task.WhenAll(connections.Keys), Task.Delay(TimeSpan.FromSeconds(2)));
+        await Task.WhenAny(Task.WhenAll(connections.Keys), Task.Delay(TimeSpan.FromSeconds(2))); // clock: real time, the bound of the wait for real sockets to close
         stopping.Cancel();
         if (acceptLoop is not null) await acceptLoop;
     }

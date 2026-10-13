@@ -41,7 +41,7 @@ Numbered by the rule of `CODING-RULES.md` they add to.
 - **Rule 24** (A2, N2, N21, N24, L2, L3): the test class `WebsiteShots` keeps its name for the README filter (L4).
 - **Field naming** (W6): fields are written as today (`readonly TcpListener listener`, no `_camelCase` prefix, no mandatory `private`). Until W6 is decided, composition stays by hand (N14) and logging goes through the existing log writers; a DI container or `ILogger<T>` needs a new decision. Check: the review.
 - **Async rule 5** (W7): legacy synchronous code is no exception: where a sleep is found in `src/`, it is refactored. The `Thread.Sleep(1)` yields in the UI poll loops of tests stay under (a) and N23. Check: `OneClockTests`, which fails on a non-zero `Thread.Sleep` in all of `src/` (Client, Server, Shared), not in the tests (extended by Step 30c); its full clock rule stays client-only, the server's clock sites are decided in Step 30a.
-- **Async rule 6** (N14): the kinds are `// clock: frame timing`, `// clock: real time` and `// clock: debug` (see N14). A `BackgroundService` for scheduled background work needs `Microsoft.Extensions.Hosting`, a new package; decided with W6.
+- **Async rule 6** (N14): the kinds are `// clock: frame timing`, `// clock: real time` and `// clock: debug` (see N14). The server's last direct clock reads are real time (decided in Step 30a): `ControlServer`'s shutdown wait for real sockets, `ServerCertificate`'s validity dates (clients check them against real clocks) and `BuildInfo`'s stamp of a local build. A `BackgroundService` for scheduled background work needs `Microsoft.Extensions.Hosting`, a new package; decided with W6.
 
 ## Exceptions
 
