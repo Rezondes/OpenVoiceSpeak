@@ -109,16 +109,16 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaTheory]
     [InlineData(360)]
     [InlineData(1100)]
-    public void Simplified_SettingsAndAdminFit(double width)
+    public void SettingsAndAdmin_SimplifiedDisplay_Fit(double width)
     {
         display = DisplayMode.Simplified;
         new ClientSettings { Display = display }.Save(dir);
-        Settings_FitAt360_480_600_1100(width, "de-DE");
-        Admin_EveryTabFits(width, "de-DE");
+        Settings_At360To1100_Fit(width, "de-DE");
+        Admin_EveryTab_Fits(width, "de-DE");
     }
 
     [AvaloniaFact]
-    public void SidebarDraggedWide_HeaderButtonsStayVisible()
+    public void Sidebar_DraggedWide_HeaderButtonsStayVisible()
     {
         var main = Open(776, FakeServers.Admin(), out _);
         var splitter = main.GetVisualDescendants().OfType<GridSplitter>().Single();
@@ -138,7 +138,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaTheory]
     [InlineData("de-DE")]
     [InlineData("en-US")]
-    public void Reconnecting_StatusAndCancelFit360(string culture) => TestCulture.With(culture, () =>
+    public void Reconnecting_At360_StatusAndCancelFit(string culture) => TestCulture.With(culture, () =>
     {
         var main = Open(360, null, out var viewModel);
         viewModel.Status = string.Format(Strings.Status_Reconnecting, 16);
@@ -155,7 +155,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     });
 
     [AvaloniaFact]
-    public void Classes_FollowWidth()
+    public void WidthClasses_WindowResized_Follow()
     {
         var main = Open(1100, FakeServers.Admin(), out _);
         Assert.DoesNotContain("compact", main.Classes);
@@ -272,7 +272,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void WindowShrinks_SidebarGivesWay()
+    public void Sidebar_WindowShrinks_GivesWay()
     {
         var main = Open(1100, FakeServers.Admin(), out _);
         var splitter = main.GetVisualDescendants().OfType<GridSplitter>().Single();
@@ -292,7 +292,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void StartScreen_SameRules()
+    public void StartScreen_Widths_SameRules()
     {
         var settings = new ClientSettings();
         settings.Bookmarks.Add(new Bookmark("Gilde", "gilde.example.org", 7000, "ich"));
@@ -342,7 +342,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData(480, "en-US")]
     [InlineData(600, "en-US")]
     [InlineData(1100, "en-US")]
-    public void Settings_FitAt360_480_600_1100(double width, string culture) => TestCulture.With(culture, () =>
+    public void Settings_At360To1100_Fit(double width, string culture) => TestCulture.With(culture, () =>
     {
         var main = OpenSettings(width);
         var page = main.GetVisualDescendants().OfType<SettingsView>().Single();
@@ -400,7 +400,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaTheory]
     [InlineData(360)]
     [InlineData(600)] // not narrow yet, but too tight for name and controls side by side
-    public void Settings_SoundRow_TwoLinesWhenNarrow_NameVisible(double width)
+    public void SoundRow_Narrow_TwoLinesWithNameVisible(double width)
     {
         var main = OpenSettings(width);
         var (name, slider) = FirstSoundRow(main);
@@ -497,7 +497,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData(480, "en-US")]
     [InlineData(600, "en-US")]
     [InlineData(1100, "en-US")]
-    public void Admin_EveryTabFits(double width, string culture) => TestCulture.With(culture, () =>
+    public void Admin_EveryTab_Fits(double width, string culture) => TestCulture.With(culture, () =>
     {
         var main = OpenAdmin(width, out var page);
         var admin = (AdminViewModel)page.DataContext!;
@@ -779,7 +779,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
 
     [AvaloniaTheory]
     [MemberData(nameof(Dialogs))]
-    public void Dialogs_FitAt360(string dialog, string culture) => TestCulture.With(culture, () =>
+    public void Dialogs_At360_Fit(string dialog, string culture) => TestCulture.With(culture, () =>
     {
         SaveThreeBookmarks();
         var main = Open(1100, FakeServers.Crowded(), out var viewModel);
@@ -805,7 +805,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData(360, "en-US")]
     [InlineData(1100, "de-DE")]
     [InlineData(1100, "en-US")]
-    public void UserContextMenu_Fits360(double width, string culture) => TestCulture.With(culture, () =>
+    public void UserContextMenu_At360_Fits(double width, string culture) => TestCulture.With(culture, () =>
     {
         var main = Open(width, FakeServers.Admin(), out _);
         if (width < 700)
@@ -877,7 +877,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData(360, "en-US")]
     [InlineData(480, "en-US")]
     [InlineData(1100, "en-US")]
-    public void UpdateCard_Fits(double width, string culture) => TestCulture.With(culture, () =>
+    public void UpdateCard_Shown_Fits(double width, string culture) => TestCulture.With(culture, () =>
     {
         var main = Open(width, FakeServers.Admin(), out var viewModel);
         viewModel.Update.Progress = new OVS.Client.Net.Updates.UpdateProgress("290926.0lh6", OVS.Client.Net.Updates.UpdatePhase.Downloading, 20 * 1024 * 1024, 50 * 1024 * 1024);
@@ -896,7 +896,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData(360, "en-US")]
     [InlineData(480, "en-US")]
     [InlineData(1100, "en-US")]
-    public void Chat_Narrow_TabsScroll_SendVisible(double width, string culture) => TestCulture.With(culture, () =>
+    public void Chat_Narrow_TabsScrollAndSendVisible(double width, string culture) => TestCulture.With(culture, () =>
     {
         var server = FakeServers.Crowded();
         var main = Open(width, server, out var viewModel);
@@ -949,7 +949,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData(1100, "de-DE")]
     [InlineData(360, "en-US")]
     [InlineData(1100, "en-US")]
-    public void WaitingStates_Fit(double width, string culture) => TestCulture.With(culture, () =>
+    public void WaitingStates_Busy_Fit(double width, string culture) => TestCulture.With(culture, () =>
     {
         var time = new ManualTimeProvider();
         var viewModel = MainViewModelSetup.Create(dir, action => action());
@@ -1032,7 +1032,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [InlineData(360, "en-US")]
     [InlineData(480, "en-US")]
     [InlineData(1100, "en-US")]
-    public void StartScreen_FitsAt360(double width, string culture) => TestCulture.With(culture, () =>
+    public void StartScreen_At360_Fits(double width, string culture) => TestCulture.With(culture, () =>
     {
         SaveThreeBookmarks();
         var main = Open(width, null, out var viewModel);
@@ -1086,7 +1086,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void Sending_WidthStays()
+    public void SendButton_Sending_WidthStays()
     {
         var main = Open(1100, FakeServers.WithChannels("A", "B"), out var viewModel);
         MotionWait.WaitFor(() => false, 200);
@@ -1102,7 +1102,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     /// "Sprachaktivierung" was cut. Every transmit mode refits, so each hint shows whole.
     /// </summary>
     [AvaloniaFact]
-    public void ModeChange_Refits()
+    public void Settings_TransmitModeChanged_Refits()
     {
         var main = Open(1100, FakeServers.WithChannels("A", "B"), out var viewModel);
         viewModel.ApplySettings(new ClientSettings { Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation });
@@ -1126,7 +1126,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void NarrowWindow_MaxStillWins()
+    public void SidebarMax_NarrowWindow_StillWins()
     {
         var main = Open(760, ShortChannelsLongNick(), out _);
         MotionWait.WaitFor(() => false, 200);
@@ -1138,7 +1138,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void Drag_NotBelowFooter()
+    public void SidebarDrag_TowardsFooter_StopsAbove()
     {
         var main = Open(1100, ShortChannelsLongNick(), out _);
         MotionWait.WaitFor(() => false, 200);

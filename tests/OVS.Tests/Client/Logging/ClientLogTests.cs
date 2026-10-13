@@ -95,7 +95,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
     }
 
     [Fact]
-    public async Task OwnActions_Logged()
+    public async Task OwnActions_Taken_Logged()
     {
         var (server, ui, viewModel) = await StartAsync();
         try
@@ -120,7 +120,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
     }
 
     [Fact]
-    public async Task PasswordAndToken_NeverLogged()
+    public async Task PasswordAndToken_Sent_NeverLogged()
     {
         var (server, ui, viewModel) = await StartAsync(password: "Serverpasswort-4711");
         try
@@ -177,7 +177,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
     }
 
     [Fact]
-    public void WriteFailure_DoesNotThrow()
+    public void Write_FileFails_DoesNotThrow()
     {
         File.WriteAllText(Path.Combine(dir, "logs"), "blockiert den Ordner");
         var log = new ClientLog(dir, TimeProvider.System);
@@ -186,7 +186,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
     }
 
     [Fact]
-    public async Task AudioDebug_WritesToClientLog()
+    public async Task AudioDebug_On_WritesToClientLog()
     {
         using var keys = new KeyPoller(TimeProvider.System); // no bindings: only simulated keys count
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, Send = (_, _) => { } };

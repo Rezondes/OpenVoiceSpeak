@@ -38,7 +38,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     }
 
     [AvaloniaFact]
-    public void Preview_Scale103_Tilt3_ShadowPlus8()
+    public void Preview_Dragging_Scale103Tilt3ShadowPlus8()
     {
         var tree = Open(reduced: false);
         Assert.Null(tree.Preview);
@@ -104,7 +104,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
     }
 
     [AvaloniaFact]
-    public void DragToEnd_GapAndFrameBelowLastItem()
+    public void Drag_ToTheEnd_GapAndFrameBelowLastItem()
     {
         var tree = Open(reduced: true);
         var overlay = OverlayLayer.GetOverlayLayer(tree.List)!;
@@ -208,7 +208,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
 
     /// <summary>Package 102: a channel folding away is no place to drop at (before, this could crash or send a wrong order).</summary>
     [AvaloniaFact]
-    public void DropBesideFoldingChannel_IsIgnored()
+    public void Drop_BesideFoldingChannel_Ignored()
     {
         var tree = Open(reduced: true);
         var server = tree.Vm.Server!;
@@ -233,7 +233,7 @@ public sealed class ReorderDragTests() : TempDirectoryTest("ovs-drag-", quiet: t
 
     /// <summary>Package 103: after a drop the new order does not move the rows a second time.</summary>
     [AvaloniaFact]
-    public void DropThenServerOrder_NoSecondMove()
+    public void Drop_ThenServerOrder_NoSecondMove()
     {
         var tree = Open(reduced: false);
         var end = tree.DragAbove("Raid", "Lobby");

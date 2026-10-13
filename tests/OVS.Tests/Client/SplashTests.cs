@@ -9,7 +9,7 @@ public sealed class SplashTests
     static readonly string Exe = Path.Combine(AppContext.BaseDirectory, "OVS.Client.exe"); // the test host has no icon
 
     [Fact]
-    public async Task Shows_ThenCloseEndsIt()
+    public async Task Splash_ShownThenClosed_Ends()
     {
         var shown = Splash.Show(Exe);
         // generous caps that end as soon as it happened: its thread and window take their time on a busy runner

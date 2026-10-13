@@ -25,7 +25,7 @@ namespace OVS.Tests.Client.Settings;
 public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: false)
 {
     [Fact]
-    public void Missing_GivesDefaults()
+    public void Load_Missing_Defaults()
     {
         var clientSettings = ClientSettings.Load(dir, out var warning);
         Assert.Null(warning);
@@ -36,7 +36,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 39: the password is stored DPAPI-protected, never as plain text.</summary>
     [Fact]
-    public void Password_Protected_RoundTrip_NoPlainTextInFile()
+    public void Password_Saved_ProtectedWithoutPlainText()
     {
         var clientSettings = new ClientSettings();
         clientSettings.Bookmarks.Add(new Bookmark("Gilde", "voice.example.org", 7000, "ich", PasswordProtector.Protect("streng-geheim")));
@@ -75,7 +75,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 48: per sound volume, mute and own file survive a restart; "Zurücksetzen" lets the copy go.</summary>
     [Fact]
-    public void Sounds_PerEvent_RoundTrip_ResetDeletesCopy()
+    public void Sounds_PerEventSettings_RoundTripAndResetDeletesCopy()
     {
         var wav = Path.Combine(dir, "eigener.wav");
         using (var writer = new NAudio.Wave.WaveFileWriter(wav, NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(48000, 1)))
@@ -109,7 +109,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 51: per person by fingerprint, only what differs from 100 %, bounded to 0 to 200 %.</summary>
     [Fact]
-    public void UserVolumes_RoundTrip_OnlyNonDefault_Clamped()
+    public void UserVolumes_Saved_OnlyNonDefaultAndClamped()
     {
         var clientSettings = new ClientSettings();
         clientSettings.SetVolume("fpA", 1.5f);
@@ -212,7 +212,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     }
 
     [Fact]
-    public void Corrupt_DefaultsAndBackup()
+    public void Load_Corrupt_DefaultsAndBackup()
     {
         var path = Path.Combine(dir, ClientSettings.FileName);
         File.WriteAllText(path, "{ kaputt");
@@ -223,7 +223,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     }
 
     [Fact]
-    public void Clamp_OutOfRange()
+    public void Load_OutOfRange_Clamped()
     {
         var clientSettings = new ClientSettings { InputGain = 5, OutputVolume = -1, VadThresholdDb = 0 }.Clamp();
         Assert.Equal((2f, 0f, -10f), (clientSettings.InputGain, clientSettings.OutputVolume, clientSettings.VadThresholdDb));
@@ -232,7 +232,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 55: the volume goes up to 200 %, 100 % by default.</summary>
     [Fact]
-    public void OutputVolume_UpTo200_RoundTrip_Clamped()
+    public void OutputVolume_UpTo200_RoundTripsClamped()
     {
         Assert.Equal(1f, ClientSettings.Load(dir, out _).OutputVolume);
         var settings = Vm(new ClientSettings());
@@ -348,7 +348,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     }
 
     [Fact]
-    public void MissingDevice_FallbackWithHint()
+    public void Device_Missing_FallbackWithHint()
     {
         var settings = Vm(new ClientSettings { InputDeviceId = "weg" }, new AudioDevice("da", "Headset"));
         Assert.NotNull(settings.DeviceHint);
@@ -362,7 +362,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 52: the page opens before the device list is there; the hint only comes once it really is missing.</summary>
     [Fact]
-    public void Devices_LoadedLater_HintOnlyIfReallyMissing_KeepsUserChoice()
+    public void Devices_LoadedLater_HintOnlyIfMissingAndChoiceKept()
     {
         var settings = new SettingsViewModel(new ClientSettings { InputDeviceId = "weg", OutputDeviceId = "box" }, null, null, TimeProvider.System);
         Assert.Equal(["Standardgerät", "Geräte werden geladen ..."], settings.Inputs.Select(audioDeviceOption => audioDeviceOption.Name));
@@ -409,7 +409,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 99 (A114): animated by default, also for a settings file from before; "Vereinfacht" survives a restart.</summary>
     [Fact]
-    public void Display_DefaultsToAnimated_MissingKeyIsAnimated_SimplifiedRoundTrips()
+    public void Display_NewOrOldFileOrSimplified_AnimatedByDefaultAndRoundTrips()
     {
         Assert.Equal(DisplayMode.Animated, new ClientSettings().Display);
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
@@ -424,7 +424,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 123 (A131): noise suppression on, also for a file from before; Package 127 (A136): automatic gain on too. Both survive a restart.</summary>
     [Fact]
-    public void VoiceFilters_DefaultsAndRoundTrip()
+    public void VoiceFilters_NewOrOldFile_OnByDefaultAndRoundTrip()
     {
         Assert.Equal((true, true), (new ClientSettings().NoiseSuppression, new ClientSettings().AutoGain));
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
@@ -445,7 +445,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     /// new version; a new file starts at the newest version; a migrated file keeps the user's choice.
     /// </summary>
     [Fact]
-    public void Migration_TurnsAutoGainOnOnce()
+    public void Migration_OldFile_AutoGainTurnedOnOnce()
     {
         var path = Path.Combine(dir, ClientSettings.FileName);
         var fresh = ClientSettings.Load(dir, out _);
@@ -468,7 +468,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 127 (A135): saving the settings page keeps the loaded version, so a newer client's file is not set back.</summary>
     [Fact]
-    public void ToSettings_KeepsSettingsVersion()
+    public void ToSettings_LoadedVersion_Kept()
     {
         var newer = new ClientSettings { SettingsVersion = ClientSettings.CurrentVersion + 5 };
         Assert.Equal(ClientSettings.CurrentVersion + 5, Vm(newer).ToSettings(newer).SettingsVersion);
@@ -476,7 +476,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 128 (A135 step 2): volumes above 100 % go back to 100 % once, since 200 % now means four times.</summary>
     [Fact]
-    public void Migration_ResetsVolumesAbove100Once()
+    public void Migration_VolumesAbove100_ResetOnce()
     {
         var path = Path.Combine(dir, ClientSettings.FileName);
         File.WriteAllText(path, """{ "settingsVersion": 1, "outputVolume": 1.8, "userVolumes": { "fpA": 2, "fpB": 0.5, "fpC": 1.2 } }""");
@@ -497,7 +497,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 129 (A135 step 3): only a threshold still at the old default -40 becomes automatic; new files are automatic.</summary>
     [Fact]
-    public void Migration_VadAutoOnlyForDefault()
+    public void Migration_ThresholdAtOldDefault_OnlyThenAutomatic()
     {
         var path = Path.Combine(dir, ClientSettings.FileName);
         Assert.True(ClientSettings.Load(dir, out _).VadAutomatic);
@@ -525,7 +525,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     /// meter marks the threshold the gate uses (reported by the engine) instead of the slider's value.
     /// </summary>
     [AvaloniaFact]
-    public void VadAuto_LiveAndSliderDisabled()
+    public void VadAuto_On_LiveAndSliderDisabled()
     {
         var settings = Vm(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40 });
         var live = new List<ClientSettings>();
@@ -571,7 +571,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     /// push-to-talk mode or with a link push-to-talk key and acts at once, on the key poller the engine, the self test and the "Sendet" text read.
     /// </summary>
     [AvaloniaFact]
-    public void PttReleaseDelay_DefaultClampLive()
+    public void PttReleaseDelay_DefaultOrOutOfRange_ClampedAndLive()
     {
         Assert.Equal(20, new ClientSettings().PttReleaseDelayMs);
         Assert.Equal(20, ClientSettings.Load(dir, out _).PttReleaseDelayMs);
@@ -616,7 +616,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 128 (A137): the sliders keep 0 to 200 % and the file stores the slider value, not the gain.</summary>
     [Fact]
-    public void Volume_SliderValueStored()
+    public void Volume_Saved_SliderValueStored()
     {
         var settings = Vm(new ClientSettings());
         settings.OutputVolumePercent = 150;
@@ -636,7 +636,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     /// <c>NativeCaptureFiltersTests.AttachTo_LibrariesMissing_NoFiltersAndOneLogLineEach</c>).
     /// </summary>
     [Fact]
-    public async Task EchoCancellation_DefaultLiveMissingLib()
+    public async Task EchoCancellation_DefaultLiveOrLibMissing_Followed()
     {
         Assert.True(new ClientSettings().EchoCancellation);
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
@@ -681,7 +681,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     /// disabled (they keep their values for speech).
     /// </summary>
     [AvaloniaFact]
-    public void TransmissionMode_DefaultLive()
+    public void TransmissionMode_DefaultOrChanged_AppliedLive()
     {
         Assert.Equal(AudioContent.Voice, new ClientSettings().AudioContent);
         File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), """{ "theme": "dark" }""");
@@ -729,7 +729,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 123: the switches are heard at once and count as a change; switched back, nothing is left to save.</summary>
     [Fact]
-    public void VoiceFilters_LivePreviewAndCancel()
+    public void VoiceFilters_ToggledAndBack_LiveAndNoChangeLeft()
     {
         var settings = Vm(new ClientSettings());
         var live = new List<ClientSettings>();
@@ -749,7 +749,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 99: both choices have a name and a hint.</summary>
     [Fact]
-    public void Display_ChoicesHaveNamesAndHints()
+    public void Display_Choices_HaveNamesAndHints()
     {
         Assert.Equal([DisplayMode.Animated, DisplayMode.Simplified], SettingsViewModel.Displays.Select(displayOption => displayOption.Value));
         Assert.All(SettingsViewModel.Displays, displayOption => Assert.False(string.IsNullOrWhiteSpace(displayOption.Name) || string.IsNullOrWhiteSpace(displayOption.Hint)));
@@ -757,7 +757,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 53: the sliders are heard at once, not only after "Speichern".</summary>
     [Fact]
-    public void Sliders_ApplyLive()
+    public void Sliders_Moved_AppliedLive()
     {
         var settings = Vm(new ClientSettings());
         var live = new List<ClientSettings>();
@@ -781,7 +781,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 59: push-to-talk without a key cannot work; the settings say so and offer to set one.</summary>
     [Fact]
-    public void PttHint_OnlyForPushToTalkWithoutKey()
+    public void PttHint_PushToTalkWithoutKey_OnlyThenShown()
     {
         var settings = Vm(new ClientSettings());
         var changes = new List<string?>();
@@ -825,7 +825,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     }
 
     [Fact]
-    public async Task SetPttKey_OpensDialogWithPushToTalk()
+    public async Task SetPttKey_Clicked_OpensDialogWithPushToTalk()
     {
         var settings = Vm(new ClientSettings());
         KeyBinding? shown = null;
@@ -883,7 +883,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     }
 
     [Fact]
-    public void LevelMeter_MarksThreshold()
+    public void LevelMeter_Threshold_Marked()
     {
         var settings = Vm(new ClientSettings { VadThresholdDb = -40, VadAutomatic = false }); // Package 129: the manual threshold
         settings.InputLevelDb = -30;
@@ -918,7 +918,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     }
 
     [Fact]
-    public void PushToTalkRadio_IsTheOppositeOfVoiceActivation()
+    public void PushToTalkRadio_Toggled_OppositeOfVoiceActivation()
     {
         var settings = Vm(new ClientSettings());
         Assert.True(settings.IsPushToTalk);
@@ -929,7 +929,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     }
 
     [Fact]
-    public void ErrorTexts_EveryCodeHasText()
+    public void ErrorTexts_EveryCode_HasText()
     {
         foreach (var code in ReasonCodes.All()) Assert.True(ErrorTexts.Has(code), code);
         Assert.Equal("Dafür fehlt dir das Recht.", ErrorTexts.For(ReasonCodes.PermissionDenied, "x")); // server details stay out of the UI (A45)
@@ -937,7 +937,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     /// <summary>Package 98 (AC5): "Speichern" is busy while the audio devices restart and closes afterwards; the update check spins.</summary>
     [Fact]
-    public async Task Save_BusyWhileDevicesRestart()
+    public async Task Save_DevicesRestart_BusyUntilDone()
     {
         var time = new OVS.Tests.TestSupport.ManualTimeProvider();
         var settings = new SettingsViewModel(new ClientSettings(), [], [], time: time);

@@ -19,7 +19,7 @@ public class LogoTests
     }
 
     [Fact]
-    public void Ico_ContainsAllSizes()
+    public void Ico_CheckedIn_ContainsAllSizes()
     {
         // ICONDIR: reserved, type 1, count; then 16-byte entries whose first byte is the width (0 means 256).
         var bytes = File.ReadAllBytes(Path.Combine(RepoPaths.ClientSource, "Assets", "ovs.ico"));
@@ -30,7 +30,7 @@ public class LogoTests
     }
 
     [Fact]
-    public void Csproj_UsesTheIcon()
+    public void ClientProject_Built_UsesTheIcon()
     {
         var project = XDocument.Load(Path.Combine(RepoPaths.ClientSource, "OVS.Client.csproj"));
         var icon = project.Descendants("ApplicationIcon").Single().Value;
@@ -39,7 +39,7 @@ public class LogoTests
 
     /// <summary>Package 95: the middle wave bar (x 128, y 146 to 190 in the 256 grid) is white in the frames rendered from the SVG.</summary>
     [Fact]
-    public void IcoFrames_ShowWave()
+    public void IcoFrames_Rendered_ShowWave()
     {
         foreach (var (size, png) in IcoFrames().Where(pair => pair.Key >= 48))
         {
@@ -59,7 +59,7 @@ public class LogoTests
     [InlineData(20, 1)]
     [InlineData(24, 2)]
     [InlineData(32, 2)]
-    public void SmallFrames_ShowSeparateCrispBars(int size, int barWidth)
+    public void SmallFrames_Rendered_ShowSeparateCrispBars(int size, int barWidth)
     {
         using var bitmap = SKBitmap.Decode(IcoFrames()[size]);
         int barRow = (int)(168f * size / 256);
@@ -79,7 +79,7 @@ public class LogoTests
 
     /// <summary>The checked-in small frames are exactly what the tool draws from its small artwork.</summary>
     [Fact]
-    public void SmallFrames_MatchTool()
+    public void SmallFrames_CheckedIn_MatchTool()
     {
         var svg = File.ReadAllText(Path.Combine(RepoPaths.ClientSource, "Assets", "logo.svg"));
         Assert.Equal([16, 20, 24, 32], LogoRenderer.Small.Keys.Order());
@@ -88,7 +88,7 @@ public class LogoTests
 
     /// <summary>Package 95: the checked-in icon is what the tool renders from logo.svg, and the tool is deterministic.</summary>
     [Fact]
-    public void IcoMatchesSvgRender()
+    public void Ico_CheckedIn_MatchesSvgRender()
     {
         var svg = File.ReadAllText(Path.Combine(RepoPaths.ClientSource, "Assets", "logo.svg"));
         var rendered = LogoRenderer.RenderPng(svg, 64);
@@ -107,6 +107,6 @@ public class LogoTests
     }
 
     [Fact]
-    public void DocsLogo_Equals256Frame() =>
+    public void DocsLogo_Rendered_Equals256Frame() =>
         Assert.Equal(IcoFrames()[256], File.ReadAllBytes(Path.Combine(RepoPaths.Root, "docs", "logo.png")));
 }

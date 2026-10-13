@@ -36,7 +36,7 @@ public class CollectionSyncTests
     }
 
     [Fact]
-    public async Task ReturnsWhileLeaving_SameInstanceRevived()
+    public async Task Sync_ReturnsWhileLeaving_SameInstanceRevived()
     {
         var clock = new ManualTimeProvider();
         var leave = new LeaveTimer(clock, () => posts.Post) { Delay = TimeSpan.FromMilliseconds(220) };
@@ -66,7 +66,7 @@ public class CollectionSyncTests
     }
 
     [Fact]
-    public void NoDelay_RemovedAtOnce()
+    public void Remove_NoDelay_GoneAtOnce()
     {
         var list = new ObservableCollection<string> { "a", "b" };
         CollectionSync.Sync(list, ["a"], new LeaveTimer(TimeProvider.System));
@@ -76,7 +76,7 @@ public class CollectionSyncTests
     }
 
     [Fact]
-    public void Moves_IgnoreLeavingItems()
+    public void Moves_LeavingItemsPresent_Ignored()
     {
         var (list, leave, _) = Setup("a", "b", "c", "d");
         CollectionSync.Sync(list, ["d", "a", "c"], leave);
@@ -88,7 +88,7 @@ public class CollectionSyncTests
     }
 
     [Fact]
-    public void RebuiltRow_TakesTheOldOnesPlace()
+    public void Sync_RebuiltRow_TakesTheOldOnesPlace()
     {
         var clock = new ManualTimeProvider();
         var leave = new LeaveTimer(clock) { Delay = TimeSpan.FromMilliseconds(220) };
@@ -108,7 +108,7 @@ public class CollectionSyncTests
 
     /// <summary>A user who switches channels leaves the old channel's list while entering the new one.</summary>
     [Fact]
-    public void LeavingBelongsToTheList()
+    public void Leaving_UserSwitchesChannel_BelongsToTheOldList()
     {
         var (from, leave, _) = Setup("anna");
         var to = new ObservableCollection<string>();
@@ -120,7 +120,7 @@ public class CollectionSyncTests
 
     /// <summary>Package 122: a new order alone only moves entries, whatever the order (fixed seed).</summary>
     [Fact]
-    public void PureReorders_OnlyMove()
+    public void Sync_PureReorder_OnlyMoves()
     {
         var random = new Random(122);
         var list = new ObservableCollection<string>(Enumerable.Range(0, 30).Select(index => $"e{index}"));
@@ -137,7 +137,7 @@ public class CollectionSyncTests
 
     /// <summary>Package 122: leaving entries stay behind the entry they followed while the others move around them.</summary>
     [Fact]
-    public async Task LeavingWithMoves_StayBehindTheirEntry()
+    public async Task Leaving_OthersMove_StayBehindTheirEntry()
     {
         var (list, leave, clock) = Setup("a", "b", "c", "d", "e");
         CollectionSync.Sync(list, ["e", "c", "a"], leave);
@@ -152,7 +152,7 @@ public class CollectionSyncTests
 
     /// <summary>Package 122: an entry that comes back while leaving takes its new place and stays, also when the order changed.</summary>
     [Fact]
-    public async Task Revived_TakesItsNewPlace()
+    public async Task Revived_OrderChanged_TakesItsNewPlace()
     {
         var (list, leave, clock) = Setup("a", "b", "c");
         CollectionSync.Sync(list, ["a", "c"], leave);

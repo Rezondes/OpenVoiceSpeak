@@ -28,7 +28,7 @@ public class KeyBindingTests
     }
 
     [Fact]
-    public void RightCtrl_NameAndResolves()
+    public void RightCtrl_Bound_NamedAndResolved()
     {
         Assert.Equal("Strg rechts", new KeyChord(VirtualKeys.RControl).Name);
         KeyBinding[] bindings = [Bind(KeyAction.PushToTalk, VirtualKeys.RControl)];
@@ -44,7 +44,7 @@ public class KeyBindingTests
     }
 
     [Fact]
-    public void Resolve_ChordWithMoreModifiersWins()
+    public void Resolve_TwoChordsMatch_MoreModifiersWin()
     {
         KeyBinding[] bindings = [Bind(KeyAction.ToggleMute, F1, Ctrl), Bind(KeyAction.PushToTalk, F1)];
         Assert.Equal([KeyAction.ToggleMute], Resolve(bindings, [F1], Ctrl));
@@ -126,7 +126,7 @@ public class KeyBindingTests
 
     /// <summary>Package 125: a chord of a modifier alone resolves like any key, also with the plain modifier reported held.</summary>
     [Fact]
-    public void Resolve_SingleModifierChord()
+    public void Resolve_SingleModifierChord_ResolvesLikeAnyKey()
     {
         const int LShift = 0xA0, LAlt = 0xA4;
         KeyBinding[] bindings = [Bind(KeyAction.PushToMute, LShift), Bind(KeyAction.ToggleMute, LAlt)];
@@ -137,7 +137,7 @@ public class KeyBindingTests
     }
 
     [Fact]
-    public void ChordName_IsReadable()
+    public void ChordName_Chord_Readable()
     {
         Assert.Equal("Strg+Umschalt+M", new KeyChord(KeyM, Ctrl | Shift).Name);
         Assert.Equal("Maustaste 4", new KeyChord(VirtualKeys.XButton1).Name);

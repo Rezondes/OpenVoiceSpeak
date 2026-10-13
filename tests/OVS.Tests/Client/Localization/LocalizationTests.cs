@@ -17,7 +17,7 @@ public class LocalizationTests
     static string Placeholders(string text) => string.Join(",", Regex.Matches(text, @"\{\d+(:[^}]*)?\}").Select(match => match.Value.Split(':')[0]).Order());
 
     [Fact]
-    public void Resources_SameKeys_NoneEmpty_SamePlaceholders()
+    public void Resources_BothLanguages_SameKeysNoneEmptySamePlaceholders()
     {
         var german = Read("Strings.resx");
         var english = Read("Strings.en.resx");
@@ -38,7 +38,7 @@ public class LocalizationTests
         Assert.Equal(expected, UiCulture.Resolve(choice, CultureInfo.GetCultureInfo(windows)).Name);
 
     [Fact]
-    public void ErrorTexts_English()
+    public void ErrorTexts_English_Translated()
     {
         Assert.Equal("Dafür fehlt dir das Recht.", ErrorTexts.For(ReasonCodes.PermissionDenied));
         Assert.Equal("You don't have the right to do that.", TestCulture.With("en-US", () => ErrorTexts.For(ReasonCodes.PermissionDenied)));
@@ -79,7 +79,7 @@ public class LocalizationTests
 
     /// <summary>Package 46: every user text in the views comes from Strings; only the product name and pure number formats stay.</summary>
     [Fact]
-    public void Xaml_NoHardcodedText()
+    public void Xaml_UserTexts_NoneHardcoded()
     {
         string[] allowed = ["OpenVoiceSpeak", "O", "{}{0:0} %", "{}{0:0} dBFS", "{}{0:0} ms", "· {0}"];
         var attribute = new Regex(@"\b(Text|Header|Content|ToolTip\.Tip|Watermark|AutomationProperties\.Name|PlaceholderText)=""([^""{][^""]*)""");
@@ -95,7 +95,7 @@ public class LocalizationTests
 
     /// <summary>A moved .axaml must not drop out of the text check: it reads every one, App.axaml and Styles/ too.</summary>
     [Fact]
-    public void Xaml_ScanCoversEveryAxaml()
+    public void XamlScan_AllFolders_CoversEveryAxaml()
     {
         var expected = new List<string>();
         void Walk(string dir)
@@ -122,7 +122,7 @@ public class LocalizationTests
 
     /// <summary>A45: German server details stay out of the UI, except the reason a person typed for kick and ban.</summary>
     [Fact]
-    public void ServerDetail_HiddenExceptKickAndBan()
+    public void ServerDetail_OtherThanKickOrBan_Hidden()
     {
         Assert.Equal("Ungültiger Wert.", ErrorTexts.For(ReasonCodes.InvalidValue, "Beschreibung zu lang"));
         Assert.Equal("Du wurdest vom Server gekickt. (Spam)", ErrorTexts.For(ReasonCodes.Kicked, "Spam"));

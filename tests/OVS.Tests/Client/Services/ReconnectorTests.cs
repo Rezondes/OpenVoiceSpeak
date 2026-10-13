@@ -19,7 +19,7 @@ public sealed class ReconnectorTests
     }
 
     [Fact]
-    public void Schedule_1_2_4_8_16_ThenGivesUp()
+    public void Schedule_FailedAttempts_Waits1To16ThenGivesUp()
     {
         var start = time.GetUtcNow();
         var at = new List<double>();
@@ -58,7 +58,7 @@ public sealed class ReconnectorTests
     }
 
     [Fact]
-    public void OutdatedAttempt_Ignored()
+    public void Attempt_Outdated_Ignored()
     {
         var attempts = new List<(int Generation, TaskCompletionSource<bool> Result)>();
         int gaveUp = 0;

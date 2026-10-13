@@ -51,7 +51,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
     }
 
     [AvaloniaFact]
-    public void DragUserOntoChannel_HighlightsAndMoves()
+    public void DragUser_OntoChannel_HighlightsAndMoves()
     {
         var tree = Open();
         var anna = tree.UserRow("anna"); // in Raid, weaker than me
@@ -104,7 +104,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
     }
 
     [AvaloniaFact]
-    public void DropOutsideOrEsc_SendsNothing()
+    public void DragUser_DropOutsideOrEsc_SendsNothing()
     {
         var tree = Open();
         var anna = tree.UserRow("anna");
@@ -140,7 +140,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
 
     /// <summary>Review: the dragged user leaves the server mid-drag; once the row is gone the drag ends and a drop sends nothing.</summary>
     [AvaloniaFact]
-    public void UserLeavesMidDrag_DropSendsNothing()
+    public void DragUser_UserLeavesMidDrag_DropSendsNothing()
     {
         var tree = Open();
         var end = tree.Drag("anna", "Lobby");
@@ -158,7 +158,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
 
     /// <summary>Review: the button let go outside the window before the threshold; hovering later does not start a drag.</summary>
     [AvaloniaFact]
-    public void MoveWithoutButton_StartsNoDrag()
+    public void DragUser_MoveWithoutButton_NoDrag()
     {
         var tree = Open();
         var start = tree.Center(tree.UserRow("anna"));
@@ -174,7 +174,7 @@ public sealed class UserDragTests() : TempDirectoryTest("ovs-userdrag-", quiet: 
     }
 
     [AvaloniaFact]
-    public void OwnRow_DropJoinsChannel()
+    public void DragUser_OwnRowDropped_JoinsChannel()
     {
         var tree = Open();
         Assert.Equal(FakeServers.Lobby, tree.Server.CurrentChannel!.Id);

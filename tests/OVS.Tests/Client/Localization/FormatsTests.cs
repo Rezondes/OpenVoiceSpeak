@@ -22,7 +22,7 @@ public class FormatsTests
     }
 
     [Fact]
-    public void Duration_SameAsBefore()
+    public void Duration_German_SameAsBefore()
     {
         (TimeSpan Time, string German, string English)[] table =
         [
@@ -48,7 +48,7 @@ public class FormatsTests
     }
 
     [Fact]
-    public void Size_SameAsBefore()
+    public void Size_German_SameAsBefore()
     {
         (long Bytes, string German, string English)[] table =
         [
@@ -70,7 +70,7 @@ public class FormatsTests
     }
 
     [Fact]
-    public void ClockTime_SameAsBefore()
+    public void ClockTime_German_SameAsBefore()
     {
         (DateTime Time, string Text)[] table =
         [

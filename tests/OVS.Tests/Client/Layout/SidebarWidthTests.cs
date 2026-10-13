@@ -18,7 +18,7 @@ public class SidebarWidthTests
     }
 
     [Fact]
-    public void RoundsUp_ToWholePixels()
+    public void Width_Fractional_RoundedUpToWholePixels()
     {
         var width = SidebarWidth.For([new SidebarRow(250.3, 0, 7.2)]);
         Assert.Equal(Math.Ceiling(250.3 + SidebarWidth.Fixed + 7.2), width);

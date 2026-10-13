@@ -7,7 +7,7 @@ public class PagedListCollectorTests
     static IReadOnlyList<int> Page(int from, int count) => Enumerable.Range(from, count).ToList();
 
     [Fact]
-    public void OverlappingRounds_OnlyTheNewestRoundIsShown()
+    public void Collect_OverlappingRounds_OnlyTheNewestShown()
     {
         var pages = new PagedListCollector<int>();
         var asked = new List<(string? Id, int Offset)>();
@@ -23,7 +23,7 @@ public class PagedListCollectorTests
     }
 
     [Fact]
-    public void UnrequestedFirstPage_StartsACleanRound()
+    public void Collect_UnrequestedFirstPage_StartsACleanRound()
     {
         var pages = new PagedListCollector<int>();
         var asked = new List<(string? Id, int Offset)>();

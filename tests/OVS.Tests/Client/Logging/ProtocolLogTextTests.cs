@@ -81,7 +81,7 @@ public sealed class ProtocolLogTextTests
     }
 
     [Fact]
-    public void Describe_Request_UsesNames_NeverSecrets()
+    public void Describe_Request_NamesButNeverSecrets()
     {
         var mirror = Mirror();
         Assert.Equal("Request r1: Join channel 'Raid'", ProtocolLogText.Describe(new JoinChannel(Raid) { RequestId = "r1" }, mirror));

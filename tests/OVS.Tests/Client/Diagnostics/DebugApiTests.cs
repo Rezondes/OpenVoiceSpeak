@@ -48,7 +48,7 @@ public sealed class DebugApiTests : IAsyncLifetime
     object ConnectBody(string nickname) => new { host = "127.0.0.1", port = server.Port, nickname };
 
     [Fact]
-    public async Task MissingHeader_Forbidden()
+    public async Task Request_MissingHeader_Forbidden()
     {
         using var plain = new HttpClient();
         var response = await plain.GetAsync($"http://localhost:{anna.Port}/state");
@@ -73,7 +73,7 @@ public sealed class DebugApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task UnknownChannel_IsBadRequest()
+    public async Task Join_UnknownChannel_BadRequest()
     {
         await anna.Post("connect", ConnectBody("anna"));
         var response = await anna.Http.PostAsJsonAsync("join", new { channel = "gibtsnicht" });
@@ -148,7 +148,7 @@ public sealed class DebugApiTests : IAsyncLifetime
 
     /// <summary>Package 110: a name two channels carry is refused, naming both ids; the id still works.</summary>
     [Fact]
-    public async Task AmbiguousChannelName_Refused()
+    public async Task ChannelName_Ambiguous_RefusedNamingBothIds()
     {
         await anna.Post("connect", ConnectBody("anna"));
         await anna.Post("redeem", new { token = server.State.PendingAdminToken });
@@ -249,7 +249,7 @@ public sealed class DebugApiTests : IAsyncLifetime
 
     /// <summary>Package 29: every key action can be simulated through the API.</summary>
     [Fact]
-    public async Task Keys_SimulateEveryAction()
+    public async Task Keys_EveryAction_Simulated()
     {
         await anna.Post("connect", ConnectBody("anna"));
         await anna.Post("key", new { action = "PushToMute", down = true });
@@ -286,7 +286,7 @@ public sealed class DebugApiTests : IAsyncLifetime
 
     /// <summary>Package 47: the tones actually played show in /state.</summary>
     [Fact]
-    public async Task Sounds_ListedInState()
+    public async Task State_SoundsPlayed_Listed()
     {
         await anna.Post("connect", ConnectBody("anna"));
         await bert.Post("connect", ConnectBody("bert"));
@@ -297,7 +297,7 @@ public sealed class DebugApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AdminActions_ThroughApi()
+    public async Task AdminActions_ThroughApi_Applied()
     {
         await anna.Post("connect", ConnectBody("anna"));
         await bert.Post("connect", ConnectBody("bert"));
@@ -317,7 +317,7 @@ public sealed class DebugApiTests : IAsyncLifetime
         Assert.Contains("gekickt", kicked.GetProperty("status").GetString());
     }
     [Fact]
-    public async Task Chat_RoundTrip()
+    public async Task Chat_ThroughApi_RoundTrips()
     {
         await anna.Post("connect", ConnectBody("anna"));
         await bert.Post("connect", ConnectBody("bert"));
@@ -335,7 +335,7 @@ public sealed class DebugApiTests : IAsyncLifetime
 
     /// <summary>Package 102: someone folding away in the tree is gone for the debug API already.</summary>
     [Fact]
-    public async Task LeavingUser_NotInState()
+    public async Task State_LeavingUser_NotListed()
     {
         ServerViewModel fake = null!;
         await anna.OnUi(viewModel =>
