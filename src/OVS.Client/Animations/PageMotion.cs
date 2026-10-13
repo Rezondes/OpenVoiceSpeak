@@ -53,7 +53,7 @@ public static class PageMotion
         Dispatcher.UIThread.Post(() =>
         {
             state.Pending = false;
-            if (motion() is { } way) Play(host, layer, state, way.In, way.Away);
+            if (motion() is { } way) _ = PlayAsync(host, layer, state, way.In, way.Away);
             else Stop(host, layer);
         }, DispatcherPriority.Background);
     }
@@ -62,7 +62,7 @@ public static class PageMotion
     public static PageSlide Sideways(bool forward) =>
         forward ? new PageSlide(new Vector(Slide, 0), new Vector(-Slide, 0)) : new PageSlide(new Vector(-Slide, 0), new Vector(Slide, 0));
 
-    static async void Play(Control host, Border layer, Switching state, Vector from, Vector away)
+    static async Task PlayAsync(Control host, Border layer, Switching state, Vector from, Vector away)
     {
         if (layer.Child is not Image image) return;
         var token = state.Cancel.Token;

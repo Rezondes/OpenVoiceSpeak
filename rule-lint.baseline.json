@@ -1116,26 +1116,6 @@
     "Count": 2
   },
   {
-    "Key": "RL503|src/OVS.Client/Animations/ItemMotion.cs|ItemMotion.Enter",
-    "Count": 1
-  },
-  {
-    "Key": "RL503|src/OVS.Client/Animations/LiveMotion.cs|LiveMotion.PopOut",
-    "Count": 1
-  },
-  {
-    "Key": "RL503|src/OVS.Client/Animations/PageMotion.cs|PageMotion.Play",
-    "Count": 1
-  },
-  {
-    "Key": "RL503|src/OVS.Client/Animations/PopupMotion.cs|PopupMotion.FadeAway",
-    "Count": 1
-  },
-  {
-    "Key": "RL503|src/OVS.Client/Views/ChatView.axaml.cs|ChatView.ShowSent",
-    "Count": 1
-  },
-  {
     "Key": "RL602|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots",
     "Count": 1
   },
@@ -1412,7 +1392,7 @@
     "Count": 1
   },
   {
-    "Key": "RL702|src/OVS.Client/Animations/ItemMotion.cs|ItemMotion.Enter",
+    "Key": "RL702|src/OVS.Client/Animations/ItemMotion.cs|ItemMotion.EnterAsync",
     "Count": 1
   },
   {

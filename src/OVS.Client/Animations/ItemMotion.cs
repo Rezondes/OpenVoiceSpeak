@@ -229,7 +229,7 @@ public static class ItemMotion
     /// <param name="container">The new entry's container.</param>
     /// <param name="index">Its position in the batch, for the stagger.</param>
     /// <param name="flash">True lets it flash once it is in.</param>
-    internal static async void Enter(Control container, int index, bool flash, bool fly)
+    internal static async Task EnterAsync(Control container, int index, bool flash, bool fly)
     {
         container.ClipToBounds = true;
         container.Classes.Set("entering", true);

@@ -71,7 +71,7 @@ internal sealed class EntryTracker
             list.LayoutUpdated -= OnLayout;
             int index = 0;
             foreach (var container in list.GetRealizedContainers().OrderBy(list.IndexFromContainer).ToList())
-                ItemMotion.Enter(container, index++, flash: false, fly: false);
+                _ = ItemMotion.EnterAsync(container, index++, flash: false, fly: false);
         }
         list.LayoutUpdated += OnLayout;
     }
@@ -125,7 +125,7 @@ internal sealed class EntryTracker
             return;
         }
         if (ItemMotion.GetFly(list)) ItemFlight.Arrive(item!, args.Container);
-        ItemMotion.Enter(args.Container, batch++, ItemMotion.GetFlash(list), ItemMotion.GetFly(list));
+        _ = ItemMotion.EnterAsync(args.Container, batch++, ItemMotion.GetFlash(list), ItemMotion.GetFly(list));
         QueueBatchEnd();
     }
 

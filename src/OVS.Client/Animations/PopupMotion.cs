@@ -44,7 +44,7 @@ internal static class PopupMotion
         if (!Motion.IsAnimated(popup.PlacementTarget ?? popup) || popup.Child is not { } child) return;
         if (!args.GetNewValue<bool>())
         {
-            FadeAway(popup, child);
+            _ = FadeAwayAsync(popup, child);
             return;
         }
         // where it lies on the screen once laid out (closed, it has no place any more); its own slide does not count
@@ -71,7 +71,7 @@ internal static class PopupMotion
     /// A picture of the closed popup in the window's overlay fades out where the popup was. The overlay lies above the
     /// dialogs, so not when a dialog is open or opens with the close (a menu entry that asks something).
     /// </summary>
-    static async void FadeAway(Popup popup, Control child)
+    static async Task FadeAwayAsync(Popup popup, Control child)
     {
         var anchor = popup.PlacementTarget ?? popup;
         if (!popupPlaces.TryGetValue(popup, out var place) || place is not PixelPoint screen || child.Bounds.Width <= 0

@@ -219,13 +219,13 @@ public partial class ChatView : UserControl
                 bool ended = wasWaiting && !sending.IsWaiting;
                 wasWaiting = sending.IsWaiting;
                 if (!ended || !Motion.IsAnimated(this) || History.ContainerFromItem(entry) is not { } container) return;
-                if (!sending.IsFailed) ShowSent(container);
+                if (!sending.IsFailed) _ = ShowSentAsync(container);
                 else if (container.GetVisualDescendants().OfType<WrapPanel>().FirstOrDefault(wrapPanel => wrapPanel.Name == "NotSent") is { } notSent) ShakeMotion.Shake(notSent);
             }, DispatcherPriority.Background);
         };
     }
 
-    static async void ShowSent(Control container)
+    static async Task ShowSentAsync(Control container)
     {
         if (container.GetVisualDescendants().OfType<PathIcon>().FirstOrDefault(pathIcon => pathIcon.Width == 12 && pathIcon.Parent is StackPanel { Orientation: Orientation.Horizontal })?.Parent
             is not StackPanel line || Application.Current?.TryFindResource("Icon.Checkmark", out var check) != true || check is not Geometry geometry)

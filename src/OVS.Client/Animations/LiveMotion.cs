@@ -84,7 +84,7 @@ public static class LiveMotion
             else if (!turn)
             {
                 Replace(control); // hidden: its pop-in ends
-                PopOut(control);
+                _ = PopOutAsync(control);
             }
         });
         SlotsProperty.Changed.AddClassHandler<TextBlock>((text, args) =>
@@ -141,7 +141,7 @@ public static class LiveMotion
     /// The hidden icon is gone at once; a copy of it in the overlay shrinks and fades where it was. Only where the icon
     /// could be seen: not in a closed drawer or a row scrolled away, and not over an open dialog.
     /// </summary>
-    static async void PopOut(Control control)
+    static async Task PopOutAsync(Control control)
     {
         if (control is not PathIcon icon || icon.Bounds.Width <= 0 || OverlayLayer.GetOverlayLayer(icon) is not { } overlay
             || icon.GetVisualParent() is not Control parent || FlyGhost.VisibleRect(parent, overlay) is null
