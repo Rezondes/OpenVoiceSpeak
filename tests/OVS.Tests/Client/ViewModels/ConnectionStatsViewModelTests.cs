@@ -17,7 +17,7 @@ public class ConnectionStatsViewModelTests
     /// server is not red for good.
     /// </summary>
     [Fact]
-    public void Rating_RelativeToBaseline()
+    public void Rating_SteadyHighRoundTrip_RelativeToBaseline()
     {
         Assert.Equal(SignalRating.Good, ConnectionStatsViewModel.Rate(100 + 69, 100));
         Assert.Equal(SignalRating.Fair, ConnectionStatsViewModel.Rate(100 + 70, 100));
@@ -54,7 +54,7 @@ public class ConnectionStatsViewModelTests
 
     /// <summary>Package 133: the frame counts start at the connection, though the mixer counts on.</summary>
     [Fact]
-    public void Counts_SinceReset()
+    public void FrameCounts_MixerCountsOn_StartAtTheConnection()
     {
         mixerCounts = new ReceiveStats(100, 10, 4, 7, 0, 0);
         var stats = CreateStats();

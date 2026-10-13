@@ -159,7 +159,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 34: in a muted channel the client warns and does not send.</summary>
     [Fact]
-    public async Task ChannelMuted_HintAndNoSending()
+    public async Task Talk_MutedChannel_HintAndNoSending()
     {
         var (hint, muted) = await OnUi(() =>
         {
@@ -180,7 +180,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 132 (A141): the encoder's bitrate is the own channel's: on join, move and when that channel is edited.</summary>
     [Fact]
-    public async Task Bitrate_FollowsCurrentChannel()
+    public async Task EncoderBitrate_JoinMoveOrEdit_FollowsCurrentChannel()
     {
         var steps = await OnUi(() =>
         {
@@ -271,7 +271,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     [Theory]
     [InlineData("deafened", "Du bist taub geschaltet: niemand hört dich.")]
     [InlineData("server", "Du bist vom Server stummgeschaltet: niemand hört dich.")]
-    public async Task TalkWhileDeafenedOrServerMuted_ShowsHint(string state, string hint)
+    public async Task Talk_DeafenedOrServerMuted_ShowsHint(string state, string hint)
     {
         await OnUi(() =>
         {
@@ -286,7 +286,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task VoiceWhileMuted_ShowsHint()
+    public async Task Talk_SelfMuted_ShowsHint()
     {
         await OnUi(() =>
         {
@@ -306,7 +306,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task NotMuted_NoHint()
+    public async Task Talk_NotMuted_NoHint()
     {
         await OnUi(() => MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin()));
         Assert.Equal("", await HoldKey(KeyAction.PushToTalk, true));
@@ -442,7 +442,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Bookmark_AskPassword_Cancel_StaysDisconnected()
+    public async Task Bookmark_PasswordAskCancelled_StaysDisconnected()
     {
         await using var locked = await LockedServerAsync();
         viewModel.Dialogs = new DialogCallbacks { AskPassword = _ => Task.FromResult<PasswordAnswer?>(null) };
@@ -552,7 +552,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 62: once accepted, the progress card is up until the update fails (or starts).</summary>
     [Fact]
-    public async Task Update_Accepted_ShowsProgress_UntilFailure()
+    public async Task Update_Accepted_ProgressShownUntilFailure()
     {
         var release = new
         {
@@ -682,7 +682,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 29: toggle keys work like the buttons and reach the server.</summary>
     [Fact]
-    public async Task ToggleActions_SyncWithServer()
+    public async Task ToggleKeys_Pressed_ReachTheServer()
     {
         await ConnectAsync(saveBookmark: false);
         await using var bert = await TestClient.ConnectAsync(server, "bert");
@@ -731,7 +731,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 30: the logo is downloaded once, then taken from the cache; the bookmark tile shows it.</summary>
     [Fact]
-    public async Task ServerIcon_LoadedOnce_ThenFromCache_ShownOnTile()
+    public async Task ServerIcon_SecondConnect_FromCacheAndShownOnTile()
     {
         var data = Directory.CreateTempSubdirectory("ovs-logo-server-").FullName;
         var png = TestImages.Encode(128, 128);
@@ -771,7 +771,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 126: an outage after UDP worked is logged once when lost and once when back.</summary>
     [Fact]
-    public async Task UdpOutage_LoggedOnceEachWay()
+    public async Task UdpOutage_LostAndBack_LoggedOnceEachWay()
     {
         using var relay = new LossyUdpRelay(server.VoiceEndPoint);
         var time = new ManualTimeProvider();
@@ -800,7 +800,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// the connection details, refreshed every 2 s.
     /// </summary>
     [Fact]
-    public async Task SignalIcon_AndDetails()
+    public async Task SignalIcon_Connected_ShowsLevelAndDetails()
     {
         // Package 135: the server on its own clock, moved only while sending, so its uplink window never rolls here and
         // every answer carries the frames sent (a slow machine cannot turn them into an empty or partial window)
@@ -987,7 +987,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 32: welcome in "Allgemein", the channel tab talks to the real server both ways.</summary>
     [Fact]
-    public async Task Chat_EndToEnd()
+    public async Task Chat_RealServer_WelcomeAndChannelTabBothWays()
     {
         await ConnectAsync(saveBookmark: false);
         await using var bert = await TestClient.ConnectAsync(server, "bert");
@@ -1012,7 +1012,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 33: an incoming whisper opens a tab in the background, the reply goes back only to bert.</summary>
     [Fact]
-    public async Task Private_EndToEnd()
+    public async Task PrivateChat_IncomingWhisper_TabInBackgroundAndReplyOnlyToSender()
     {
         await ConnectAsync(saveBookmark: false);
         await using var bert = await TestClient.ConnectAsync(server, "bert");
@@ -1059,7 +1059,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task StartScreen_BookmarksAndConnectingState()
+    public async Task StartScreen_BookmarkConnecting_ShowsState()
     {
         Assert.False(await OnUi(() => viewModel.Bookmarks.HasAny));
         Assert.Equal($"PTT: {DefaultPushToTalk.Choose(DefaultPushToTalk.CountMouseButtons()).Name}", await OnUi(() => viewModel.TalkHint)); // Package 59: new profiles get a PTT key
@@ -1127,7 +1127,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// froze for a second whenever the settings opened. The list now loads in the background.
     /// </summary>
     [Fact]
-    public async Task OpenSettings_DoesNotWaitForDeviceList()
+    public async Task OpenSettings_SlowDeviceList_DoesNotWait()
     {
         using var gate = new ManualResetEventSlim();
         var settings = new ClientSettings { InputDeviceId = "mic-2" };
@@ -1182,7 +1182,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 61: the background changes while sliding, "Verwerfen" brings the saved one back.</summary>
     [Fact]
-    public async Task Appearance_LivePreview_DiscardRestores_SaveKeeps()
+    public async Task Appearance_PreviewThenDiscardOrSave_RestoredOrKept()
     {
         Assert.Equal(new BackgroundAppearance(1f, false), await OnUi(() => viewModel.Appearance));
         var live = await OnUi(() =>
@@ -1211,7 +1211,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 99: the display mode is previewed at once, "Verwerfen" brings the saved one back, "Speichern" keeps it.</summary>
     [Fact]
-    public async Task Display_LivePreviewAndCancelRevert()
+    public async Task DisplayMode_PreviewThenDiscardOrSave_RestoredOrKept()
     {
         var simplified = SettingsViewModel.Displays.Single(displayOption => displayOption.Value == DisplayMode.Simplified);
         Assert.Equal(DisplayMode.Animated, await OnUi(() => viewModel.Appearance.Display));
@@ -1323,7 +1323,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Leaving the settings any other way (Esc, the administration) also drops the preview.</summary>
     [Fact]
-    public async Task LeavingSettingsWithoutSaving_EndsThePreview()
+    public async Task Settings_LeftWithoutSaving_PreviewEnds()
     {
         var after = await OnUi(() =>
         {
@@ -1420,7 +1420,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     /// the steady tone (-13.5 dBFS) sets it to its upper bound, -28 dBFS.
     /// </summary>
     [Fact]
-    public async Task SettingsPage_ShowsThresholdInUse()
+    public async Task SettingsPage_SteadyTone_ShowsThresholdInUse()
     {
         await OnUi(() =>
         {
@@ -1434,7 +1434,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ToneInput_ReportsInputLevel()
+    public async Task InputLevel_Tone_Reported()
     {
         using var keys = new KeyPoller(TimeProvider.System); // no bindings: only simulated keys count
         using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
@@ -1461,7 +1461,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 99, 61: the saved look counts from the start (display, background opacity and blur).</summary>
     [Fact]
-    public async Task SavedAppearance_AppliesAtStart()
+    public async Task SavedAppearance_Start_Applied()
     {
         var saved = Directory.CreateTempSubdirectory("ovs-look-").FullName;
         try
@@ -1581,7 +1581,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
 
     /// <summary>Package 125: the mute button pressed while the key is held decides; letting go does not undo it.</summary>
     [Fact]
-    public async Task MuteButtonWhileHeld_Sticks()
+    public async Task MuteButton_PressedWhileKeyHeld_Sticks()
     {
         var (sent, _) = await WithPushToMute();
         await HoldMuteKey(true);

@@ -10,7 +10,7 @@ public class PendingActionViewModelTests
     static TimeSpan Ms(int milliseconds) => TimeSpan.FromMilliseconds(milliseconds);
 
     [Fact]
-    public void BusyVisibleWithin150ms_NotForFastActions()
+    public void Busy_SlowOrFastAction_VisibleOnlyAfter150ms()
     {
         var time = new ManualTimeProvider();
         var pending = new PendingActionViewModel(time);

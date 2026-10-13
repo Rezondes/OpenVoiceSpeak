@@ -1516,12 +1516,12 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~OVS.Tests.Client"`
 ### Tests (TDD)
 
 1. `ServerViewModelTests.cs`:
-   - `"Build_SortsChannelsAndGroupsUsers"` (AC1)
+   - `"Build_Snapshot_SortsChannelsAndGroupsUsers"` (AC1)
    - `"UserUpdated_MovesUser_KeepsInstance"` (AC2)
-   - `"Speaking_ClearsAfter300ms"` (AC3)
-   - `"SpeakingViaLink_Flagged"` (AC4)
-   - `"LinkedChannels_ShowPartners"` (AC5)
-   - `"JoinCommand_SendsJoinChannel"` (AC6)
+   - `"Speaking_NoFrameFor300ms_Cleared"` (AC3)
+   - `"Speaking_ViaLink_Flagged"` (AC4)
+   - `"LinkedChannels_Linked_ShowPartners"` (AC5)
+   - `"JoinCommand_Executed_SendsJoinChannel"` (AC6)
    - `"Deafen_SendsSelfState_AndRestoresMute"` (AC7)
 2. `SettingsTests.cs > "FullSettings_RoundTrip_IncludingBookmarks"` (AC8)
 3. Manueller Check für AC9 nach dem Szenario aus dem AC.
@@ -1645,15 +1645,15 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ClientSettingsTests|FullyQ
 ### Tests (TDD)
 
 1. `ServerViewModelTests.cs`:
-   - `[Theory] "ChannelMenu_VisibilityByPermission"` (AC1)
-   - `[Theory] "UserMenu_VisibilityByPermissionAndRank"` (AC2)
+   - `[Theory] "ChannelMenu_Rights_VisibleByPermission"` (AC1)
+   - `[Theory] "UserMenu_RightsAndRank_VisibleAccordingly"` (AC2)
 2. `AdminViewModelTests.cs`:
-   - `ServerViewModelTests > "LinkCandidates_ExcludesSelfAndLinked"` (AC3)
+   - `ServerViewModelTests > "LinkCandidates_SelfAndLinked_Excluded"` (AC3)
    - `GroupListViewModelTests > "Groups_ActorHoldsEveryRightOfTheGroupButNotAll_OnlyTheHeldRightsToggleTheRowShowsTheGroupsRightsAndItCanBeDeleted"`, `"Groups_ActorHoldsAllRights_AdminGroupReadOnlyWithDisabledTogglesAndNeitherProtectedGroupDeletable"` (AC4)
    - `"AssignGroup_SendsRequest_DisablesHigherGroups"` (AC5)
-   - `ServerViewModelTests > "Ban_SendsDurationAndIpFlag"` (AC6)
-   - `[Theory] "Tabs_VisibleByPermission"` (AC7)
-   - `ServerViewModelTests > "RedeemToken_HiddenForAdmin"` (AC8)
+   - `ServerViewModelTests > "Ban_Confirmed_SendsDurationAndIpFlag"` (AC6)
+   - `[Theory] "Tabs_Rights_VisibleByPermission"` (AC7)
+   - `ServerViewModelTests > "RedeemToken_Admin_Hidden"` (AC8)
 3. `SettingsTests.cs > "ErrorTexts_EveryCodeHasText"`: Schleife über alle Codes (AC9)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~MenuPermissionTests|FullyQualifiedName~AdminViewModelTests|FullyQualifiedName~ErrorTextsTests"`
@@ -2021,8 +2021,8 @@ Grundlage waren die Empfehlungen des Skills ui-ux-pro-max: Palette "Chat & Messa
 
 1. `UiSmokeTests > "Windows_LoadAndShowTheirContent"` für hell und dunkel: alle Fenster und kleinen Dialoge, Avalonia-Warnungen und Bindungsfehler lassen den Test scheitern (AC1)
 2. `UiSmokeTests > "EveryIconInXaml_Exists"`: ein fehlendes Icon wirft in Avalonia weder eine Ausnahme noch einen Logeintrag, deshalb dieser Abgleich (AC1)
-3. `ServerViewModelTests > "CurrentChannelAndSelf_FollowOwnUser"`, `"StatusIcons_MicOffOnlyForAPlainMute"` (AC2)
-4. `MainViewModelTests > "StartScreen_BookmarksAndConnectingState"` (AC3), `"Notices_HaveKinds_ErrorAndDisconnect"` (AC4)
+3. `ServerViewModelTests > "CurrentChannelAndSelf_OwnUserMoves_Follow"`, `"StatusIcons_PlainMute_OnlyThenMicOff"` (AC2)
+4. `MainViewModelTests > "StartScreen_BookmarkConnecting_ShowsState"` (AC3), `"Notices_HaveKinds_ErrorAndDisconnect"` (AC4)
 5. `SettingsTests > "Theme_DefaultSystem_SavedAndMapped"`, `"PushToTalkRadio_IsTheOppositeOfVoiceActivation"` (AC5)
 6. `UiSmokeTests > "Avatar_SameNicknameSameColor_InitialUpperCase"` (AC2)
 
@@ -2289,7 +2289,7 @@ Eine Kombination gilt, wenn Taste und alle ihre Modifikatoren gedrückt sind. Gi
 2. `KeyBindingTests > "Toggle_FiresOncePerPress_HoldReportsChanges"`: gehaltene Taste über zehn Abfragen löst genau einmal aus (AC5)
 3. `SettingsTests > "Load_NoFile_DefaultPttOnly"` (AC1), `"Load_OldFileWithPttKeys_KeepsThem"` (AC2), `"KeyList_SameKeyTwoActions_BlocksSave"` (AC6)
 4. `SendPathTests > "PushToMute_Held_SendsNothing"` in beiden Modi, Ende-zu-Ende mit der Audio-Engine: Push-to-Mute wirkt wie das eigene Stummschalten und schlägt deshalb PTT und Sprachaktivierung (AC4)
-5. `MainViewModelTests > "ToggleActions_SyncWithServer"` gegen `TestServer`: simulierte Aktion schaltet stumm, der Server sieht `SelfMuted` (AC5), `"TalkHint_NoPttBinding_UntilBound"` (AC8)
+5. `MainViewModelTests > "ToggleKeys_Pressed_ReachTheServer"` gegen `TestServer`: simulierte Aktion schaltet stumm, der Server sieht `SelfMuted` (AC5), `"TalkHint_NoPttBinding_UntilBound"` (AC8)
 6. `DebugApiTests > "Keys_SimulateEveryAction"` (AC10)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~KeyBindingTests|FullyQualifiedName~SettingsTests|FullyQualifiedName~SendPathTests|FullyQualifiedName~MainViewModelTests|FullyQualifiedName~DebugApiTests"`
@@ -2346,7 +2346,7 @@ Seitenleiste und Lesezeichen zeigen den ersten Buchstaben des Servernamens. Nach
 4. `IconImportTests > "Import_TooBigWrongFormatNotSquareTooSmall_Rejected"`, `"Import_Jpg1024_Becomes256Png"` und `"Import_SmallSquarePng_KeepsItsSize"`, headless mit Avalonia und Skia (AC2)
 5. `UiSmokeTests`: mit Logo zeigt die Seitenleiste ein Bild statt des Buchstabens (AC3), Kachel mit Cache-Datei zeigt es ebenfalls (AC6)
 6. `ProtocolLogTextTests > "Describe_Request_UsesNames_NeverSecrets"` um die neuen Nachrichten erweitert
-7. `MainViewModelTests > "ServerIcon_LoadedOnce_ThenFromCache_ShownOnTile"`: echter Server mit Logo, der erste Verbindungsaufbau lädt es, der zweite nimmt es aus dem Cache, die Kachel zeigt es (AC3, AC6), `ServerIconTrackerTests > "Receive_LogoOfTheServersHash_ShowsItCachesItAndRefreshesTheTiles"` und `ServerIconWiringTests > "Apply_LogoOfTheServersHash_ShowsItOnTheServerAndOnTheBookmarkTile"` (AC3, AC6), `ServerIconTrackerTests > "Sync_CachedLogoHasTheServersHash_ShowsItWithoutAsking"` (AC6), `ServerIconTrackerTests > "Sync_ServerHasNoLogo_RemovesTheCachedLogoShowsNoneAndAsksNothing"` (AC4), `ServerIconTrackerTests > "Receive_PictureNotBase64_ChangesNothing"`, `"Receive_EmptyPicture_ChangesNothing"`, `"Receive_MalformedThenTheRightLogo_TakesTheRightOne"` und `"Receive_PaddedLogo_IsTakenWhole"` und `ServerIconWiringTests > "Apply_MalformedLogoOfTheServersHash_ThrowsNothingShowsNothingAndCachesNothing"` (AC3); die Regeln (aus dem Cache oder beim Server holen, Wiederholung nach einer Ablehnung, Ankunft prüfen und ablegen) stehen in den übrigen Fakten von `ServerIconTrackerTests`, die Verdrahtung im Hauptmodell in `ServerIconWiringTests`
+7. `MainViewModelTests > "ServerIcon_SecondConnect_FromCacheAndShownOnTile"`: echter Server mit Logo, der erste Verbindungsaufbau lädt es, der zweite nimmt es aus dem Cache, die Kachel zeigt es (AC3, AC6), `ServerIconTrackerTests > "Receive_LogoOfTheServersHash_ShowsItCachesItAndRefreshesTheTiles"` und `ServerIconWiringTests > "Apply_LogoOfTheServersHash_ShowsItOnTheServerAndOnTheBookmarkTile"` (AC3, AC6), `ServerIconTrackerTests > "Sync_CachedLogoHasTheServersHash_ShowsItWithoutAsking"` (AC6), `ServerIconTrackerTests > "Sync_ServerHasNoLogo_RemovesTheCachedLogoShowsNoneAndAsksNothing"` (AC4), `ServerIconTrackerTests > "Receive_PictureNotBase64_ChangesNothing"`, `"Receive_EmptyPicture_ChangesNothing"`, `"Receive_MalformedThenTheRightLogo_TakesTheRightOne"` und `"Receive_PaddedLogo_IsTakenWhole"` und `ServerIconWiringTests > "Apply_MalformedLogoOfTheServersHash_ThrowsNothingShowsNothingAndCachesNothing"` (AC3); die Regeln (aus dem Cache oder beim Server holen, Wiederholung nach einer Ablehnung, Ankunft prüfen und ablegen) stehen in den übrigen Fakten von `ServerIconTrackerTests`, die Verdrahtung im Hauptmodell in `ServerIconWiringTests`
 
 **Umsetzungsnotizen:**
 - Die Tests der Oberfläche rendern jetzt mit Skia statt der Zeichen-Attrappe, damit Bilder wirklich dekodiert und skaliert werden.
@@ -2460,11 +2460,11 @@ Der Hauptbereich zeigt seit Package 24 die "Aktivität" (`MainViewModel.Notices`
 
 ### Tests (TDD)
 
-1. `ChatViewModelTests > "Tabs_GeneralAndCurrentChannel"` (AC1), `"Notices_AppearInGeneral"` (AC2)
-2. `ChatViewModelTests > "Send_EmptyIgnored_TooLongBlocked"` (AC3), `"Composer_DisabledWithoutRight"` (AC4)
-3. `ChatViewModelTests > "ChannelTab_ResetsOnSwitch"` (AC5), `"Unread_CountsAndClears"` (AC6)
-4. `ChatViewModelTests > "ServerError_ShownAtComposer"` (AC9)
-5. `MainViewModelTests > "Chat_EndToEnd"` gegen `TestServer` (AC1, AC3)
+1. `ChatViewModelTests > "Tabs_Connected_GeneralAndCurrentChannel"` (AC1), `"Notices_Received_AppearInGeneral"` (AC2)
+2. `ChatViewModelTests > "Send_EmptyIgnored_TooLongBlocked"` (AC3), `"Composer_WithoutRight_Disabled"` (AC4)
+3. `ChatViewModelTests > "ChannelTab_ChannelSwitched_Reset"` (AC5), `"Unread_MessagesThenTabOpened_CountedAndCleared"` (AC6)
+4. `ChatViewModelTests > "SendChat_ServerError_ShownAtComposer"` (AC9)
+5. `MainViewModelTests > "Chat_RealServer_WelcomeAndChannelTabBothWays"` gegen `TestServer` (AC1, AC3)
 6. `UiSmokeTests`: Chat in beiden Designs, eigene und fremde Nachricht sichtbar (AC7, AC10)
 7. `UiSmokeTests > "Chat_FollowsNewLines_UnlessScrolledUp"` (AC8, statt des manuellen Checks automatisiert)
 
@@ -2509,8 +2509,8 @@ Server und Protokoll können private Nachrichten seit Package 31. Der Tab gehör
 ### Tests (TDD)
 
 1. `ChatViewModelTests > "Private_OpenFromUser_ActivatesTab"` (AC1), `"Private_Incoming_OpensInBackground"` (AC2)
-2. `ChatViewModelTests > "Private_CloseAndReopen_KeepsHistory"` (AC3), `"Private_PartnerOfflineAndBack"` (AC4), `"Private_NicknameChange_UpdatesTitle"` (AC5)
-3. `MainViewModelTests > "Private_EndToEnd"` mit zwei Clients gegen `TestServer` (AC1, AC2)
+2. `ChatViewModelTests > "Private_CloseAndReopen_KeepsHistory"` (AC3), `"PrivateTab_PartnerOfflineAndBack_Followed"` (AC4), `"Private_NicknameChange_UpdatesTitle"` (AC5)
+3. `MainViewModelTests > "PrivateChat_IncomingWhisper_TabInBackgroundAndReplyOnlyToSender"` mit zwei Clients gegen `TestServer` (AC1, AC2)
 4. `UiSmokeTests`: Kontextmenü enthält "Privatnachricht", privater Tab mit Schliessen-Button (AC1, AC3)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatViewModelTests|FullyQualifiedName~MainViewModelTests|FullyQualifiedName~UiSmokeTests"`
@@ -2567,7 +2567,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ChatViewModelTests|FullyQu
 3. `ChannelCommandTests > "Edit_SetsMuted_PersistsLogsBroadcasts"` und `"EditMuted_WithoutRight_Denied"` (AC1, AC4)
 4. `VoiceRelayTests > "Voice_MutedChannel_NoFramesArrive"` über echtes UDP (AC2)
 5. `SendPathTests > "ChannelMuted_SendsNothing"` (AC5)
-6. `ServerViewModelTests > "ChannelMuted_EditSendsFlag_ViewModelShowsIt"`, `MainViewModelTests > "ChannelMuted_HintAndNoSending"` (AC5), `VoiceHintsTests > "Evaluate_ChannelMuted_ShowsTheMutedChannelHint"` (AC5), `EngineSyncTests > "SyncConnection_OnlyChannelMutedSet_TurnsOnlyTheEnginesChannelMutedOn"` (AC5)
+6. `ServerViewModelTests > "ChannelMuted_EditSendsFlag_ViewModelShowsIt"`, `MainViewModelTests > "Talk_MutedChannel_HintAndNoSending"` (AC5), `VoiceHintsTests > "Evaluate_ChannelMuted_ShowsTheMutedChannelHint"` (AC5), `EngineSyncTests > "SyncConnection_OnlyChannelMutedSet_TurnsOnlyTheEnginesChannelMutedOn"` (AC5)
 7. `UiSmokeTests`: Dialog zeigt die Checkbox, Channel-Zeile das Symbol, beide Designs (AC1, AC5); `SmokeTests`: Version 4 (AC6)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~VoiceRoutingTests|FullyQualifiedName~ChannelCommandTests|FullyQualifiedName~VoiceRelayTests|FullyQualifiedName~SendPathTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~SmokeTests"`
@@ -2619,7 +2619,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~VoiceRoutingTests|FullyQua
 3. `ChannelCommandTests > "Edit_DefaultChannelLimit_Invalid"`, `"Edit_LimitOutOfRange_Invalid"` (AC1)
 4. `ChannelCommandTests > "Edit_LimitBelowCount_NobodyRemovedAndPersisted"` (AC4, AC6)
 5. `PermissionRulesTests`: `All` enthält `ChannelJoinFull` (AC5)
-6. `ServerViewModelTests > "SlotText_LimitedAndUnlimited"`, `"SlotText_UserJoins_ChangeRaised"`, `"MaxUsers_LimitChanges_ChangeRaised"`, `ChannelSlotsTests > "ToString_LimitedOrUnlimited_CountOfLimitOrCountAlone"` (AC5)
+6. `ServerViewModelTests > "SlotText_LimitedOrUnlimited_Formatted"`, `"SlotText_UserJoins_ChangeRaised"`, `"MaxUsers_LimitChanges_ChangeRaised"`, `ChannelSlotsTests > "ToString_LimitedOrUnlimited_CountOfLimitOrCountAlone"` (AC5)
 7. `UiSmokeTests`: Feld im Dialog, "3/5" im Baum; `SmokeTests`: Version 5
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~ChannelCommandTests|FullyQualifiedName~PermissionRulesTests|FullyQualifiedName~ServerViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~SmokeTests"`
@@ -2668,7 +2668,7 @@ Channels haben ein `Order`-Feld, der Baum sortiert nach `Order`, dann nach Name.
 1. `ChannelCommandTests > "Reorder_SetsOrder_PersistsBroadcasts"` (AC3, AC4)
 2. `ChannelCommandTests > "Reorder_IncompleteDuplicateUnknown_Invalid"`, `"Reorder_WithoutRight_Denied"` (AC3)
 3. `ServerViewModelTests > "MoveUpDown_SendFullOrder_DisabledAtEdges"` (AC2)
-4. `ServerViewModelTests > "DropOnChannel_SendsOrderWithSourceBeforeOrAfterTarget"`: die Einfüge-Logik liegt im ViewModel und ist ohne Maus testbar (AC1)
+4. `ServerViewModelTests > "DropOnChannel_AboveOrBelow_SendsOrderWithSourceBeforeOrAfterTarget"`: die Einfüge-Logik liegt im ViewModel und ist ohne Maus testbar (AC1)
 5. `UiSmokeTests`: Kontextmenü enthält beide Einträge, ohne Recht ist Ziehen aus (AC1, AC2); `ProtocolLogTextTests`, `SmokeTests` (AC5)
 6. `UiSmokeTests > "ChannelTree_DragRaidAboveLobby_SendsOrder"`: Ziehen mit echten Mausereignissen im Headless-Fenster, kurzer Klick zieht nicht. Offen bleibt nur der Blick auf die Einfügemarke am echten Bildschirm.
 
@@ -2715,7 +2715,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ChannelCommandTests|FullyQ
 
 1. `AdminCommandTests > "ReorderGroups_PersistsAndBroadcasts_RankUnchanged"`, `"ReorderGroups_IncompleteOrWithoutRight_Rejected"` (AC2, AC3)
 2. `GroupListViewModelTests > "MoveGroupDown_GroupSelected_SendsTheFullOrderAndShowsItAtOnce"`, `"MoveGroupUp_GroupSelected_SendsTheFullOrder"`, `"MoveGroupAsync_GroupDroppedBeforeTheFirst_SendsTheFullOrderWithItFirst"` `"MoveGroupAsync_UnsavedGroup_SendsNothing"` und `"MoveGroupCommands_DraftSelected_CannotExecute"` (AC1)
-3. `ServerViewModelTests > "GroupNames_FollowGroupOrder"` (AC3)
+3. `ServerViewModelTests > "GroupNames_AssignedInOtherOrder_FollowGroupOrder"` (AC3)
 4. `AdminCommandTests > "ReorderGroups_PersistsAndBroadcasts_RankUnchanged"`: Moderator kann Admin weiterhin nicht kicken (AC4)
 5. `UiSmokeTests`: Pfeile in der Gruppenliste; `SmokeTests`: Version 7
 6. `UiSmokeTests > "GroupList_DragAdminAboveGuest_SendsOrder"`: Ziehen mit echten Mausereignissen im Headless-Fenster
@@ -2768,7 +2768,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~AdminCommandTests|FullyQua
 3. `AdminViewModelTests > "LinkMatrix_MeshOfEight_Sends28Links"` (AC2, AC3)
    - Gegeben: 8 Channels ohne Links, alle ausgewählt
    - Erwartet: nach "Übernehmen" eine Anfrage mit 28 Paaren, 0 Entfernungen
-4. `AdminViewModelTests > "LinkMatrix_ToggleDiscardAndRemoteChange"` (AC1, AC3, AC5)
+4. `AdminViewModelTests > "LinkMatrix_ToggleDiscardOrRemoteChange_Followed"` (AC1, AC3, AC5)
 5. `UiSmokeTests`: Tab "Links" in beiden Designs; `ProtocolLogTextTests`, `SmokeTests` (AC5)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~LinkCommandTests|FullyQualifiedName~AdminViewModelTests|FullyQualifiedName~UiSmokeTests|FullyQualifiedName~ClientLogTests|FullyQualifiedName~ProtocolLogTextTests|FullyQualifiedName~SmokeTests"`
@@ -2859,7 +2859,7 @@ Ohne Verbindung zeigt die Seitenleiste nur "Nicht verbunden", der Hauptbereich u
 ### Tests (TDD)
 
 1. `MainViewModelTests > "Bookmark_Connect_UsesSavedPassword"` (AC2)
-2. `MainViewModelTests > "Bookmark_WrongSavedPassword_AsksAndSavesNew"` und `"Bookmark_AskPassword_Cancel_StaysDisconnected"` (AC3), die Verbindung ohne Fenster: `ConnectionViewModelTests > "ConnectBookmarkAsync_WrongPasswordAndUserCancels_AsksOnceStopsAfterOneAttemptAndKeepsTheRefusedStatus"` und `"ConnectBookmarkAsync_WrongPasswordAndNoAskPasswordDialog_StopsAfterOneAttempt"` und `"ConnectBookmarkAsync_WrongPasswordAndUserAnswers_TriesAgainWithTheAnswerAndItsSaveChoice"` (AC3)
+2. `MainViewModelTests > "Bookmark_WrongSavedPassword_AsksAndSavesNew"` und `"Bookmark_PasswordAskCancelled_StaysDisconnected"` (AC3), die Verbindung ohne Fenster: `ConnectionViewModelTests > "ConnectBookmarkAsync_WrongPasswordAndUserCancels_AsksOnceStopsAfterOneAttemptAndKeepsTheRefusedStatus"` und `"ConnectBookmarkAsync_WrongPasswordAndNoAskPasswordDialog_StopsAfterOneAttempt"` und `"ConnectBookmarkAsync_WrongPasswordAndUserAnswers_TriesAgainWithTheAnswerAndItsSaveChoice"` (AC3)
 3. `MainViewModelTests > "Bookmark_Edited_PersistsToTheProfileFolder"` (AC4), `BookmarkListTests > "EditAsync_Answered_ReplacesInPlaceSavesLogsAndRefreshesTiles"`, `"EditAsync_PasswordNotKept_StoresNone"`, `"DeleteAsync_Confirmed_RemovesSavesAndLogs"` und `"DeleteAsync_Declined_KeepsIt"` (AC4), `"EditAsync_AddressOfAnotherBookmarkAndReplaceConfirmed_LeavesOneBookmarkForThatAddress"`, `"EditAsync_AddressOfAnotherBookmarkAndReplaceDeclined_ChangesNothingSavesNothingLogsNothing"`, `"EditAsync_AddressOfAnotherBookmarkWithoutConfirmDialog_ChangesNothing"`, `"EditAsync_TwoOthersHaveTheAddress_AsksOnceAndRemovesBoth"`, `"EditAsync_Replaced_KeepsThePasswordOfTheEditedBookmark"` (AC4)
 4. `UiSmokeTests > "Bookmarks_InSidebar_WhenDisconnected"`: Lesezeichen in der Seitenleiste, keine Kachelliste im Hauptbereich, Kontextmenü mit drei Einträgen, nach dem Verbinden die Channels (AC1, AC4, AC5)
 
@@ -3211,7 +3211,7 @@ Die Audio-Engine (`Audio/AudioEngine.cs`) mischt eingehende Sprache in `Playback
 
 1. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"` (AC1)
 2. `SoundTests > "Queue_MixesIntoBuffer_WithVolume_Overlaps"` (AC2)
-3. `ServerViewModelTests > "SoundEvents_FromMessages"` als Theory je Nachricht, dazu `"SoundEvents_OwnChanges_NotDoubled"` (AC3)
+3. `ServerViewModelTests > "SoundEvents_Messages_Raised"` als Theory je Nachricht, dazu `"SoundEvents_OwnChanges_NotDoubled"` (AC3)
 4. `SoundPlayerTests > "Play_Deafened_OnlyOwnMicAndSoundTonesPlay"` (AC4)
 5. `SettingsTests > "Sounds_GlobalSettings_RoundTrip"` und `UiSmokeTests`: Abschnitt "Sounds" (AC5)
 6. `DebugApiTests > "Sounds_ListedInState"` mit zwei echten Clients (AC3, AC6)
@@ -3508,13 +3508,13 @@ Dieselbe Funktion steckt in `AudioDevices.Open`, das `AudioEngine.Configure` bei
 
 Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
 
-1. `MainViewModelTests > "OpenSettings_DoesNotWaitForDeviceList"` (AC1, AC2) - Reproduktion, muss zuerst rot sein
+1. `MainViewModelTests > "OpenSettings_SlowDeviceList_DoesNotWait"` (AC1, AC2) - Reproduktion, muss zuerst rot sein
    - Gegeben: `FakeAudioHardware.Listing`, das bis zur Freigabe blockiert, gespeichertes Eingabegerät "mic-2"
    - Erwartet: `OpenSettings` kehrt in unter 100 ms zurück, `Page` ist Settings, das Eingabefeld zeigt den Platzhalter, kein `DeviceHint`. Nach der Freigabe enthält `Inputs` die Geräte, "mic-2" ist ausgewählt.
 2. `SettingsTests > "Devices_LoadedLater_HintOnlyIfReallyMissing_KeepsUserChoice"` (AC2, AC3)
    - Gegeben: `SettingsViewModel` ohne Liste, der Nutzer wählt "Standard", danach `ShowDevices` ohne das gespeicherte Gerät
    - Erwartet: Auswahl "Standard" bleibt. Ohne Nutzerauswahl erscheint der Hinweis "Gerät fehlt" erst nach `ShowDevices`.
-3. `MainViewModelTests > "OpenSettings_DoesNotWaitForDeviceList"` (AC4), `DeviceListTests > "Refresh_BothDirectionsListed_ShowsThemOnceOnTheUiThreadAndRemembersThem"`, `"Refresh_ListingWaits_ReturnsBeforeTheListingIsDone"` and `"Refresh_NewerLoadStarted_DropsTheOlderList"`, `EngineSyncWiringTests > "OpenSettings_ListLoadedAtStart_ShowsInputsAndOutputsAtOnce"` (AC4)
+3. `MainViewModelTests > "OpenSettings_SlowDeviceList_DoesNotWait"` (AC4), `DeviceListTests > "Refresh_BothDirectionsListed_ShowsThemOnceOnTheUiThreadAndRemembersThem"`, `"Refresh_ListingWaits_ReturnsBeforeTheListingIsDone"` and `"Refresh_NewerLoadStarted_DropsTheOlderList"`, `EngineSyncWiringTests > "OpenSettings_ListLoadedAtStart_ShowsInputsAndOutputsAtOnce"` (AC4)
    - Gegeben: erstes Öffnen mit Liste A geladen, zweites Öffnen mit blockierendem `FakeAudioHardware.Listing`
    - Erwartet: Liste A ist sofort da, nach der Freigabe die neue Liste
 4. Bestehende Tests zu `SettingsViewModel.Resolve` bleiben grün, `Open` nutzt dieselbe Entscheidung über die ID (AC5), `EngineSyncTests > "Configure_SavedDeviceMissing_ReturnsTheFallbackWarning"` and `"ConfigureAsync_SavedDeviceMissing_ReturnsTheFallbackWarning"`, `EngineSyncWiringTests > "ApplySettings_SavedDeviceMissing_ShowsTheFallbackAsWarningNotice"` and `"ApplySettingsAsync_SavedDeviceMissing_ShowsTheFallbackAsWarningNotice"` (AC5)
@@ -3660,8 +3660,8 @@ Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refacto
    - Gegeben: `MaxUsers = -1` und `1000`
    - Erwartet: `InvalidValue`, kein Channel angelegt
 3. `SmokeTests` Version auf 9, `HandshakeTests > "Handshake_OldProtocolVersion_RejectedVersionMismatch"` bleibt grün (AC6)
-4. `ChannelDialogViewModelTests > "Create_EmptyDefaults"`, `"Edit_Prefilled"`, `"Default_SlotsLocked"`, `"NameRequired_SlotsBounded_Trimmed"` (AC2 bis AC4)
-5. `ServerViewModelTests > "NewChannel_SendsAllOptions"` (AC1, AC5)
+4. `ChannelDialogViewModelTests > "Create_NewChannel_EmptyDefaults"`, `"Edit_ExistingChannel_Prefilled"`, `"Edit_DefaultChannel_SlotsLocked"`, `"NameRequired_SlotsBounded_Trimmed"` (AC2 bis AC4)
+5. `ServerViewModelTests > "NewChannel_DialogConfirmed_SendsAllOptions"` (AC1, AC5)
    - Gegeben: Dialog-Fake liefert Name, Beschreibung, stumm, 3 Plätze
    - Erwartet: gesendetes `CreateChannel` mit allen vier Werten
 6. `UiSmokeTests > "ChannelDialog_SameForCreateAndEdit"` (AC1 bis AC3, AC7): beide öffnen, gleiche Felder sichtbar, Titel und Button je Modus
@@ -3807,10 +3807,10 @@ Der Mixer meldet aktive Sprecher mit `ActiveSpeaker.ViaLink` (gesetzt, wenn das 
 
 ### Tests (TDD)
 
-1. `ServerViewModelTests > "LinkVoice_SoundOncePerTransmission"` (AC1, AC2)
+1. `ServerViewModelTests > "LinkVoice_TalkingInOverALink_SoundOncePerTransmission"` (AC1, AC2)
    - Gegeben: `ManualTimeProvider`, wiederholte `OnSpeakers` mit `ViaLink = true` für Session 2 alle 20 ms, dann 200 ms Pause, dann 400 ms Pause
    - Erwartet: ein Ton am Anfang, keiner nach 200 ms, einer nach 400 ms
-2. `ServerViewModelTests > "LinkVoice_NotForOwnChannelOrSelf"` (AC3)
+2. `ServerViewModelTests > "LinkVoice_OwnChannelOrSelf_NoSound"` (AC3)
    - Gegeben: Sprecher ohne Link, eigene Session mit Link
    - Erwartet: kein `LinkVoice`
 3. `SoundPlayerTests > "Play_Deafened_OnlyOwnMicAndSoundTonesPlay"` um `LinkVoice` ergänzt (AC3)
@@ -3963,13 +3963,13 @@ Das eigene Senden meldet `AudioEngine.TransmitChanged(target)`, `MainViewModel` 
 
 Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refactoren.
 
-1. `ServerViewModelTests > "OwnLinkVoice_OnStartOfOwnLinkTransmission"` (AC1, AC2)
+1. `ServerViewModelTests > "OwnLinkVoice_StartTalkingOverALink_SoundOncePerTransmission"` (AC1, AC2)
    - Gegeben: eigener Channel mit einem Link, `ManualTimeProvider`
    - Erwartet: `SetSelfTransmitting(TargetLinked)` löst einmal `OwnLinkVoice` aus, wiederholte Meldungen nicht. Nach `null`, 100 ms und erneut `TargetLinked` kein Ton, nach `null`, 400 ms und `TargetLinked` wieder einer.
-2. `ServerViewModelTests > "OwnLinkVoice_NotWithoutLinksOrForChannelOnly"` (AC3)
+2. `ServerViewModelTests > "OwnLinkVoice_NoLinksOrChannelOnly_NoSound"` (AC3)
    - Gegeben: eigener Channel ohne Link mit `TargetLinked`, dann verlinkt mit `TargetChannel`
    - Erwartet: kein Ton
-3. `ServerViewModelTests > "LinkVoice_NotForOwnChannelOrSelf"` bleibt grün: `LinkVoice` weiter nie für die eigene Session (AC5)
+3. `ServerViewModelTests > "LinkVoice_OwnChannelOrSelf_NoSound"` bleibt grün: `LinkVoice` weiter nie für die eigene Session (AC5)
 4. `SoundTests > "Defaults_EveryEvent_ShortAudibleDistinct"`: `OwnLinkVoice` gleich `LinkVoice`, sonst weiter alle verschieden. `SoundPlayerTests > "Play_Deafened_OnlyOwnMicAndSoundTonesPlay"` um `OwnLinkVoice` ergänzt (AC3, AC4)
 5. `SettingsTests > "Sounds_LinkRows_Independent"` (AC4): Stumm für `OwnLinkVoice` lässt `LinkVoice` unberührt
 6. `LocalizationTests` bleiben grün (AC5)
@@ -4035,7 +4035,7 @@ Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refacto
 3. `UiSmokeTests > "BackgroundOpacity_OnlyBackgroundsSeeThrough"` (AC2, AC3)
    - Gegeben: Hauptfenster, `WindowAppearance.Apply` mit 50 % ohne und dann mit Weichzeichnen, dann 100 %. Beide Theme-Varianten
    - Erwartet: `Ovs.Bg`, `Ovs.Sidebar`, `Ovs.SidebarFooter` mit `Opacity` 0,5, `Ovs.Text`, `Ovs.Surface`, `Ovs.DialogBg`, `Ovs.DialogBar` mit 1. `TransparencyLevelHint` `Transparent`, dann `AcrylicBlur`, bei 100 % leer. Ein offener Dialog nutzt `Ovs.DialogBg`.
-4. `MainViewModelTests > "Appearance_LivePreview_DiscardRestores_SaveKeeps"` (AC4)
+4. `MainViewModelTests > "Appearance_PreviewThenDiscardOrSave_RestoredOrKept"` (AC4)
    - Gegeben: Einstellungen öffnen, Regler auf 30 %, verwerfen. Dann 60 % und speichern
    - Erwartet: `Appearance` sofort 30 %, nach dem Verwerfen wieder 100 %. Nach dem Speichern 60 % in `Settings` und in der Datei.
 5. `LocalizationTests` bleiben grün (AC5)
@@ -4094,7 +4094,7 @@ Reihenfolge: Test schreiben -> rot -> minimal implementieren -> grün -> refacto
 2. `UpdateTests > "Install_WithoutLength_ReportsUnknownTotal"` (AC1)
    - Gegeben: Antwort ohne `Content-Length` (gestreamter Inhalt)
    - Erwartet: Download-Meldungen mit Gesamtgrösse `null`, Installation klappt trotzdem
-3. `MainViewModelTests > "Update_Accepted_ShowsProgress_UntilFailure"`, `UpdateFlowTests > "CheckAsync_OfferAcceptedAndInstalled_ShowsEveryReportThenClearsTheCardAndSaysStarting"`, `"CheckAsync_InstallFails_ReportsTheFailureOnEveryChannelAndClearsTheCard"`, `"CheckAsync_InstallThrows_ClearsTheCardAndLetsTheErrorThrough"`, `"IsUpdating_ProgressSet_IsTrueAndTellsTheBindings"`, `"IsUpdating_ProgressCleared_IsFalseAndTellsTheBindings"` (AC2, AC4)
+3. `MainViewModelTests > "Update_Accepted_ProgressShownUntilFailure"`, `UpdateFlowTests > "CheckAsync_OfferAcceptedAndInstalled_ShowsEveryReportThenClearsTheCardAndSaysStarting"`, `"CheckAsync_InstallFails_ReportsTheFailureOnEveryChannelAndClearsTheCard"`, `"CheckAsync_InstallThrows_ClearsTheCardAndLetsTheErrorThrough"`, `"IsUpdating_ProgressSet_IsTrueAndTellsTheBindings"`, `"IsUpdating_ProgressCleared_IsFalseAndTellsTheBindings"` (AC2, AC4)
    - Gegeben: Fake-Checker mit Angebot, Dialog sagt ja, Installer mit Fake-Handler, dessen Prüfsumme nicht passt
    - Erwartet: während des Downloads `UpdateInProgress` nicht null mit Version und Prozent-Text, danach null, und die Rückgabe ist `Update_Damaged`
 4. `UiSmokeTests > "UpdateProgress_CoversWholeWindow_BlocksInput"` (AC2, AC3)
@@ -4594,9 +4594,9 @@ Der Tab "Nutzer" (`ShowUsers` = Recht `GroupsAssign`) zeigt je Nutzer eine Karte
 
 ### Tests (TDD)
 
-1. `AdminViewModelTests > "UserDetails_FromKnownUserInfo"` (AC1): alle Felder und "unbekannt" für leere Werte
-2. `AdminViewModelTests > "Search_MatchesNicknamePreviousFingerprintIp"` (AC2)
-3. `AdminViewModelTests > "Filter_StatusGroup_Sort_Count"` (AC3)
+1. `AdminViewModelTests > "UserDetails_KnownUser_FilledFromItsInfo"` (AC1): alle Felder und "unbekannt" für leere Werte
+2. `AdminViewModelTests > "UserSearch_Text_MatchesNicknamePreviousFingerprintAndIp"` (AC2)
+3. `AdminViewModelTests > "UserFilter_StatusGroupAndSort_FilteredSortedAndCounted"` (AC3)
 4. `AdminViewModelTests > "UsersViewOnly_SearchWorks_TogglesLocked"` (AC4)
 5. entfällt, die Rechteprüfung von `ListUsers` testet Package 76
 6. `AdminViewModelTests > "UserJoins_ListRefreshed_FilterKept"` (AC5)
@@ -4657,7 +4657,7 @@ Testbefehl: `dotnet test`
 6. `ModerationTests > "DeleteKnownUser_Online_KickedWithMessage"` (AC4)
 7. `ModerationTests > "DeleteKnownUser_SelfLastAdminStronger_Denied"` (AC5)
 8. `AdminViewModelTests > "DeleteUser_AsksFirst_SendsOnlyAfterConfirm"` (AC3)
-9. `AdminViewModelTests > "BanUnbanDeleteButtons_ByStateAndRight"` (AC1, AC5, AC6): Bannen und Entbannen nur mit `UserBan`, Löschen nur mit `UserDelete`
+9. `AdminViewModelTests > "BanButtons_StateAndRight_ShownAccordingly"` (AC1, AC5, AC6): Bannen und Entbannen nur mit `UserBan`, Löschen nur mit `UserDelete`
 10. `UiSmokeTests`: Lösch-Dialog rendert, `LocalizationTests`, `SettingsTests > "ErrorTexts_EveryCodeHasText"` (AC6)
 
 Testbefehl: `dotnet test`
@@ -4708,7 +4708,7 @@ Sounds sind die Werte von `SoundEvent` (Reihenfolge = Reihenfolge in den Einstel
 2. `SettingsTests > "Sounds_GroupRows_Independent"` (AC1)
 3. `ServerViewModelTests > "OwnGroupsChanged_SoundOnce_NotOnConnect"` (AC2)
 4. `AdminViewModelTests > "AssignGroup_SoundWhenListConfirms_NotOnError"` (AC3)
-5. `ServerViewModelTests > "OwnGroupChangedByMe_OnlyOneSound"` (AC4)
+5. `ServerViewModelTests > "OwnGroups_ChangedByMe_OnlyOneSound"` (AC4)
 6. `SoundPlayerTests > "Play_Deafened_OnlyOwnMicAndSoundTonesPlay"` bleibt grün (AC5)
 
 Testbefehl: `dotnet test`
@@ -4908,7 +4908,7 @@ Sehen und Handeln hängen also am selben Recht. Die Standardgruppe Moderator hat
    - Gegeben: Nutzer in einer Gruppe mit allen Rechten ausser dem geprüften
    - Erwartet: `PermissionDenied`. Mit dem Recht: kein Rechtefehler
 4. `AdminCommandTests > "GroupsCreateOnly_EditOrDelete_Refused"` (AC3)
-5. `AdminViewModelTests > "Tabs_VisibleByPermission"` erweitert (AC2)
+5. `AdminViewModelTests > "Tabs_Rights_VisibleByPermission"` erweitert (AC2)
    - Gegeben: je nur `UsersView`, `BansView`, `GroupsView`, dann `GroupsAssign` allein
    - Erwartet: jeweils genau der passende Tab. Mit `GroupsAssign` allein keiner, und der Verwaltungs-Button ist ausgeblendet.
 6. `GroupListViewModelTests > "Commands_ViewRightOnly_NoCommandCanExecuteAndTheSelectedRowIsReadOnlyWithDisabledToggles"`, `"Commands_CreateRightOnly_NewGroupAllowedAndSavedGroupNotSavable"`, `"Commands_CreateRightOnlyDraftAdded_DraftSavableAndDeletable"`, `"Commands_ManageRightOnly_SavedGroupSavableAndMovableButNeitherNewNorDeletable"` und `"Commands_DeleteRightAndTheModeratorsRights_ModeratorDeletableButNotSavable"` (AC4): Neu, Speichern, Sortieren, Löschen, Nutzer-Checkboxen, Entbannen einzeln gesperrt
@@ -5155,9 +5155,9 @@ Testbefehl: `dotnet test`
    - Expected: counter 4, last attempt time and IP set, the data file written at most twice for these attempts
 5. `DataStoreTests > "Load_OldBansWithUnknownNewFields_Loads"` (AC1)
 6. `AdminViewModelTests > "BanCards_ShowAllDetails_UnknownForMissing"` (AC4)
-7. `AdminViewModelTests > "BanSearch_MatchesAllTextFields"` (AC5)
-8. `AdminViewModelTests > "BanFilter_StatusType_Sort_Count"` (AC6)
-9. `AdminViewModelTests > "Unban_OnlyActive_OnlyWithRight_FilterKept"` (AC7)
+7. `AdminViewModelTests > "BanSearch_Text_MatchesAllTextFields"` (AC5)
+8. `AdminViewModelTests > "BanFilter_StatusTypeAndSort_FilteredSortedAndCounted"` (AC6)
+9. `AdminViewModelTests > "Unban_ActiveBanWithRight_OnlyThenOfferedAndFilterKept"` (AC7)
 10. `ResponsiveTests > "Admin_EveryTabFits"` extended with 12 bans of every status, `LocalizationTests` (AC8)
 
 Test command: `dotnet test tests/OVS.Tests`
@@ -5227,11 +5227,11 @@ Test command: `dotnet test tests/OVS.Tests`
 4. `LogCommandTests > "ReadLog_WithoutRightUnknownOrTraversal_Rejected"` (AC1, AC6)
 5. `LogCommandTests > "ReadLog_LongLine_CutAt2000"` (AC6)
 6. `LogCommandTests > "SearchLogs_Running_StateLockFree"` (AC7): a chat message is delivered while a long search runs (search on a large generated file, with a test hook that pauses the reader)
-7. `LogsViewModelTests > "FileFilter_TypeAndPeriod"` (AC2)
+7. `LogsViewModelTests > "FileFilter_TypeAndPeriod_Filtered"` (AC2)
 8. `LogsViewModelTests > "OpenFile_PageNavigation_Refresh"` (AC3)
-9. `LogsViewModelTests > "LineFilter_HighlightsMatches"` (AC4)
-10. `LogsViewModelTests > "SearchHit_OpensFileAtLine"` (AC5)
-11. `AdminViewModelTests > "Tabs_VisibleByPermission"` extended with `LogsView`, `PermissionRulesTests` default groups unchanged except Admin (AC1)
+9. `LogsViewModelTests > "LineFilter_Text_HighlightsMatches"` (AC4)
+10. `LogsViewModelTests > "SearchHit_Clicked_OpensFileAtLine"` (AC5)
+11. `AdminViewModelTests > "Tabs_Rights_VisibleByPermission"` extended with `LogsView`, `PermissionRulesTests` default groups unchanged except Admin (AC1)
 12. `ResponsiveTests > "Admin_EveryTabFits"` with the Logs tab, `LocalizationTests` (AC8)
 
 Test command: `dotnet test tests/OVS.Tests`
@@ -5289,7 +5289,7 @@ After Package 81 the client knows the log files by id. Backups (Package 75) alre
 2. `LogCommandTests > "DownloadSelection_ZipWithFolders_TempRemoved"` (AC2, AC3)
 3. `LogCommandTests > "Download_RequiresLogsDownload_TooLargeRejected"` (AC1, AC4)
 4. `LogCommandTests > "Download_ChunkedPullBased_ChatStillFlows"` (AC4, AC5)
-5. `LogsViewModelTests > "Selection_AllInPeriod_None_SingleVsZip"` (AC2)
+5. `LogsViewModelTests > "Download_SelectionAllNoneOrOne_SingleFileOrZip"` (AC2)
 6. `LogsViewModelTests > "DownloadAsync_TwoFilesSelected_SavesTheirZip"`, `AdminTransferTests > [Theory] "Download_ChunksAnswered_FileInPlaceWithProgress"`, `[Theory] "Download_ErrorForASecondChunk_OldFileKeptWithoutNotice"` (AC4)
 7. `ResponsiveTests > "Admin_EveryTabFits"` with the selection and progress, `LocalizationTests` (AC6)
 
@@ -5401,7 +5401,7 @@ Test command: `dotnet test tests/OVS.Tests`
 4. `ModerationTests > "Ban_LastAdmin_Refused"` (AC3): online and offline ban
 5. `AdminCommandTests > "Unassign_FromStrongerUser_Denied"` (AC4)
 6. `ModerationTests > "Unban_StrongerBannedUser_DeniedWithoutBanList"` (AC5)
-7. `AdminViewModelTests`/`ServerViewModelTests > "ActionsMatchServerRule"` (AC6)
+7. `AdminViewModelTests > "UserActions_StoredRights_MatchServerRule"`, `ServerViewModelTests > "UserActions_ServerRule_MatchFlag"` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`
 
@@ -5551,7 +5551,7 @@ Every successful login with a new fingerprint creates a permanent `UserRecord` a
 2. `IdentityFloodTests > "ConnectLoop_NewIdentities_SavedDebounced"` (AC2)
 3. `IdentityFloodTests > "GuestRecords_Old_Pruned"` (AC3)
 4. `IdentityFloodTests > "LargeLists_Paged_UnderFrameLimit"` (AC4, AC5)
-5. `AdminViewModelTests > "UserList_FetchesAllPages"` (AC4)
+5. `AdminViewModelTests > "UserList_LongList_AllPagesFetched"` (AC4)
 
 Test command: `dotnet test tests/OVS.Tests`
 
@@ -5833,7 +5833,7 @@ Test command: `dotnet test tests/OVS.Tests`
 3. `ChannelLockTests > "Move_OnlyIfMoverQualifies_TargetNotChecked"` (AC3)
 4. `ChannelLockTests > "LockChange_UsersInside_NobodyMovedOut"` (AC4)
 5. `ChannelLockTests > "GroupDeleted_RemovedFromLocks_EmptyMeansAdminsOnly"` (AC5)
-6. `ServerViewModelTests > "LockedChannel_IconTooltipAndJoinAvailability"` (AC6, AC7)
+6. `ServerViewModelTests > "LockedChannel_GroupsAndRights_IconTooltipAndJoinFollow"` (AC6, AC7)
 7. `SidebarWidthTests` extended with the lock icon (AC6)
 8. Channel dialog view model test: group list, disabled for the default channel (AC7)
 9. `ResponsiveTests.Dialogs_FitAt360` for the channel dialog with many groups, `LocalizationTests`, `SettingsTests > "ErrorTexts_EveryCodeHasText"` (AC8)
@@ -6048,10 +6048,10 @@ There is no shared busy component. Only connecting (`IsConnecting`, indeterminat
 
 ### Tests (TDD)
 
-1. `PendingActionViewModelTests > "BusyVisibleWithin150ms_NotForFastActions"` (AC1): with a manual clock, an action answered after 100 ms never shows busy, one answered after 1 s shows busy from 150 ms on
+1. `PendingActionViewModelTests > "Busy_SlowOrFastAction_VisibleOnlyAfter150ms"` (AC1): with a manual clock, an action answered after 100 ms never shows busy, one answered after 1 s shows busy from 150 ms on
 2. `PendingActionViewModelTests > "NoAnswer_TimesOutWithError_Retryable"` (AC2)
 3. `AdminViewModelTests > "Lists_ShowLoadingUntilFirstPage_RefreshKeepsContent"` (AC3)
-4. `LogsViewModelTests > "Search_BusyUntilResult"` (AC4)
+4. `LogsViewModelTests > "Search_Sent_BusyUntilResult"` (AC4)
 5. `BackupCardViewModelTests > "NewBackup_ClickedTwice_SendsOnceShowsBusyAfterTheDelayAndEndsWithTheNewList"`, `"Restore_ConfirmedThenRefused_StaysBusyThroughTheSafetyBackupAndEndsWithTheErrorText"` (AC5)
 6. `ResponsiveTests.Admin_EveryTabFits` with busy states, `LocalizationTests` (AC6)
 
@@ -6105,7 +6105,7 @@ These actions send a request and show nothing until the server's state change ar
 1. `ServerViewModelTests > "JoinChannel_RowBusyUntilMoved_SecondJoinIgnored"` (AC1)
 2. `ChatViewModelTests > "SentMessage_PendingUntilEcho_ErrorRetry"` (AC2)
 3. `UiSmokeTests > "SendingDialogs_StayOpenBusyUntilConfirmed"`, `DialogButtonsTests > [Theory] "ShowAsync_SendingDialog_SendsTheAnswerAndClosesWhenDone"`, `DialogFrameTests > "ShowAsync_SubmitRefusedThenConfirmed_ShowsTheErrorThenCloses"` (AC3)
-4. `AdminViewModelTests > "CardActions_BusyUntilConfirmed"`, `ServerViewModelTests > "Reorder_RevertsOnError"` (AC4)
+4. `AdminViewModelTests > "CardActions_Sent_BusyUntilConfirmed"`, `ServerViewModelTests > "Reorder_Refused_Reverted"` (AC4)
 5. `SettingsTests > "Save_BusyWhileDevicesRestart"` (AC5), `EngineSyncTests > "ConfigureAsync_DeviceOpenWaits_ReturnsBeforeTheRestartIsDone"` and `"ConfigureAsync_NoDevices_AppliesAtOnceOnTheCallingThreadWithoutWarning"`, `MainViewModelCompositionTests > "ApplySettingsAsync_GivenHardware_RestartsDevicesOffTheCallingThread"`, `EngineSyncWiringTests > "ApplySettingsAsync_NoDevices_CompletesOnTheCallingThreadAndEngineTakesTheMode"` (AC5)
 6. `UiSmokeTests > "EveryWaitingAction_VisibleWithin400ms"` (AC6)
 7. `ResponsiveTests`, `LocalizationTests` (AC7)
@@ -6162,7 +6162,7 @@ There's no display mode today. `Theme`, opacity and blur already show how an app
 1. `SettingsTests > "Display_DefaultsToAnimated_MissingKeyIsAnimated_SimplifiedRoundTrips"` (AC1)
    - Given: a fresh `ClientSettings`, a JSON file without `Display`, and a settings object with `Simplified` that is saved and loaded again.
    - Expected: `Animated`, `Animated`, `Simplified`.
-2. `MainViewModelTests > "Display_LivePreviewAndCancelRevert"` (AC2)
+2. `MainViewModelTests > "DisplayMode_PreviewThenDiscardOrSave_RestoredOrKept"` (AC2)
    - Given: the settings page switches to Simplified.
    - Expected: `LivePreview` gets `Simplified`; after cancelling, the applied mode is `Animated` again.
 3. `MotionTests > "Apply_SetsWindowClassAndDurations"`, `"Apply_TwoWindows_EachControlFollowsItsOwnWindow"` (AC3)
@@ -6976,14 +6976,14 @@ Dialogs live in the main window's overlay (`SimpleDialogs`, A20). `Pending` (Pac
 
 (as built, from three review rounds: the settings page compares with what it showed when it opened, not with the file, since the sliders do not round-trip exactly; the server tab and an edited group follow the server in the fields the user did not touch, so a save never undoes another admin; edited group rows survive server updates, which used to drop them silently; a device list arriving with the page open no longer crashes the change check)
 
-1. `LeaveGuardTests > "Settings_HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert"` (AC1)
+1. `LeaveGuardTests > "HasChanges_UntouchedEditedOrReverted_OnlyTrueWhenEdited"` (AC1)
 2. `LeaveGuardTests > "Admin_HasChanges_GroupDraftServerSettingsLinks"`, `AdminPlaceTests > "HasChanges_OnlyLinksChangedThenDiscarded_TrueThenFalse"` (AC1)
 3. `LeaveGuardTests > "LeaveWithChanges_Asks_KeepEditingStays"`, `"ConnectAsync_AdminHasChangesAndUserStays_AsksOnceAndKeepsTheShownServer"`, `"SettingsCloseButton_UnsavedChanges_AsksFirst"`, `PageFlowViewModelTests > "AdminPageCloseButton_UnsavedChanges_AsksFirstAndTheAnswerDecides"` (AC1, AC2)
    - Given: a fake `AskLeave` that answers each choice in turn.
    - Expected: correct behaviour for a page change, a disconnect and a window close.
-4. `LeaveGuardTests > "LeaveWithoutSaving_Discards"` and `"SaveAndLeave_LeavesAfterConfirm_StaysOnRefusal"`, `PageFlowViewModelTests > "ConfirmLeaveAsync_FirstAdminPlaceFails_StopsThereAndReturnsFalse"`, `DialogFrameTests > "ShowAsync_ThirdAnswer_ThreeButtonsDefaultFirstAndItsValueReturned"`, `DialogButtonsTests > [Theory] "ShowAsync_EnterPressed_AcceptsOnlyWhereThatIsSafe"`, `AdminPlaceTests > "SaveAsync_NoChanges_TrueWithoutSending"` and `"Places_SavingOrder_GroupsLinksServer"`, `GroupListViewModelTests > "Place_GroupSaveOnItsWay_SavingWaitsForItAndSendsNoSecondOne"`, `"Place_OtherGroupEdited_SavingSendsItAndSucceedsOnceConfirmed"`, `"Place_TwoGroupsEdited_SendsTheSecondOnlyOnceTheFirstIsConfirmedAndSucceedsAfterBoth"`, `"Place_SecondGroupRefused_FailsSelectsItAndItKeepsItsEdit"`, `"Place_FirstGroupRefused_FailsAndTheSecondIsNeverSentAndBothKeepTheirEdits"`, `"Place_FirstGroupGetsNoAnswer_FailsAfterTheTimeoutAndTheSecondIsNeverSent"`, `"Place_SavedAgainAfterATimeout_OneAnswerConfirmsOnlyTheFirstGroup"`, `"Place_SecondGroupNameBlank_FailsSelectsItWithTheNameErrorAfterTheFirstWasSaved"`, `"Place_RightsLostWhileTheFirstGroupIsOnItsWay_TheRebuiltSecondGroupIsNotSentStale"`, `"Place_GroupRebuiltWhileOnItsWayThenRefused_FailsAndSelectsTheRowThatIsInTheList"`, `"Place_DraftAndEditedSavedGroup_SendsTheUpdateThenTheCreateAndSucceedsAfterBoth"`, `"SaveGroup_OtherGroupEditedToo_SendsOnlyTheSelectedGroup"`, `LinkMatrixViewModelTests > "Place_SaveOnItsWay_SavingWaitsForItAndSendsNoSecondOne"`, `"Place_LinkMarked_HasChangesAndSavingSendsItAndWaitsForTheServer"`, `"PlaceDiscard_LinkMarked_LinkBackAndNoChanges"`, `ServerSettingsViewModelTests > "Place_NameEdited_HasChangesAndSavingSendsTheSettingsAndWaitsForTheServer"` and `"Place_NameBlank_HasChangesButSavingFailsWithoutSending"` (AC3, AC4)
+4. `LeaveGuardTests > "LeaveGuard_LeaveWithoutSaving_Discards"` and `"SaveAndLeave_LeavesAfterConfirm_StaysOnRefusal"`, `PageFlowViewModelTests > "ConfirmLeaveAsync_FirstAdminPlaceFails_StopsThereAndReturnsFalse"`, `DialogFrameTests > "ShowAsync_ThirdAnswer_ThreeButtonsDefaultFirstAndItsValueReturned"`, `DialogButtonsTests > [Theory] "ShowAsync_EnterPressed_AcceptsOnlyWhereThatIsSafe"`, `AdminPlaceTests > "SaveAsync_NoChanges_TrueWithoutSending"` and `"Places_SavingOrder_GroupsLinksServer"`, `GroupListViewModelTests > "Place_GroupSaveOnItsWay_SavingWaitsForItAndSendsNoSecondOne"`, `"Place_OtherGroupEdited_SavingSendsItAndSucceedsOnceConfirmed"`, `"Place_TwoGroupsEdited_SendsTheSecondOnlyOnceTheFirstIsConfirmedAndSucceedsAfterBoth"`, `"Place_SecondGroupRefused_FailsSelectsItAndItKeepsItsEdit"`, `"Place_FirstGroupRefused_FailsAndTheSecondIsNeverSentAndBothKeepTheirEdits"`, `"Place_FirstGroupGetsNoAnswer_FailsAfterTheTimeoutAndTheSecondIsNeverSent"`, `"Place_SavedAgainAfterATimeout_OneAnswerConfirmsOnlyTheFirstGroup"`, `"Place_SecondGroupNameBlank_FailsSelectsItWithTheNameErrorAfterTheFirstWasSaved"`, `"Place_RightsLostWhileTheFirstGroupIsOnItsWay_TheRebuiltSecondGroupIsNotSentStale"`, `"Place_GroupRebuiltWhileOnItsWayThenRefused_FailsAndSelectsTheRowThatIsInTheList"`, `"Place_DraftAndEditedSavedGroup_SendsTheUpdateThenTheCreateAndSucceedsAfterBoth"`, `"SaveGroup_OtherGroupEditedToo_SendsOnlyTheSelectedGroup"`, `LinkMatrixViewModelTests > "Place_SaveOnItsWay_SavingWaitsForItAndSendsNoSecondOne"`, `"Place_LinkMarked_HasChangesAndSavingSendsItAndWaitsForTheServer"`, `"PlaceDiscard_LinkMarked_LinkBackAndNoChanges"`, `ServerSettingsViewModelTests > "Place_NameEdited_HasChangesAndSavingSendsTheSettingsAndWaitsForTheServer"` and `"Place_NameBlank_HasChangesButSavingFailsWithoutSending"` (AC3, AC4)
 5. `LeaveGuardTests > "AdminTabSwitch_WithChanges_AsksAndStays"` and `"OtherGroup_WithChanges_AsksAndStays"`, `AdminPlaceTests > "Places_EveryPlace_CarriedByExactlyOneTab"` and `"SavingTabs_DataContextSet_CarryTheirOwnPlace"` (AC1, AC2)
-6. `LeaveGuardTests > "CancelAndDiscardButtons_DoNotAsk"` (AC5)
+6. `LeaveGuardTests > "LeaveGuard_CancelOrDiscardButton_DoesNotAsk"` (AC5)
 7. `LocalizationTests` and `ResponsiveTests > [Theory] "Dialogs_FitAt360"` (AC6)
 
 Test command: `dotnet test tests/OVS.Tests`
@@ -7082,13 +7082,13 @@ The user row's context menu (`MainWindow.axaml:245-281`) has volume, message, mo
 
 ### Tests (TDD)
 
-1. `ServerViewModelTests > "UserGroups_OnlyForWeakerUsersWithAssignRight"` (AC1, AC2)
+1. `ServerViewModelTests > "UserGroupsMenu_WeakerUserAndAssignRight_OnlyThenShown"` (AC1, AC2)
    - Given: a fake server where I have `GroupsAssign`, a weaker user, a stronger user and myself, with groups of which one is not assignable by me.
    - Expected: `Groups` is empty for myself and the stronger user; for the weaker user it lists all groups, ticked by `GroupIds`, the not assignable one disabled.
 2. `ServerViewModelTests > "UserGroupToggle_SendsAssign_ConfirmedByUserUpdated"` (AC3)
    - Given: the weaker user, toggling a group on and then off.
    - Expected: `AssignGroup(fp, id)` then `UnassignGroup(fp, id)` are sent; the pending ends with the matching `UserUpdated`; an `Error` for the request reverts the tick and shows the error.
-3. `ServerViewModelTests > "LastAdmin_CannotBeUnticked"` (AC2)
+3. `ServerViewModelTests > "AdminGroup_LastAdmin_CannotBeUnticked"` (AC2)
 4. `UiSmokeTests > "UserContextMenu_GroupsSubmenu"` (AC1, AC4): a headless right click on a user row opens the menu with the submenu and its check marks.
 5. `LocalizationTests`, `ResponsiveTests > "UserContextMenu_Fits360"` (AC5)
 
@@ -7145,14 +7145,14 @@ Channel reordering uses `ReorderDrag` (Package 96), built for gaps inside one li
 
 (as built: `ItemMotion.Hold` only holds a change of order for one dispatcher round, but a moved user only flies once the server confirms, so the drop holds the flight with a new `ItemMotion.Ground(user, until)`: that entry does not fly while the drop waits for the server; refused or confirmed, the next move flies again. The whole channel block (its row and its users) is the drop target, the channel row lights up (`Border.row.dropTarget`). `ReorderDrag.Lift` and `Follow` are shared with `UserDrag`. Without the dialog the moved user's row spins until the server shows the move (Package 98), and `Dialog_MoveTo` is gone; "Verschieben" / "Move to" lost the dots of a dialog. `DropUser_OwnRowJoins_InvalidTargetsSendNothing` (ServerViewModelTests) covers the password prompt of AC4 and the invalid targets; `UiSmokeTests > "UserContextMenu_MoveSubmenu"` clicks the submenu for real. `UserDrag` needs no `ReducedMotion`: nothing makes room, so there is no gap to animate, and the tilt is a static pose. Review: a drag ends when the button is no longer held or the row has left the tree (the user left, a sync made a new row), and `DropUser` ignores a user no longer on the server; `Ground` counts per entry, so overlapping drops of the same user do not let each other fly)
 
-1. `ServerViewModelTests > "MoveTargets_OtherChannelsWithoutSeparators"` (AC1)
+1. `ServerViewModelTests > "MoveTargets_ChannelTree_OtherChannelsWithoutSeparators"` (AC1)
 2. `UserDragTests > "DragUserOntoChannel_HighlightsAndMoves"` (AC2, AC3)
    - Given: a headless main window with a fake server, a weaker user in the Lobby, me with `UserMove`.
    - Expected: past the threshold a preview is in the overlay; over the Raid row it is highlighted; on release `MoveUser(user, Raid)` is sent and no flight ghost appears.
 3. `UserDragTests > "DropOutsideOrEsc_SendsNothing"` (AC3)
 4. `UserDragTests > "OwnRow_DropJoinsChannel"` (AC4)
 5. `UserDragTests > "NoMoveRight_NoDrag_ChannelDragUnchanged"` (AC6), with `ReorderDragTests` staying green
-6. `ServerViewModelTests > "RefusedMove_ShowsError"` (AC5)
+6. `ServerViewModelTests > "Move_Refused_ShowsErrorAndUserStays"` (AC5)
 7. `LocalizationTests`, `ResponsiveTests` (AC7)
 
 Test command: `dotnet test tests/OVS.Tests`
@@ -7461,7 +7461,7 @@ The mute button (`ToggleMute`, `ServerViewModel.cs:557-565`) sets `SelfMuted`, p
 
 1. `MainViewModelTests > "PushToMuteHeld_MutesLikeButton_ReleaseRestores"` (AC1): a fake server collects `SetSelfState`; the binding resolved from a simulated key state.
 2. `MainViewModelTests > "PushToMute_AlreadyMuted_NoChange"` (AC2)
-3. `MainViewModelTests > "MuteButtonWhileHeld_Sticks"` (AC3)
+3. `MainViewModelTests > "MuteButton_PressedWhileKeyHeld_Sticks"` (AC3)
 4. `MainViewModelTests > "PushToMute_NotConnected_OnlyStopsSending"` (AC4)
 5. `KeyBindingTests > "Capture_SingleModifier_OnRelease"` and `"Resolve_SingleModifierChord"` (AC5)
 
@@ -7508,7 +7508,7 @@ Reproduction first: test 1 must be red before anything changes.
 1. `ClientNetTests > "FirstHelloLost_StillGetsVoice"` (AC1): a test server behind a lossy UDP relay that drops the first client packet; expected: `Reachable` within 1 s, and a voice frame from a second client arrives.
 2. `ClientNetTests > "UdpOutage_Recovers"` (AC2): the relay drops everything for 20 s, then passes; `VoiceClient` takes a `TimeProvider` (default `TimeProvider.System`), driven by `ManualTimeProvider`.
 3. `ClientNetTests > "Reachable_SendsOnlyPings"` (AC3): count Hello and Ping packets at the relay.
-4. `MainViewModelTests > "UdpOutage_LoggedOnceEachWay"` (AC4); the log by itself on a fake UDP server: `VoiceLinkTests > "LogReachability_ServerAnswersAskedTwice_LogsNowReachableOnce"`, `"LogReachability_AnswersStopForFifteenSeconds_LogsNotReachableAfterNowReachable"` and `"LogReachability_ServerAnswersAgainAfterAnOutage_LogsReachableAgain"` (AC4)
+4. `MainViewModelTests > "UdpOutage_LostAndBack_LoggedOnceEachWay"` (AC4); the log by itself on a fake UDP server: `VoiceLinkTests > "LogReachability_ServerAnswersAskedTwice_LogsNowReachableOnce"`, `"LogReachability_AnswersStopForFifteenSeconds_LogsNotReachableAfterNowReachable"` and `"LogReachability_ServerAnswersAgainAfterAnOutage_LogsReachableAgain"` (AC4)
 
 (as built: `VoiceClient` takes an optional `TimeProvider` and runs one timer every 500 ms in both states instead of the 5 s ping timer; each tick decides: unreachable sends a Hello on every tick for 5 s after start or after a loss, then one per ping interval (5 s); reachable sends a ping once 5 s passed since the last packet, and on every tick while an answer is overdue by more than one ping interval, so two lost pings in a row (an idle listener on lossy Wi-Fi) are asked again instead of counting as a loss (`TwoLostPings_StayReachable`, added after review); 15 s after the last answer `Reachable` turns false and the fast Hellos start again. Any authenticated packet from the server (ping answer or voice) counts as an answer. The 500 ms tick costs two timer callbacks per second while idle, which does nothing measurable next to Package 124's numbers; switching the period with the state was not worth the extra code. `TestSupport/LossyUdpRelay` sits between one client and the server, drops the next N client packets or everything both ways, and counts the client's packets by type (also dropped ones) and the server packets passed back. All three `ClientNetTests` drive the client's clock with `ManualTimeProvider` and the network in real time, so "within 1 s" (AC1) is one 500 ms retry in client time, and AC2 is checked at 14.5 s (still reachable), 15 s (lost), 20 s (still lost, network back) and after one more ping interval (reachable). `Reachable_SendsOnlyPings` waits for each ping's answer before moving the clock on, as real time would; without that, the answers all arrived after the clock had passed 15 s and the client counted the line as lost; likewise the outage tests wait until the relay has seen (and dropped) the outage's packets before letting packets through again. All four were red before the change (test 1 timed out waiting for `Reachable`). `MainViewModel` gets two internal test hooks, `VoiceRelay` (UDP goes there instead of the server) and `VoiceTime`. The log: a loss after UDP worked logs the existing "UDP nicht erreichbar: Sprache kommt nicht an (Firewall oder NAT?)" at the next UI tick (no 5 s wait, `Reachable` already waited 15 s), and the recovery logs "UDP wieder erreichbar"; a connection that was unreachable from the start and then reaches the server still logs "UDP erreichbar", as before. The server is unchanged. In the first full run `ChannelLockTests.LockChange_NobodyMovedOut` and `BackupTests.UploadAndRestore_OnlyAdminGroup_CheckedPerChunk` failed once under load (server tests, untouched); both passed alone and in a second full run.)
 
@@ -7760,9 +7760,9 @@ Neither OVS nor Fluxer tells users they are talking into a muted microphone, exc
 ### Tests (TDD)
 
 1. `MainViewModelTests > "TalkWhileMuted_ShowsHint_2s"` (AC1)
-2. `MainViewModelTests > "TalkWhileDeafenedOrServerMuted_ShowsHint"` (AC2), a theory.
-3. `MainViewModelTests > "VoiceWhileMuted_ShowsHint"` (AC3)
-4. `MainViewModelTests > "NotMuted_NoHint"` (AC4)
+2. `MainViewModelTests > "Talk_DeafenedOrServerMuted_ShowsHint"` (AC2), a theory.
+3. `MainViewModelTests > "Talk_SelfMuted_ShowsHint"` (AC3)
+4. `MainViewModelTests > "Talk_NotMuted_NoHint"` (AC4)
    - the rules without a window: `VoiceHintsTests > "Evaluate_SelfMutedAndTalkKeyHeld_ShowsTheSelfMutedHint"`, `VoiceHintsTests > "Evaluate_TalkEndedJustUnderTwoSecondsAgo_StillShowsTheHint"`, `VoiceHintsTests > "Evaluate_TalkEndedTwoSecondsAgo_ShowsNothing"`, `VoiceHintsTests > "Evaluate_TalkGoesOnForFiveSeconds_KeepsShowingTheHint"`, `VoiceHintsTests > "Evaluate_MutedAgainAfterBeingUnmuted_DoesNotBringBackTheOldAttempt"` (AC1); `VoiceHintsTests > "Evaluate_ServerMutedAndTalkKeyHeld_ShowsTheServerMutedHint"`, `VoiceHintsTests > "Evaluate_DeafenedAndTalkKeyHeld_ShowsTheDeafenedHint"`, `VoiceHintsTests > "Evaluate_ServerMutedAndDeafenedAndSelfMutedAndTalkKeyHeld_ShowsTheServerMutedHint"`, `VoiceHintsTests > "Evaluate_DeafenedAndSelfMutedAndTalkKeyHeld_ShowsTheDeafenedHint"`, `VoiceHintsTests > "Evaluate_ServerMutedWhilePushToMuteIsHeld_ShowsTheServerMutedHint"` (AC2); `VoiceHintsTests > "Evaluate_MutedAndVoiceDetectedInVoiceActivation_ShowsTheSelfMutedHint"`, `VoiceHintsTests > "Evaluate_MutedAndVoiceDetectedInPushToTalk_ShowsNothing"`, `VoiceHintsTests > "Evaluate_MutedInVoiceActivationWithoutVoice_ShowsNothing"` (AC3); `VoiceHintsTests > "Evaluate_NotMutedAndTalkKeyHeld_ShowsNothing"`, `VoiceHintsTests > "Evaluate_SelfMutedWhilePushToMuteIsHeld_ShowsNothing"`, `VoiceHintsTests > "Evaluate_DeafenedWhilePushToMuteIsHeld_ShowsTheDeafenedHint"`, `VoiceHintsTests > "Evaluate_MutedAfterTalkingUnmuted_ShowsNothing"`, `VoiceHintsTests > "Evaluate_ChannelMutedWithEveryOtherReasonToo_ShowsTheMutedChannelHint"`, `VoiceHintsTests > "Evaluate_NoLinkRightWithLinkKeyDownAndSelfMutedTalking_ShowsTheNoLinkRightHint"` (AC4); `MainViewModelTests > "Tick_InNoChannelSelfMutedAndTalkKeyHeld_ShowsTheSelfMutedHint"` (AC4)
 5. `SoundTests > "TalkKeySounds_OffByDefault_PlayWhenOn"` (AC5)
 6. `LocalizationTests` (AC6)
@@ -7817,8 +7817,8 @@ Every sender encodes at a fixed 32 kbps (`OpusCodec.cs`, `VoiceEncoder`). Fluxer
 
 1. `ChannelCommandTests > "Bitrate_CreateAndEdit_DefaultRangeOrRefused"` (AC1)
 2. `DataStoreTests > "Channel_WithoutBitrate_Loads64"` (AC2)
-3. `ChannelDialogViewModelTests > "Bitrate_ShownAndEdited"` (AC3)
-4. `SendPathTests > "Encoder_FollowsChannelBitrate"` (AC4, AC5), `EngineSyncTests > "SyncConnection_ChannelBitrate_SetsTheEnginesChannelBitrate"`, `"SyncConnection_NoChannelBitrate_SetsTheDefaultBitrate"`, `"SyncConnection_BitrateAboveTheMaximum_SetsTheMaximum"` and `"SyncConnection_BitrateBelowTheMinimum_SetsTheMinimum"`, `MainViewModelTests > "Bitrate_FollowsCurrentChannel"` (AC4)
+3. `ChannelDialogViewModelTests > "Bitrate_NewOrEditedChannel_ShownAndBounded"` (AC3)
+4. `SendPathTests > "Encoder_FollowsChannelBitrate"` (AC4, AC5), `EngineSyncTests > "SyncConnection_ChannelBitrate_SetsTheEnginesChannelBitrate"`, `"SyncConnection_NoChannelBitrate_SetsTheDefaultBitrate"`, `"SyncConnection_BitrateAboveTheMaximum_SetsTheMaximum"` and `"SyncConnection_BitrateBelowTheMinimum_SetsTheMinimum"`, `MainViewModelTests > "EncoderBitrate_JoinMoveOrEdit_FollowsCurrentChannel"` (AC4)
 5. `StateSyncTests > "ChannelInfo_Snapshot_CarriesBitrate"` (AC3, AC6)
 
 (as built: `ProtocolInfo` has `DefaultBitrate = 64`, `MinBitrate = 16`, `MaxBitrate = 128` and version 12. `ChannelInfo`, `CreateChannel` and `EditChannel` end with `int Bitrate = ProtocolInfo.DefaultBitrate`, so every existing construction keeps compiling and means 64; `RequestShape` needs nothing (an int is never null). `ChannelRecord.Bitrate` defaults to 64, so a data file without it loads every channel at 64 without a new data version; `ServerState.Info` sends 0 for a separator, whatever its record holds, and a new separator is stored with 0. `ValidateBitrate` refuses anything outside 16 to 128 with `InvalidValue` ("Qualität: 16 bis 128 kbps.") on create and on edit, also for the default channel, which has its own bitrate like any channel; a separator request with a bitrate other than the default is refused like one with other options. The channel log names it ("Qualität 96 kbps" on create when not 64, and on edit when it changed), and so does the client log line of an edit. `BackupStore.Validate` refuses a voice channel outside the range ("Channel-Name oder -Qualität ungültig") and ignores a separator's value, since separators stored before the package load as 64. On the client, `ChannelViewModel.Bitrate` follows `ChannelInfo`, `ChannelEdit` carries it into and out of the dialog, and `ServerViewModel.CreateChannel`/`EditChannel` send it. `MainViewModel.SyncAudioFlags` (run on every state change, so on join, move and an edit of the own channel) sets `AudioEngine.ChannelBitrate` to the current channel's, 64 while in none. `VoiceEncoder` starts at 64 kbps instead of the fixed 32 and has `BitrateKbps`; `CapturePipeline.Bitrate` (a `Func<int>` like `DecideTarget`) is asked for every frame sent and the encoder takes a change right before encoding, on the capture thread under the pipeline's lock, so no encode races a change. The engine wires it to `EncoderBitrate`: the channel's, or 64 in the self test. Link push-to-talk uses it unchanged, since it is the sender's own channel. The channel dialog has "Qualität (kbps, 16 bis 128)" / "Quality (kbps, 16 to 128)" with a one-line hint, a number field (step 8) below the user limit, clamped like it; an emptied field keeps the channel's value. The debug API's `/state` lists each channel's bitrate. Tests: AC1 `ChannelCommandTests.Bitrate_DefaultRangeRefused` (64 by default, 16 and 128 on create, 96 on edit in the snapshot of a later client and in the channel log, 15, 129 and 0 refused, a separator has 0 and one asking for 96 is refused), AC2 `DataStoreTests.Channel_WithoutBitrate_Loads64` (a stored 96 round-trips, the field removed loads 64, the backup check refuses 200), AC2, AC3 and AC6 `StateSyncTests.ChannelInfo_CarriesBitrate` (version 12, another client and its `StateMirror` get 96, still 96 after a server restart), AC3 `ChannelDialogViewModelTests.Bitrate_ShownAndEdited` (64 for a new channel, the channel's own when editing, also the default channel's, clamped to 16 and 128, a separator sends none) and `Bitrate_FromChannelIntoDialog_SentWithEdit` (the channel's 24 goes into the dialog, the edited 128 into `EditChannel` and `CreateChannel`), `UiSmokeTests` (the rendered dialog shows the value), AC4 and AC5 `SendPathTests.Encoder_FollowsChannelBitrate` (uniform noise at -20 dBFS through the `TalkRig`, the average of 80 frames within 15 % of 96 kbps, after the change to 32 while talking of 32, the same with link push-to-talk and its link target, 64 in the self test with nothing sent, and a real capture asks the engine), `MainViewModelTests.Bitrate_FollowsCurrentChannel` (64 in the Lobby, unchanged by an edit of another channel, 96 after moving into it, 24 after it is edited, 64 after disconnecting). `SendPathTests.Encoder_ComplexitySet_DtxOff` now expects a new encoder at 64 000 and `SmokeTests` version 12. The new tests failed to build before the fields, `ChannelBitrate` and the dialog's `Bitrate` existed.)
@@ -7877,8 +7877,8 @@ OVS shows only the control connection's TCP ping (`ClientConnection.cs:142`, `Ma
 2. `ClientNetTests > "VoiceRoundTrip_Measured"` (AC1): a delaying relay in `TestSupport` (from 126).
 3. `VoiceRelayTests > "Ping_UplinkLoss_Reported"` and `ClientNetTests > "DownlinkLoss_ReportedBothSides"` (AC2)
 4. `ReceivePathTests > "Jitter_Estimated"` (AC3) and `"TalkPause_NotLoss"` (AC6)
-5. `ConnectionStatsViewModelTests > "Rating_RelativeToBaseline"` (AC4)
-6. `MainViewModelTests > "SignalIcon_AndDetails"`, `DialogButtonsTests > [Theory] "ShowAsync_EachDialog_ItsButtonsInOrderAndRedOnlyWhenRisky"` (AC5); the 2 s refresh and the crossing out one by one: `ConnectionStatsViewModelTests > "Refresh_FirstCall_ShowsTheRoundTripBothLossFiguresAndTheMixerAndEncoderFigures"`, `"Refresh_UdpUnreachable_CrossesTheIconOut"`, `"Refresh_JustBeforeTheInterval_KeepsTheFiguresAndAsksForNoNewOnes"`, `"Refresh_AfterTheInterval_ReadsAndShowsTheNewFigures"` and `"Refresh_UdpReachableAgainWithinTheInterval_ClearsTheCrossingAtOnce"`; the card stays blank without a voice connection and the mixer's figures reach it: `MainViewModelCompositionTests > "Tick_NoVoiceConnection_StatsStayBlank"`, `MainViewModelTests > "Tick_MixerHasJitter_StatsShowTheMixersJitter"` and `ReconnectTests > "Reconnect_SelfTestFramesDuringTheWait_StatsCountFromTheNewConnection"` (AC5); the answers are taken once: `ConnectionStatsViewModelTests > "Refresh_NoNewAnswerSinceTheLast_KeepsTheBaseline"` and `"Reset_AfterAnAnswer_CountsTheSameAnswerCountAsNewAgain"` (AC4); the figures the card reads from the voice connection: `VoiceLinkTests > "ReadFigures_ServerAnswered_ReturnsTheRoundTripAndTheLossSeen"` (AC5)
+5. `ConnectionStatsViewModelTests > "Rating_SteadyHighRoundTrip_RelativeToBaseline"` (AC4)
+6. `MainViewModelTests > "SignalIcon_Connected_ShowsLevelAndDetails"`, `DialogButtonsTests > [Theory] "ShowAsync_EachDialog_ItsButtonsInOrderAndRedOnlyWhenRisky"` (AC5); the 2 s refresh and the crossing out one by one: `ConnectionStatsViewModelTests > "Refresh_FirstCall_ShowsTheRoundTripBothLossFiguresAndTheMixerAndEncoderFigures"`, `"Refresh_UdpUnreachable_CrossesTheIconOut"`, `"Refresh_JustBeforeTheInterval_KeepsTheFiguresAndAsksForNoNewOnes"`, `"Refresh_AfterTheInterval_ReadsAndShowsTheNewFigures"` and `"Refresh_UdpReachableAgainWithinTheInterval_ClearsTheCrossingAtOnce"`; the card stays blank without a voice connection and the mixer's figures reach it: `MainViewModelCompositionTests > "Tick_NoVoiceConnection_StatsStayBlank"`, `MainViewModelTests > "Tick_MixerHasJitter_StatsShowTheMixersJitter"` and `ReconnectTests > "Reconnect_SelfTestFramesDuringTheWait_StatsCountFromTheNewConnection"` (AC5); the answers are taken once: `ConnectionStatsViewModelTests > "Refresh_NoNewAnswerSinceTheLast_KeepsTheBaseline"` and `"Reset_AfterAnAnswer_CountsTheSameAnswerCountAsNewAgain"` (AC4); the figures the card reads from the voice connection: `VoiceLinkTests > "ReadFigures_ServerAnswered_ReturnsTheRoundTripAndTheLossSeen"` (AC5)
 
 (as built: `ProtocolInfo.Version` is 13. `PingPayload` (`VoicePacket.cs`) is the plaintext of Hello and Ping both ways, 16 bytes: the sender's time in ms and a `LossReport` (frames expected and missed, with `Percent`, 0 when nothing was expected). `LossWindow` counts received frames and the gaps in the frame numbers per stream (one per speaker) and 5 s window, and `Report` gives the last complete window, or the current one until the first is complete. A talk pause leaves no gap, as the sender's frame number stands still. After review: a stream silent for more than 1 s (`FreshAfter`) or jumping ahead by more than 50 frames (`MaxGap`) starts afresh without counting the gap, because the server relays only what routing allows (not while deafened, other channels only by link) while the speaker's numbers go on; a real outage longer than that goes uncounted (marked `ponytail:`). Each stream keeps a bitmap of its last 64 frames, so only a late frame whose gap was counted in this window takes one back (duplicates, frames before the stream's start and gaps of the last window take nothing back), and the counts are wide and clamped, so the share never exceeds 100 %. Server: each `Session` has an `Uplink` window, counted for every voice frame the UDP loop accepts (before routing, so also a sender alone or server-muted), and `DownlinkLoss` (packed into one long, so another thread never reads half of it), set from the client's Hello or ping; the answer echoes the time with the uplink report. An empty Hello or ping is still answered, empty, as before, so nothing extra is allocated on the voice path. Client: `VoiceClient` pings every 2 s instead of 5 s (Package 126's other timings stay; its tests now expect 17 overdue pings in 10 s and one ping per 2 s), Hello and ping carry the time since the client started and its downlink report; the receive loop counts every frame relayed to it per speaker in a downlink window (network level; while deafened the server relays nothing, and the fresh start keeps those frames out of the loss) and takes `RoundTrip` (with `RoundTripSample`, the value and the number of answers so far) and `UplinkLoss` from each ping answer, all under the state lock the timer uses. The downlink loss is counted in `VoiceClient` rather than aggregated from the jitter buffers (the plan's `AudioEngine` aggregation), because the buffers count at playback and a deafened client has none; `AudioEngine` needed no change. `JitterBuffer.Push` takes the arrival time (now by default, `Mixer.Push` stamps it before taking the lock) and keeps `Received`, `Lost` (gaps skipped while playing, frames dropped when the buffer is full, and frames missing between two spurts, only when the next spurt follows within 1 s and 50 frames, the same rule as `LossWindow`), `Rebuilt` (from the next frame's FEC), `Concealed` (lost without a following frame, and underruns inside a spurt; the two underruns at a spurt's end do not count), `JitterMs` (RFC 3550: |D| of transit = arrival - 20 ms x frame number, J += (|D| - J) / 16; a sample only while playing, so the first frame of a spurt, also after a short pause such as voice activation starting again, starts anew) and `DelayMs`; nothing is allocated per frame (`IdleCostTests` unchanged). `Mixer.Stats()` sums the counts, also of speakers already removed, and takes the worst jitter and delay of the speakers kept. `ConnectionStats` (new view model) keeps the last 30 round trips (the main view model passes a round trip only when `RoundTripSample`'s count changed, so a missing answer adds no copy), rates the newest against their median (`Rate`: below 70 ms above it 4 green bars, below 160 3 yellow, below 300 2 orange, else 1 red), and formats the figures; frame counts start at the connection. `MainViewModel.Tick` sets `Stats.Unreachable` every UI tick and the figures every 2 s on `Clock`; `ShowConnectionDetailsCommand` opens `Dialogs.ConnectionDetails`. In the window the ping chip's Wi-Fi icon became `SignalButton`: four bars (lit by `Ui.AtLeast`, coloured by the classes `bars1` to `bars4`, new brushes `Ovs.SignalFair` and `Ovs.SignalPoor` in both themes) and a red diagonal line while UDP is unreachable, with the rating as tooltip; it stays visible at 360 px, where the ping text hides. `SimpleDialogs.ConnectionDetails` is an overlay card bound to the stats (so it follows the 2 s refresh while open) with round trip and usual round trip, loss to and from the server, jitter, buffer, concealed and FEC-rebuilt frames, bitrate (the channel's, `AudioEngine.ChannelBitrate`) and a one-line hint, with only a close button (the existing `Ui_Close`; `Show` got `withCancel`). The debug API's `/state` has a `Connection` block with the same figures. Tests: AC7 `VoicePacketTests.PingPayload_RoundTrip`, `LossWindow_CountsGapsPerStream` and `LossWindow_FreshStarts_TakesBackOnlyCountedGaps` (2 s of silence and a jump of 100 frames, one beyond the cap and one to 2^32 - 1 give 0 missed; duplicates and frames before the start take nothing back; a late frame after the window rolled neither), `SmokeTests` (version 13; `StateSyncTests.ChannelInfo_CarriesBitrate` from 132 now asks for at least 12); AC1 `ClientNetTests.VoiceRoundTrip_Measured` (`LossyUdpRelay` got `Delay` on a `TimeProvider`, so 50 ms each way is exact on a manual clock: 100 ms, then 130 ms for a slower answer, one sample per answer); AC2 and AC6 `VoiceRelayTests.UplinkLoss_ReportedInPing` (every tenth frame missing: 10 of 100 echoed with the time, the reported downlink kept on the session, after a 4 s pause 10 of 10 with none missed, an empty ping answered empty) and `ClientNetTests.DownlinkLoss_ReportedBothSides` (the relay drops every tenth voice packet each way, `DropUpVoicePercent`/`DropDownVoicePercent`; server and clients on one manual clock, 20 ms per frame: uplink, downlink at the client and on the server's session all 7 to 13 %; after 10 s of silence and clean talking all report 0 missed) and `ClientNetTests.Deafened_FramesKeptAway_NotDownlinkLoss` (b talks on for 2 s while a is deafened: no downlink loss at a or in its report to the server); AC3 and AC6 `ReceivePathTests.Jitter_Estimated` (±15 ms uniform: within 5 to 15 ms of the expected 10; none: below 2), `TalkPause_NotLoss` (2 s pause: 0 lost, 0 concealed, jitter below 2 ms; then a lost frame rebuilt by FEC and a late one concealed once), `ShortPause_NoJitterSample` (160 ms pause: jitter stays below 0.5 ms), `SpurtGap_CountedOnlyWhenClose` (2 frames missing across a 200 ms pause count, a 2 s silence or a jump of 870 frames does not), `Overflow_CappedAt10` (5 frames dropped count as lost) and `Mixer_Stats_SumOverSpeakers`; AC4 `ConnectionStatsTests.Rating_RelativeToBaseline` (69/159/299/300 ms above the baseline, a steady 250 ms green, the baseline following a lasting change) and `Counts_SinceReset`; AC5 `MainViewModelTests.SignalIcon_AndDetails` (4 bars after the Hello's answer, the card gets the stats, a bitrate change shows after 2 s and not at 1.9 s, crossed out with no bars 16 s into an outage with no further baseline samples on the refreshes meanwhile, and back afterwards, reset on disconnect), `ResponsiveTests.Narrow_HeaderIconOnly_NothingClipped` (the icon inside at 360 px, the cross shown, 4 green bars lit) and `Dialogs_FitAt360` with the new card in both languages. All new tests failed to build before the types and members existed; the review's tests were written with their fixes and pin cases the first version got wrong (the gap while deafened, a short pause as a jitter sample, a stale round trip added again). `DownlinkLoss_ReportedBothSides` waits every 5 frames until everything sent has arrived and moves the shared clock in single steps around pauses: otherwise many frames or pings reach the server at one instant of its clock and its voice rate limit (60/s, burst 10) drops some, which reads as loss. Not checked by hand: how the icon and card look in the running client.)
 
@@ -8160,7 +8160,7 @@ A lost connection ends the session (`MainViewModel.cs:463-470`); auto-reconnect 
 
 1. `ReconnectorTests > "Schedule_1_2_4_8_16_ThenGivesUp"` (AC1), `ManualTimeProvider`.
 2. `ReconnectorTests > "OutdatedAttempt_Ignored"` (AC4)
-3. `ReconnectTests > "ConnectionLost_Reconnects_RestoresChannelAndMute"` (AC2): `TestServer` drops the connection; `"Reconnect_MutedWithOrWithoutDeafen_StaysMutedWhenUndeafening"`, `"Reconnect_PushToMuteHeld_NotKept"`, `"Reconnect_ChosenMute_HeldKeyReleased_StaysMuted"` and `"Reconnect_ServerHasWelcomeText_AddsOnlyTheReconnectedNotice"`.
+3. `ReconnectTests > "ConnectionLost_Reconnects_RestoresChannelAndMute"` (AC2): `TestServer` drops the connection; `"Reconnect_MutedWithOrWithoutDeafen_StaysMutedWhenUndeafening"`, `"Reconnect_PushToMuteHeld_NotKept"`, `"Reconnect_ChosenMuteAndHeldKeyReleased_StaysMuted"` and `"Reconnect_ServerHasWelcomeText_AddsOnlyTheReconnectedNotice"`.
 4. `ReconnectTests > "Reconnect_DeliberateEndOfTheSession_StartsNoSeries"` (AC3), a theory over the reasons and `ConnectionViewModelTests > "Reconnect_ShownServerGoneBeforeTheDrop_NoSeries"` (AC3).
 5. `ReconnectTests > "Reconnect_CancelledOrConnectedElsewhere_EndsTheSeriesAndDropsTheOldAttempt"` (AC4), `ConnectionViewModelTests > "CancelReconnect_NotReconnecting_DoesNothing"` and `"OnDisconnected_OldConnectionReportsLate_IsIgnored"` (AC4)
 6. `ReconnectTests > "Reconnect_AttemptsRunning_StatusCountsDownWithoutToneUntilTheFifthFails"` (AC5)

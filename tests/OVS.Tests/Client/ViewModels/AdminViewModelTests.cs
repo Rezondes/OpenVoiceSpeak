@@ -74,7 +74,7 @@ public class AdminViewModelTests
     }
 
     [Fact]
-    public void BanDurations_AsPlanned()
+    public void BanDurations_Offered_AsPlanned()
     {
         Assert.Equal([new Choice<int?>(60, "1 Stunde"), new(1440, "1 Tag"), new(10080, "7 Tage"), new(null, "Dauerhaft")], BanChoice.Durations);
     }
@@ -89,7 +89,7 @@ public class AdminViewModelTests
     [InlineData(P.BackupsManage, false, false, false, true, false)] // Package 89: the server tab with the backups card only
     [InlineData(P.GroupsAssign, false, false, false, false, false)]
     [InlineData(P.GroupsManage | P.GroupsCreate | P.GroupsDelete | P.UserBan | P.UserKick | P.UserDelete, false, false, false, false, false)]
-    public async Task Tabs_VisibleByPermission(P perms, bool groups, bool users, bool bans, bool server, bool logs)
+    public async Task Tabs_Rights_VisibleByPermission(P perms, bool groups, bool users, bool bans, bool server, bool logs)
     {
         var (admin, serverVm, sent) = Create(perms);
         Assert.Equal((groups, users, bans, server, logs), (admin.ShowGroups, admin.ShowUsers, admin.ShowBans, admin.ShowServer, admin.ShowLogs));
@@ -99,7 +99,7 @@ public class AdminViewModelTests
     }
 
     [Fact]
-    public void UserTogglesAndUnban_ByRight()
+    public void UserTogglesAndUnban_Rights_EnabledAccordingly()
     {
         var (view, server, _) = Create(P.UsersView | P.BansView | P.Speak);
         view.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fpX", "Xaver", [WellKnownGroups.Guest], CanBeModeratedByMe: true)])); // weaker, no right to act
@@ -115,7 +115,7 @@ public class AdminViewModelTests
     }
 
     [Fact]
-    public async Task RequestLists_OnlyAllowedOnes()
+    public async Task RequestLists_Rights_OnlyAllowedOnesAsked()
     {
         var (admin, _, sent) = Create(P.BansView | P.GroupsAssign);
         await admin.RequestListsAsync();
@@ -326,7 +326,7 @@ public class AdminViewModelTests
     [InlineData("aufheber", "Lisa")]
     [InlineData("", "Lisa,Troll")]
     [InlineData("gibtsnicht", "")]
-    public void BanSearch_MatchesAllTextFields(string search, string expected)
+    public void BanSearch_Text_MatchesAllTextFields(string search, string expected)
     {
         var (admin, server, _) = Create(P.BansView);
         var now = server.Time.GetUtcNow();
@@ -341,7 +341,7 @@ public class AdminViewModelTests
     }
 
     [Fact]
-    public void BanFilter_StatusType_Sort_Count()
+    public void BanFilter_StatusTypeAndSort_FilteredSortedAndCounted()
     {
         var (admin, server, _) = Create(P.BansView);
         var now = server.Time.GetUtcNow();
@@ -385,7 +385,7 @@ public class AdminViewModelTests
     }
 
     [Fact]
-    public void Unban_OnlyActive_OnlyWithRight_FilterKept()
+    public void Unban_ActiveBanWithRight_OnlyThenOfferedAndFilterKept()
     {
         var (view, viewServer, _) = Create(P.BansView);
         var now = viewServer.Time.GetUtcNow();
@@ -430,7 +430,7 @@ public class AdminViewModelTests
     static UserInfo Online(uint id, string fp, string nick) => new(id, fp, nick, Lobby, false, false, false, P.Speak, [WellKnownGroups.Guest]);
 
     [Fact]
-    public void UserDetails_FromKnownUserInfo()
+    public void UserDetails_KnownUser_FilledFromItsInfo()
     {
         var (admin, server, _) = Create(P.UsersView | P.GroupsAssign | P.Speak);
         var ban = new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "Spam", "mod", T0.AddDays(2));
@@ -472,7 +472,7 @@ public class AdminViewModelTests
     [InlineData("192.168.", "Berta")]
     [InlineData("", "Berta,Xaver")]
     [InlineData("gibtsnicht", "")]
-    public void Search_MatchesNicknamePreviousFingerprintIp(string search, string expected)
+    public void UserSearch_Text_MatchesNicknamePreviousFingerprintAndIp(string search, string expected)
     {
         var (admin, server, _) = Create(P.UsersView);
         admin.UsersAndBans.Apply(new UserList("r",
@@ -485,7 +485,7 @@ public class AdminViewModelTests
     }
 
     [Fact]
-    public void Filter_StatusGroup_Sort_Count()
+    public void UserFilter_StatusGroupAndSort_FilteredSortedAndCounted()
     {
         var (admin, server, _) = Create(P.UsersView);
         var ban = new BanInfo(Guid.NewGuid(), "fpC", "Cora", null, "", "mod", null);
@@ -600,7 +600,7 @@ public class AdminViewModelTests
     }
 
     [Fact]
-    public async Task BanUnbanDeleteButtons_ByStateAndRight()
+    public async Task BanButtons_StateAndRight_ShownAccordingly()
     {
         var ban1 = new BanInfo(Guid.NewGuid(), "fpB", "Bert", null, "", "mod", null);
         var ban2 = new BanInfo(Guid.NewGuid(), "fpB", "Bert", "10.0.0.7", "", "mod", T0.AddDays(3));
@@ -672,7 +672,7 @@ public class AdminViewModelTests
     /// Package 92: the server sends the rule's result with the list (StateSyncTests); here the stored rights become that flag.
     /// </summary>
     [Fact]
-    public void ActionsMatchServerRule()
+    public void UserActions_StoredRights_MatchServerRule()
     {
         var banX = new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "", "mod", null);
         var banA = new BanInfo(Guid.NewGuid(), "fpA", "Anna", null, "", "mod", null);
@@ -763,7 +763,7 @@ public class AdminViewModelTests
     }
 
     [Fact]
-    public void LinkMatrix_ToggleDiscardAndRemoteChange()
+    public void LinkMatrix_ToggleDiscardOrRemoteChange_Followed()
     {
         var (linkMatrix, server, _, ids) = Matrix(3);
         var cell = linkMatrix.Rows[0].Cells[1];
@@ -786,7 +786,7 @@ public class AdminViewModelTests
     }
 
     [Fact]
-    public void LinkTab_OnlyWithChannelLink()
+    public void LinkTab_WithoutChannelLink_Hidden()
     {
         Assert.False(Create(P.GroupsManage).Admin.ShowLinks);
         var (admin, server, _) = Create(P.ChannelLink);
@@ -796,7 +796,7 @@ public class AdminViewModelTests
 
     /// <summary>Package 87 (AC4): a long list arrives in pages; the page asks for the rest and shows it once complete.</summary>
     [Fact]
-    public void UserList_FetchesAllPages()
+    public void UserList_LongList_AllPagesFetched()
     {
         var users = Enumerable.Range(0, 5).Select(index => new KnownUserInfo($"fp{index}", $"Nutzer{index}", [WellKnownGroups.Guest])).ToList();
         UserList PageAt(string? id, int offset) => new(id, users.Skip(offset).Take(2).ToList(), offset, users.Count);
@@ -880,7 +880,7 @@ public class AdminViewModelTests
 
     /// <summary>A just ticked box keeps its state until a list asked for after the tick arrives; an older list does not flip it back.</summary>
     [Fact]
-    public async Task GroupToggle_NotRevertedByAnOlderList()
+    public async Task GroupToggle_OlderListArrives_NotReverted()
     {
         var (admin, server, sent) = Create(P.UsersView | P.GroupsAssign | P.Speak | P.UserKick);
         var time = (ManualTimeProvider)server.Time;
@@ -905,7 +905,7 @@ public class AdminViewModelTests
 
     /// <summary>Unban and ban right after each other: the ban list is asked for once (the unban is answered with it).</summary>
     [Fact]
-    public async Task UnbanThenBan_BanListRefreshedOnce()
+    public async Task UnbanThenBan_RightAfterEachOther_BanListAskedOnce()
     {
         var ban = new BanInfo(Guid.NewGuid(), "fpB", "Bert", null, "", "mod", null);
         var dialogs = new AdminDialogs { UsersAndBans = new() { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, false)) } };
@@ -962,7 +962,7 @@ public class AdminViewModelTests
 
     /// <summary>Package 98 (AC4): the user card's actions spin until a user list asked for after them shows the change.</summary>
     [Fact]
-    public async Task CardActions_BusyUntilConfirmed()
+    public async Task CardActions_Sent_BusyUntilConfirmed()
     {
         var dialogs = new AdminDialogs { UsersAndBans = new() { ConfirmDeleteUser = _ => Task.FromResult(true) } };
         var (admin, server, sent) = Create(P.UsersView | P.BansView | P.UserBan | P.UserDelete | P.UserMute | P.GroupsAssign | P.Speak | P.UserKick,

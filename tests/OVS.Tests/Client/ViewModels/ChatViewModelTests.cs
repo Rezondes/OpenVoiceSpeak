@@ -37,7 +37,7 @@ public class ChatViewModelTests
     }
 
     [Fact]
-    public void Tabs_GeneralAndCurrentChannel()
+    public void Tabs_Connected_GeneralAndCurrentChannel()
     {
         var fixture = Create();
         Assert.Equal(["Allgemein", "Lobby"], fixture.Chat.Tabs.Select(chatTab => chatTab.Title));
@@ -50,7 +50,7 @@ public class ChatViewModelTests
     }
 
     [Fact]
-    public void Notices_AppearInGeneral()
+    public void Notices_Received_AppearInGeneral()
     {
         var fixture = Create(earlier: [new Notice(DateTime.Now, "vorher", NoticeKind.Warning)]);
         fixture.Chat.AddNotice(new Notice(DateTime.Now, "Getrennt", NoticeKind.Error));
@@ -148,7 +148,7 @@ public class ChatViewModelTests
     }
 
     [Fact]
-    public void Composer_DisabledWithoutRight()
+    public void Composer_WithoutRight_Disabled()
     {
         var fixture = Create(P.Speak | P.ChatChannel);
         fixture.Chat.Draft = "hallo";
@@ -168,7 +168,7 @@ public class ChatViewModelTests
     }
 
     [Fact]
-    public void ChannelTab_ResetsOnSwitch()
+    public void ChannelTab_ChannelSwitched_Reset()
     {
         var fixture = Create();
         var joined = Assert.Single(fixture.Chat.ChannelTab.Entries);
@@ -186,7 +186,7 @@ public class ChatViewModelTests
     }
 
     [Fact]
-    public void Unread_CountsAndClears()
+    public void Unread_MessagesThenTabOpened_CountedAndCleared()
     {
         var fixture = Create();
         fixture.Receive(ChatTarget.Channel, 2, "eins", Lobby);
@@ -207,7 +207,7 @@ public class ChatViewModelTests
     }
 
     [Fact]
-    public async Task ServerError_ShownAtComposer()
+    public async Task SendChat_ServerError_ShownAtComposer()
     {
         var fixture = Create();
         var notices = new List<string>();
@@ -285,7 +285,7 @@ public class ChatViewModelTests
     }
 
     [Fact]
-    public async Task Private_PartnerOfflineAndBack()
+    public async Task PrivateTab_PartnerOfflineAndBack_Followed()
     {
         var fixture = Create();
         fixture.User(2).MessageCommand.Execute(null);

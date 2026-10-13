@@ -13,7 +13,7 @@ namespace OVS.Tests.Client.ViewModels;
 public class ChannelDialogViewModelTests
 {
     [Fact]
-    public void Create_EmptyDefaults()
+    public void Create_NewChannel_EmptyDefaults()
     {
         var channelDialog = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
         Assert.Equal(("Channel anlegen", "Anlegen"), (channelDialog.Title, channelDialog.ConfirmText));
@@ -22,7 +22,7 @@ public class ChannelDialogViewModelTests
     }
 
     [Fact]
-    public void Edit_Prefilled()
+    public void Edit_ExistingChannel_Prefilled()
     {
         var channelDialog = new ChannelDialogViewModel(new ChannelEdit("Raid", "Nur Raid", IsMuted: true, MaxUsers: 10), ChannelDialogMode.Edit);
         Assert.Equal(("Channel bearbeiten", "Speichern"), (channelDialog.Title, channelDialog.ConfirmText));
@@ -31,7 +31,7 @@ public class ChannelDialogViewModelTests
     }
 
     [Fact]
-    public void Default_SlotsLocked()
+    public void Edit_DefaultChannel_SlotsLocked()
     {
         var channelDialog = new ChannelDialogViewModel(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault);
         Assert.False(channelDialog.CanLimitUsers);
@@ -58,7 +58,7 @@ public class ChannelDialogViewModelTests
 
     /// <summary>Package 83: the server's name and text rules, shown before sending.</summary>
     [Fact]
-    public void InvalidNameOrDescription_ErrorShown()
+    public void Validate_InvalidNameOrDescription_ErrorShown()
     {
         var channelDialog = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create);
         channelDialog.Name = "Raid" + (char)0x202E; // a bidi override
@@ -131,7 +131,7 @@ public class ChannelDialogViewModelTests
     }
 
     [Fact]
-    public void GroupLock_DisabledForDefault()
+    public void GroupLock_DefaultChannel_Disabled()
     {
         var channelDialog = new ChannelDialogViewModel(new ChannelEdit("Lobby", ""), ChannelDialogMode.EditDefault, Groups);
         Assert.False(channelDialog.CanLockGroups);
@@ -142,7 +142,7 @@ public class ChannelDialogViewModelTests
 
     /// <summary>Package 132 (A141): "Qualität" starts at 64 kbps for a new channel and at the channel's own when editing, bounded 16 to 128.</summary>
     [Fact]
-    public void Bitrate_ShownAndEdited()
+    public void Bitrate_NewOrEditedChannel_ShownAndBounded()
     {
         var create = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create) { Name = "Neu" };
         Assert.Equal(64m, create.Bitrate);

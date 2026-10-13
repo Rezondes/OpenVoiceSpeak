@@ -424,7 +424,7 @@
     "Count": 1
   },
   {
-    "Key": "RL154|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.ServerIcon_LoadedOnce_ThenFromCache_ShownOnTile.Connect",
+    "Key": "RL154|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.ServerIcon_SecondConnect_FromCacheAndShownOnTile.Connect",
     "Count": 1
   },
   {
@@ -720,7 +720,7 @@
     "Count": 1
   },
   {
-    "Key": "RL211|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.BanUnbanDeleteButtons_ByStateAndRight.Buttons",
+    "Key": "RL211|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.BanButtons_StateAndRight_ShownAccordingly.Buttons",
     "Count": 1
   },
   {
@@ -6600,414 +6600,6 @@
     "Count": 1
   },
   {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.ActionsMatchServerRule",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.BanDurations_AsPlanned",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.BanFilter_StatusType_Sort_Count",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.BanSearch_MatchesAllTextFields",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.BanUnbanDeleteButtons_ByStateAndRight",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.CardActions_BusyUntilConfirmed",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.Filter_StatusGroup_Sort_Count",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.GroupToggle_NotRevertedByAnOlderList",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.LinkMatrix_ToggleDiscardAndRemoteChange",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.LinkTab_OnlyWithChannelLink",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.RequestLists_OnlyAllowedOnes",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.Search_MatchesNicknamePreviousFingerprintIp",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.Tabs_VisibleByPermission",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.UnbanThenBan_BanListRefreshedOnce",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.Unban_OnlyActive_OnlyWithRight_FilterKept",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.UserDetails_FromKnownUserInfo",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.UserList_FetchesAllPages",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs|AdminViewModelTests.UserTogglesAndUnban_ByRight",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.Bitrate_ShownAndEdited",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.Create_EmptyDefaults",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.Default_SlotsLocked",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.Edit_Prefilled",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.GroupLock_DisabledForDefault",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs|ChannelDialogViewModelTests.InvalidNameOrDescription_ErrorShown",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.ChannelTab_ResetsOnSwitch",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Composer_DisabledWithoutRight",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Notices_AppearInGeneral",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Private_PartnerOfflineAndBack",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.ServerError_ShownAtComposer",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Tabs_GeneralAndCurrentChannel",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Unread_CountsAndClears",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ConnectionStatsViewModelTests.cs|ConnectionStatsViewModelTests.Counts_SinceReset",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ConnectionStatsViewModelTests.cs|ConnectionStatsViewModelTests.Rating_RelativeToBaseline",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LeaveGuardTests.cs|LeaveGuardTests.CancelAndDiscardButtons_DoNotAsk",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LeaveGuardTests.cs|LeaveGuardTests.LeaveWithoutSaving_Discards",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LeaveGuardTests.cs|LeaveGuardTests.Settings_DeviceListArrives_WithViewBound_NoCrashNoChange",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LeaveGuardTests.cs|LeaveGuardTests.Settings_HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.FileFilter_TypeAndPeriod",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.FileList_FetchesAllPages",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.LineFilter_HighlightsMatches",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.SearchHit_OpensFileAtLine",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.Search_BusyUntilResult",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/LogsViewModelTests.cs|LogsViewModelTests.Selection_AllInPeriod_None_SingleVsZip",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Appearance_LivePreview_DiscardRestores_SaveKeeps",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Bitrate_FollowsCurrentChannel",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Bookmark_AskPassword_Cancel_StaysDisconnected",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.ChannelMuted_HintAndNoSending",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Chat_EndToEnd",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Display_LivePreviewAndCancelRevert",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.LeavingSettingsWithoutSaving_EndsThePreview",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.MuteButtonWhileHeld_Sticks",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.NotMuted_NoHint",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.OpenSettings_DoesNotWaitForDeviceList",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Private_EndToEnd",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.SavedAppearance_AppliesAtStart",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.ServerIcon_LoadedOnce_ThenFromCache_ShownOnTile",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.SettingsPage_ShowsThresholdInUse",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.SignalIcon_AndDetails",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.StartScreen_BookmarksAndConnectingState",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.TalkWhileDeafenedOrServerMuted_ShowsHint",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.ToggleActions_SyncWithServer",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.ToneInput_ReportsInputLevel",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.UdpOutage_LoggedOnceEachWay",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Update_Accepted_ShowsProgress_UntilFailure",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.VoiceWhileMuted_ShowsHint",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/PendingActionViewModelTests.cs|PendingActionViewModelTests.BusyVisibleWithin150ms_NotForFastActions",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ReconnectTests.cs|ReconnectTests.Reconnect_ChosenMute_HeldKeyReleased_StaysMuted",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.ActionsMatchServerRule",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.Ban_SendsDurationAndIpFlag",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.Build_SortsChannelsAndGroupsUsers",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.CancelledDialog_SendsNothing",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.ChannelMenu_VisibilityByPermission",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.CurrentChannelAndSelf_FollowOwnUser",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.DropOnChannel_SendsOrderWithSourceBeforeOrAfterTarget",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.Error_BecomesGermanNotice",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.GroupNames_FollowGroupOrder",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.JoinCommand_SendsJoinChannel",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LastAdmin_CannotBeUnticked",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LinkCandidates_ExcludesSelfAndLinked",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LinkCommand_UsesPickedChannel",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LinkVoice_NotForOwnChannelOrSelf",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LinkVoice_SoundOncePerTransmission",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LinkedChannels_ShowPartners",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.LockedChannel_IconTooltipAndJoinAvailability",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.MoveTargets_OtherChannelsWithoutSeparators",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.NewChannel_SendsAllOptions",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.OwnGroupChangedByMe_OnlyOneSound",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.OwnLinkVoice_NotWithoutLinksOrForChannelOnly",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.OwnLinkVoice_OnStartOfOwnLinkTransmission",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.RedeemToken_HiddenForAdmin",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.RefusedMove_ShowsError",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.Reorder_RevertsOnError",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.SelfTransmitting_ShowsOnOwnEntry",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.SlotText_LimitedAndUnlimited",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.SoundEvents_FromMessages",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.SpeakingViaLink_Flagged",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.Speaking_ClearsAfter300ms",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.StatusIcons_MicOffOnlyForAPlainMute",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.UserBackWhileLeaving_SameEntry",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.UserGroups_OnlyForWeakerUsersWithAssignRight",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.UserJoinedAndLeft_UpdateTree",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.UserMenu_VisibilityByPermissionAndRank",
-    "Count": 1
-  },
-  {
     "Key": "RL601|tests/OVS.Tests/Client/Views/PerformanceTests.cs|PerformanceTests.ManySpeakers_SpeakingUpdatesThrottledAndScoped",
     "Count": 1
   },
@@ -7188,11 +6780,11 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Notices_AppearInGeneral:DateTime.Now",
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Notices_Received_AppearInGeneral:DateTime.Now",
     "Count": 2
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Unread_CountsAndClears:DateTime.Now",
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs|ChatViewModelTests.Unread_MessagesThenTabOpened_CountedAndCleared:DateTime.Now",
     "Count": 1
   },
   {
@@ -7204,7 +6796,7 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.SignalIcon_AndDetails:Task.Delay",
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.SignalIcon_Connected_ShowsLevelAndDetails:Task.Delay",
     "Count": 1
   },
   {
@@ -7212,7 +6804,7 @@
     "Count": 2
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Update_Accepted_ShowsProgress_UntilFailure:DateTimeOffset.UtcNow",
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs|MainViewModelTests.Update_Accepted_ProgressShownUntilFailure:DateTimeOffset.UtcNow",
     "Count": 2
   },
   {
@@ -7220,7 +6812,7 @@
     "Count": 5
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.SoundEvents_FromMessages:DateTimeOffset.UtcNow",
+    "Key": "RL603|tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs|ServerViewModelTests.SoundEvents_Messages_Raised:DateTimeOffset.UtcNow",
     "Count": 2
   },
   {

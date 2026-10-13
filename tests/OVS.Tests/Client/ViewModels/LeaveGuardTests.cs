@@ -47,7 +47,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     static void Rename(AdminViewModel admin, string name) => admin.GroupList.SelectedGroup!.Name = name;
 
     [AvaloniaFact]
-    public void Settings_HasChanges_FalseUntouched_TrueAfterEdit_FalseAfterRevert()
+    public void HasChanges_UntouchedEditedOrReverted_OnlyTrueWhenEdited()
     {
         var settings = new SettingsViewModel(new ClientSettings(), null, null, TimeProvider.System);
         Assert.False(settings.HasChanges);
@@ -158,7 +158,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     }
 
     [AvaloniaFact]
-    public async Task LeaveWithoutSaving_Discards()
+    public async Task LeaveGuard_LeaveWithoutSaving_Discards()
     {
         var viewModel = Main();
         var saved = viewModel.Settings.VadThresholdDb;
@@ -207,7 +207,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     }
 
     [AvaloniaFact]
-    public async Task CancelAndDiscardButtons_DoNotAsk()
+    public async Task LeaveGuard_CancelOrDiscardButton_DoesNotAsk()
     {
         var viewModel = Main();
         viewModel.PageFlow.OpenSettings();
@@ -388,7 +388,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
 
     /// <summary>Found in the second review: a device list arriving with the page bound cleared the selection and crashed the change check.</summary>
     [AvaloniaFact]
-    public void Settings_DeviceListArrives_WithViewBound_NoCrashNoChange()
+    public void Settings_DeviceListArrivesWithViewBound_NoCrashNoChange()
     {
         new ClientSettings { InputDeviceId = "weg", OutputDeviceId = "b" }.Save(dir);
         var viewModel = Main(connected: false);

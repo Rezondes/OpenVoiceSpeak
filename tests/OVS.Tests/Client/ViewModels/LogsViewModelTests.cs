@@ -62,7 +62,7 @@ public class LogsViewModelTests
     }
 
     [Fact]
-    public void FileFilter_TypeAndPeriod()
+    public void FileFilter_TypeAndPeriod_Filtered()
     {
         var (logs, _) = Create();
         Assert.Equal([ServerFile.Id, RaidFile.Id, OldServerFile.Id, OldFile.Id], logs.Files.Select(logFile => logFile.Info.Id));
@@ -128,7 +128,7 @@ public class LogsViewModelTests
     }
 
     [Fact]
-    public void LineFilter_HighlightsMatches()
+    public void LineFilter_Text_HighlightsMatches()
     {
         var (logs, _) = Create();
         logs.OpenCommand.Execute(logs.Files[0]);
@@ -151,7 +151,7 @@ public class LogsViewModelTests
     }
 
     [Fact]
-    public void SearchHit_OpensFileAtLine()
+    public void SearchHit_Clicked_OpensFileAtLine()
     {
         var result = new LogSearchResult(null, [new LogHit(ServerFile.Id, 1500, "Zeile 1500 FEHLER"), new LogHit(RaidFile.Id, 3, "Raid FEHLER")], true, false);
         var (logs, sent) = Create(result);
@@ -196,7 +196,7 @@ public class LogsViewModelTests
     // ---- Package 82: download ----
 
     [Fact]
-    public void Selection_AllInPeriod_None_SingleVsZip()
+    public void Download_SelectionAllNoneOrOne_SingleFileOrZip()
     {
         var (viewer, _) = Create();
         Assert.False(viewer.ShowDownload); // LogsView alone: no checkboxes, no download
@@ -260,7 +260,7 @@ public class LogsViewModelTests
 
     /// <summary>Package 87 (AC4): the file list arrives in pages and is shown once complete.</summary>
     [Fact]
-    public void FileList_FetchesAllPages()
+    public void FileList_LongList_AllPagesFetched()
     {
         LogFileInfo[] files = [ServerFile, RaidFile, OldServerFile, OldFile];
         var (logs, sent) = Create(reply: request => request is ListLogs listLogs ? new LogList(request.RequestId, files.Skip(listLogs.Offset).Take(3).ToList(), listLogs.Offset, files.Length) : null);
@@ -270,7 +270,7 @@ public class LogsViewModelTests
 
     /// <summary>Package 97 (AC4): the search is busy (spinner, button disabled) until its result arrives.</summary>
     [Fact]
-    public void Search_BusyUntilResult()
+    public void Search_Sent_BusyUntilResult()
     {
         var time = new ManualTimeProvider();
         var (logs, sent) = Create(time: time); // no search result: the server answers when told below

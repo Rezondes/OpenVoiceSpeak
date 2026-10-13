@@ -44,7 +44,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void Build_SortsChannelsAndGroupsUsers()
+    public void Build_Snapshot_SortsChannelsAndGroupsUsers()
     {
         var fixture = Create(others: [User(2, "zora", Lobby, P.Speak), User(3, "Anna", Lobby, P.Speak), User(4, "bob", Bravo, P.Speak)]);
         Assert.Equal(["Lobby", "alpha", "Bravo"], fixture.Vm.Tree.Channels.Select(channel => channel.Name));
@@ -85,7 +85,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void CurrentChannelAndSelf_FollowOwnUser()
+    public void CurrentChannelAndSelf_OwnUserMoves_Follow()
     {
         var fixture = Create();
         Assert.Equal(Lobby, fixture.Vm.CurrentChannel!.Id);
@@ -97,7 +97,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void StatusIcons_MicOffOnlyForAPlainMute()
+    public void StatusIcons_PlainMute_OnlyThenMicOff()
     {
         var fixture = Create(others:
         [
@@ -124,7 +124,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void UserJoinedAndLeft_UpdateTree()
+    public void Tree_UserJoinedAndLeft_Updated()
     {
         var fixture = Create();
         fixture.Vm.Apply(new UserJoined(User(5, "neu", Bravo, P.Speak)));
@@ -134,7 +134,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void Speaking_ClearsAfter300ms()
+    public void Speaking_NoFrameFor300ms_Cleared()
     {
         var fixture = Create(others: User(2, "anna", Lobby, P.Speak));
         fixture.Vm.Tree.OnSpeakers([new ActiveSpeaker(2, false)]);
@@ -150,7 +150,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void SpeakingViaLink_Flagged()
+    public void Speaking_ViaLink_Flagged()
     {
         var fixture = Create(others: User(2, "anna", Alpha, P.Speak));
         fixture.Vm.Tree.OnSpeakers([new ActiveSpeaker(2, true)]);
@@ -159,7 +159,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void SelfTransmitting_ShowsOnOwnEntry()
+    public void SelfTransmitting_Talking_ShowsOnOwnEntry()
     {
         var fixture = Create();
         fixture.Vm.Tree.SetSelfTransmitting(VoiceHeader.TargetLinked);
@@ -169,7 +169,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void LinkedChannels_ShowPartners()
+    public void LinkedChannels_Linked_ShowPartners()
     {
         var fixture = Create();
         fixture.Vm.Apply(new ChannelsLinked(Lobby, Alpha));
@@ -180,7 +180,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public async Task JoinCommand_SendsJoinChannel()
+    public async Task JoinCommand_Executed_SendsJoinChannel()
     {
         var fixture = Create();
         await fixture.Channel(Alpha).JoinCommand.ExecuteAsync(null);
@@ -207,7 +207,7 @@ public class ServerViewModelTests
 
     /// <summary>Package 93: the lock icon names the groups; joining is only offered with one of them or as admin.</summary>
     [Fact]
-    public async Task LockedChannel_IconTooltipAndJoinAvailability()
+    public async Task LockedChannel_GroupsAndRights_IconTooltipAndJoinFollow()
     {
         var raid = Guid.NewGuid();
         var fixture = Create();
@@ -321,7 +321,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void Error_BecomesGermanNotice()
+    public void Error_Received_BecomesGermanNotice()
     {
         var fixture = Create();
         string? notice = null;
@@ -336,7 +336,7 @@ public class ServerViewModelTests
     [InlineData(P.ChannelDelete, false, true, false)]
     [InlineData(P.ChannelLink, false, false, true)]
     [InlineData(P.All, true, true, true)]
-    public void ChannelMenu_VisibilityByPermission(P perms, bool edit, bool delete, bool link)
+    public void ChannelMenu_Rights_VisibleByPermission(P perms, bool edit, bool delete, bool link)
     {
         var fixture = Create(perms);
         var alpha = fixture.Channel(Alpha);
@@ -348,7 +348,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void UserMenu_VisibilityByPermissionAndRank()
+    public void UserMenu_RightsAndRank_VisibleAccordingly()
     {
         // Package 92: the rank comes from the server as a flag, others' rights are never sent
         var fixture = Create(Moderator, others: [User(2, "gast", Lobby, P.None) with { CanBeModeratedByMe = true }, User(3, "admin", Lobby, P.None)]);
@@ -370,7 +370,7 @@ public class ServerViewModelTests
     /// Package 92: the server sends the rule's result per recipient (StateSyncTests); here the rights become that flag.
     /// </summary>
     [Fact]
-    public void ActionsMatchServerRule()
+    public void UserActions_ServerRule_MatchFlag()
     {
         var others = new[]
         {
@@ -394,7 +394,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void LinkCandidates_ExcludesSelfAndLinked()
+    public void LinkCandidates_SelfAndLinked_Excluded()
     {
         var fixture = Create(P.All);
         fixture.Vm.Apply(new ChannelsLinked(Lobby, Alpha));
@@ -404,7 +404,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public async Task LinkCommand_UsesPickedChannel()
+    public async Task LinkCommand_ChannelPicked_UsesIt()
     {
         var dialogs = new ServerDialogs { PickChannel = (_, candidates, _) => Task.FromResult<ChannelViewModel?>(candidates.Single(channel => channel.Name == "Bravo")) };
         var fixture = Create(P.All, dialogs: dialogs);
@@ -414,7 +414,7 @@ public class ServerViewModelTests
 
     /// <summary>Package 54: creating opens the same dialog, empty, and sends every option.</summary>
     [Fact]
-    public async Task NewChannel_SendsAllOptions()
+    public async Task NewChannel_DialogConfirmed_SendsAllOptions()
     {
         (ChannelEdit Current, ChannelDialogMode Mode)? shown = null;
         var dialogs = new ServerDialogs
@@ -475,7 +475,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public async Task DropOnChannel_SendsOrderWithSourceBeforeOrAfterTarget()
+    public async Task DropOnChannel_AboveOrBelow_SendsOrderWithSourceBeforeOrAfterTarget()
     {
         var fixture = Create(P.ChannelEdit);
         await fixture.Vm.Tree.MoveChannelAsync(fixture.Channel(Bravo), fixture.Channel(Lobby), after: false);
@@ -493,7 +493,7 @@ public class ServerViewModelTests
 
     /// <summary>Package 37: the group tooltip follows the server's group order, not the order of assignment.</summary>
     [Fact]
-    public void GroupNames_FollowGroupOrder()
+    public void GroupNames_AssignedInOtherOrder_FollowGroupOrder()
     {
         var fixture = Create(others: [User(2, "anna", Lobby, P.Speak, groups: [WellKnownGroups.Admin, WellKnownGroups.Guest])]);
         Assert.Equal("Gast, Admin", fixture.User(2).GroupNames);
@@ -511,7 +511,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void SoundEvents_FromMessages()
+    public void SoundEvents_Messages_Raised()
     {
         var fixture = Create(others: [User(2, "anna", Lobby, P.Speak), User(3, "bob", Bravo, P.Speak)]);
         var heard = Sounds(fixture.Vm);
@@ -549,7 +549,7 @@ public class ServerViewModelTests
 
     /// <summary>Package 73: changing the own groups in the admin page gives only the tone for the one acting.</summary>
     [Fact]
-    public async Task OwnGroupChangedByMe_OnlyOneSound()
+    public async Task OwnGroups_ChangedByMe_OnlyOneSound()
     {
         var fixture = Create(P.All | P.GroupsAssign, [WellKnownGroups.Guest, WellKnownGroups.Admin]);
         var admin = new AdminViewModel(fixture.Vm);
@@ -568,7 +568,7 @@ public class ServerViewModelTests
 
     /// <summary>Package 57: someone talking in over a link is announced by a short tone, once per transmission.</summary>
     [Fact]
-    public void LinkVoice_SoundOncePerTransmission()
+    public void LinkVoice_TalkingInOverALink_SoundOncePerTransmission()
     {
         var fixture = Create(others: [User(2, "anna", Bravo, P.Speak)]);
         var heard = Sounds(fixture.Vm);
@@ -592,7 +592,7 @@ public class ServerViewModelTests
 
     /// <summary>Package 60: starting to talk over a link oneself gives an own tone, once per transmission.</summary>
     [Fact]
-    public void OwnLinkVoice_OnStartOfOwnLinkTransmission()
+    public void OwnLinkVoice_StartTalkingOverALink_SoundOncePerTransmission()
     {
         var fixture = Create();
         fixture.Vm.Apply(new ChannelsLinked(Lobby, Bravo));
@@ -614,7 +614,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void OwnLinkVoice_NotWithoutLinksOrForChannelOnly()
+    public void OwnLinkVoice_NoLinksOrChannelOnly_NoSound()
     {
         var fixture = Create();
         var heard = Sounds(fixture.Vm);
@@ -627,7 +627,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void LinkVoice_NotForOwnChannelOrSelf()
+    public void LinkVoice_OwnChannelOrSelf_NoSound()
     {
         var fixture = Create(others: [User(2, "anna", Lobby, P.Speak)]);
         var heard = Sounds(fixture.Vm);
@@ -671,7 +671,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void SlotText_LimitedAndUnlimited()
+    public void SlotText_LimitedOrUnlimited_Formatted()
     {
         var fixture = Create(others: [User(2, "anna", Bravo, P.Speak)]);
         Assert.Equal("1", fixture.Channel(Bravo).SlotText);
@@ -703,14 +703,14 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public void RedeemToken_HiddenForAdmin()
+    public void RedeemToken_Admin_Hidden()
     {
         Assert.True(Create().Vm.CanRedeemToken);
         Assert.False(Create(P.All, [WellKnownGroups.Admin]).Vm.CanRedeemToken);
     }
 
     [Fact]
-    public async Task Ban_SendsDurationAndIpFlag()
+    public async Task Ban_Confirmed_SendsDurationAndIpFlag()
     {
         var dialogs = new ServerDialogs { Ban = (_, _, _) => Task.FromResult<BanChoice?>(new BanChoice("spam", 60, true)) };
         var fixture = Create(Moderator, dialogs: dialogs, others: User(2, "gast", Lobby, P.Speak));
@@ -719,7 +719,7 @@ public class ServerViewModelTests
     }
 
     [Fact]
-    public async Task CancelledDialog_SendsNothing()
+    public async Task ChannelDialog_Cancelled_SendsNothing()
     {
         var fixture = Create(P.All, others: User(2, "gast", Lobby, P.Speak));
         await fixture.User(2).KickCommand.ExecuteAsync(null);
@@ -769,7 +769,7 @@ public class ServerViewModelTests
 
     /// <summary>Package 98 (AC4): a dropped channel stays in its new place until the server confirms; refused, it goes back.</summary>
     [Fact]
-    public async Task Reorder_RevertsOnError()
+    public async Task Reorder_Refused_Reverted()
     {
         var fixture = Create(P.ChannelEdit);
         Guid[] Order() => fixture.Vm.Tree.Channels.Select(channel => channel.Id).ToArray();
@@ -876,7 +876,7 @@ public class ServerViewModelTests
 
     /// <summary>Package 102: someone who comes back while folding away is the same entry again.</summary>
     [Fact]
-    public void UserBackWhileLeaving_SameEntry()
+    public void UserEntry_BackWhileLeaving_SameEntry()
     {
         var clock = new ManualTimeProvider();
         var server = FakeServers.Admin(time: clock);
@@ -969,7 +969,7 @@ public class ServerViewModelTests
 
     /// <summary>Package 119 (AC1, AC2): the submenu only for weaker users and only with GroupsAssign; a group I may not give is greyed out.</summary>
     [Fact]
-    public void UserGroups_OnlyForWeakerUsersWithAssignRight()
+    public void UserGroupsMenu_WeakerUserAndAssignRight_OnlyThenShown()
     {
         var fixture = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [Weaker(), User(3, "bert", Lobby, P.Speak)]);
         Assert.Empty(fixture.User(1).Groups); // myself
@@ -1051,7 +1051,7 @@ public class ServerViewModelTests
     /// judges one weaker than me and the menu has no groups for him, the same rule that keeps the administration's toggles off.
     /// </summary>
     [Fact]
-    public void LastAdmin_CannotBeUnticked()
+    public void AdminGroup_LastAdmin_CannotBeUnticked()
     {
         var fixture = Create(Moderator | P.GroupsAssign, groups: AssignGroups, others: [User(2, "chef", Lobby, P.All, [WellKnownGroups.Admin])]);
         Assert.Empty(fixture.User(2).Groups);
@@ -1061,7 +1061,7 @@ public class ServerViewModelTests
 
     /// <summary>Package 120 (AC1): the other channels in tree order, no separator; a click moves at once, without the dialog.</summary>
     [Fact]
-    public void MoveTargets_OtherChannelsWithoutSeparators()
+    public void MoveTargets_ChannelTree_OtherChannelsWithoutSeparators()
     {
         bool picked = false;
         var dialogs = new ServerDialogs
@@ -1093,7 +1093,7 @@ public class ServerViewModelTests
 
     /// <summary>Package 120 (AC5): a refused move shows the server's error; the user stays where they were.</summary>
     [Fact]
-    public async Task RefusedMove_ShowsError()
+    public async Task Move_Refused_ShowsErrorAndUserStays()
     {
         var fixture = Create(Moderator, others: [Weaker()]);
         var notices = new List<string>();

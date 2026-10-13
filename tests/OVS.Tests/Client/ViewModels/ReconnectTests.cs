@@ -253,7 +253,7 @@ public sealed class ReconnectTests : IAsyncLifetime
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Reconnect_ChosenMute_HeldKeyReleased_StaysMuted(bool deafen)
+    public async Task Reconnect_ChosenMuteAndHeldKeyReleased_StaysMuted(bool deafen)
     {
         await ConnectTo(server);
         await OnUiDo(() => viewModel.Server!.SelfState.ToggleMuteCommand.ExecuteAsync(null));
