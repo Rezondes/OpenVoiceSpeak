@@ -30,13 +30,17 @@ sealed class PostQueue
         }
     }
 
-    /// <summary>Moves <paramref name="clock"/> on by <paramref name="delay"/>, waits (bounded) for a post and runs everything posted.</summary>
-    public async Task RunAsync(ManualTimeProvider clock, TimeSpan delay)
+    /// <summary>
+    /// Moves <paramref name="clock"/> on by <paramref name="delay"/>, waits (bounded) for <paramref name="posts"/> posts and
+    /// runs everything posted.
+    /// </summary>
+    public async Task RunAsync(ManualTimeProvider clock, TimeSpan delay, int posts = 1)
     {
         Task wait;
         lock (posted) wait = signal.Task;
         clock.Advance(delay);
         await HangGuard.Bound(wait);
+        if (posts > 1) await AsyncWait.Until(() => { lock (posted) return posted.Count >= posts; });
         Action[] due;
         lock (posted) due = [.. posted];
         foreach (var action in due) action();

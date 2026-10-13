@@ -8,46 +8,38 @@ namespace OVS.Tests.Client.Collections;
 /// <summary>Package 102: a removed entry may stay a moment as leaving; leaving belongs to the entry in one list.</summary>
 public class CollectionSyncTests
 {
-    static (ObservableCollection<string> List, LeaveTimer Leave, ManualTimeProvider Clock) Setup(params string[] items)
+    /// <summary>
+    /// The UI thread of the test: the removals come from Task.Delay on the manual clock and are posted here, so they run
+    /// one after the other on the test thread (Step 30: two removals on the pool raced on the list).
+    /// </summary>
+    readonly PostQueue posts = new();
+
+    (ObservableCollection<string> List, LeaveTimer Leave, ManualTimeProvider Clock) Setup(params string[] items)
     {
         var clock = new ManualTimeProvider();
-        return (new ObservableCollection<string>(items), new LeaveTimer(clock) { Delay = TimeSpan.FromMilliseconds(220) }, clock);
-    }
-
-    /// <summary>The removal comes from Task.Delay on the manual clock: its continuation runs on the pool.</summary>
-    static void Pass(ManualTimeProvider clock, TimeSpan by)
-    {
-        clock.Advance(by);
-        Thread.Sleep(50);
-    }
-
-    static void Eventually(Func<bool> done)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!done() && watch.ElapsedMilliseconds < 5000) Thread.Sleep(10);
+        return (new ObservableCollection<string>(items), new LeaveTimer(clock, () => posts.Post) { Delay = TimeSpan.FromMilliseconds(220) }, clock);
     }
 
     [Fact]
-    public void Removed_MarkedLeaving_RemovedAfterDelay()
+    public async Task Removed_MarkedLeaving_RemovedAfterDelay()
     {
         var (list, leave, clock) = Setup("a", "b", "c");
         CollectionSync.Sync(list, ["a", "c"], leave);
         Assert.Equal(["a", "b", "c"], list); // b keeps its place while it folds away
         Assert.True(CollectionSync.IsLeaving(list, "b"));
         Assert.Equal(["a", "c"], list.Live());
-        Pass(clock, TimeSpan.FromMilliseconds(100));
+        clock.Advance(TimeSpan.FromMilliseconds(100));
         Assert.Contains("b", list);
-        Pass(clock, TimeSpan.FromMilliseconds(200));
-        Eventually(() => list.Count == 2);
+        await posts.RunAsync(clock, TimeSpan.FromMilliseconds(200));
         Assert.Equal(["a", "c"], list);
         Assert.False(CollectionSync.IsLeaving(list, "b"));
     }
 
     [Fact]
-    public void ReturnsWhileLeaving_SameInstanceRevived()
+    public async Task ReturnsWhileLeaving_SameInstanceRevived()
     {
         var clock = new ManualTimeProvider();
-        var leave = new LeaveTimer(clock) { Delay = TimeSpan.FromMilliseconds(220) };
+        var leave = new LeaveTimer(clock, () => posts.Post) { Delay = TimeSpan.FromMilliseconds(220) };
         object first = new(), second = new();
         var list = new ObservableCollection<object> { first, second };
         var events = new List<(object Item, bool Leaving)>();
@@ -64,7 +56,7 @@ public class CollectionSyncTests
             Assert.Same(second, list[1]);
             Assert.False(CollectionSync.IsLeaving(list, second));
             Assert.Equal([(second, true), (second, false)], events);
-            Pass(clock, TimeSpan.FromSeconds(1));
+            await posts.RunAsync(clock, TimeSpan.FromSeconds(1));
             Assert.Equal([first, second], list); // the old removal does not take it away
         }
         finally
@@ -145,7 +137,7 @@ public class CollectionSyncTests
 
     /// <summary>Package 122: leaving entries stay behind the entry they followed while the others move around them.</summary>
     [Fact]
-    public void LeavingWithMoves_StayBehindTheirEntry()
+    public async Task LeavingWithMoves_StayBehindTheirEntry()
     {
         var (list, leave, clock) = Setup("a", "b", "c", "d", "e");
         CollectionSync.Sync(list, ["e", "c", "a"], leave);
@@ -154,14 +146,13 @@ public class CollectionSyncTests
         CollectionSync.Sync(list, ["a", "e", "c"], leave); // a reorder while they fold away
         Assert.Equal(["a", "b", "e", "c", "d"], list);
         Assert.True(CollectionSync.IsLeaving(list, "b") && CollectionSync.IsLeaving(list, "d"));
-        Pass(clock, TimeSpan.FromMilliseconds(300));
-        Eventually(() => list.Count == 3);
+        await posts.RunAsync(clock, TimeSpan.FromMilliseconds(300), posts: 2); // b and d
         Assert.Equal(["a", "e", "c"], list);
     }
 
     /// <summary>Package 122: an entry that comes back while leaving takes its new place and stays, also when the order changed.</summary>
     [Fact]
-    public void Revived_TakesItsNewPlace()
+    public async Task Revived_TakesItsNewPlace()
     {
         var (list, leave, clock) = Setup("a", "b", "c");
         CollectionSync.Sync(list, ["a", "c"], leave);
@@ -169,7 +160,7 @@ public class CollectionSyncTests
         CollectionSync.Sync(list, ["c", "b", "a"], leave);
         Assert.Equal(["c", "b", "a"], list);
         Assert.False(CollectionSync.IsLeaving(list, "b"));
-        Pass(clock, TimeSpan.FromMilliseconds(300));
+        await posts.RunAsync(clock, TimeSpan.FromMilliseconds(300));
         Assert.Equal(["c", "b", "a"], list); // the old removal does not take it away
     }
 }
