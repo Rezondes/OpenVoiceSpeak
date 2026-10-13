@@ -39,7 +39,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     static double OffsetY(Visual visual) => visual.RenderTransform?.Value.M32 ?? 0;
 
     [AvaloniaFact]
-    public void Connecting_PulsesAndFailShakes()
+    public void Connecting_PendingOrFailed_PulsesOrShakes()
     {
         var main = Open(out var viewModel);
         var logo = main.GetVisualDescendants().OfType<LogoMark>().First(logoMark => logoMark.Bounds.Width >= 64);
@@ -70,7 +70,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     }
 
     [AvaloniaFact]
-    public void Connect_SequenceWithin700ms()
+    public void Connect_Animated_SequenceWithin700ms()
     {
         var main = Open(out var viewModel);
         var tree = Named<ItemsControl>(main, "ChannelItems");
@@ -122,7 +122,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     }
 
     [AvaloniaFact]
-    public void Disconnect_FoldsAwayHomeWithReason()
+    public void Disconnect_WithReason_FoldsAwayToHome()
     {
         var main = Open(out var viewModel);
         MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
@@ -146,7 +146,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
 
     /// <summary>A bookmark clicked while connected: disconnect and connect in one go, never a blank frame.</summary>
     [AvaloniaFact]
-    public void ServerSwitch_NoBlankFrame()
+    public void ServerSwitch_BookmarkWhileConnected_NoBlankFrame()
     {
         var main = Open(out var viewModel);
         MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
@@ -165,7 +165,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
     }
 
     [AvaloniaFact]
-    public void Simplified_Instant()
+    public void Motion_SimplifiedDisplay_Instant()
     {
         var main = Open(out var viewModel, DisplayMode.Simplified);
         viewModel.Connection.IsConnecting = true;
@@ -182,7 +182,7 @@ public sealed class ConnectMotionTests() : TempDirectoryTest("ovs-connect-", qui
 
     /// <summary>Connected while the drawer is closed (compact): the tree does not build up later when it opens.</summary>
     [AvaloniaFact]
-    public void ConnectedWithDrawerClosed_NoLateBuildUp()
+    public void Connect_DrawerClosed_NoLateBuildUp()
     {
         var main = Open(out var viewModel);
         main.Width = 360;

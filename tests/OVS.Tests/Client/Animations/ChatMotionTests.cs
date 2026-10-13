@@ -173,7 +173,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void Notice_SlidesInWithPulse()
+    public void Notice_Arrives_SlidesInWithPulse()
     {
         var (main, viewModel, _, chat) = Open();
         viewModel.Chat!.AddNotice(new Notice(DateTime.Now, "Etwas ging schief", NoticeKind.Error));
@@ -189,7 +189,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void UnreadBadge_PopsIn()
+    public void UnreadBadge_FirstUnread_PopsIn()
     {
         var (main, viewModel, server, chat) = Open();
         viewModel.Chat!.Selected = viewModel.Chat.Tabs[1];
@@ -226,7 +226,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void Simplified_AsToday()
+    public void Motion_SimplifiedDisplay_AsToday()
     {
         var (main, viewModel, server, chat) = Open(DisplayMode.Simplified, height: 420);
         for (int index = 0; index < 25; index++) server.Apply(From("anna", 2, $"Zeile {index}"));
@@ -267,7 +267,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void AfterTabSwitch_NewMessageStillSlidesIn()
+    public void NewMessage_AfterTabSwitch_StillSlidesIn()
     {
         var (main, viewModel, server, chat) = Open();
         viewModel.Chat!.Selected = viewModel.Chat.Tabs[1];
@@ -282,7 +282,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void SwitchToSimplified_HidesPill()
+    public void Pill_SwitchToSimplified_Hidden()
     {
         var (main, viewModel, server, chat) = Open(height: 420);
         for (int index = 0; index < 25; index++) server.Apply(From("anna", 2, $"Zeile {index}"));
@@ -300,7 +300,7 @@ public sealed class ChatMotionTests() : TempDirectoryTest("ovs-chat-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void NotSent_Shakes()
+    public void Composer_NotSent_Shakes()
     {
         var (main, viewModel, _, chat) = Open();
         viewModel.Chat!.Draft = "Geht nicht";

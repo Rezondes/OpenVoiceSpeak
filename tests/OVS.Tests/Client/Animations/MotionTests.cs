@@ -14,7 +14,7 @@ namespace OVS.Tests.Client.Animations;
 public sealed class MotionTests() : TempDirectoryTest("ovs-motion-", quiet: true)
 {
     [AvaloniaFact]
-    public void Apply_SetsWindowClassAndDurations()
+    public void Apply_Display_SetsWindowClassAndDurations()
     {
         var window = new Window();
         Motion.Apply(window, DisplayMode.Animated);
@@ -111,7 +111,7 @@ public sealed class MotionTests() : TempDirectoryTest("ovs-motion-", quiet: true
     }
 
     [AvaloniaFact]
-    public void MainWindow_FollowsTheChosenDisplay()
+    public void MainWindow_DisplayChosen_Follows()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
         var main = new MainWindow { DataContext = viewModel };

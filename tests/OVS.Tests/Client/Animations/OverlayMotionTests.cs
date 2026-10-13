@@ -124,7 +124,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     }
 
     [AvaloniaFact]
-    public void Refused_ShakesCard()
+    public void DialogCard_Refused_Shakes()
     {
         var main = Open(out var viewModel);
         var overlay = main.Overlay;
@@ -144,7 +144,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     }
 
     [AvaloniaFact]
-    public void Popups_FadeAndSlide()
+    public void Popups_Opened_FadeAndSlide()
     {
         var combo = new ComboBox { ItemsSource = new[] { "Hell", "Dunkel" }, Width = 200 };
         var window = new Window { Width = 400, Height = 300, Content = combo };
@@ -208,7 +208,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
 
     /// <summary>Package 109: a menu that closes for a dialog (an entry that asks) leaves no picture above the dialog.</summary>
     [AvaloniaFact]
-    public void PopupClosedForADialog_NoPictureOverIt()
+    public void Popup_ClosedForADialog_NoPictureOverIt()
     {
         var main = Open(out _);
         var row = main.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("row") && border.ContextMenu is not null);
@@ -228,7 +228,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     }
 
     [AvaloniaFact]
-    public void Drawer_SlidesInAndOut()
+    public void Drawer_OpenedAndClosed_SlidesInAndOut()
     {
         var main = Open(out _, width: 360);
         var sidebar = main.FindControl<Border>("Sidebar")!;
@@ -256,7 +256,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
     }
 
     [AvaloniaFact]
-    public void Simplified_Instant()
+    public void Motion_SimplifiedDisplay_Instant()
     {
         var main = Open(out _, DisplayMode.Simplified, width: 360);
         var overlay = main.Overlay;
@@ -406,7 +406,7 @@ public sealed class OverlayMotionTests() : TempDirectoryTest("ovs-overlay-", qui
 
     /// <summary>Package 115: a context menu keeps its fade and slide (Package 105) and shows no blink either.</summary>
     [AvaloniaFact]
-    public void ContextMenu_FadesInOnce()
+    public void ContextMenu_Opened_FadesInOnce()
     {
         var item = new MenuItem { Header = "Beitreten" };
         var menu = new ContextMenu { Items = { item } };

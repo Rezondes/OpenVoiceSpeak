@@ -45,7 +45,7 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
     ];
 
     [Fact]
-    public void UserUpdated_UpdatesOnlyThatUser()
+    public void UserUpdated_OneUser_OnlyThatUserUpdated()
     {
         var server = FakeServers.Large();
         var changed = new List<Guid>();
@@ -106,7 +106,7 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
     /// both trees are the same after every message (fixed seed, so a failure repeats).
     /// </summary>
     [Fact]
-    public void RandomMessages_IncrementalMatchesRebuild()
+    public void Tree_RandomMessages_IncrementalMatchesRebuild()
     {
         var random = new Random(122);
         for (int run = 0; run < 50; run++)
@@ -179,7 +179,7 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
     }
 
     [Fact]
-    public async Task StateChanged_GainTableAndIconHashOnlyWhenNeeded()
+    public async Task StateChanged_Unrelated_GainTableAndIconHashUntouched()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
         var server = FakeServers.Large();
@@ -207,7 +207,7 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
     }
 
     [Fact]
-    public void ManySpeakers_SpeakingUpdatesThrottledAndScoped()
+    public void Speaking_ManySpeakers_UpdatesThrottledAndScoped()
     {
         // the mixer's output every 20 ms for a second: 20 speakers, one of them flickering in and out every frame
         var reports = new SpeakerReportThrottle();
@@ -239,7 +239,7 @@ public sealed class PerformanceTests() : TempDirectoryTest("ovs-perf-", quiet: t
     }
 
     [AvaloniaFact]
-    public void NoMove_NoPlaceTracking()
+    public void PlaceTracking_NoMove_NotDone()
     {
         var (main, server) = OpenLarge();
         var lists = main.GetVisualDescendants().OfType<ItemsControl>().Where(ItemMotion.GetFlip).ToList();

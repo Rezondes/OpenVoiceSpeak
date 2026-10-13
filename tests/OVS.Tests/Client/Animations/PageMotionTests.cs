@@ -76,7 +76,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     }
 
     [AvaloniaFact]
-    public async Task RapidSwitch_EndsClean()
+    public async Task PageSwitch_Rapid_EndsClean()
     {
         var main = Open(out var viewModel);
         viewModel.PageFlow.OpenSettings();
@@ -101,7 +101,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaTheory]
     [InlineData(DisplayMode.Animated)]
     [InlineData(DisplayMode.Simplified)]
-    public async Task PageSwitch_KeepsState(DisplayMode display)
+    public async Task PageSwitch_Animated_KeepsState(DisplayMode display)
     {
         var main = Open(out var viewModel, display);
         await viewModel.PageFlow.OpenAdminAsync();
@@ -162,7 +162,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     }
 
     [AvaloniaFact]
-    public async Task ListInsideTab_IsNoTabChange()
+    public async Task TabChange_ListInsideTab_NotAnimated()
     {
         var main = Open(out var viewModel);
         await viewModel.PageFlow.OpenAdminAsync();
@@ -182,7 +182,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     }
 
     [AvaloniaFact]
-    public void PagePicture_NeverComesBack()
+    public void PagePicture_TransitionEnded_NeverComesBack()
     {
         var main = Open(out var viewModel);
         viewModel.PageFlow.OpenSettings();
@@ -205,7 +205,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     }
 
     [AvaloniaFact]
-    public void SettingsSections_FadeUpOnce()
+    public void SettingsSections_Opened_FadeUpOnce()
     {
         var main = Open(out var viewModel);
         viewModel.PageFlow.OpenSettings();
@@ -233,7 +233,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     }
 
     [AvaloniaFact]
-    public async Task Simplified_Instant()
+    public async Task Motion_SimplifiedDisplay_Instant()
     {
         var main = Open(out var viewModel, DisplayMode.Simplified);
         viewModel.PageFlow.OpenSettings();
@@ -254,7 +254,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
 
     /// <summary>Switching to the simplified display on the settings page shows the sections still waiting below.</summary>
     [AvaloniaFact]
-    public void SwitchToSimplified_ShowsWaitingSections()
+    public void SettingsSections_SwitchToSimplified_WaitingOnesShown()
     {
         var main = Open(out var viewModel);
         viewModel.PageFlow.OpenSettings();
@@ -297,7 +297,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     /// Settings straight to the administration leaves the settings, not the home page shown for a moment in between.
     /// </summary>
     [AvaloniaFact]
-    public async Task Picture_IsTakenWhileThePageIsStillThere()
+    public async Task PagePicture_PageSwitch_TakenWhileThePageIsStillThere()
     {
         var main = Open(out var viewModel);
         var layer = main.FindControl<Border>("PageGhost")!;
@@ -327,7 +327,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
 
     /// <summary>The picture lies right above the pages: under the drawer and the dialogs, inside the main area.</summary>
     [AvaloniaFact]
-    public void Picture_StaysBelowDrawerAndDialogs()
+    public void PagePicture_DrawerOrDialogOpen_StaysBelow()
     {
         var main = Open(out _);
         var layer = main.FindControl<Border>("PageGhost")!;

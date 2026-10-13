@@ -582,7 +582,7 @@ public sealed class MotionCoverageTests
     /// runs only with OVS_SLOW_TESTS (<see cref="SlowAvaloniaFactAttribute"/>).
     /// </summary>
     [SlowAvaloniaFact]
-    public void EveryAction_AnimatesInAnimatedMode()
+    public void EveryAction_AnimatedDisplay_Animates()
     {
         var animated = WalkThrough(DisplayMode.Animated);
         var simplified = WalkThrough(DisplayMode.Simplified);
@@ -599,7 +599,7 @@ public sealed class MotionCoverageTests
 
     /// <summary>AC3: the simplified display starts none of the new animations.</summary>
     [AvaloniaFact]
-    public void EveryAction_NoNewAnimationInSimplifiedMode()
+    public void EveryAction_SimplifiedDisplay_NoNewAnimation()
     {
         var simplified = WalkThrough(DisplayMode.Simplified);
         Assert.Empty(simplified.Where(result => result.Started > 0 || result.Moved).Select(result => $"{result.Name}: {result.Started} started, moved: {result.Movers}"));
@@ -620,7 +620,7 @@ public sealed class MotionCoverageTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public void JoinLeaveStorm_EndsBounded(bool large)
+    public void Motion_JoinLeaveStorm_EndsBounded(bool large)
     {
         string dir = Directory.CreateTempSubdirectory("ovs-storm-").FullName;
         var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));

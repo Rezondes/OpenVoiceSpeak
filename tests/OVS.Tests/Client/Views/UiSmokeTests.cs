@@ -61,7 +61,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     [InlineData("Light")]
     [InlineData("Dark", DisplayMode.Simplified)] // Package 102 (AC6): every page and dialog in both displays
     [InlineData("Light", DisplayMode.Simplified)]
-    public void Windows_LoadAndShowTheirContent(string variant, DisplayMode display = DisplayMode.Animated)
+    public void Pages_BothDisplays_LoadAndShowTheirContent(string variant, DisplayMode display = DisplayMode.Animated)
     {
         var sink = new CollectingSink();
         Logger.Sink = sink;
@@ -132,7 +132,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>The Motion styles are found by the include's source, wherever App.axaml puts them.</summary>
     [Fact]
-    public void MotionStyles_FoundByName()
+    public void MotionStyles_Included_FoundBySource()
     {
         var app = File.ReadAllText(AppXamlPath());
         Assert.Equal(2, MotionStylesIndex(app)); // FluentTheme, Controls, Motion
@@ -149,7 +149,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     /// does without the animated display's styles (<c>Styles/Motion.axaml</c>).
     /// </summary>
     [AvaloniaFact]
-    public async Task Simplified_LooksLikeBefore()
+    public async Task Window_SimplifiedDisplay_LooksLikeBefore()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
         var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
@@ -197,7 +197,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>A missing icon key is neither an exception nor a log entry in Avalonia: the icon just stays empty.</summary>
     [AvaloniaFact]
-    public void EveryIconInXaml_Exists()
+    public void Icons_EveryKeyInXaml_Exists()
     {
         var keys = Directory.GetFiles(RepoPaths.ClientSource, "*.axaml", SearchOption.AllDirectories)
             .SelectMany(text => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(text), @"StaticResource (Icon\.\w+)").Select(match => match.Groups[1].Value))
@@ -383,7 +383,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>A20: settings, administration and all dialogs live inside the one main window.</summary>
     [AvaloniaFact]
-    public void NoSecondWindow_EverOpens()
+    public void Pages_AllOpened_NoSecondWindow()
     {
         int opened = 0;
         using var counting = Window.WindowOpenedEvent.AddClassHandler(typeof(Window), (_, _) => opened++);
@@ -399,7 +399,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     }
 
     [AvaloniaFact]
-    public void Overlay_EscCancels_EnterConfirms_EscClosesPage()
+    public void Overlay_EscOrEnter_CancelsConfirmsOrClosesPage()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
         var main = new MainWindow { DataContext = viewModel };
@@ -507,7 +507,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>Package 64: own messages on the right, everyone else on the left, notices across the whole width.</summary>
     [AvaloniaFact]
-    public void Chat_OwnRight_OthersLeft_NoticesFullWidth()
+    public void ChatLayout_OwnOthersAndNotices_RightLeftAndFullWidth()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = viewModel, Width = 1000, Height = 650 };
@@ -681,7 +681,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>Package 96: the server logo field lights up while a file is dragged over it, and goes back when it leaves.</summary>
     [AvaloniaFact]
-    public void LogoDropZone_HighlightsOnDragOver()
+    public void LogoDropZone_DragOver_Highlighted()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
@@ -759,7 +759,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>Package 61: only the large backgrounds become see-through; text, cards and dialogs stay solid.</summary>
     [AvaloniaFact]
-    public void BackgroundOpacity_OnlyBackgroundsSeeThrough()
+    public void BackgroundOpacity_Lowered_OnlyBackgroundsSeeThrough()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
         var main = new MainWindow { DataContext = viewModel };
@@ -799,7 +799,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>Package 58: transmit and keys come right after the volume, the long sound list after them.</summary>
     [AvaloniaFact]
-    public void Settings_SectionOrder()
+    public void Settings_Opened_SectionsInOrder()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
         var main = new MainWindow { DataContext = viewModel, Width = 1000, Height = 3200 };
@@ -815,7 +815,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>Package 53: the self test button beside the transmit mode, with the headphone hint.</summary>
     [AvaloniaFact]
-    public void Settings_SelfTestButton_TogglesText_ShowsHeadphoneHint()
+    public void SelfTestButton_Clicked_TogglesTextAndShowsHeadphoneHint()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
         var main = new MainWindow { DataContext = viewModel, Width = 1000, Height = 2400 };
@@ -886,7 +886,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>Package 119 (AC1, AC3, AC4): the user menu's "Gruppen" ticks the user's groups; a click sends at once.</summary>
     [AvaloniaFact]
-    public void UserContextMenu_GroupsSubmenu()
+    public void UserContextMenu_GroupsSubmenu_TicksAndSendsAtOnce()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
         var main = new MainWindow { DataContext = viewModel, Width = 1000, Height = 650 };
@@ -941,7 +941,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>Package 120 (AC1): "Verschieben" lists the other channels; a click moves at once, no dialog opens.</summary>
     [AvaloniaFact]
-    public void UserContextMenu_MoveSubmenu()
+    public void UserContextMenu_MoveSubmenu_ListsChannelsAndMovesAtOnce()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
         var main = new MainWindow { DataContext = viewModel, Width = 1000, Height = 650 };
@@ -1019,7 +1019,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>Package 66: a muted channel shows the mute icon in front instead of the speaker, and none behind its name.</summary>
     [AvaloniaFact]
-    public void MutedChannel_IconReplacesSpeaker()
+    public void MutedChannel_Shown_IconReplacesSpeaker()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action(), server: FakeServers.Admin());
         var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
@@ -1068,7 +1068,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>Package 67: after connecting, every channel name fits without trimming and the sidebar is not wider than needed.</summary>
     [AvaloniaFact]
-    public void Connect_SidebarFitsLongestChannel()
+    public void Sidebar_Connected_FitsLongestChannel()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
         var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
@@ -1152,7 +1152,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>Package 67: a width the user dragged stays until the next connect, even when channels change.</summary>
     [AvaloniaFact]
-    public void UserDraggedWidth_KeptUntilReconnect()
+    public void SidebarWidth_DraggedByUser_KeptUntilReconnect()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
         var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
@@ -1279,7 +1279,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
     /// <summary>Package 98 (AC3): a dialog that sends keeps its card open with a busy button until the server confirms; errors show inside.</summary>
     [AvaloniaFact]
-    public void SendingDialogs_StayOpenBusyUntilConfirmed()
+    public void SendingDialogs_Sent_StayOpenBusyUntilConfirmed()
     {
         var (main, _, server, sent, time) = OpenWaiting();
 
@@ -1340,7 +1340,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
     /// the busy indicator must be there after 400 ms and gone after the answer.
     /// </summary>
     [AvaloniaFact]
-    public void EveryWaitingAction_VisibleWithin400ms()
+    public void WaitingActions_Every_BusyVisibleWithin400ms()
     {
         var (main, viewModel, server, sent, time) = OpenWaiting();
         var checkedActions = new List<string>();

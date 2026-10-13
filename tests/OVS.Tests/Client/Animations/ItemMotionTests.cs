@@ -88,7 +88,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         seen.Where(value => item(value.Item)).Select(value => value.Y).DefaultIfEmpty(0).Min();
 
     [AvaloniaFact]
-    public void AdminRowAdded_SlidesIn()
+    public void AdminRow_Added_SlidesIn()
     {
         var rows = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var (_, list) = Host(rows);
@@ -107,7 +107,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     [AvaloniaFact]
-    public void EntriesBelow_MoveSmoothly()
+    public void EntriesBelow_RowAddedOrRemoved_MoveSmoothly()
     {
         var rows = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var (window, list) = Host(rows);
@@ -123,7 +123,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     [AvaloniaFact]
-    public void FirstFillAndRebuild_NoReplay()
+    public void List_FirstFillOrRebuild_NoReplay()
     {
         var rows = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var list = new ItemsControl
@@ -154,7 +154,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     [AvaloniaFact]
-    public void EmptyListGetsABatch_FadesAsAWhole()
+    public void EmptyList_GetsABatch_FadesAsAWhole()
     {
         var rows = new ObservableCollection<KeyedRow>();
         var (_, list) = Host(rows);
@@ -165,7 +165,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     [AvaloniaFact]
-    public void HiddenList_EntriesDoNotSlideInWhenShown()
+    public void HiddenList_Shown_EntriesDoNotSlideIn()
     {
         var rows = new ObservableCollection<KeyedRow> { new("a") };
         var (_, list) = Host(rows);
@@ -178,7 +178,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     [AvaloniaFact]
-    public void ManyItems_StaggerCapped()
+    public void Stagger_ManyItems_Capped()
     {
         var rows = new ObservableCollection<KeyedRow> { new("start") };
         var (_, list) = Host(rows);
@@ -197,7 +197,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     [AvaloniaFact]
-    public void Simplified_AppearsAtOnce()
+    public void Row_AddedInSimplifiedDisplay_AppearsAtOnce()
     {
         var rows = new ObservableCollection<KeyedRow> { new("a") };
         var (_, list) = Host(rows, animated: false);
@@ -226,7 +226,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
         main.GetVisualDescendants().OfType<ContentPresenter>().Single(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname);
 
     [AvaloniaFact]
-    public void NewUser_SlidesInAndFlashes()
+    public void User_Joins_SlidesInAndFlashes()
     {
         var main = Connected(out var server);
         server.Apply(new UserJoined(new UserInfo(3, "fp3", "bert", FakeServers.Lobby, false, false, false, Permission.None, [WellKnownGroups.Guest])));
@@ -269,7 +269,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
 
     /// <summary>The bookmarks are a new list on every change: only the new bookmark slides in.</summary>
     [AvaloniaFact]
-    public void Bookmarks_OnlyTheNewOneSlidesIn()
+    public void Bookmarks_ListReplaced_OnlyTheNewOneSlidesIn()
     {
         var settings = new ClientSettings();
         settings.Bookmarks.Add(new Bookmark("Alt", "alt.example.org", 7000, "ich"));
@@ -292,7 +292,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
 
     /// <summary>The administration rebuilds its entries as new objects: the same data must give the same key.</summary>
     [Fact]
-    public void RebuiltAdminEntries_KeepTheirKey()
+    public void AdminEntries_Rebuilt_KeepTheirKey()
     {
         var now = DateTimeOffset.UtcNow;
         var ban = new BanInfo(Guid.NewGuid(), "fpX", "Xaver", null, "Spam", "mod", null);
@@ -312,7 +312,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     // ---- Package 102: leaving ----
 
     [AvaloniaFact]
-    public void DeletedChannel_CollapsesThenGone()
+    public void Channel_Deleted_CollapsesThenGone()
     {
         var main = Connected(out var server);
         Assert.Equal(Motion.Normal, server.Leave.Delay); // the window set the animated display's length
@@ -376,7 +376,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     [AvaloniaFact]
-    public void Simplified_RemovedAtOnce()
+    public void Row_RemovedInSimplifiedDisplay_GoneAtOnce()
     {
         var main = Connected(out var server);
         Motion.Apply(main, DisplayMode.Simplified);
@@ -398,7 +398,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     static UserInfo Anna(Guid channel) => new(2, "fp2", "anna", channel, true, true, true, Permission.None, [WellKnownGroups.Guest], CanBeModeratedByMe: true);
 
     [AvaloniaFact]
-    public void ServerReorder_RowsGlideFromOldOffset()
+    public void Rows_ServerReorder_GlideFromOldOffset()
     {
         var main = Connected(out var server);
         var raid = ChannelContainer(main, "Raid");
@@ -480,7 +480,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     [AvaloniaFact]
-    public void OwnSwitch_CurrentHighlightSlides()
+    public void CurrentHighlight_OwnSwitch_Slides()
     {
         var main = Connected(out var server);
         var overlay = Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(main)!;
@@ -526,7 +526,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     [AvaloniaFact]
-    public void GroupReorder_Glides()
+    public void Groups_Reordered_Glide()
     {
         var rows = new ObservableCollection<KeyedRow> { new("Gast"), new("Moderator"), new("Admin") };
         var (window, list) = Host(rows, flip: true);
@@ -564,7 +564,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     [AvaloniaFact]
-    public void OffscreenEnd_NoGhost()
+    public void Row_EndsOffscreen_NoGhost()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
         var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 400 };
@@ -593,7 +593,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
 
     /// <summary>The group list of the administration really glides (the attribute is there).</summary>
     [AvaloniaFact]
-    public async Task AdminGroupList_Glides()
+    public async Task AdminGroupList_Reordered_Glides()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => Dispatcher.UIThread.Post(action));
         var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
@@ -614,7 +614,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
     }
 
     [AvaloniaFact]
-    public void Simplified_Jumps()
+    public void Row_MovedInSimplifiedDisplay_Jumps()
     {
         var main = Connected(out var server);
         var viewModel = (MainViewModel)main.DataContext!;
@@ -630,7 +630,7 @@ public sealed class ItemMotionTests() : TempDirectoryTest("ovs-items-", quiet: t
 
     /// <summary>A row back after its fold has finished is whole again (a finished fold keeps its last values).</summary>
     [AvaloniaFact]
-    public void BackAfterTheFoldFinished_IsWhole()
+    public void Row_BackAfterTheFoldFinished_Whole()
     {
         var rows = new ObservableCollection<KeyedRow> { new("a"), new("b") };
         var (_, list) = Host(rows);

@@ -169,7 +169,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void MuteIcons_PopInOut()
+    public void MuteIcons_MutedAndUnmuted_PopInAndOut()
     {
         bool popped = false;
         var main = Open(out _, out var server, buildUp: () => popped |= opening is { } mainWindow && (Ghosts(mainWindow).Any()
@@ -227,7 +227,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void PopOut_OnlyWhereTheIconCanBeSeen()
+    public void PopOut_HiddenIcon_NotAnimated()
     {
         var main = Open(out _, out var server);
         Assert.True(StateIcon(main, 2, "danger").IsEffectivelyVisible);
@@ -254,7 +254,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void SlotCounter_TicksAndPulsesWhenFull()
+    public void SlotCounter_CountChangesAndFull_TicksAndPulses()
     {
         var main = Open(out _, out var server);
         var counter = SlotCounter(main, "Raid");
@@ -293,7 +293,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void LevelMeter_AttackRelease()
+    public void LevelMeter_LevelRisesAndFalls_FastAttackSlowRelease()
     {
         var (window, meter) = Meter(animated: true);
         Assert.Equal(-60, meter.Value);
@@ -325,7 +325,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void LevelMeter_SettingsOpenAtTheLevel()
+    public void LevelMeter_SettingsOpened_StartsAtTheLevel()
     {
         var main = Open(out var viewModel, out _, mode: TransmitMode.VoiceActivation);
         viewModel.PageFlow.OpenSettings();
@@ -351,7 +351,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void Busy_ShimmerCrossFadesBack()
+    public void Busy_Ends_ShimmerCrossFadesBack()
     {
         var (window, button, spinner, icon) = BusyButton(animated: true);
         var presenter = button.Presenter!;
@@ -389,7 +389,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void Idle_NoRunningLoops()
+    public void LiveMotion_Idle_NoRunningLoops()
     {
         var main = Open(out var viewModel, out var server);
         server.Tree.SetSelfTransmitting(0); // a loop that ran ends with its state
@@ -434,7 +434,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
     }
 
     [AvaloniaFact]
-    public void Simplified_AsToday()
+    public void Motion_SimplifiedDisplay_AsToday()
     {
         var main = Open(out var viewModel, out var server, DisplayMode.Simplified);
         var ring = OwnRing(main);

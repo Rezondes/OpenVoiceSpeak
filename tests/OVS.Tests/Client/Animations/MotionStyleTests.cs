@@ -49,7 +49,7 @@ public sealed class MotionStyleTests
     [AvaloniaTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public void Button_Animated_HasHoverAndPressTransitions_SimplifiedHasNone(bool animated)
+    public void Button_AnimatedOrSimplified_HoverAndPressTransitionsOnlyAnimated(bool animated)
     {
         var button = new Button { Content = "Speichern", Classes = { "accent" } };
         var window = Host(button, animated);
@@ -71,7 +71,7 @@ public sealed class MotionStyleTests
     }
 
     [AvaloniaFact]
-    public void Row_HoverAccentBarGrows()
+    public void Row_Hovered_AccentBarGrows()
     {
         var row = new Border { Classes = { "row" }, Height = 30, Width = 200 };
         var current = new Border { Classes = { "row", "current" }, Height = 30, Width = 200 };
@@ -109,7 +109,7 @@ public sealed class MotionStyleTests
         window.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("focusRing"));
 
     [AvaloniaFact]
-    public void FocusRing_KeyboardOnly()
+    public void FocusRing_KeyboardOrPointer_OnlyKeyboard()
     {
         var first = new Button { Content = "Eins" };
         var second = new Button { Content = "Zwei" };
@@ -144,7 +144,7 @@ public sealed class MotionStyleTests
     }
 
     [AvaloniaFact]
-    public void Inputs_HaveStateTransitions()
+    public void Inputs_AnimatedDisplay_HaveStateTransitions()
     {
         var text = new TextBox();
         var check = new CheckBox { Content = "Ton aus" };
@@ -180,7 +180,7 @@ public sealed class MotionStyleTests
     [InlineData("nudgeDown", "translateY(2px)")]
     [InlineData("nudgeRight", "translateX(2px)")]
     [InlineData("sync", "rotate(180deg)")]
-    public void IconButtons_TurnOnHover(string kind, string expected)
+    public void IconButtons_Hovered_Turn(string kind, string expected)
     {
         var icon = new PathIcon { Classes = { kind }, Data = Geometry.Parse("M0,0 L10,10") };
         var button = new Button { Classes = { "icon" }, Content = icon };
@@ -198,7 +198,7 @@ public sealed class MotionStyleTests
     static double Bar(BoxShadows shadows) => shadows.Count > 0 && shadows[0].IsInset ? shadows[0].OffsetX : 0;
 
     [AvaloniaFact]
-    public void Bookmarks_ListItems_SoundRows_GetTheBar_LogLinesDoNot()
+    public void AccentBar_RowKinds_OnlyBookmarksListItemsAndSoundRows()
     {
         var bookmark = new Button { Classes = { "bookmark" }, Content = "voice.example.org", Width = 200 };
         var groups = new ListBox { ItemsSource = new[] { "Gast", "Admin" }, Width = 200 };
@@ -239,7 +239,7 @@ public sealed class MotionStyleTests
     }
 
     [AvaloniaFact]
-    public void Tabs_LiftTheirLabelOnHover()
+    public void Tabs_Hovered_LiftTheirLabel()
     {
         var tabs = new TabControl { ItemsSource = new[] { new TabItem { Header = "Gruppen" }, new TabItem { Header = "Nutzer" } } };
         var window = Host(tabs, animated: true);
@@ -253,7 +253,7 @@ public sealed class MotionStyleTests
     /// (a scaled shadow is blurred anew every frame), the avatar inside breathes.
     /// </summary>
     [AvaloniaFact]
-    public void SpeakingRing_NoAnimatedShadow()
+    public void SpeakingRing_Speaking_NoAnimatedShadow()
     {
         var avatar = new Border { Classes = { "avatar" }, Width = 30, Height = 30, Background = Brushes.SteelBlue };
         var ring = new Border { Classes = { "ring" }, Child = avatar, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left };

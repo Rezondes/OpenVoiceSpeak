@@ -752,7 +752,7 @@
     "Count": 1
   },
   {
-    "Key": "RL211|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.UserContextMenu_GroupsSubmenu.Ticks",
+    "Key": "RL211|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.UserContextMenu_GroupsSubmenu_TicksAndSendsAtOnce.Ticks",
     "Count": 1
   },
   {
@@ -5600,274 +5600,6 @@
     "Count": 1
   },
   {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.AfterTabSwitch_NewMessageStillSlidesIn",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.NotSent_Shakes",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.Notice_SlidesInWithPulse",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.Simplified_AsToday",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.SwitchToSimplified_HidesPill",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.UnreadBadge_PopsIn",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.Connect_SequenceWithin700ms",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.ConnectedWithDrawerClosed_NoLateBuildUp",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.Connecting_PulsesAndFailShakes",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.Disconnect_FoldsAwayHomeWithReason",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.ServerSwitch_NoBlankFrame",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ConnectMotionTests.cs|ConnectMotionTests.Simplified_Instant",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.AdminGroupList_Glides",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.AdminRowAdded_SlidesIn",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.BackAfterTheFoldFinished_IsWhole",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.Bookmarks_OnlyTheNewOneSlidesIn",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.DeletedChannel_CollapsesThenGone",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.EmptyListGetsABatch_FadesAsAWhole",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.EntriesBelow_MoveSmoothly",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.FirstFillAndRebuild_NoReplay",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.GroupReorder_Glides",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.HiddenList_EntriesDoNotSlideInWhenShown",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.ManyItems_StaggerCapped",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.NewUser_SlidesInAndFlashes",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.OffscreenEnd_NoGhost",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.OwnSwitch_CurrentHighlightSlides",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.RebuiltAdminEntries_KeepTheirKey",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.ServerReorder_RowsGlideFromOldOffset",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.Simplified_AppearsAtOnce",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.Simplified_Jumps",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.Simplified_RemovedAtOnce",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.Busy_ShimmerCrossFadesBack",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.Idle_NoRunningLoops",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.LevelMeter_AttackRelease",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.LevelMeter_SettingsOpenAtTheLevel",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.MuteIcons_PopInOut",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.PopOut_OnlyWhereTheIconCanBeSeen",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.Simplified_AsToday",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/LiveMotionTests.cs|LiveMotionTests.SlotCounter_TicksAndPulsesWhenFull",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionCoverageTests.cs|MotionCoverageTests.EveryAction_AnimatesInAnimatedMode",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionCoverageTests.cs|MotionCoverageTests.EveryAction_NoNewAnimationInSimplifiedMode",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionCoverageTests.cs|MotionCoverageTests.JoinLeaveStorm_EndsBounded",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.Bookmarks_ListItems_SoundRows_GetTheBar_LogLinesDoNot",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.Button_Animated_HasHoverAndPressTransitions_SimplifiedHasNone",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.FocusRing_KeyboardOnly",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.IconButtons_TurnOnHover",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.Inputs_HaveStateTransitions",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.Row_HoverAccentBarGrows",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.SpeakingRing_NoAnimatedShadow",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionStyleTests.cs|MotionStyleTests.Tabs_LiftTheirLabelOnHover",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionTests.cs|MotionTests.Apply_SetsWindowClassAndDurations",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/MotionTests.cs|MotionTests.MainWindow_FollowsTheChosenDisplay",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.ContextMenu_FadesInOnce",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.Drawer_SlidesInAndOut",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.PopupClosedForADialog_NoPictureOverIt",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.Popups_FadeAndSlide",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.Refused_ShakesCard",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/OverlayMotionTests.cs|OverlayMotionTests.Simplified_Instant",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.ListInsideTab_IsNoTabChange",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.PagePicture_NeverComesBack",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.PageSwitch_KeepsState",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.Picture_IsTakenWhileThePageIsStillThere",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.Picture_StaysBelowDrawerAndDialogs",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.RapidSwitch_EndsClean",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.SettingsSections_FadeUpOnce",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.Simplified_Instant",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Animations/PageMotionTests.cs|PageMotionTests.SwitchToSimplified_ShowsWaitingSections",
-    "Count": 1
-  },
-  {
     "Key": "RL601|tests/OVS.Tests/Client/Audio/IdleCostTests.cs|IdleCostTests.SteadyState_AllocatesNothing",
     "Count": 1
   },
@@ -6600,98 +6332,6 @@
     "Count": 1
   },
   {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/PerformanceTests.cs|PerformanceTests.ManySpeakers_SpeakingUpdatesThrottledAndScoped",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/PerformanceTests.cs|PerformanceTests.NoMove_NoPlaceTracking",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/PerformanceTests.cs|PerformanceTests.RandomMessages_IncrementalMatchesRebuild",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/PerformanceTests.cs|PerformanceTests.StateChanged_GainTableAndIconHashOnlyWhenNeeded",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/PerformanceTests.cs|PerformanceTests.UserUpdated_UpdatesOnlyThatUser",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.BackgroundOpacity_OnlyBackgroundsSeeThrough",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Chat_OwnRight_OthersLeft_NoticesFullWidth",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Connect_SidebarFitsLongestChannel",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.EveryIconInXaml_Exists",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.EveryWaitingAction_VisibleWithin400ms",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.LogoDropZone_HighlightsOnDragOver",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.MotionStyles_FoundByName",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.MutedChannel_IconReplacesSpeaker",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.NoSecondWindow_EverOpens",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Overlay_EscCancels_EnterConfirms_EscClosesPage",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.SendingDialogs_StayOpenBusyUntilConfirmed",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Settings_SectionOrder",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Settings_SelfTestButton_TogglesText_ShowsHeadphoneHint",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Simplified_LooksLikeBefore",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.UserContextMenu_GroupsSubmenu",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.UserContextMenu_MoveSubmenu",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.UserDraggedWidth_KeptUntilReconnect",
-    "Count": 1
-  },
-  {
-    "Key": "RL601|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Windows_LoadAndShowTheirContent",
-    "Count": 1
-  },
-  {
     "Key": "RL602|tests/OVS.Tests/Website/WebsiteShots.cs|WebsiteShots",
     "Count": 1
   },
@@ -6700,7 +6340,7 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.Notice_SlidesInWithPulse:DateTime.Now",
+    "Key": "RL603|tests/OVS.Tests/Client/Animations/ChatMotionTests.cs|ChatMotionTests.Notice_Arrives_SlidesInWithPulse:DateTime.Now",
     "Count": 1
   },
   {
@@ -6712,7 +6352,7 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.RebuiltAdminEntries_KeepTheirKey:DateTimeOffset.UtcNow",
+    "Key": "RL603|tests/OVS.Tests/Client/Animations/ItemMotionTests.cs|ItemMotionTests.AdminEntries_Rebuilt_KeepTheirKey:DateTimeOffset.UtcNow",
     "Count": 1
   },
   {
@@ -6816,6 +6456,14 @@
     "Count": 2
   },
   {
+    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.ChatLayout_OwnOthersAndNotices_RightLeftAndFullWidth:DateTime.Now",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.ChatLayout_OwnOthersAndNotices_RightLeftAndFullWidth:DateTimeOffset.Now",
+    "Count": 2
+  },
+  {
     "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Chat_FollowsNewLines_UnlessScrolledUp:DateTimeOffset.Now",
     "Count": 1
   },
@@ -6824,20 +6472,8 @@
     "Count": 1
   },
   {
-    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Chat_OwnRight_OthersLeft_NoticesFullWidth:DateTime.Now",
-    "Count": 1
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Chat_OwnRight_OthersLeft_NoticesFullWidth:DateTimeOffset.Now",
-    "Count": 2
-  },
-  {
     "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.Chat_PrivateTab_OwnRight:DateTimeOffset.Now",
     "Count": 2
-  },
-  {
-    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.EveryWaitingAction_VisibleWithin400ms:DateTimeOffset.Now",
-    "Count": 1
   },
   {
     "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.ExercisePagesAndDialogs:DateTimeOffset.Now",
@@ -6845,6 +6481,10 @@
   },
   {
     "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.ExercisePagesAndDialogs:DateTimeOffset.UtcNow",
+    "Count": 1
+  },
+  {
+    "Key": "RL603|tests/OVS.Tests/Client/Views/UiSmokeTests.cs|UiSmokeTests.WaitingActions_Every_BusyVisibleWithin400ms:DateTimeOffset.Now",
     "Count": 1
   },
   {

@@ -20,8 +20,8 @@ namespace OVS.Tests.Client.Services;
 /// <see cref="OVS.Client.Services.DeviceList"/> (the connection's state, the server's state, the saved volumes, the device
 /// list and its page) and what it does with their answers, seen on the real engine: the rules themselves are in
 /// <see cref="EngineSyncTests"/> and <see cref="DeviceListTests"/>. The channel bitrate, the channel mute, the slider and the
-/// joining user are seen in <c>MainViewModelTests</c> (<c>Bitrate_FollowsCurrentChannel</c>, <c>Bitrate_Adapted_ResetOnMove</c>,
-/// <c>ChannelMuted_HintAndNoSending</c>, <c>UserVolume_ChangesMixer_SavesByFingerprint</c>), the restart off the UI thread in
+/// joining user are seen in <c>MainViewModelTests</c> (<c>EncoderBitrate_JoinMoveOrEdit_FollowsCurrentChannel</c>, <c>Bitrate_Adapted_ResetOnMove</c>,
+/// <c>Talk_MutedChannel_HintAndNoSending</c>, <c>UserVolume_ChangesMixer_SavesByFingerprint</c>), the restart off the UI thread in
 /// <c>MainViewModelCompositionTests</c>. Posts run at once, the devices are fakes.
 /// </summary>
 public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync-", quiet: true)
