@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using OVS.Client.Audio.Sounds;
+using OVS.Client.Converters;
 using OVS.Client.Dialogs;
 using OVS.Client.Exceptions;
 using OVS.Client.Localization;
@@ -45,6 +46,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     readonly Action<ServerViewModel?> show;
     readonly Action<string> setStatus;
     readonly Func<string> readStatus;
+    readonly Func<bool> hideAddress;
     readonly Action<string, NoticeKind> addNotice;
     readonly Func<Task<bool>> confirmLeave;
     readonly Action closeAdmin;
@@ -78,11 +80,13 @@ internal sealed partial class ConnectionViewModel : ObservableObject
     /// <param name="addNotice">Adds a notice to the list and the chat.</param>
     /// <param name="confirmLeave">Asks before a disconnect or a connect elsewhere that would lose changes in the administration; false keeps the connection.</param>
     /// <param name="closeAdmin">Closes the administration when it is open: it needs a server.</param>
+    /// <param name="hideAddress">Package 160: streamer mode is on, the status line shows no address.</param>
     internal ConnectionViewModel(TimeProvider time, Action<Action> post, ILogger log, OpenConnection openConnection, Action<SoundEvent> play,
         VoiceLink voiceLink, EngineSync engineSync, SelfTest selfTest, BookmarkList bookmarks, ServerIconCache icons, ConnectionStatsViewModel stats,
         Func<string, Task<PasswordAnswer?>> askPassword, Func<ServerDialogs> serverDialogs, Func<ServerViewModel?> shownServer, Action<ServerViewModel?> show, Action<string> setStatus,
-        Func<string> readStatus, Action<string, NoticeKind> addNotice, Func<Task<bool>> confirmLeave, Action closeAdmin)
+        Func<string> readStatus, Action<string, NoticeKind> addNotice, Func<Task<bool>> confirmLeave, Action closeAdmin, Func<bool>? hideAddress = null)
     {
+        this.hideAddress = hideAddress ?? (() => false);
         this.time = time;
         this.post = post;
         this.log = log;
@@ -160,7 +164,9 @@ internal sealed partial class ConnectionViewModel : ObservableObject
 
     async Task<ClientConnection> OpenAsync(ConnectChoice choice)
     {
-        setStatus(TextFormat.Of(Strings.Status_Connecting, choice.Host, choice.Port));
+        // Package 160: the status line shows no address in streamer mode
+        bool hide = hideAddress();
+        setStatus(TextFormat.Of(Strings.Status_Connecting, PrivacyConverters.Address(choice.Host, hide), hide ? PrivacyConverters.Hidden : choice.Port.ToString(CultureInfo.InvariantCulture)));
         log.Connecting(choice.Host, choice.Port, choice.Nickname, choice.PasswordOrNull is null ? "" : " with password");
         return await openConnection(choice, CancellationToken.None);
     }

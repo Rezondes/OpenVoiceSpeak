@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
+using OVS.Client.Converters;
 using OVS.Client.Controls;
 using OVS.Client.Localization;
 using OVS.Client.Settings;
@@ -15,7 +16,7 @@ internal static class ConnectDialog
 {
     internal static Task<ConnectChoice?> ShowAsync(OverlayHost overlay, IReadOnlyList<Bookmark> savedBookmarks, Bookmark? preselect = null)
     {
-        var host = new TextBox { Watermark = Strings.Dlg_HostExample };
+        var host = new TextBox { Watermark = Strings.Dlg_HostExample, PasswordChar = PrivacyConverters.MaskOf(overlay) }; // Package 160
         var port = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = ProtocolDefaults.Port, FormatString = "0", Increment = 1, Width = 130 };
         var nickname = new TextBox();
         var password = new TextBox { PasswordChar = '•', RevealPassword = false };

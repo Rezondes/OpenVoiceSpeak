@@ -13,4 +13,6 @@ internal enum KeyAction
     ToggleMute,
     /// <summary>Deafen or undeafen.</summary>
     ToggleDeafen,
+    /// <summary>Package 160: streamer mode on or off, also without a connection.</summary>
+    ToggleStreamerMode,
 }

@@ -9295,19 +9295,21 @@ The administration shows the last IP of every user and of bans (Packages 70, 80)
 
 ### Acceptance Criteria
 
-- [ ] AC1: With the mode on, every IP shows as "•••", every full fingerprint as its short form, every server address (host and port) as "•••" in the header, the bookmarks, the connection details and the dialogs; nicknames and channel names stay.
-- [ ] AC2: The switch "Streamer-Modus" ("Streamer mode") on Darstellung and the key action "Streamer-Modus umschalten" turn it on and off; the key acts at once without the settings page; the state is saved.
-- [ ] AC3: While it is on, a small "Streamer-Modus" chip shows in the header.
-- [ ] AC4: Copying (a selectable text, a copy button) never yields a hidden value while the mode is on.
-- [ ] AC5: A scan of the views finds no binding to an IP, a fingerprint or an address that does not go through the converters.
+- [x] AC1: With the mode on, every IP shows as "•••", every full fingerprint as its short form, every server address (host and port) as "•••" in the header, the bookmarks, the connection details and the dialogs; nicknames and channel names stay.
+- [x] AC2: The switch "Streamer-Modus" ("Streamer mode") on Darstellung and the key action "Streamer-Modus umschalten" turn it on and off; the key acts at once without the settings page; the state is saved.
+- [x] AC3: While it is on, a small "Streamer-Modus" chip shows in the header.
+- [x] AC4: Copying (a selectable text, a copy button) never yields a hidden value while the mode is on.
+- [x] AC5: A scan of the views finds no binding to an IP, a fingerprint or an address that does not go through the converters.
 
 ### Tests (TDD)
 
-1. `PrivacyConvertersTests > "On_ValuesHidden_Off_Shown"` (AC1), with null and empty values.
+1. `PrivacyConvertersTests > "Values_StreamerModeOnAndOff_HiddenAndShown"` (AC1), with null and empty values.
 2. `StreamerModeTests > "On_AdminAndHeader_NothingRevealed"` (AC1, AC3): the crowded administration of `ResponsiveTests`; no visible text holds an IP, a 64-hex fingerprint or the host.
-3. `StreamerModeTests > "Key_TogglesAndSaves"` (AC2)
+3. `StreamerModeTests > "Key_Pressed_TogglesAndSaves"` (AC2)
 4. `StreamerModeTests > "On_SelectableFingerprint_NotCopyable"` (AC4)
 5. `StreamerModeTests > "Views_EveryPrivateBinding_ThroughConverter"` (AC5): scans the `.axaml` files for bindings to `*Ip*`, `Fingerprint`, `Host`, `Address`.
+
+(as built: `PrivacyConverters` carries the inherited attached flag `Hide`, set on the main window from `MainViewModel.StreamerMode`, so the overlay's dialogs see it too; the views bind each private value through a `MultiBinding` of the value and that flag. Beyond the plan the server log lines (log viewer and search hits), the ban's "Blockierte Versuche" text and the status line go through `PrivacyConverters.Text`, which hides every IPv4 and IPv6 address and shortens every 64-hex fingerprint in a free text; while the mode is on a log line shows without the line filter's highlight. "Verbinde mit ..." hides host and port. The host fields of the connect and bookmark dialogs show dots like a password field; the TOFU question hides the host but keeps the server's fingerprint, which the user has to compare there. The header shows no address of its own (`TitleBarView`, the connection details: nothing to change); `KeyActionTraits` lists the new action by itself. The crowded administration moved from `ResponsiveTests` to `TestSupport/CrowdedWindows.cs`.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

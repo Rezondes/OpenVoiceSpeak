@@ -46,6 +46,7 @@ public sealed class SettingsRoundTripTests
         BackgroundOpacity = 0.5f,
         BlurBackground = true,
         Display = DisplayMode.Animated,
+        StreamerMode = true,
     };
 
     static SettingsViewModel Page(ClientSettings settings) =>
@@ -79,6 +80,7 @@ public sealed class SettingsRoundTripTests
         ["voice activation"] = new(page => page.VoiceActivation = true, previewed => previewed.Mode == TransmitMode.VoiceActivation),
         ["background opacity"] = new(page => page.BackgroundOpacityPercent = 50, previewed => previewed.BackgroundOpacity == 0.5f),
         ["blur"] = new(page => page.BlurBackground = true, previewed => previewed.BlurBackground),
+        ["streamer mode"] = new(page => page.StreamerMode = true, previewed => previewed.StreamerMode),
         ["noise suppression"] = new(page => page.NoiseSuppression = false, previewed => !previewed.NoiseSuppression),
         ["auto gain"] = new(page => page.AutoGain = false, previewed => !previewed.AutoGain),
         ["echo cancellation"] = new(page => page.EchoCancellation = false, previewed => !previewed.EchoCancellation),

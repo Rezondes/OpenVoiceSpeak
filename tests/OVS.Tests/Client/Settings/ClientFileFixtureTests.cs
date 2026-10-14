@@ -28,8 +28,12 @@ public sealed class ClientFileFixtureTests() : TempDirectoryTest("ovs-fixture-",
         Assert.Equal(Order(Expected(version)), Order(settings)); // Equivalent ignores the order of list entries
     }
 
+    /// <summary>The keys of settings added after the fixtures were written (they are never regenerated), saved with their defaults.</summary>
+    static readonly string[] AddedSinceFixture = ["\"streamerMode\": false,"];
+
     /// <summary>
-    /// Saving the current version's file again writes it byte for byte: no key added, dropped, renamed or moved. Line
+    /// Saving the current version's file again writes it byte for byte: no key added (but those of
+    /// <see cref="AddedSinceFixture"/>), dropped, renamed or moved. Line
     /// breaks are compared normalized: the writer uses the platform's line break, and a Windows checkout turns the
     /// stored LF into CRLF. The generator wrote the key names with the invariant UI culture, so the save does too. The
     /// fixture was written before A135 step 4, so loading it runs the newer steps and the saved file carries their version.
@@ -49,7 +53,8 @@ public sealed class ClientFileFixtureTests() : TempDirectoryTest("ovs-fixture-",
 
         var migrated = System.Text.Encoding.UTF8.GetBytes(System.Text.Encoding.UTF8.GetString(original)
             .Replace("\"settingsVersion\": 3,", $"\"settingsVersion\": {ClientSettings.CurrentVersion},", StringComparison.Ordinal));
-        Assert.Equal(WithLf(migrated), WithLf(File.ReadAllBytes(Path.Combine(dir, ClientSettings.FileName))));
+        var saved = string.Join('\n', File.ReadAllText(Path.Combine(dir, ClientSettings.FileName)).Split('\n').Where(line => !AddedSinceFixture.Contains(line.Trim())));
+        Assert.Equal(WithLf(migrated), WithLf(System.Text.Encoding.UTF8.GetBytes(saved)));
     }
 
     static byte[] WithLf(byte[] text) => [.. text.Where((character, index) => !(character == '\r' && index + 1 < text.Length && text[index + 1] == '\n'))];

@@ -134,6 +134,9 @@ internal sealed class ClientSettings : IJsonOnDeserializing
     /// <summary>What shows through the backgrounds is blurred.</summary>
     public bool BlurBackground { get; set; }
 
+    /// <summary>Package 160: IP addresses, full fingerprints and server addresses are hidden everywhere in the client.</summary>
+    public bool StreamerMode { get; set; }
+
     /// <summary>Package 99 (A114): today's plain look by default, or the animated display. A file from before has no key and loads simplified.</summary>
     public DisplayMode Display { get; set; } = DisplayMode.Simplified;
 

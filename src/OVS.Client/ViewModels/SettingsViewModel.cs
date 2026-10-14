@@ -53,6 +53,7 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
     [ObservableProperty] string? updateStatus;
     [ObservableProperty] double backgroundOpacityPercent;
     [ObservableProperty] bool blurBackground;
+    [ObservableProperty] bool streamerMode; // Package 160
     [ObservableProperty] bool noiseSuppression;
     [ObservableProperty] bool autoGain;
     [ObservableProperty] bool echoCancellation; // Package 140
@@ -101,6 +102,7 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         allSoundsOff = !current.SoundsEnabled;
         backgroundOpacityPercent = current.BackgroundOpacity * 100f;
         blurBackground = current.BlurBackground;
+        streamerMode = current.StreamerMode;
         SoundRows = Enum.GetValues<SoundEvent>().Select(soundEvent => new SoundRowViewModel(soundEvent, current.SoundFor(soundEvent), this)).ToList();
         soundVolumePercent = current.SoundVolume * 100f;
         opened = MarkUntouched(); // Package 114: what the page shows before anyone touched it
@@ -234,6 +236,7 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
     }
 
     partial void OnBlurBackgroundChanged(bool value) => Preview();
+    partial void OnStreamerModeChanged(bool value) => Preview(); // Package 160: the chip and the hidden values follow at once
 
     partial void OnNoiseSuppressionChanged(bool value) => Preview(); // Package 123: heard at once, also in the self test
 
@@ -467,6 +470,7 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         AllSoundsOff = !values.SoundsEnabled;
         BackgroundOpacityPercent = values.BackgroundOpacity * 100f;
         BlurBackground = values.BlurBackground;
+        StreamerMode = values.StreamerMode;
         foreach (var row in SoundRows) row.Restore(values.SoundFor(row.Event));
         SoundVolumePercent = values.SoundVolume * 100f;
         Preview();
@@ -549,6 +553,7 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         SoundVolume = (float)(SoundVolumePercent / 100),
         BackgroundOpacity = (float)(BackgroundOpacityPercent / 100),
         BlurBackground = BlurBackground,
+        StreamerMode = StreamerMode,
         Display = SelectedDisplay.Value,
         Sounds = SoundRows.Select(soundRow => (soundRow.Event, Setting: soundRow.ToSetting())).Where(sound => !sound.Setting.IsDefaultFor(sound.Event)).ToDictionary(sound => sound.Event, sound => sound.Setting),
     }.Clamp();

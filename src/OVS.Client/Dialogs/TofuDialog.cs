@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using OVS.Client.Converters;
 using OVS.Client.Controls;
 using OVS.Client.Localization;
 using OVS.Client.Net;
@@ -17,9 +18,11 @@ internal static class TofuDialog
     {
         var fingerprint = string.Join(" ", Enumerable.Range(0, prompt.Fingerprint.Length / 8).Select(index => prompt.Fingerprint.Substring(index * 8, 8)));
         bool mismatch = prompt.Result == TofuResult.Mismatch;
+        // Package 160: streamer mode hides the address; the server's fingerprint stays, the user checks it here
+        var host = PrivacyConverters.Address(prompt.Host, PrivacyConverters.GetHide(overlay));
         var text = mismatch
-            ? TextFormat.Of(Strings.Tofu_Changed, prompt.Host, prompt.Port)
-            : TextFormat.Of(Strings.Tofu_First, prompt.Host, prompt.Port);
+            ? TextFormat.Of(Strings.Tofu_Changed, host, prompt.Port)
+            : TextFormat.Of(Strings.Tofu_First, host, prompt.Port);
         var code = new Border
         {
             Padding = new Thickness(12, 10),

@@ -13,6 +13,7 @@ internal static class KeyActionLabels
         KeyAction.PushToMute => Strings.KeyAction_PushToMute,
         KeyAction.ToggleMute => Strings.KeyAction_ToggleMute,
         KeyAction.ToggleDeafen => Strings.KeyAction_ToggleDeafen,
+        KeyAction.ToggleStreamerMode => Strings.KeyAction_ToggleStreamerMode,
         _ => action.ToString(),
     };
 }

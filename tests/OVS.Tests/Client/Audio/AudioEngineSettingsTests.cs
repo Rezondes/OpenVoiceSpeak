@@ -44,7 +44,7 @@ public class AudioEngineSettingsTests
         nameof(ClientSettings.LinkPttKey), nameof(ClientSettings.Theme), nameof(ClientSettings.Language),
         nameof(ClientSettings.CheckForUpdates), nameof(ClientSettings.SoundsEnabled), nameof(ClientSettings.SoundVolume),
         nameof(ClientSettings.Sounds), nameof(ClientSettings.UserVolumes), nameof(ClientSettings.BackgroundOpacity),
-        nameof(ClientSettings.BlurBackground), nameof(ClientSettings.Display),
+        nameof(ClientSettings.BlurBackground), nameof(ClientSettings.Display), nameof(ClientSettings.StreamerMode),
     ];
 
     public static TheoryData<string> CaptureSettingNames => new(CaptureReadouts.Keys);

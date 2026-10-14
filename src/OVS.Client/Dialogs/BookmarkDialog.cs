@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using OVS.Client.Converters;
 using OVS.Client.Controls;
 using OVS.Client.Localization;
 using OVS.Client.Settings;
@@ -14,7 +15,7 @@ internal static class BookmarkDialog
     internal static Task<BookmarkEdit?> ShowAsync(OverlayHost overlay, Bookmark bookmark)
     {
         var name = new TextBox { Text = bookmark.Name };
-        var host = new TextBox { Text = bookmark.Host };
+        var host = new TextBox { Text = bookmark.Host, PasswordChar = PrivacyConverters.MaskOf(overlay) }; // Package 160
         var port = new NumericUpDown { Minimum = 1, Maximum = 65535, Value = bookmark.Port, FormatString = "0", Increment = 1, Width = 130 };
         var nickname = new TextBox { Text = bookmark.Nickname };
         var password = new TextBox { PasswordChar = '•', Text = bookmark.SavedPassword() ?? "" };

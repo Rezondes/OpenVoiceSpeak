@@ -167,7 +167,7 @@ public sealed class WireFreezeTests
         "ChatTarget: Server, Channel, Private",
         "ChordModifiers: None, Ctrl, Shift, Alt",
         "DisplayMode: Animated, Simplified",
-        "KeyAction: PushToTalk, LinkPushToTalk, PushToMute, ToggleMute, ToggleDeafen",
+        "KeyAction: PushToTalk, LinkPushToTalk, PushToMute, ToggleMute, ToggleDeafen, ToggleStreamerMode",
         "LogKind: Server, Channel",
         "Permission: None, Speak, SpeakLinked, ChannelCreate, ChannelEdit, ChannelDelete, ChannelLink, UserMove, UserMute, UserKick, UserBan, GroupsManage, GroupsAssign, ServerConfig, ChatServer, ChatChannel, ChatPrivate, ChannelJoinFull, UsersView, BansView, GroupsView, GroupsCreate, GroupsDelete, UserDelete, LogsView, LogsDownload, BackupsManage, ChannelPasswordBypass, All",
         "SoundEvent: MicOff, MicOn, SoundOff, SoundOn, Connected, Disconnected, ChannelEntered, UserJoined, UserLeft, ServerMuted, Moved, PrivateMessage, ServerMessage, ChannelMessage, LinkVoice, OwnLinkVoice, GroupChanged, GroupChangedByMe, TalkKeyDown, TalkKeyUp",

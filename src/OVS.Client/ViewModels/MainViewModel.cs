@@ -125,7 +125,8 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             closeAdmin: () =>
             {
                 if (PageFlow.Page == Page.Admin) PageFlow.CloseWithoutAsking();
-            });
+            },
+            hideAddress: () => Settings.StreamerMode);
         if (audio.DeviceLifecycle.OpensDevices) Devices.RefreshAsync();
         hints = new VoiceHints(
             state: () => Server is { } connected
@@ -172,6 +173,9 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>The settings in use.</summary>
     public ClientSettings Settings { get; private set; }
+
+    /// <summary>Package 160: the saved streamer mode; the window hides private values while it is on.</summary>
+    public bool StreamerMode => Settings.StreamerMode;
     /// <summary>The client's log.</summary>
     public ClientLog Log { get; }
     /// <summary>The client's one clock: the reconnect, the hints and the statistics, and each connection's view model and voice.</summary>
@@ -235,6 +239,7 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     {
         Settings = settings.Clamp();
         Appearance = BackgroundAppearance.From(Settings);
+        OnPropertyChanged(nameof(StreamerMode)); // Package 160
         Settings.Save(storageDir);
         soundLibrary.CleanUp(Settings); // own tones nobody points to any more
         Keys.Bindings = Settings.KeyBindings.ToList();
@@ -320,6 +325,14 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <summary>Toggle keys work like the buttons, including the report to the server.</summary>
     void OnKeyAction(KeyAction action)
     {
+        if (action == KeyAction.ToggleStreamerMode) // Package 160: also without a connection
+        {
+            Log.KeyPressed(action);
+            Settings.StreamerMode = !Settings.StreamerMode;
+            Settings.Save(storageDir);
+            OnPropertyChanged(nameof(StreamerMode));
+            return;
+        }
         if (Server is not { } server) return;
         Log.KeyPressed(action);
         switch (action)

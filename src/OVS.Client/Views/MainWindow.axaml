@@ -8,6 +8,7 @@
         xmlns:ctl="using:OVS.Client.Controls"
         xmlns:anim="using:OVS.Client.Animations"
         xmlns:conv="using:OVS.Client.Converters"
+        conv:PrivacyConverters.Hide="{Binding StreamerMode}"
         x:Class="OVS.Client.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="{x:Static l:Strings.App_Name}" Width="1100" Height="700" MinWidth="360" MinHeight="480"
@@ -135,8 +136,14 @@
               <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Bookmarks.Items}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="m:BookmarkItem">
-                    <Button Classes="bookmark" Click="OnBookmarkClick" ToolTip.Tip="{Binding Address}"
+                    <Button Classes="bookmark" Click="OnBookmarkClick"
                             AutomationProperties.Name="{Binding Name, StringFormat={x:Static l:Strings.Ui_ConnectToFmt}}">
+                      <ToolTip.Tip>
+                        <MultiBinding Converter="{x:Static conv:PrivacyConverters.AddressText}">
+                          <Binding Path="Address" />
+                          <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                        </MultiBinding>
+                      </ToolTip.Tip>
                       <Button.ContextMenu>
                         <ContextMenu>
                           <MenuItem Header="{x:Static l:Strings.Dlg_Connect}" Click="OnBookmarkClick">
@@ -359,7 +366,14 @@
           <StackPanel x:Name="StartCard" Classes="startScreen" MaxWidth="460" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
             <ctl:LogoMark Width="80" Height="80" HorizontalAlignment="Center" Classes.connecting="{Binding Connection.IsConnecting}" />
             <TextBlock Classes="h1" Text="{x:Static l:Strings.App_Name}" HorizontalAlignment="Center" />
-            <TextBlock x:Name="StatusText" Classes="muted" Text="{Binding Status}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
+            <TextBlock x:Name="StatusText" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center">
+              <TextBlock.Text>
+                <MultiBinding Converter="{x:Static conv:PrivacyConverters.FreeText}">
+                  <Binding Path="Status" />
+                  <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                </MultiBinding>
+              </TextBlock.Text>
+            </TextBlock>
             <!-- Package 109 (A117): indeterminate only while connecting, so its loop stops with the connecting -->
             <ProgressBar Classes="connect" IsIndeterminate="{Binding Connection.IsConnecting}" IsVisible="{Binding Connection.IsConnecting}" Width="220" />
             <!-- Package 139 (A148): the countdown is the status above; this ends the series -->
@@ -386,6 +400,10 @@
           <Border x:Name="ChannelHeader" DockPanel.Dock="Top" Padding="20,10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Ovs.Border}">
             <DockPanel>
               <StackPanel x:Name="HeaderActions" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <!-- Package 160: streamer mode hides IP addresses, fingerprints and server addresses -->
+                <Border x:Name="StreamerChip" Classes="chip" IsVisible="{Binding StreamerMode}" ToolTip.Tip="{x:Static l:Strings.Settings_StreamerModeHint}">
+                  <TextBlock Text="{x:Static l:Strings.Settings_StreamerMode}" />
+                </Border>
                 <Border x:Name="PingChip" Classes="chip" IsVisible="{Binding Connection.PingText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                   <ToolTip.Tip>
                     <StackPanel>

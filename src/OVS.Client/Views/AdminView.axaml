@@ -427,8 +427,14 @@
                                 <WrapPanel ItemSpacing="8">
                                   <TextBlock Text="{Binding Nickname}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextWrapping="Wrap" />
                                   <TextBlock Classes="caption" Text="{Binding StatusText}" VerticalAlignment="Center" />
-                                  <TextBlock Classes="caption" Text="{Binding ShortFingerprint}" FontFamily="Cascadia Mono,Consolas,monospace"
-                                             VerticalAlignment="Center" ToolTip.Tip="{Binding Fingerprint}" />
+                                  <TextBlock Classes="caption" Text="{Binding ShortFingerprint}" FontFamily="Cascadia Mono,Consolas,monospace" VerticalAlignment="Center">
+                                    <ToolTip.Tip>
+                                      <MultiBinding Converter="{x:Static conv:PrivacyConverters.FingerprintText}">
+                                        <Binding Path="Fingerprint" />
+                                        <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                      </MultiBinding>
+                                    </ToolTip.Tip>
+                                  </TextBlock>
                                 </WrapPanel>
                                 <WrapPanel ItemSpacing="4" LineSpacing="4">
                                   <Border Classes="tag danger" IsVisible="{Binding IsBanned}"><TextBlock Text="{x:Static l:Strings.Ui_StatusBanned}" /></Border>
@@ -500,7 +506,14 @@
                               </StackPanel>
                               <StackPanel>
                                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_LastIp}" />
-                                <TextBlock Classes="body" Text="{Binding LastIpText}" TextWrapping="Wrap" />
+                                <TextBlock Classes="body" TextWrapping="Wrap">
+                                  <TextBlock.Text>
+                                    <MultiBinding Converter="{x:Static conv:PrivacyConverters.IpText}">
+                                      <Binding Path="LastIpText" />
+                                      <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                    </MultiBinding>
+                                  </TextBlock.Text>
+                                </TextBlock>
                               </StackPanel>
                               <StackPanel>
                                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_PreviousNicknames}" />
@@ -509,8 +522,14 @@
                             </WrapPanel>
                             <StackPanel>
                               <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_IdentityFingerprint}" />
-                              <SelectableTextBlock Classes="caption" Text="{Binding Fingerprint}" TextWrapping="Wrap"
-                                                   FontFamily="Cascadia Mono,Consolas,monospace" />
+                              <SelectableTextBlock Classes="caption" TextWrapping="Wrap" FontFamily="Cascadia Mono,Consolas,monospace">
+                                <SelectableTextBlock.Text>
+                                  <MultiBinding Converter="{x:Static conv:PrivacyConverters.FingerprintText}">
+                                    <Binding Path="Fingerprint" />
+                                    <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                  </MultiBinding>
+                                </SelectableTextBlock.Text>
+                              </SelectableTextBlock>
                             </StackPanel>
                             <!-- Package 98: the card's action waits for a user list that shows it; refused, the reason -->
                             <StackPanel Name="CardBusy" Orientation="Horizontal" Spacing="6" IsVisible="{Binding Busy.IsBusy}">
@@ -621,8 +640,14 @@
                           <StackPanel Spacing="6">
                             <WrapPanel ItemSpacing="8">
                               <TextBlock Text="{Binding Nickname}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextWrapping="Wrap" />
-                              <TextBlock Classes="caption" Text="{Binding ShortFingerprint}" FontFamily="Cascadia Mono,Consolas,monospace"
-                                         VerticalAlignment="Center" ToolTip.Tip="{Binding Fingerprint}" />
+                              <TextBlock Classes="caption" Text="{Binding ShortFingerprint}" FontFamily="Cascadia Mono,Consolas,monospace" VerticalAlignment="Center">
+                                <ToolTip.Tip>
+                                  <MultiBinding Converter="{x:Static conv:PrivacyConverters.FingerprintText}">
+                                    <Binding Path="Fingerprint" />
+                                    <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                  </MultiBinding>
+                                </ToolTip.Tip>
+                              </TextBlock>
                             </WrapPanel>
                             <TextBlock Classes="caption" Classes.danger="{Binding IsActive}" Text="{Binding StatusText}" TextWrapping="Wrap" />
                             <!-- two or more columns when wide, one under narrow -->
@@ -633,11 +658,25 @@
                               </StackPanel>
                               <StackPanel IsVisible="{Binding HasIp}">
                                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanIp}" />
-                                <TextBlock Classes="body" Text="{Binding Ip}" TextWrapping="Wrap" />
+                                <TextBlock Classes="body" TextWrapping="Wrap">
+                                  <TextBlock.Text>
+                                    <MultiBinding Converter="{x:Static conv:PrivacyConverters.IpText}">
+                                      <Binding Path="Ip" />
+                                      <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                    </MultiBinding>
+                                  </TextBlock.Text>
+                                </TextBlock>
                               </StackPanel>
                               <StackPanel>
                                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanCreatedBy}" />
-                                <TextBlock Classes="body" Text="{Binding CreatedBy}" TextWrapping="Wrap" ToolTip.Tip="{Binding CreatedByFingerprintText}" />
+                                <TextBlock Classes="body" Text="{Binding CreatedBy}" TextWrapping="Wrap">
+                                  <ToolTip.Tip>
+                                    <MultiBinding Converter="{x:Static conv:PrivacyConverters.FingerprintText}">
+                                      <Binding Path="CreatedByFingerprintText" />
+                                      <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                    </MultiBinding>
+                                  </ToolTip.Tip>
+                                </TextBlock>
                               </StackPanel>
                               <StackPanel>
                                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanCreatedAt}" />
@@ -657,13 +696,27 @@
                               </StackPanel>
                               <StackPanel>
                                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BanAttempts}" />
-                                <TextBlock Classes="body" Text="{Binding AttemptsText}" TextWrapping="Wrap" />
+                                <!-- Package 160: the text holds the last IP -->
+                                <TextBlock Classes="body" TextWrapping="Wrap">
+                                  <TextBlock.Text>
+                                    <MultiBinding Converter="{x:Static conv:PrivacyConverters.FreeText}">
+                                      <Binding Path="AttemptsText" />
+                                      <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                    </MultiBinding>
+                                  </TextBlock.Text>
+                                </TextBlock>
                               </StackPanel>
                             </WrapPanel>
                             <StackPanel>
                               <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_IdentityFingerprint}" />
-                              <SelectableTextBlock Classes="caption" Text="{Binding Fingerprint}" TextWrapping="Wrap"
-                                                   FontFamily="Cascadia Mono,Consolas,monospace" />
+                              <SelectableTextBlock Classes="caption" TextWrapping="Wrap" FontFamily="Cascadia Mono,Consolas,monospace">
+                                <SelectableTextBlock.Text>
+                                  <MultiBinding Converter="{x:Static conv:PrivacyConverters.FingerprintText}">
+                                    <Binding Path="Fingerprint" />
+                                    <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                  </MultiBinding>
+                                </SelectableTextBlock.Text>
+                              </SelectableTextBlock>
                             </StackPanel>
                           </StackPanel>
                         </DockPanel>
@@ -793,7 +846,14 @@
                               <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
                               <TextBlock Classes="caption" Text="{Binding LineText}" VerticalAlignment="Center" />
                             </WrapPanel>
-                            <TextBlock Classes="caption logText" Text="{Binding Text}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Classes="caption logText" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis">
+                              <TextBlock.Text>
+                                <MultiBinding Converter="{x:Static conv:PrivacyConverters.FreeText}">
+                                  <Binding Path="Text" />
+                                  <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                </MultiBinding>
+                              </TextBlock.Text>
+                            </TextBlock>
                           </StackPanel>
                         </DataTemplate>
                       </ListBox.ItemTemplate>
@@ -848,7 +908,14 @@
                           <DataTemplate x:DataType="vm:LogLineViewModel">
                             <DockPanel>
                               <TextBlock DockPanel.Dock="Left" Classes="caption logText" Text="{Binding Number}" Width="52" Margin="0,0,8,0" TextAlignment="Right" />
-                              <TextBlock Classes="logText" Inlines="{Binding Segments, Converter={x:Static conv:LogLineConverters.LogSegments}}" TextWrapping="Wrap" />
+                              <TextBlock Classes="logText" TextWrapping="Wrap">
+                                <TextBlock.Inlines>
+                                  <MultiBinding Converter="{x:Static conv:PrivacyConverters.LogText}">
+                                    <Binding Path="Segments" />
+                                    <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                  </MultiBinding>
+                                </TextBlock.Inlines>
+                              </TextBlock>
                             </DockPanel>
                           </DataTemplate>
                         </ListBox.ItemTemplate>

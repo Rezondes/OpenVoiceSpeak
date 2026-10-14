@@ -7,7 +7,7 @@ public class KeyActionTraitsTests
 {
     [Fact]
     public void All_EveryAction_ListedOnceInEnumOrder() =>
-        Assert.Equal([KeyAction.PushToTalk, KeyAction.LinkPushToTalk, KeyAction.PushToMute, KeyAction.ToggleMute, KeyAction.ToggleDeafen], KeyActionTraits.All);
+        Assert.Equal([KeyAction.PushToTalk, KeyAction.LinkPushToTalk, KeyAction.PushToMute, KeyAction.ToggleMute, KeyAction.ToggleDeafen, KeyAction.ToggleStreamerMode], KeyActionTraits.All);
 
     [Fact]
     public void Holds_AllActions_ExactlyTalkLinkTalkAndMute() =>
