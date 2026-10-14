@@ -37,6 +37,8 @@
 > **Packages 126 to 142 (voice like Fluxer):** the request "plan every difference between Fluxer and OVS so that OVS voice comes as close to Fluxer as possible" followed an analysis of Fluxer (the `fluxerapp/fluxer` web and desktop app with its LiveKit setup, and `fluxerapp/flutter_client`). Fluxer runs the LiveKit SFU over WebRTC; OVS keeps its own UDP stack (A134), so each package rebuilds one thing Fluxer gets from WebRTC, LiveKit or its own client code. The order follows the dependencies, not the order of the findings: 126 (a lost UDP Hello leaves a session without voice, a bug found on the way) comes first; 127 (louder senders) adds the settings migration that 128 and 129 use; 133 (real connection stats) provides the measurements 134, 135 and 136 need; 139 (auto-reconnect) and 141 (voice over TCP) build on 126; 142 (music mode) comes last. 126, 127, 130, 131, 132, 137 and 138 can start at once. Fluxer features outside voice transmission are not planned (A152).
 >
 > **Packages 143 to 150 (error ID and observability):** the request "find a user's error in the server log, and optionally send the server's telemetry to a backend" was cut at the user's request: 143 (error ID) comes first and works without any backend; 144 puts the server's loggers into the run's container; 145 adds OpenTelemetry, strictly opt-in through `OTEL_EXPORTER_OTLP_ENDPOINT`; 146 (traces), 147 (metrics) and 148 (server log over OTLP) build on it; 149 adds compose examples for Grafana LGTM, the Aspire Dashboard, Jaeger and Seq; 150 (Elastic, OpenSearch, Netdata) followed after 149 at the user's request. The client exports nothing (the user's decision, A161). 143 and 144 can start at once; 146 needs 143 and 145; 147, 148 and 149 need 145.
+>
+> **Packages 151 to 170 (settings and administration like Discord, and the features found on the way):** 151 to 157 change only the client's UI for features that exist (the user's condition); 158 to 164 are client-only features, 165 to 170 need the server, in that order (the user's decision). 151 (side navigation) comes first; 152 (settings pages) and 154 (administration) build on it and can run in parallel; 153 needs 152, 155 needs 154, 156 needs 155, 157 needs 153 and 154. 158 to 162 need 152; 163 and 164 can start at once. 165, 167 and 169 need 154; 166, 168 and 170 can start at once. Packages 166 to 169 each raise the protocol version by one, so they are built one after the other. Dropped at the user's request: per-user volume (exists since Package 51), rights per channel, friends and blocking, invite links with expiry, profile status text and bio.
 
 ## Überblick
 
@@ -189,6 +191,26 @@
 | 148 | Server log over OTLP | With OpenTelemetry on, the server log lines (category `server`) go to the backend with the trace id of the span they were written in; channel logs and console-only lines never do. | 145 |
 | 149 | Compose examples for observability backends | For Grafana LGTM, the Aspire Dashboard, Jaeger and Seq a compose file under `deploy/observability/<tool>/` starts the OVS server together with that backend by copy and paste, with every backend image pinned. | 145 |
 | 150 | More compose examples (Elastic, OpenSearch, Netdata) | Elastic (Kibana with an EDOT collector and APM), OpenSearch Dashboards (with Data Prepper) and Netdata get compose examples like Package 149's. | 149 |
+| 151 | Side navigation | A tab control with the class `sideNav` lists its pages on the left with group titles and shows the chosen page beside it; below 800 px the list first, then the page with a back button. | - |
+| 152 | Settings pages | The settings are six pages in the side navigation under two groups, each showing only its own cards. | 151 |
+| 153 | Unsaved-changes bar | The settings show a bar with Reset and Save only while something is changed, and leaving with changes points at it before asking. | 152 |
+| 154 | Administration in the side navigation | The administration lists its pages under SERVER, MITGLIEDER and VERWALTUNG, with the server's logo and name in the header and a refresh button per list page. | 151 |
+| 155 | Compact member list | Every known user is one row whose details and actions open on a click. | 154 |
+| 156 | Risky actions in a menu | Deleting a user, banning, restoring and deleting a backup sit in a "..." menu and each asks first. | 155 |
+| 157 | Save bar in the administration | Übersicht, Betrieb, Gruppen und Rechte and Kanal-Verknüpfungen save through the bar of Package 153. | 153, 154 |
+| 158 | Settings search | A search field above the settings list finds every setting and opens its page with it in view. | 152 |
+| 159 | Speaker test | A button beside the speaker plays a short tone on it at the set volume. | 152 |
+| 160 | Streamer mode | In streamer mode no IP address, full fingerprint or server address shows anywhere. | 152 |
+| 161 | Compact mode and chat text size | A compact mode tightens tree and chat rows, and the chat text size goes from 90 to 130 %. | 152 |
+| 162 | Desktop notifications | Private messages, mentions and joins into the own channel show as Windows notifications while the window is not in front. | 152 |
+| 163 | Quick switcher | Ctrl+K searches channels and saved servers and joins or connects on Enter. | - |
+| 164 | Copy a fingerprint | Wherever a full fingerprint shows, a copy button puts it on the clipboard. | - |
+| 165 | Audit log | A page "Audit-Log" lists every administrative action from the server log, newest first, searchable and filtered by person. | 154 |
+| 166 | Timeout | A server mute can have a duration after which it ends by itself, also offline. | - |
+| 167 | Group colours and member list | Groups get a colour, names show in it, and a member list beside the chat groups everyone online by their highest group. | 154 |
+| 168 | Profile picture per server | Every user can set a profile picture per server, stored only after the server proves it is a real PNG of bounded size. | - |
+| 169 | AFK channel | An idle user is moved after X minutes into the server's AFK channel, where no voice is relayed. | 154 |
+| 170 | Server link | A web link opens OVS with the connect dialog filled in, or shows the download. | - |
 
 ## Annahmen
 
@@ -364,6 +386,18 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A159 Compose examples (Package 149).** `deploy/observability/<tool>/docker-compose.yml` for `grafana-lgtm`, `aspire-dashboard`, `jaeger` and `seq`, each with `ovs-server` and the backend, plus one shared README. Backend images carry a fixed version. `ovs-server` is built from the checkout (`build` at the repository root, image `openvoicespeak/server:local`), since only images after this work export anything; a comment shows how to use a release image with its version tag instead. The default `docker-compose.yml` stays without a backend.
 - **A160 More backends (Package 150).** Elastic (Elasticsearch, Kibana, the EDOT collector), OpenSearch (with OpenSearch Dashboards and Data Prepper) and Netdata (metrics, logs and traces through its OpenTelemetry plugin, corrected when built); no Graylog (the user's decision).
 - **A161 No client telemetry (Packages 143 to 150).** The client exports nothing; everything a backend needs is on the server, which logs every request (the user's decision).
+- **A162 Side navigation (Packages 151 to 157).** Settings and administration list their pages on the left like Discord and Fluxer; below 800 px of page width the list comes first and a page opens over it with a back button. It is a style and a small attached behaviour on Avalonia's `TabControl`, so selection, keys and the leave guard of Package 114 stay.
+- **A163 Start of Package 151 (14 October 2026).** The work started before the plan (`SideNav.cs`, the `sideNav` styles in `Controls.axaml`, the split `SettingsView.axaml`, nine texts) stays uncommitted as the starting point of 151 and 152 (the user's decision).
+- **A164 Settings pages (Package 152).** Audio (devices, volume, voice filters), Sendemodus, Tastenbelegung, Sounds under "SPRECHEN UND HÖREN"; Darstellung (with the language, the user's decision) and Über und Updates under "APP".
+- **A165 Übersicht and Betrieb (Package 154).** Both edit `ServerSettingsViewModel` and are saved by one `UpdateServerSettings`, so they share one `AdminPlace`: a change on either is saved or reset together.
+- **A166 Notifications without a package (Package 162).** The tray balloon of `Shell_NotifyIconW` through the existing interop; Windows 10 and 11 show it as a notification. No WinRT target, no package, no window of its own (A20).
+- **A167 Audit log from the server log (Package 165).** Administrative lines get the marker `[audit]` and the page uses the existing `SearchLogs`; no own store, no protocol change, kept as long as `LogDays` (the user's decision).
+- **A168 Timeout (Package 166).** `UserRecord.ServerMutedUntil` is a new persisted getter (N11, listed in the commit); null means until lifted, as Package 85 stored it. Chat stays allowed (the user's decision).
+- **A169 Colour picker (Package 167).** `Avalonia.Controls.ColorPicker` in the version of Avalonia (11.3.22) is a new package; free colour and a member list beside the chat (the user's decision).
+- **A170 Real image check without an image library (Package 168).** The server keeps having no image library (A21). It proves a picture is a well-formed PNG instead: known chunks only (`IHDR`, `PLTE`, `tRNS`, `IDAT`, `IEND`), every CRC right, nothing after `IEND`, 128 x 128 px, at most 64 KB, and the `IDAT` data inflated with `ZLibStream` to exactly the bytes the header promises, reading no further. The client converts PNG, JPG, GIF and WebP (first frame) to that form (the user's decision on formats).
+- **A171 AFK defaults (Package 169).** Off (0 minutes) for existing and new servers, the default channel as the AFK channel until chosen; idle means no voice packet, chat message, channel change or self-state change; no voice is relayed from the AFK channel (the user's decisions).
+- **A172 Protocol registration (Package 170).** `HKCU\Software\Classes\ovs` for the current user, written at every start when missing or pointing elsewhere; no installer, no admin rights.
+- **A173 One client per user (Package 170).** A second start hands its `ovs://` argument over a named pipe of the current Windows user to the running client and ends; without an argument a second start behaves as today.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -8794,3 +8828,971 @@ Test command: `dotnet test OpenVoiceSpeak.slnx`
 
 - Graylog (the user's decision)
 - Production hardening of the backends
+
+---
+
+## Package 151: Side navigation
+
+**Goal:** A tab control with the class `sideNav` lists its pages on the left with group titles and shows the chosen page beside it; below 800 px it shows the list first and the chosen page with a back button.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Layout/SideNav.cs` (new): the attached property `ListDetail`, `ShowList`, `ShowPage`, the class `listShown`
+- `src/OVS.Client/Styles/Controls.axaml` (change): the `TabControl.sideNav` template (list column, page title with back button, content), the row look of its `TabItem`, the group title `TabItem.navGroup`
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Nav_Back`
+- `tests/OVS.Tests/Client/Layout/SideNavTests.cs` (new)
+
+### Context
+
+The settings (`SettingsView.axaml`) are one long page of eight cards and the administration (`AdminView.axaml`) a row of six tabs on top. Discord and Fluxer list the pages of both on the left, grouped, with the chosen page beside it, and on a phone first the list, then the page with a back arrow (A162). Avalonia's `TabControl` already brings selection, keys and the leave guard of Package 114 (`AdminView` reacts to `SelectionChanged`), so the side navigation is a template and a small attached behaviour on it, not a new control. The width break uses `Responsive.StackBelow` (Package 77). Started as uncommitted work on 14 October 2026; that state is the starting point (the user's decision, A163).
+
+### Acceptance Criteria
+
+- [ ] AC1: From 800 px the list (232 px) is on the left and the chosen page beside it; the page has a title row with the chosen page's name.
+- [ ] AC2: A `TabItem` with the class `navGroup` shows as a small muted title, cannot be chosen, focused or clicked, and the arrow keys skip it.
+- [ ] AC3: Below 800 px the tab control shows only the list; a click, a tap, Enter or Space on a page opens it, the arrow keys only move the choice; the page then fills the width and its back button ("Zurück zur Übersicht" / "Back to the list") brings the list back.
+- [ ] AC4: A new data context (the page opened again) starts on the list again.
+- [ ] AC5: A click inside a page (a list row, a button) does not change list or page.
+- [ ] AC6: The chosen row is lit (accent surface, semibold), the row under the pointer has the hover surface; the colours come from the tokens in `Theme.axaml` and pass AA in both themes.
+
+### Tests (TDD)
+
+1. `SideNavTests > "Wide_ListAndPage_SideBySide"` (AC1): a test window of 1000 px with a `sideNav` tab control of three pages; the list is 232 px, the page right of it, the title shows the chosen header.
+2. `SideNavTests > "GroupTitle_NeverChosen"` (AC2): a group title at index 0 and pages after it; clicking it and Down from the first page never select it.
+3. `SideNavTests > "Narrow_ClickOpensPage_BackShowsList"` (AC3): at 600 px only the list is visible; a click on a page shows the page and the back button; the back button shows the list.
+4. `SideNavTests > "Narrow_ArrowKeys_StayOnList"` (AC3): Down moves the selection, the list stays; Enter opens the page.
+5. `SideNavTests > "NewDataContext_StartsOnList"` (AC4)
+6. `SideNavTests > "ClickInsidePage_ListStaysHidden"` (AC5): a button inside the page is clicked while the page is shown; the page stays.
+7. Manual check (AC6): both themes, both displays, a screenshot of the list with a chosen and a hovered row.
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 and 2 (red), the template and the row styles.
+2. Tests 3 to 6 (red), `SideNav`.
+
+### Out of Scope
+
+- Using it on the settings (Package 152) and the administration (Package 154)
+
+---
+
+## Package 152: Settings pages
+
+**Goal:** The settings are six pages in the side navigation (Audio, Transmit mode, Keybinds, Sounds, Appearance, About and updates) under the groups "SPRECHEN UND HÖREN" and "APP", each showing only its own cards.
+
+**Dependencies:** Package 151
+
+**Affected files:**
+- `src/OVS.Client/Views/SettingsView.axaml` (change): the cards into six `TabItem` pages of a `sideNav` tab control (`x:Name="Sections"`), the heading of a page with one card removed (the page title says it)
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Nav_VoiceGroup`, `Nav_AppGroup`, `Nav_Audio`, `Nav_Transmit`, `Nav_Keys`, `Nav_Sounds`, `Nav_Appearance`, `Nav_About`
+- `tests/OVS.Tests/TestSupport/SettingsPages.cs` (new): opens a settings page by its header in a test
+- `tests/OVS.Tests/Client/Layout/ResponsiveTests.cs`, `tests/OVS.Tests/Client/Views/UiSmokeTests.cs`, `tests/OVS.Tests/Client/Animations/PageMotionTests.cs`, `tests/OVS.Tests/Client/Audio/Sounds/SoundTests.cs`, `tests/OVS.Tests/Client/Settings/SettingsTests.cs` (change): find a control after opening its page
+
+### Context
+
+The page holds, top to bottom: Devices, Volume, Voice filters, Transmit mode, Keys, Sounds, Appearance, About (`SettingsView.axaml`). Push-to-talk keys or the sounds are several screens down. The pages group them by task (A164): Audio = devices, volume, voice filters; Transmit mode = push-to-talk or voice activation with the self test; Keybinds = the key list with the release delay; Sounds; Appearance = theme, display, language, background; About and updates. The language stays under Appearance (the user's decision). The bindings and the view model stay as they are; Save and Cancel stay in the bar below the page until Package 153.
+
+### Acceptance Criteria
+
+- [ ] AC1: The list shows the group "SPRECHEN UND HÖREN" ("VOICE") with Audio, Sendemodus, Tastenbelegung, Sounds and the group "APP" with Darstellung, Über und Updates; Audio is chosen when the page opens.
+- [ ] AC2: Every control of today's page is on exactly one of the six pages, with its binding unchanged.
+- [ ] AC3: Every page fits from 360 to 1100 px in German and English, in both displays (as Package 77 and 104 checked the single page).
+- [ ] AC4: Save and Cancel stay visible on every page and keep their behaviour.
+- [ ] AC5: The self test keys of Package 121 and the file pickers of the sounds work on their pages.
+
+### Tests (TDD)
+
+1. `UiSmokeTests > "Settings_Pages_ListedInGroups"` (AC1): the headers in order, the two group titles, Audio chosen.
+2. `UiSmokeTests > "Settings_EveryControl_OnOnePage"` (AC2): every named control and every `Classes="section"` text of the old page is found on exactly one page after opening it.
+3. `ResponsiveTests > "Settings_At360To1100_Fit"` (AC3, AC4): changed to open each page through `SettingsPages.Open` and check width and the button bar per page.
+4. The existing settings tests that look for a control first open its page (AC5): `ResponsiveTests > "SoundRow_Narrow_TwoLinesWithNameVisible"`, `ResponsiveTests > "Settings_Wide_LayoutUnchanged"`, `ResponsiveTests > "Settings_TransmitModeChanged_Refits"` and the self test tests of Package 121.
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Test 1 and 2 (red), the pages and texts.
+2. Tests 3 and 4 adjusted, green.
+
+### Out of Scope
+
+- The unsaved-changes bar (Package 153)
+- A search over the settings (Package 158)
+
+---
+
+## Package 153: Unsaved-changes bar
+
+**Goal:** The settings show a bar "Ungespeicherte Änderungen" with "Zurücksetzen" and "Speichern" only while something is changed, and leaving with changes points at the bar before it asks.
+
+**Dependencies:** Package 152
+
+**Affected files:**
+- `src/OVS.Client/Controls/UnsavedBar.cs` (new): the bar as a control with `HasChanges`, `SaveCommand`, `ResetCommand`, `IsSaving`, `Error`; `Attention()` makes it pulse (in the simplified display it only lights up)
+- `src/OVS.Client/Styles/Controls.axaml`, `src/OVS.Client/Styles/Motion.axaml` (change): its look and its pulse
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (change): `ResetCommand` (all values back to `untouched`); `HasChanges` raised as a property
+- `src/OVS.Client/ViewModels/PageFlowViewModel.cs` (change): leaving a page with changes first raises `AttentionRequested`, then asks as today
+- `src/OVS.Client/Views/SettingsView.axaml` (change): the bar instead of Cancel and Save
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Unsaved_Text`, `Unsaved_Reset`
+- `tests/OVS.Tests/Client/Controls/UnsavedBarTests.cs` (new), `tests/OVS.Tests/Client/ViewModels/PageFlowViewModelTests.cs`, `LeaveGuardTests.cs`, `tests/OVS.Tests/Client/Settings/SettingsTests.cs`, `tests/OVS.Tests/Client/Layout/ResponsiveTests.cs` (change)
+
+### Context
+
+Today the settings have Cancel and Save always visible at the bottom (`SettingsView.axaml`, `SaveAndCloseCommand`, `CancelCommand`), and closing with changes asks (`PageFlowViewModel`, `LeaveDialog`). The administration saves in four other places (Package 157). Discord shows one floating bar only while something is unsaved ("Careful, you have unsaved changes", Reset, Save) and makes it shake when one tries to leave. `SettingsViewModel.HasChanges` exists (it compares the JSON of the settings with `untouched`).
+
+### Acceptance Criteria
+
+- [ ] AC1: Without changes no bar shows; the first change shows it with "Ungespeicherte Änderungen" ("Unsaved changes"), "Zurücksetzen" ("Reset") and "Speichern" ("Save").
+- [ ] AC2: "Zurücksetzen" puts every setting back to the value the page opened with, also the previewed ones (volume, filters, theme), and the bar goes away.
+- [ ] AC3: "Speichern" saves and leaves the page open (the bar goes away); the busy state of Package 98 shows on the button; a key conflict shows its text in the bar and Save is off.
+- [ ] AC4: Esc, the close button or another page while changes are open make the bar pulse (light up in the simplified display) and then ask as today; without changes the page closes at once.
+- [ ] AC5: The bar fits from 360 px, in both languages, and is reachable by keyboard (Tab order: Reset, Save).
+
+### Tests (TDD)
+
+1. `UnsavedBarTests > "NoChanges_Hidden_ChangeShows"` (AC1)
+2. `SettingsTests > "Reset_AfterChanges_ValuesAsOpened"` (AC2): change volume, theme and a key; Reset; every value as before, `HasChanges` false, the engine got the old volume again.
+3. `PageFlowViewModelTests > "Save_KeepsPageOpen_BarGone"` and `"KeyConflict_SaveOff_TextInBar"` (AC3)
+4. `LeaveGuardTests > "Leave_WithChanges_AttentionThenQuestion"` (AC4): the order of the two events is checked; without changes no question.
+5. `ResponsiveTests > "Settings_At360To1100_Fit"` (AC5): the bar is checked with a change on every page.
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 and 2 (red), the control and `ResetCommand`.
+2. Tests 3 and 4 (red), the flow.
+3. Test 5.
+
+### Out of Scope
+
+- The administration's save places (Package 157)
+
+---
+
+## Package 154: Administration in the side navigation
+
+**Goal:** The administration lists its pages in the side navigation under "SERVER" (Übersicht, Betrieb, Gruppen und Rechte, Kanal-Verknüpfungen), "MITGLIEDER" (Mitglieder, Bans) and "VERWALTUNG" (Logs, Backups), with the server's logo and name in the page header and a refresh button on every list page.
+
+**Dependencies:** Package 151
+
+**Affected files:**
+- `src/OVS.Client/Views/AdminView.axaml` (change): `sideNav` tab control; the Server tab split into Übersicht (logo, name, welcome text, password), Betrieb (the limits of Package 69) and Backups; the header with the server logo and name; the bottom bar with "Aktualisieren" removed, an icon button in the title row of Mitglieder, Bans, Logs and Backups
+- `src/OVS.Client/Views/AdminView.axaml.cs` (change): the first visible page skips group titles; the leave guard of Package 114 unchanged
+- `src/OVS.Client/ViewModels/AdminViewModel.cs` (change): a refresh per section (`RefreshUsersCommand`, `RefreshBansCommand`, `RefreshLogsCommand`, `RefreshBackupsCommand`), `ServerName`, `ServerIconPng`; group titles shown when one of their pages shows
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): the page and group names
+- `tests/OVS.Tests/Client/Layout/ResponsiveTests.cs`, `tests/OVS.Tests/Client/Views/UiSmokeTests.cs`, `tests/OVS.Tests/Client/ViewModels/AdminViewModelTests.cs`, `LeaveGuardTests.cs` (change)
+
+### Context
+
+Six tabs on top (`AdminView.axaml`); the Server tab holds the server settings and the backups in one scroll, so "Wiederherstellen" sits right below the form. "Aktualisieren" at the bottom reloads every section at once (`AdminViewModel.RefreshCommand`, `AdminSection.Refresh`). The header shows a shield and "Verwaltung", not which server. The tabs carry their `AdminPlace` in `Tag` for the leave guard; Übersicht and Betrieb share `ServerSettings.Place`, since one request saves both (A165).
+
+### Acceptance Criteria
+
+- [ ] AC1: The list shows the three groups with their pages in the order above; a page the user may not see is hidden as today (`ShowGroups`, `ShowUsers`, `ShowBans`, `ShowLinks`, `ShowServerSettings`, `ShowBackups`, `ShowLogs`), and a group title without a visible page is hidden.
+- [ ] AC2: The page opens on the first page the user may see, never on a group title.
+- [ ] AC3: Übersicht holds logo, name, welcome text and password; Betrieb holds the limits; Backups the backups with transfer and restore; every control of the Server tab is on exactly one of the three.
+- [ ] AC4: Leaving Übersicht or Betrieb with changes asks as today (both share one place); leaving Gruppen und Rechte or Kanal-Verknüpfungen too.
+- [ ] AC5: The header shows the server logo (or its letter) and the server's name instead of the shield and "Verwaltung".
+- [ ] AC6: Mitglieder, Bans, Logs and Backups each have a refresh button in their title row that reloads only that list; the bottom bar is gone.
+- [ ] AC7: Every page fits from 360 to 1100 px in German and English in both displays (as Package 78 and 104 checked the tabs).
+
+### Tests (TDD)
+
+1. `UiSmokeTests > "Admin_Pages_GroupedByTask"` (AC1, AC2): as admin all pages; as a moderator with only `UsersView` and `Ban`: the group SERVER is hidden, Mitglieder is chosen.
+2. `UiSmokeTests > "Admin_ServerControls_OnOnePage"` (AC3)
+3. `LeaveGuardTests > "Admin_OverviewChanged_LeavingAsks"` and `"Admin_OperationChanged_LeavingAsks"` (AC4)
+4. `UiSmokeTests > "Admin_Header_ServerLogoAndName"` (AC5)
+5. `AdminViewModelTests > "RefreshUsers_OnlyUsersAsked"` (AC6), the same for bans, logs, backups.
+6. `ResponsiveTests > "Admin_EveryTab_Fits"`, `"Admin_Logs_StackedWhenNarrow"`, `"Admin_Groups_StackedWhenNarrow"`, `"Admin_LinkMatrix_ScrollsTitlesStay"` (AC7): pages opened through the side navigation.
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1, 2 and 4 (red): the pages, the split, the header.
+2. Test 3 (red): the guard on the new pages.
+3. Test 5 (red): refresh per page.
+4. Test 6 adjusted.
+
+### Out of Scope
+
+- The member list's look (Package 155), the menu for risky actions (Package 156), the save bar (Package 157)
+
+---
+
+## Package 155: Compact member list
+
+**Goal:** Every known user is one row (avatar, name, status, group chips, last login) whose details and actions open on a click, so a list of 50 users fits on a few screens.
+
+**Dependencies:** Package 154
+
+**Affected files:**
+- `src/OVS.Client/Views/AdminView.axaml` (change): the user card as a row with an expander for the details, the group check boxes and the actions
+- `src/OVS.Client/ViewModels/KnownUserViewModel.cs` (change): `IsExpanded`, `GroupNamesText` for the chips
+- `src/OVS.Client/Styles/Controls.axaml` (change): `Border.memberRow`, `Border.chip`
+- `tests/OVS.Tests/Client/ViewModels/KnownUserViewModelTests.cs`, `tests/OVS.Tests/Client/Layout/ResponsiveTests.cs`, `tests/OVS.Tests/Client/Views/UiSmokeTests.cs` (change)
+
+### Context
+
+A user card shows eight details, the group check boxes and up to four buttons at once (`AdminView.axaml`, Packages 71, 72, 85). With 20 users the list is many screens long and nothing dominates. Discord's member page is one row per member with role chips, details on demand.
+
+### Acceptance Criteria
+
+- [ ] AC1: A collapsed row shows avatar with the online dot, name, status, fingerprint short form, one chip per group, the last login, and the banners "Gebannt" and "Server-stumm" as chips.
+- [ ] AC2: A click on the row or Enter on it opens its details (the eight values, the full fingerprint, the group check boxes, the actions); again closes them; several can be open.
+- [ ] AC3: Search, filters, order, the busy state and the errors of Packages 97 and 98 behave as before.
+- [ ] AC4: An open row stays open when the list refreshes and the user is still in it.
+- [ ] AC5: The list fits from 360 px; under narrow the chips wrap below the name.
+
+### Tests (TDD)
+
+1. `UiSmokeTests > "Members_Row_CollapsedShowsSummary"` (AC1)
+2. `UiSmokeTests > "Members_Row_ClickOpensDetails"` (AC2): mouse and Enter.
+3. `KnownUserViewModelTests > "Refresh_SameUser_StaysExpanded"` (AC4)
+4. The existing `UsersAndBansViewModelTests` stay green (AC3).
+5. `ResponsiveTests > "Admin_EveryTab_Fits"` with one row opened (AC5).
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1, 2 (red), the row.
+2. Test 3 (red), keeping the state.
+3. Test 5.
+
+### Out of Scope
+
+- Moving the actions into a menu (Package 156)
+
+---
+
+## Package 156: Risky actions in a menu
+
+**Goal:** Deleting a user, banning, restoring and deleting a backup sit in a "..." menu of their row and each asks first, while the harmless action (download, unban, lift mute) stays a visible button.
+
+**Dependencies:** Package 155
+
+**Affected files:**
+- `src/OVS.Client/Views/AdminView.axaml` (change): a `...` button with a `MenuFlyout` per member row and per backup row
+- `src/OVS.Client/ViewModels/BackupCardViewModel.cs` (change): deleting a backup asks first (today it deletes at once)
+- `src/OVS.Client/Dialogs/BackupCardDialogs.cs`, `src/OVS.Client/Dialogs/OverlayDialogs.cs` (change): `ConfirmDelete`
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Ui_MoreActions`, `Backup_DeleteQuestion`
+- `tests/OVS.Tests/Client/ViewModels/BackupCardViewModelTests.cs`, `tests/OVS.Tests/Client/Views/UiSmokeTests.cs`, `tests/OVS.Tests/Client/Layout/ResponsiveTests.cs` (change)
+
+### Context
+
+"Benutzer löschen" stands red beside "Bannen" (`AdminView.axaml`); a backup row has "Herunterladen", a red "Wiederherstellen" and a subtle "Löschen", which deletes without a question (`BackupViewModel.DeleteCommand`). The ux rule: one obvious safe action, risky ones one step away and confirmed.
+
+### Acceptance Criteria
+
+- [ ] AC1: A member row shows "Entbannen" or "Server-Stummschaltung aufheben" as buttons when they apply; "Bannen" and "Benutzer löschen" are in its "..." menu ("Weitere Aktionen" / "More actions"), the delete entry red.
+- [ ] AC2: A backup row shows "Herunterladen"; "Wiederherstellen" and "Löschen" are in its "..." menu, both red.
+- [ ] AC3: Deleting a backup asks first, naming the backup; cancelled, nothing is sent.
+- [ ] AC4: The menu opens with a click, with Enter on the focused "..." button and with Shift+F10; Esc closes it.
+- [ ] AC5: An entry the user may not use is not in the menu; without any entry the "..." button is hidden.
+
+### Tests (TDD)
+
+1. `BackupCardViewModelTests > "Delete_Cancelled_NothingSent"` and `"Delete_Confirmed_Sent"` (AC3)
+2. `UiSmokeTests > "MemberRow_RiskyActions_InMenu"` (AC1, AC5)
+3. `UiSmokeTests > "BackupRow_RestoreAndDelete_InMenu"` (AC2)
+4. `UiSmokeTests > "ActionsMenu_Keyboard_OpensAndCloses"` (AC4)
+5. `ResponsiveTests > "Admin_EveryTab_Fits"`: the counts of restore and delete texts change to the menu entries (AC2).
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Test 1 (red), the question.
+2. Tests 2 to 4 (red), the menus.
+
+### Out of Scope
+
+- New moderation actions (Package 166)
+
+---
+
+## Package 157: Save bar in the administration
+
+**Goal:** Übersicht, Betrieb, Gruppen und Rechte and Kanal-Verknüpfungen save through the same unsaved-changes bar as the settings, and their own save buttons are gone.
+
+**Dependencies:** Package 153, Package 154
+
+**Affected files:**
+- `src/OVS.Client/Views/AdminView.axaml` (change): the bar below the page content, bound to the shown page's `AdminPlace`; "Servereinstellungen speichern", "Gruppe speichern", "Übernehmen" and "Verwerfen" removed
+- `src/OVS.Client/Models/AdminPlace.cs` (change): `Reset` (put the place back to what the server last sent)
+- `src/OVS.Client/ViewModels/ServerSettingsViewModel.cs`, `GroupListViewModel.cs`, `LinkMatrixViewModel.cs` (change): their reset (`Reload`, discarding the drafts, `DiscardCommand`) through `AdminPlace.Reset`
+- `tests/OVS.Tests/Client/ViewModels/AdminPlaceTests.cs`, `ServerSettingsViewModelTests.cs`, `GroupListViewModelTests.cs`, `LinkMatrixViewModelTests.cs`, `LeaveGuardTests.cs`, `tests/OVS.Tests/Client/Views/UiSmokeTests.cs`, `tests/OVS.Tests/Client/Layout/ResponsiveTests.cs` (change)
+
+### Context
+
+Four save places with three looks (`AdminView.axaml`: the accent button in the server card, the group editor's buttons, the link matrix bar with Apply and Discard). `AdminPlace` already says whether a place has changes and saves it (`HasChanges`, `Save`), used by the leave guard (Package 114).
+
+### Acceptance Criteria
+
+- [ ] AC1: On these four pages the bar of Package 153 shows only with changes; "Speichern" saves the place with the busy state and errors of Package 98, the error ID button of Package 143 included.
+- [ ] AC2: "Zurücksetzen" restores what the server last sent (settings, all edited groups including drafts, pending links).
+- [ ] AC3: The four old save and discard buttons are gone; the links' pending count stays as text in the bar.
+- [ ] AC4: Leaving with changes makes the bar pulse and then asks (as Package 153 for the settings).
+- [ ] AC5: All four pages fit from 360 px with the bar shown.
+
+### Tests (TDD)
+
+1. `AdminPlaceTests > "Reset_EachPlace_BackToServerState"` (AC2), one case per place.
+2. `UiSmokeTests > "Admin_SaveBar_OnlyWithChanges"` (AC1, AC3)
+3. `LeaveGuardTests > "Admin_LeaveWithChanges_AttentionThenQuestion"` (AC4)
+4. `ResponsiveTests > "Admin_EveryTab_Fits"` with a change on each of the four pages (AC5)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Test 1 (red), `AdminPlace.Reset`.
+2. Tests 2, 3 (red), the bar on the pages.
+3. Test 4.
+
+### Out of Scope
+
+- Saving on every change without a bar
+
+---
+
+## Package 158: Settings search
+
+**Goal:** A search field above the settings list finds every setting by its label or hint and opens its page with the setting scrolled into view and briefly lit.
+
+**Dependencies:** Package 152
+
+**Affected files:**
+- `src/OVS.Client/Layout/SideNav.cs` (change): an attached `NavHeader`, content shown above the list
+- `src/OVS.Client/Views/SettingsView.axaml` (change): the search box and the hit list as the nav header
+- `src/OVS.Client/Views/SettingsSearch.cs` (new): builds the index from the pages (each `label`, `section` and `caption` text and each `CheckBox` and `RadioButton` content with its page) and finds hits, case and umlaut tolerant
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Settings_Search`, `Settings_SearchNone`
+- `tests/OVS.Tests/Client/Views/SettingsSearchTests.cs` (new)
+
+### Context
+
+Discord has a search over its settings at the top of the side list. The settings texts all come from the resources and are on the pages of Package 152, so the index is built from the shown texts, in the UI language, without a second list of keywords to keep in step.
+
+### Acceptance Criteria
+
+- [ ] AC1: Typing shows the hits under the field with their page name; "Rausch" finds "Rauschunterdrückung" on Audio, "Push" finds the push-to-talk texts, "Sprache" finds the language on Darstellung.
+- [ ] AC2: Choosing a hit (click or Enter) opens its page, scrolls the setting into view and lights it for about one second (in the simplified display without animation).
+- [ ] AC3: No hit shows "Keine Einstellung gefunden" ("No setting found"); Esc in the field clears it, a second Esc closes the page as today.
+- [ ] AC4: The index follows the UI language.
+- [ ] AC5: Below 800 px the field is on the list screen.
+
+### Tests (TDD)
+
+1. `SettingsSearchTests > "Find_PartOfLabel_HitWithPage"` (AC1), also with umlauts.
+2. `SettingsSearchTests > "Choose_Hit_OpensPageAndScrolls"` (AC2)
+3. `SettingsSearchTests > "NoHit_Text_EscClears"` (AC3)
+4. `SettingsSearchTests > "English_IndexInEnglish"` (AC4)
+5. `ResponsiveTests > "Settings_At360To1100_Fit"` checks the field on the list screen (AC5).
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1, 4 (red), the index.
+2. Tests 2, 3 (red), the field and the jump.
+
+### Out of Scope
+
+- Searching the administration
+
+---
+
+## Package 159: Speaker test
+
+**Goal:** Beside the speaker choice a "Testen" button plays a short tone on the chosen speaker at the set volume, so a wrong device is found without connecting.
+
+**Dependencies:** Package 152
+
+**Affected files:**
+- `src/OVS.Client/Views/SettingsView.axaml` (change): the button beside the speaker
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (change): `TestSpeakerCommand`, played through `SoundPlayer` on the previewed device
+- `src/OVS.Client/Audio/Sounds/SoundPlayer.cs` (change): `PlayTest` (a 1 s tone made by `SoundSynth`)
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Ui_TestSpeaker`, `Ui_TestSpeakerNoDevice`
+- `tests/OVS.Tests/Client/Audio/Sounds/SoundTests.cs`, `tests/OVS.Tests/Client/Views/UiSmokeTests.cs` (change)
+
+### Context
+
+The settings preview the chosen devices (`DeviceList`, `EngineSync.ConfigureAsync`), and the sounds play through `SoundPlayer` (Package 47). The self test (Package 53) needs a microphone and talking; Discord's output test needs neither.
+
+### Acceptance Criteria
+
+- [ ] AC1: "Testen" ("Test") plays a 1 s tone on the chosen speaker at the set output volume, also before saving.
+- [ ] AC2: A second click while it plays restarts it, it never overlaps.
+- [ ] AC3: With all sounds off (Package 47) the test still plays (it is no notification).
+- [ ] AC4: Without an output device the button is off with a tooltip that says why.
+
+### Tests (TDD)
+
+1. `SoundTests > "SpeakerTest_PlaysOnChosenDeviceAtVolume"` (AC1): the fake hardware's output gets 1 s of the tone, scaled by the volume.
+2. `SoundTests > "SpeakerTest_Twice_NoOverlap"` (AC2)
+3. `SoundTests > "SpeakerTest_AllSoundsOff_StillPlays"` (AC3)
+4. `UiSmokeTests > "SpeakerTest_NoDevice_Off"` (AC4)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 to 3 (red), `PlayTest`.
+2. Test 4 (red), the button.
+
+### Out of Scope
+
+- A microphone test without the server (the self test of Package 53 stays)
+
+---
+
+## Package 160: Streamer mode
+
+**Goal:** In streamer mode the client shows no IP address, no full fingerprint and no server address anywhere, switched in the settings or by a key.
+
+**Dependencies:** Package 152
+
+**Affected files:**
+- `src/OVS.Client/Settings/ClientSettings.cs` (change): `StreamerMode`
+- `src/OVS.Client/Input/KeyAction.cs`, `KeyActionLabels.cs`, `KeyActionTraits.cs` (change): `ToggleStreamerMode`
+- `src/OVS.Client/Converters/PrivacyConverters.cs` (new): `Ip`, `Fingerprint`, `Address` (hidden as "•••" or the short form while the mode is on)
+- `src/OVS.Client/ViewModels/MainViewModel.cs` (change): `StreamerMode`, toggled by the key
+- `src/OVS.Client/Views/AdminView.axaml`, `MainWindow.axaml`, `TitleBarView.axaml`, `src/OVS.Client/Dialogs/ConnectionDetailsDialog.cs`, `ConnectDialog.cs`, `BookmarkDialog.cs` (change): every IP, fingerprint and address through the converters
+- `src/OVS.Client/Views/SettingsView.axaml` (change): the switch on Darstellung
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/Converters/PrivacyConvertersTests.cs` (new), `tests/OVS.Tests/Client/Views/StreamerModeTests.cs` (new)
+
+### Context
+
+The administration shows the last IP of every user and of bans (Packages 70, 80), the full fingerprints, and the header and the bookmarks show server addresses. A streamer who opens the administration on stream shows them all. Discord's streamer mode hides personal data. The key works globally like every key action (Package 41).
+
+### Acceptance Criteria
+
+- [ ] AC1: With the mode on, every IP shows as "•••", every full fingerprint as its short form, every server address (host and port) as "•••" in the header, the bookmarks, the connection details and the dialogs; nicknames and channel names stay.
+- [ ] AC2: The switch "Streamer-Modus" ("Streamer mode") on Darstellung and the key action "Streamer-Modus umschalten" turn it on and off; the key acts at once without the settings page; the state is saved.
+- [ ] AC3: While it is on, a small "Streamer-Modus" chip shows in the header.
+- [ ] AC4: Copying (a selectable text, a copy button) never yields a hidden value while the mode is on.
+- [ ] AC5: A scan of the views finds no binding to an IP, a fingerprint or an address that does not go through the converters.
+
+### Tests (TDD)
+
+1. `PrivacyConvertersTests > "On_ValuesHidden_Off_Shown"` (AC1), with null and empty values.
+2. `StreamerModeTests > "On_AdminAndHeader_NothingRevealed"` (AC1, AC3): the crowded administration of `ResponsiveTests`; no visible text holds an IP, a 64-hex fingerprint or the host.
+3. `StreamerModeTests > "Key_TogglesAndSaves"` (AC2)
+4. `StreamerModeTests > "On_SelectableFingerprint_NotCopyable"` (AC4)
+5. `StreamerModeTests > "Views_EveryPrivateBinding_ThroughConverter"` (AC5): scans the `.axaml` files for bindings to `*Ip*`, `Fingerprint`, `Host`, `Address`.
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Test 1 (red), the converters.
+2. Tests 2, 4, 5 (red), the views.
+3. Test 3 (red), switch and key.
+
+### Out of Scope
+
+- Hiding nicknames or chat text
+
+---
+
+## Package 161: Compact mode and chat text size
+
+**Goal:** A compact mode makes the rows of the channel tree and the chat tighter, and the chat's text size can be set from 90 to 130 %.
+
+**Dependencies:** Package 152
+
+**Affected files:**
+- `src/OVS.Client/Settings/ClientSettings.cs` (change): `Compact`, `ChatTextScale` (90 to 130, default 100, clamped on load)
+- `src/OVS.Client/Styles/Controls.axaml` (change): `Window.compactRows` styles for the tree rows and chat bubbles
+- `src/OVS.Client/Views/MainWindow.axaml.cs`, `ChatView.axaml` (change): the window class and the chat font size
+- `src/OVS.Client/Views/SettingsView.axaml`, `src/OVS.Client/ViewModels/SettingsViewModel.cs` (change): the switch and the slider on Darstellung, previewed at once
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/Settings/SettingsTests.cs`, `SettingsRoundTripTests.cs`, `tests/OVS.Tests/Client/Layout/ResponsiveTests.cs` (change)
+
+### Context
+
+Fluxer and Discord offer a compact message display; the tree rows here are 32 px (`SidebarRow`) and the chat uses bubbles (Package 32). Only the chat text scales (the user's decision), so the layout checks of the rest stay as they are.
+
+### Acceptance Criteria
+
+- [ ] AC1: With "Kompakt" the user rows of the tree are 24 px and the channel rows 28 px, chat messages have less padding and no gap between messages of the same sender; avatars stay readable.
+- [ ] AC2: The chat text size goes from 90 to 130 % in steps of 5, previewed at once; values outside are clamped on load.
+- [ ] AC3: Both are saved and survive a restart; Reset (Package 153) puts them back.
+- [ ] AC4: Compact and 130 % fit from 360 px.
+
+### Tests (TDD)
+
+1. `SettingsTests > "ChatTextScale_OutOfRange_Clamped"` (AC2)
+2. `ResponsiveTests > "Compact_RowsTighter"` (AC1)
+3. `ResponsiveTests > "ChatScale130_Compact_Fits"` (AC4)
+4. `SettingsRoundTripTests` gets both values (AC3).
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1, 4 (red), the settings.
+2. Tests 2, 3 (red), the styles.
+
+### Out of Scope
+
+- Scaling the whole app (the user's decision)
+
+---
+
+## Package 162: Desktop notifications
+
+**Goal:** While the OVS window is not in front, private messages, mentions with @name and users joining the own channel show as Windows notifications, each kind switchable.
+
+**Dependencies:** Package 152
+
+**Affected files:**
+- `src/OVS.Client/Interop/NativeMethods.cs` (change), `src/OVS.Client/Interop/NOTIFYICONDATAW.cs` (new): `Shell_NotifyIconW`
+- `src/OVS.Client/Services/DesktopNotifier.cs` (new): shows a notification through a tray icon's balloon (Windows 10 and 11 show it as a toast); no new window (A20), no new package (A166)
+- `src/OVS.Client/Services/NotificationRule.cs` (new): decides which chat entry or join is notified (private, a mention of the own nickname as a word after "@", a join into the own channel), never own messages, not while the window is active
+- `src/OVS.Client/Services/ChatFeed.cs`, `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): hand chat entries and joins to the rule
+- `src/OVS.Client/Settings/ClientSettings.cs` (change): `NotifyPrivate`, `NotifyMention`, `NotifyJoin` (the first two on, join off by default)
+- `src/OVS.Client/Views/SettingsView.axaml` (change): a page "Benachrichtigungen" ("Notifications") in the group APP
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/Services/NotificationRuleTests.cs` (new), `DesktopNotifierTests.cs` (new)
+
+### Context
+
+The chat has server, channel and private targets (`ChatTarget`), tones exist (Package 56), there are no mentions yet. A click on a notification brings the window to the front and opens the chat tab.
+
+### Acceptance Criteria
+
+- [ ] AC1: A private message notifies with the sender and the first 100 characters; a channel or server message notifies only when it holds "@" plus the own nickname (case-insensitive, as a whole word).
+- [ ] AC2: A user joining the own channel notifies "<Name> ist deinem Channel beigetreten" ("<Name> joined your channel") when that kind is on.
+- [ ] AC3: Nothing is notified while the window is active, for own messages, or when the kind is off.
+- [ ] AC4: A click on the notification brings the window to the front with the matching chat tab chosen.
+- [ ] AC5: The new settings page holds the three switches; it fits from 360 px.
+- [ ] AC6: At most one notification per sender in 5 s (the rest are counted into it).
+
+### Tests (TDD)
+
+1. `NotificationRuleTests > "Private_FromOther_Notified"`, `"Channel_WithMention_Notified"`, `"Channel_NameInsideWord_NotNotified"`, `"Own_NeverNotified"`, `"WindowActive_NotNotified"`, `"KindOff_NotNotified"`, `"Join_OwnChannel_Notified"` (AC1 to AC3)
+2. `NotificationRuleTests > "SameSender_Within5s_Merged"` (AC6), on the manual clock.
+3. `DesktopNotifierTests > "Click_BringsWindowAndTab"` (AC4) through a fake shell.
+4. `ResponsiveTests > "Settings_At360To1100_Fit"` covers the page (AC5).
+5. Manual check: a real notification on Windows 11.
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1, 2 (red), the rule.
+2. Test 3 (red), the notifier.
+3. The page.
+
+### Out of Scope
+
+- Notifications on other systems than Windows
+
+---
+
+## Package 163: Quick switcher
+
+**Goal:** Ctrl+K opens a search over the channels of the connected server and the saved servers, and Enter joins the channel or connects to the server.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Views/QuickSwitcherView.axaml`, `.axaml.cs` (new): the overlay with the field and the hits (inside the window's `OverlayHost`, A20)
+- `src/OVS.Client/ViewModels/QuickSwitcherViewModel.cs` (new): the hits (channels before servers, by match quality), the choice
+- `src/OVS.Client/Views/MainWindow.axaml.cs` (change): Ctrl+K while the window has the focus
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/ViewModels/QuickSwitcherViewModelTests.cs` (new), `tests/OVS.Tests/Client/Views/UiSmokeTests.cs`, `tests/OVS.Tests/Client/Layout/ResponsiveTests.cs` (change)
+
+### Context
+
+Discord and Fluxer have a quick switcher. Joining goes through `ChannelTreeViewModel` (its passwords and locks of Packages 93 and 94 stay), connecting through `BookmarkList` and `ConnectionViewModel`.
+
+### Acceptance Criteria
+
+- [ ] AC1: Ctrl+K opens the switcher with the focus in the field; Esc or a click beside it closes it.
+- [ ] AC2: Typing filters channels (with their user count) and saved servers by name, start-of-word hits first; separators never show.
+- [ ] AC3: Up and Down move, Enter joins the channel (asking for a password or refused by a lock as a double click would) or connects to the server (asking before leaving a connection as today).
+- [ ] AC4: Without a connection only servers show; with nothing found "Nichts gefunden" ("Nothing found").
+- [ ] AC5: It fits from 360 px.
+
+### Tests (TDD)
+
+1. `QuickSwitcherViewModelTests > "Filter_StartOfWordFirst_NoSeparators"` (AC2)
+2. `QuickSwitcherViewModelTests > "Enter_Channel_JoinsLikeDoubleClick"` and `"Enter_Server_ConnectsLikeBookmark"` (AC3)
+3. `QuickSwitcherViewModelTests > "NoConnection_OnlyServers"` (AC4)
+4. `UiSmokeTests > "CtrlK_Opens_EscCloses"` (AC1), `ResponsiveTests > "QuickSwitcher_At360_Fits"` (AC5)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 to 3 (red), the view model.
+2. Test 4 (red), the overlay and the key.
+
+### Out of Scope
+
+- Searching users or chat messages
+
+---
+
+## Package 164: Copy a fingerprint
+
+**Goal:** Wherever a full fingerprint shows, a copy button puts it on the clipboard.
+
+**Dependencies:** none (with Package 160 it copies nothing while streamer mode hides the value)
+
+**Affected files:**
+- `src/OVS.Client/Controls/CopyButton.cs` (new): an icon button that copies its `Text`
+- `src/OVS.Client/Views/AdminView.axaml`, `src/OVS.Client/Dialogs/ConnectionDetailsDialog.cs`, `TofuDialog.cs` (change): the button beside each fingerprint
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Ui_CopyFingerprint`, `Ui_Copied`
+- `tests/OVS.Tests/Client/Controls/CopyButtonTests.cs` (new)
+
+### Context
+
+Fingerprints are selectable text in the user and ban cards and in the TOFU dialog; selecting 64 characters by hand is error-prone. Discord's developer mode copies ids with one click. `ErrorIdButton` (Package 143) keeps its own way of finding the ID in a text.
+
+### Acceptance Criteria
+
+- [ ] AC1: Beside each full fingerprint a copy icon ("Fingerprint kopieren" / "Copy fingerprint") puts exactly the 64 characters on the clipboard.
+- [ ] AC2: After copying its tooltip says "Kopiert" ("Copied") for 2 s (on the injected clock).
+- [ ] AC3: Without a value the button is hidden.
+
+### Tests (TDD)
+
+1. `CopyButtonTests > "Click_CopiesExactText"` (AC1)
+2. `CopyButtonTests > "Click_TooltipCopied_ThenBack"` (AC2), manual clock.
+3. `CopyButtonTests > "NoText_Hidden"` (AC3)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1 to 3 (red), the control, then the places.
+
+### Out of Scope
+
+- Copy buttons for other ids
+
+---
+
+## Package 165: Audit log
+
+**Goal:** The administration has a page "Audit-Log" that lists every administrative action from the server log (who, what, when), newest first, searchable and filtered by person.
+
+**Dependencies:** Package 154
+
+**Affected files:**
+- `src/OVS.Server/Logging/ServerLogLines.cs` (change): every administrative line (groups, channels, links, moderation, server settings, logo, backups, admin token) gets `EventName = "Audit"`; lines for actions that write none today are added
+- `src/OVS.Shared/Logging/LogFileLoggerProvider.cs` (change): a line with the event name `Audit` gets the marker `[audit] ` after the time stamp
+- `src/OVS.Server/State/ServerState.Moderation.cs`, `ServerState.Link.cs` (change, where a line is missing)
+- `src/OVS.Client/ViewModels/AuditLogViewModel.cs` (new): asks `SearchLogs` on the server logs for `[audit]`, newest first, with a text and a person filter
+- `src/OVS.Client/Views/AdminView.axaml` (change): the page under VERWALTUNG, shown with `LogsView`
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Shared/Logging/LogFileLoggerProviderTests.cs` (change), `tests/OVS.Tests/Server/State/AuditLineTests.cs` (new), `tests/OVS.Tests/Client/ViewModels/AuditLogViewModelTests.cs` (new)
+
+### Context
+
+The server already logs most administrative actions with the acting nickname (`ServerLogLines`: groups, channels, server settings, backups ...), and the log search of Package 81 searches all server log files. A marker on exactly these lines lets the client ask the existing `SearchLogs` request for them; no new store, no new request, no protocol change (the user's decision, A167). They are kept as long as the log (`LogDays`).
+
+### Acceptance Criteria
+
+- [ ] AC1: Every administrative action writes one line with `[audit] ` after the time stamp; all other lines stay byte for byte as before.
+- [ ] AC2: Every handler that changes groups, channels, links, users, bans, mutes, server settings, the logo or backups writes such a line naming the actor, the target and the change; a test lists the handlers and fails for one without.
+- [ ] AC3: The page "Audit-Log" shows the lines newest first as rows (time, actor, action), with a search field and a person filter; it shows with `LogsView` only.
+- [ ] AC4: The busy, empty and error states of Package 97 apply; the refresh button of Package 154 reloads it.
+- [ ] AC5: The page fits from 360 px.
+
+### Tests (TDD)
+
+1. `LogFileLoggerProviderTests > "AuditEvent_MarkerAdded_OtherLinesUnchanged"` (AC1)
+2. `AuditLineTests > "EveryAdministrativeRequest_WritesAuditLine"` (AC2): drives each request of a fixed list through `ServerState` and checks one `[audit]` line each; a request type of the admin areas without an entry fails.
+3. `AuditLogViewModelTests > "Load_SearchesAuditMarker_NewestFirst"` and `"PersonFilter_OnlyThatActor"` (AC3)
+4. `AuditLogViewModelTests > "Load_Error_ShownWithId"` (AC4)
+5. `ResponsiveTests > "Admin_EveryTab_Fits"` covers the page (AC5).
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1, 2 (red), the server side.
+2. Tests 3, 4 (red), the page.
+
+### Out of Scope
+
+- A store of its own or a retention apart from `LogDays` (the user's decision)
+
+---
+
+## Package 166: Timeout
+
+**Goal:** A server mute can have a duration (5 minutes, 1 hour, 1 day or own) after which it ends by itself, also for an offline user.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/Messages/Moderation/SetKnownUserServerMute.cs`, `SetSessionServerMute.cs` (change): `int? Minutes = null` (null = until lifted)
+- `src/OVS.Shared/Protocol/Messages/Users/KnownUserInfo.cs`, `UserInfo.cs` (change): `ServerMutedUntil`
+- `src/OVS.Shared/Protocol/WireProtocol.cs` (change): `Version` raised by one
+- `src/OVS.Server/Data/Records/UserRecord.cs` (change): `ServerMutedUntil` (persisted, A168)
+- `src/OVS.Server/Rules/ModerationRule.cs` (change): the duration range (1 minute to 28 days, as Discord)
+- `src/OVS.Server/State/ServerState.Moderation.cs` (change): sets the end; a timer on the injected clock lifts it and broadcasts
+- `src/OVS.Client/Dialogs/MuteDialog.cs` (new): the duration choice like the ban's
+- `src/OVS.Client/ViewModels/KnownUserViewModel.cs`, `UserViewModel.cs` (change): "Server-stumm bis <Zeit>"
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Server/State/ModerationTests.cs`, `tests/OVS.Tests/Shared/Protocol/WireFreezeTests.cs`, `tests/OVS.Tests/SmokeTests.cs`, `tests/OVS.Tests/Client/ViewModels/KnownUserViewModelTests.cs` (change)
+
+### Context
+
+Package 85 stores a server mute on the user record and keeps it over reconnects; it ends only by hand. Discord's timeout ends by itself. Chat stays allowed (the user's decision).
+
+### Acceptance Criteria
+
+- [ ] AC1: Muting asks for the duration (5 Min, 1 Std, 1 Tag, eigene Minuten, unbegrenzt); the server stores the end.
+- [ ] AC2: At the end the mute is lifted on the server, stored and broadcast, also when the user is offline (then not muted at the next login).
+- [ ] AC3: A restart in between keeps the end; an end that passed while the server was down is lifted at start.
+- [ ] AC4: Card and channel tree show "Server-stumm bis 14:05" ("Server muted until 14:05").
+- [ ] AC5: A duration outside 1 minute to 28 days is refused with `InvalidValue`.
+- [ ] AC6: The protocol version is raised; an older client is refused as before.
+
+### Tests (TDD)
+
+1. `ModerationTests > "Mute_WithMinutes_LiftedAtEnd"` (AC1, AC2), manual clock, online and offline.
+2. `ModerationTests > "Mute_EndPassedWhileDown_LiftedAtStart"` (AC3)
+3. `ModerationTests > "Mute_DurationOutOfRange_Refused"` (AC5)
+4. `KnownUserViewModelTests > "Muted_WithEnd_TextShowsTime"` (AC4)
+5. `WireFreezeTests`, `SmokeTests` (AC6)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 3, 5 (red), the wire and the rule.
+2. Tests 1, 2 (red), the server.
+3. Test 4 (red), the client.
+
+### Out of Scope
+
+- Blocking chat (the user's decision)
+
+---
+
+## Package 167: Group colours and member list
+
+**Goal:** Every group can have its own colour, names show in the colour of their highest coloured group, and a member list beside the chat lists everyone online grouped by their highest group.
+
+**Dependencies:** Package 154
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/Messages/Groups/GroupInfo.cs`, `CreateGroup.cs`, `UpdateGroup.cs` (change): `string? Color = null` ("#RRGGBB")
+- `src/OVS.Shared/Protocol/TextRules.cs` (change): `IsColor`
+- `src/OVS.Shared/Protocol/WireProtocol.cs` (change): `Version` raised by one
+- `src/OVS.Server/Permissions/GroupRecord.cs` (change): `Color` (persisted, null for existing groups)
+- `src/OVS.Server/State/ServerState.Admin.cs` (change): validates and stores the colour, names it in the change line
+- `src/OVS.Client/OVS.Client.csproj` (change): `Avalonia.Controls.ColorPicker` 11.3.22 (A169)
+- `src/OVS.Client/ViewModels/GroupEditViewModel.cs`, `src/OVS.Client/Views/AdminView.axaml` (change): a colour picker with "keine Farbe"
+- `src/OVS.Client/Converters/AvatarConverters.cs` (change): `NameColor` from the highest coloured group, contrast lifted to 4.5:1 on the theme's surface
+- `src/OVS.Client/Views/MemberListView.axaml`, `.axaml.cs` (new), `src/OVS.Client/ViewModels/MemberListViewModel.cs` (new): the online users grouped by highest group, in group order
+- `src/OVS.Client/Views/MainWindow.axaml` (change): the list on the right of the chat with a toggle in the header; hidden under the compact width
+- `src/OVS.Client/Settings/ClientSettings.cs` (change): `ShowMemberList`
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Server/State/AdminCommandTests.cs`, `tests/OVS.Tests/Shared/Protocol/WireFreezeTests.cs`, `tests/OVS.Tests/SmokeTests.cs`, `tests/OVS.Tests/Client/Layout/ResponsiveTests.cs`, `tests/OVS.Tests/Client/Views/UiSmokeTests.cs` (change), `tests/OVS.Tests/Client/ViewModels/MemberListViewModelTests.cs`, `tests/OVS.Tests/Client/Converters/AvatarConvertersTests.cs` (new)
+
+### Context
+
+Groups have a name and rights (`GroupRecord`, `GroupInfo`), no colour. The users are only visible in the channel tree. Discord colours names by their highest role and lists members grouped by role beside the chat. Free colour with a separate member list (the user's decision). Rights per channel were dropped by the user; the group lock of Package 93 stays.
+
+### Acceptance Criteria
+
+- [ ] AC1: In "Gruppen und Rechte" a group gets a colour or none; the server refuses anything but `#RRGGBB` or null; old data loads with no colour.
+- [ ] AC2: A user's name in the tree, the chat and the member list has the colour of their highest coloured group (group order of Package 37); a colour too dark or too light for the theme is lifted to 4.5:1 contrast.
+- [ ] AC3: The member list shows the online users under one heading per group (with count), each user under their highest group only, then "Online" for users without a group heading; it follows joins, leaves and group changes.
+- [ ] AC4: A header button shows and hides the list, the choice is saved; under the compact width (Package 68) it is hidden.
+- [ ] AC5: The protocol version is raised.
+- [ ] AC6: A right click on a member opens the same menu as in the channel tree.
+
+### Tests (TDD)
+
+1. `AdminCommandTests > "GroupColor_Valid_Stored_InvalidRefused"` (AC1)
+2. `AvatarConvertersTests > "NameColor_HighestColoredGroup_ContrastLifted"` (AC2)
+3. `MemberListViewModelTests > "Grouped_ByHighestGroup_FollowsChanges"` (AC3)
+4. `ResponsiveTests > "MemberList_Toggle_HiddenWhenCompact"` (AC4)
+5. `WireFreezeTests`, `SmokeTests` (AC5)
+6. `UiSmokeTests > "MemberList_RightClick_SameMenu"` (AC6)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1, 5 (red), wire and server.
+2. Test 2 (red), the colour.
+3. Tests 3, 4, 6 (red), the member list.
+
+### Out of Scope
+
+- Rights per channel (dropped by the user)
+
+---
+
+## Package 168: Profile picture per server
+
+**Goal:** Every user can set a profile picture on each server, which the server stores only after proving it is a real image of bounded size, and which shows in the tree, the chat, the member list and the administration.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/AvatarFormat.cs` (new): the stored form (square PNG, 128 px, at most 64 KB) and `Validate`: signature, a walk over every chunk with its CRC, only `IHDR`, `PLTE`, `tRNS`, `IDAT` and `IEND`, nothing after `IEND`, and the joined `IDAT` data inflated with `ZLibStream` to exactly the size the header promises, stopping at that size (A170)
+- `src/OVS.Shared/Protocol/Messages/Users/SetAvatar.cs`, `GetAvatar.cs`, `Avatar.cs` (new), `UserInfo.cs`, `KnownUserInfo.cs` (change): `AvatarHash`
+- `src/OVS.Shared/Protocol/WireProtocol.cs` (change): `Version` raised by one
+- `src/OVS.Server/Data/AvatarStore.cs` (new): one file per fingerprint in `avatars/`, named from the fingerprint's hex only, written through `SafeFile.WriteAtomic`, included in backups (`BackupArchive`, `BackupContent`)
+- `src/OVS.Server/State/ServerState.Avatar.cs` (new): the handlers, throttled like the logo (`ThrottleHeavy`); removing another user's picture needs `UsersManage`
+- `src/OVS.Client/Services/AvatarImport.cs` (new): PNG, JPG, GIF and WebP up to 2 MB, first frame only, cropped square, scaled to 128 px, written as PNG without metadata; the upload is that PNG
+- `src/OVS.Client/Services/AvatarCache.cs` (new): by hash, like `ServerIconTracker`
+- `src/OVS.Client/Converters/AvatarConverters.cs`, `src/OVS.Client/Views/MainWindow.axaml`, `ChatView.axaml`, `AdminView.axaml` (change): the picture instead of the letter where one is set
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Shared/Protocol/AvatarFormatTests.cs`, `tests/OVS.Tests/Server/Data/AvatarStoreTests.cs`, `tests/OVS.Tests/Server/State/AvatarCommandTests.cs`, `tests/OVS.Tests/Client/Services/AvatarImportTests.cs` (new), `tests/OVS.Tests/Shared/Protocol/WireFreezeTests.cs`, `tests/OVS.Tests/Server/Data/BackupTests.cs` (change)
+
+### Context
+
+The server logo (Package 30: `ServerIconFormat`, `IconImport`, `ServerIconStore`) is the pattern: the client scales, the server stores a checked PNG and hands it out by hash. The server has no image library (A21); the user wants a real check against fake image files and code execution. So the server never draws the pixels, but proves the file is a well-formed PNG: every chunk known with a correct CRC, no text or metadata chunk, no trailing bytes, and the compressed data inflating to exactly width x height x bytes per pixel plus one filter byte per row (A170). Anything else, or a PNG carrying extra data, is refused. Every client draws only such a PNG. The picture is per server (the user's decision): the server stores it under the fingerprint.
+
+### Acceptance Criteria
+
+- [ ] AC1: A user picks PNG, JPG, GIF or WebP up to 2 MB; the client uploads a 128 px square PNG without metadata; an animated file is stored as its first frame.
+- [ ] AC2: The server stores only a PNG that passes `AvatarFormat.Validate`; a renamed executable, a PNG with a text chunk, a wrong CRC, bytes after `IEND`, data that inflates to more or less than the header promises, more than 64 KB or other sides than 128 px are refused with `InvalidValue`, and nothing is written.
+- [ ] AC3: The file name on the server comes from the fingerprint's hex only; no client text reaches a path.
+- [ ] AC4: Other clients get the hash in `UserInfo` and fetch the picture once per hash; it shows in the tree, the chat, the member list and the administration; without one the letter stays.
+- [ ] AC5: The own picture is set and removed through a right click on the own row ("Profilbild ändern", "Profilbild entfernen"); an admin with `UsersManage` can remove anyone's.
+- [ ] AC6: Uploads are throttled like the logo; backups contain the pictures and restore them.
+- [ ] AC7: The protocol version is raised.
+
+### Tests (TDD)
+
+1. `AvatarFormatTests` (AC2): `"Valid_128Png_Accepted"`, `"Executable_Renamed_Refused"`, `"TextChunk_Refused"`, `"BadCrc_Refused"`, `"TrailingBytes_Refused"`, `"InflatedSizeMismatch_Refused"`, `"TooLarge_Refused"`, `"WrongSides_Refused"`, `"DeflateBomb_StopsAtExpectedSize"`.
+2. `AvatarStoreTests > "Name_FromFingerprintOnly"` and `"Write_Atomic"` (AC3)
+3. `AvatarImportTests > "JpgGifWebp_ToSquarePng128_NoMetadata"` and `"Animated_FirstFrame"` (AC1)
+4. `AvatarCommandTests > "Set_BroadcastsHash_Get_ReturnsBytes"`, `"OtherUser_RemoveNeedsUsersManage"` (AC4, AC5), `"Set_Throttled"` (AC6)
+5. `BackupTests > "Backup_ContainsAvatars_Restored"` (AC6)
+6. `WireFreezeTests` (AC7)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Test 1 (red), `AvatarFormat`.
+2. Tests 2, 4, 5, 6 (red), the server.
+3. Test 3 (red), the client import, then the views.
+
+### Out of Scope
+
+- Animated pictures, status text, bio (the user's decision)
+
+---
+
+## Package 169: AFK channel
+
+**Goal:** Each server can set an AFK channel (the lobby by default) into which a user who sent no voice and did nothing for X minutes is moved, 0 switching it off, and nobody's voice is relayed there.
+
+**Dependencies:** Package 154
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/Messages/ServerInfo/ServerLimits.cs` (change): `Guid? AfkChannelId`, `int AfkMinutes` (0 = off)
+- `src/OVS.Shared/Protocol/WireProtocol.cs` (change): `Version` raised by one
+- `src/OVS.Server/Data/Records/ServerSettings.cs` (change): both persisted; defaults: the default channel and 0 (A171)
+- `src/OVS.Server/Rules/ServerLimitsRule.cs` (change): minutes 0 to 1440; the channel must exist and be no separator
+- `src/OVS.Server/State/ServerState.Voice.cs`, `ServerState.Chat.cs`, `ServerState.Channel.cs` (change): the last activity per session (a voice packet, a chat message, a channel change, a self-state change); no voice relayed from the AFK channel (as a muted channel, Package 66)
+- `src/OVS.Server/AfkWatch.cs` (new): on a `PeriodicTimer` of the injected clock, moves sessions idle for the set minutes into the AFK channel and logs it
+- `src/OVS.Client/Views/AdminView.axaml`, `src/OVS.Client/ViewModels/ServerSettingsViewModel.cs` (change): the channel and the minutes on "Betrieb"
+- `src/OVS.Client/ViewModels/ChannelViewModel.cs`, `src/OVS.Client/Views/MainWindow.axaml` (change): the AFK channel shows a moon icon and "AFK"
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Server/AfkWatchTests.cs` (new), `tests/OVS.Tests/Server/State/AdminCommandTests.cs`, `tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs`, `tests/OVS.Tests/Shared/Protocol/WireFreezeTests.cs`, `tests/OVS.Tests/SmokeTests.cs` (change)
+
+### Context
+
+There is no idle detection. The server sees voice packets and requests, not the keyboard (the user's decision: idle = no voice and no own action; muted and deafened users count too). Nobody speaks in the AFK channel (the user's decision, as Discord). A deleted AFK channel falls back to the default channel.
+
+### Acceptance Criteria
+
+- [ ] AC1: On "Betrieb" the admin chooses the AFK channel (default: the lobby) and the minutes (0 to 1440, default 0 = off); the server refuses anything else.
+- [ ] AC2: With minutes > 0, a session that sent no voice packet, no chat message, no channel change and no self-state change for that long is moved into the AFK channel; the move is broadcast like a moderator's move and logged.
+- [ ] AC3: Muted or deafened sessions are moved the same way; a session already in the AFK channel is left alone.
+- [ ] AC4: No voice is relayed from the AFK channel; the client shows the channel as AFK with the hint "Im AFK-Channel spricht niemand" ("Nobody speaks in the AFK channel").
+- [ ] AC5: Deleting the AFK channel falls back to the default channel; old data loads with the default channel and 0.
+- [ ] AC6: The protocol version is raised.
+
+### Tests (TDD)
+
+1. `AdminCommandTests > "Afk_RangeAndChannel_Checked"` (AC1)
+2. `AfkWatchTests > "Idle_ForMinutes_Moved"`, `"Voice_ResetsIdle"`, `"Muted_StillMoved"`, `"Off_NeverMoves"`, `"InAfk_LeftAlone"` (AC2, AC3), on the manual clock.
+3. `VoiceRelayTests > "AfkChannel_NothingRelayed"` (AC4)
+4. `AdminCommandTests > "AfkChannelDeleted_FallsBackToDefault"` and `PersistedFixtureTests` loading old data (AC5)
+5. `WireFreezeTests`, `SmokeTests` (AC6)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Tests 1, 4, 5 (red), settings and wire.
+2. Test 2 (red), `AfkWatch`.
+3. Test 3 (red), the relay, then the client.
+
+### Out of Scope
+
+- Detecting keyboard or mouse activity
+
+---
+
+## Package 170: Server link
+
+**Goal:** A web link `https://rezondes.github.io/OpenVoiceSpeak/?join=<host>:<port>` opens OVS with the connect dialog filled in when OVS is installed, and otherwise shows the download.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Net/JoinLink.cs` (new): parses `ovs://<host>:<port>` and builds the web link; host as `ConnectDialog` accepts it (name, IPv4, IPv6 in brackets), port 1 to 65535, nothing else accepted
+- `src/OVS.Client/Interop/UrlProtocol.cs` (new): registers `ovs://` for the current Windows user under `HKCU\Software\Classes\ovs` at start, pointing at the running exe; updates the path when the exe moved (A172)
+- `src/OVS.Client/Program.cs`, `src/OVS.Client/ClientOptions.cs` (change): an `ovs://` argument; a second start hands it to the running client and ends (A173)
+- `src/OVS.Client/Services/SingleInstance.cs` (new): the hand-over over a named pipe, per Windows user
+- `src/OVS.Client/ViewModels/ConnectionViewModel.cs` (change): a received link opens the connect dialog filled in, never connects by itself (the user's decision); the TOFU question stays
+- `src/OVS.Client/Views/MainWindow.axaml`, `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): "Server-Link kopieren" in the server header
+- `website/src/App.tsx`, `website/src/i18n.ts` (change): `?join=` tries `ovs://host:port` and shows "OVS wird geöffnet ..." with the download below; host and port shown as text, never inserted as HTML
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/Net/JoinLinkTests.cs`, `tests/OVS.Tests/Client/Services/SingleInstanceTests.cs` (new), `tests/OVS.Tests/Client/ViewModels/ConnectionViewModelTests.cs` (change), `website/src/App.test.tsx` (change)
+
+### Context
+
+There are no invite links (dropped by the user); Steam's `steam://` links are the model. The website is on GitHub Pages (`README.md`: `https://rezondes.github.io/OpenVoiceSpeak/`), so the link is that page with a query that hands over to the protocol. The registration needs no admin rights under HKCU. The client starts one process per start today, so a link clicked while OVS runs needs a hand-over.
+
+### Acceptance Criteria
+
+- [ ] AC1: "Server-Link kopieren" ("Copy server link") puts `https://rezondes.github.io/OpenVoiceSpeak/?join=<host>:<port>` of the connected server on the clipboard (not offered in streamer mode, Package 160).
+- [ ] AC2: The page with `?join=` opens `ovs://<host>:<port>`; it shows host and port as text and the download button in case nothing happens; an invalid value shows the normal page.
+- [ ] AC3: At start the client registers `ovs://` for the current user, pointing at its own exe; a moved exe updates it.
+- [ ] AC4: `ovs://host:port` starts OVS with the connect dialog filled in (no password, no nickname from the link); with OVS running, its window comes to the front with the dialog and the second process ends.
+- [ ] AC5: `JoinLink` refuses anything but host and port (a path, a query, user info, more than 253 characters, a port outside 1 to 65535).
+
+### Tests (TDD)
+
+1. `JoinLinkTests > "Parse_HostAndPort_Accepted"`, `"Parse_Ipv6InBrackets_Accepted"`, `"Parse_PathQueryUserInfo_Refused"`, `"Parse_PortOutOfRange_Refused"`, `"Build_WebLink"` (AC1, AC5)
+2. `SingleInstanceTests > "Second_HandsLinkOver_Ends"` (AC4)
+3. `ConnectionViewModelTests > "Link_OpensDialogFilled_NoConnect"` (AC4)
+4. `App.test.tsx > "join opens the protocol and shows host as text"` and `"invalid join shows the start page"` (AC2)
+5. Manual check (AC3): a fresh Windows user, the link from Chrome and Edge, with and without OVS running.
+
+Test command: `dotnet test OpenVoiceSpeak.slnx` and `npm test` in `website/`
+
+### Steps
+
+1. Test 1 (red), `JoinLink`.
+2. Tests 2, 3 (red), hand-over and dialog.
+3. Test 4 (red), the website.
+
+### Out of Scope
+
+- Invite links with expiry and limits; other systems than Windows
