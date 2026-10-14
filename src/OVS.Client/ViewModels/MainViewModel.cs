@@ -14,6 +14,7 @@ using OVS.Client.Models;
 using OVS.Client.Net;
 using OVS.Client.Services;
 using OVS.Client.Settings;
+using OVS.Shared.Protocol.Messages.Chat;
 
 namespace OVS.Client.ViewModels;
 
@@ -68,6 +69,7 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Settings = settings;
         if (settingsWarning is not null) AddNotice(settingsWarning, NoticeKind.Warning);
         Appearance = BackgroundAppearance.From(Settings); // the saved look from the start, not only after the next save
+        notifications = new NotificationRule(time);
         Bookmarks = new BookmarkList(() => Settings.Bookmarks, icons.Load, leave, () => Dialogs.BookmarkList, () => Settings.Save(storageDir), Log);
         Update = new UpdateFlow(() => Settings.CheckForUpdates, offer => Dialogs.OfferUpdate?.Invoke(offer) ?? Task.FromResult(false), Log, text => Status = text,
             text => AddNotice(text, NoticeKind.Warning), PendingActionViewModel.Timeout);
@@ -277,16 +279,52 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         {
             oldValue.StateChanged -= OnServerStateChanged;
             oldValue.VolumeChanged -= OnUserVolumeChanged;
+            oldValue.ChatFeed.Received -= OnChatForNotice;
+            oldValue.JoinedOwnChannel -= OnJoinForNotice;
         }
         if (newValue is not null)
         {
             newValue.StateChanged += OnServerStateChanged; // e.g. the own channel was muted (Package 34)
             newValue.VolumeOf = fingerprint => Settings.VolumeFor(fingerprint);
             newValue.VolumeChanged += OnUserVolumeChanged;
+            newValue.ChatFeed.Received += OnChatForNotice; // Package 162
+            newValue.JoinedOwnChannel += OnJoinForNotice;
             newValue.SelfState.HoldMuteAsync(Keys.MuteHeld); // Package 125: connected with the key held; its release then unmutes
         }
         Chat = newValue is null ? null : new ChatViewModel(newValue, Notices.Reverse());
         EngineSync.SyncConnection();
+    }
+
+    readonly NotificationRule notifications;
+
+    /// <summary>Package 162: whether the window is in front; the window sets it, nothing notifies until then.</summary>
+    public Func<bool> IsWindowActive { get; set; } = () => true;
+
+    /// <summary>Package 162: a desktop notification to show; the window hands it to the notifier.</summary>
+    public event Action<DesktopNotice>? NoticeRequested;
+
+    NotificationState? NoticeState() => Server is { } server
+        ? new NotificationState(Settings, server.Mirror.SelfId, server.Mirror.Self?.Nickname ?? "", IsWindowActive()) : null;
+
+    void OnChatForNotice(ChatMessage message)
+    {
+        if (NoticeState() is not { } state) return;
+        var partner = Server?.Mirror.Users.GetValueOrDefault(message.FromSessionId)?.Fingerprint;
+        if (notifications.ForMessage(message, partner, state) is { } notice) NoticeRequested?.Invoke(notice);
+    }
+
+    void OnJoinForNotice(string nickname)
+    {
+        if (NoticeState() is { } state && notifications.ForJoin(nickname, state) is { } notice) NoticeRequested?.Invoke(notice);
+    }
+
+    /// <summary>Package 162: a click on a notification: the main page with the chat tab it was about.</summary>
+    public void OpenNotified(DesktopNotice notice)
+    {
+        if (Chat is not { } chat) return;
+        PageFlow.CloseWithoutAsking();
+        if (notice.Tab == ChatTarget.Private && notice.Partner is { } partner) chat.OpenPrivate(partner);
+        else chat.Selected = notice.Tab == ChatTarget.Channel ? chat.ChannelTab : chat.General;
     }
 
     /// <summary>Package 122: the gain table only follows the users who come and go (volumes change in <see cref="OnUserVolumeChanged"/>).</summary>

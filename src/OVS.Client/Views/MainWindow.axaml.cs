@@ -13,13 +13,16 @@ using OVS.Client.Controls;
 using OVS.Client.Dialogs;
 using OVS.Client.Layout;
 using OVS.Client.Models;
+using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 
 namespace OVS.Client.Views;
 
 /// <summary>The client's one window: every page and dialog shows inside it.</summary>
+#pragma warning disable CA1001 // the window disposes its notifier when it closes (OnClosed)
 internal partial class MainWindow : Window
+#pragma warning restore CA1001
 {
     // Package 161: the chat's text at 100 % (the defaults in Controls.axaml)
     const double ChatFontSize = 14;
@@ -42,6 +45,42 @@ internal partial class MainWindow : Window
     }
 
     MainViewModel Vm => (MainViewModel)DataContext!;
+
+    /// <summary>Package 162: the desktop notifications, only on Windows with a real window handle.</summary>
+    DesktopNotifier? notifier;
+
+    /// <inheritdoc />
+    protected override void OnOpened(EventArgs args)
+    {
+        base.OnOpened(args);
+        if (!OperatingSystem.IsWindows() || TryGetPlatformHandle()?.Handle is not { } handle || handle == 0) return;
+        notifier = new DesktopNotifier(handle);
+        notifier.Clicked += OnNoticeClicked;
+        Win32Properties.AddWndProcHookCallback(this, OnWindowMessage);
+    }
+
+    /// <inheritdoc />
+    protected override void OnClosed(EventArgs args)
+    {
+        notifier?.Dispose();
+        base.OnClosed(args);
+    }
+
+    nint OnWindowMessage(nint hwnd, uint message, nint wParam, nint lParam, ref bool handled)
+    {
+        handled = notifier?.OnWindowMessage(message, lParam) == true;
+        return 0;
+    }
+
+    /// <summary>Package 162: a click on a notification brings the window to the front with its chat tab.</summary>
+    void OnNoticeClicked(DesktopNotice notice)
+    {
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+        Vm.OpenNotified(notice);
+    }
+
+    void OnNoticeRequested(DesktopNotice notice) => notifier?.Show(notice);
 
     /// <summary>The sidebar as a drawer below the compact width (Package 68, 105).</summary>
     readonly SidebarDrawer drawer;
@@ -129,6 +168,7 @@ internal partial class MainWindow : Window
             watchedVm.Connection.PropertyChanged -= OnConnectionPropertyChanged;
             watchedVm.PageFlow.PropertyChanging -= OnPageFlowPropertyChanging;
             watchedVm.PageFlow.PropertyChanged -= OnPageFlowPropertyChanged;
+            watchedVm.NoticeRequested -= OnNoticeRequested;
         }
         watchedVm = DataContext as MainViewModel;
         if (watchedVm is not null)
@@ -138,6 +178,8 @@ internal partial class MainWindow : Window
             watchedVm.Connection.PropertyChanged += OnConnectionPropertyChanged;
             watchedVm.PageFlow.PropertyChanging += OnPageFlowPropertyChanging;
             watchedVm.PageFlow.PropertyChanged += OnPageFlowPropertyChanged;
+            watchedVm.NoticeRequested += OnNoticeRequested; // Package 162
+            watchedVm.IsWindowActive = () => IsActive;
         }
         OnServerChanged();
         ApplyDisplay();

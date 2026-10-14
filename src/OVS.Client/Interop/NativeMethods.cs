@@ -5,6 +5,9 @@ namespace OVS.Client.Interop;
 /// <summary>Every Win32 function the client imports, each declared once.</summary>
 internal static unsafe partial class NativeMethods
 {
+    /// <summary>Package 162: adds, changes or removes the tray icon and its balloon.</summary>
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)] // CA5392: a system library, never one planted next to the exe
+    [LibraryImport("shell32.dll")] internal static partial int Shell_NotifyIconW(uint message, NOTIFYICONDATAW* data);
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)] // CA5392: a system library, never one planted next to the exe
     [LibraryImport("shell32.dll")] internal static partial int SHDefExtractIconW(char* file, int index, uint flags, nint* large, nint* small, uint size);
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)] // CA5392: a system library, never one planted next to the exe

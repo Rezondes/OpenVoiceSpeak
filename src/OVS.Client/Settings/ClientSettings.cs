@@ -143,6 +143,15 @@ internal sealed class ClientSettings : IJsonOnDeserializing
     /// <summary>Package 161: the chat's text size in percent, 90 to 130.</summary>
     public int ChatTextScale { get; set; } = 100;
 
+    /// <summary>Package 162: a private message notifies on the desktop while the window is not in front.</summary>
+    public bool NotifyPrivate { get; set; } = true;
+
+    /// <summary>Package 162: "@" and the own nickname in a channel or server message notifies.</summary>
+    public bool NotifyMention { get; set; } = true;
+
+    /// <summary>Package 162: a user joining the own channel notifies.</summary>
+    public bool NotifyJoin { get; set; }
+
     /// <summary>Package 99 (A114): today's plain look by default, or the animated display. A file from before has no key and loads simplified.</summary>
     public DisplayMode Display { get; set; } = DisplayMode.Simplified;
 

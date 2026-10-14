@@ -114,6 +114,9 @@ internal sealed partial class ServerViewModel : ObservableObject
     /// <summary>Packages 94 and 139: the own join in flight and the channel passwords that worked on this connection.</summary>
     readonly ChannelJoin join = new();
 
+    /// <summary>Package 162: someone else came into the own channel (their nickname).</summary>
+    public event Action<string>? JoinedOwnChannel;
+
     /// <summary>"Privatnachricht" in a user's context menu; the chat opens the tab.</summary>
     public event Action<UserViewModel>? PrivateChatRequested;
 
@@ -202,6 +205,9 @@ internal sealed partial class ServerViewModel : ObservableObject
         };
         if (Mirror.Apply(message)) Show(message, before);
         if (sound is { } soundEvent) SoundRequested?.Invoke(soundEvent);
+        // Package 162: the same moment as the join tone, for the desktop notification
+        if (sound == SoundEvent.UserJoined && message switch { UserJoined userJoined => userJoined.User.Nickname, UserUpdated userUpdated => userUpdated.User.Nickname, _ => null } is { } joined)
+            JoinedOwnChannel?.Invoke(joined);
     }
 
     /// <summary>

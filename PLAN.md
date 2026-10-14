@@ -9394,20 +9394,22 @@ The chat has server, channel and private targets (`ChatTarget`), tones exist (Pa
 
 ### Acceptance Criteria
 
-- [ ] AC1: A private message notifies with the sender and the first 100 characters; a channel or server message notifies only when it holds "@" plus the own nickname (case-insensitive, as a whole word).
-- [ ] AC2: A user joining the own channel notifies "<Name> ist deinem Channel beigetreten" ("<Name> joined your channel") when that kind is on.
-- [ ] AC3: Nothing is notified while the window is active, for own messages, or when the kind is off.
-- [ ] AC4: A click on the notification brings the window to the front with the matching chat tab chosen.
-- [ ] AC5: The new settings page holds the three switches; it fits from 360 px.
-- [ ] AC6: At most one notification per sender in 5 s (the rest are counted into it).
+- [x] AC1: A private message notifies with the sender and the first 100 characters; a channel or server message notifies only when it holds "@" plus the own nickname (case-insensitive, as a whole word).
+- [x] AC2: A user joining the own channel notifies "<Name> ist deinem Channel beigetreten" ("<Name> joined your channel") when that kind is on.
+- [x] AC3: Nothing is notified while the window is active, for own messages, or when the kind is off.
+- [x] AC4: A click on the notification brings the window to the front with the matching chat tab chosen.
+- [x] AC5: The new settings page holds the three switches; it fits from 360 px.
+- [x] AC6: At most one notification per sender in 5 s (the rest are counted into it).
 
 ### Tests (TDD)
 
-1. `NotificationRuleTests > "Private_FromOther_Notified"`, `"Channel_WithMention_Notified"`, `"Channel_NameInsideWord_NotNotified"`, `"Own_NeverNotified"`, `"WindowActive_NotNotified"`, `"KindOff_NotNotified"`, `"Join_OwnChannel_Notified"` (AC1 to AC3)
+1. `NotificationRuleTests > "Private_FromOther_Notified"`, `"Channel_WithMention_Notified"`, `"Channel_NameInsideWord_NotNotified"`, `"Own_Message_NeverNotified"`, `"Message_WindowActive_NotNotified"`, `"Message_KindOff_NotNotified"`, `"Join_OwnChannel_Notified"` (AC1 to AC3)
 2. `NotificationRuleTests > "SameSender_Within5s_Merged"` (AC6), on the manual clock.
-3. `DesktopNotifierTests > "Click_BringsWindowAndTab"` (AC4) through a fake shell.
+3. `DesktopNotifierTests > "Click_OnNotice_BringsWindowAndTab"` (AC4) through a fake shell.
 4. `ResponsiveTests > "Settings_At360To1100_Fit"` covers the page (AC5).
 5. Manual check: a real notification on Windows 11.
+
+(as built: the rule takes a `NotificationState` (settings, own session and nickname, window in front) and gives a `DesktopNotice` with the tab a click opens. `MainViewModel` hands chat messages (`ChatFeed.Received`) and joins (`ServerViewModel.JoinedOwnChannel`, raised with the join tone) to it and raises `NoticeRequested`; `MainWindow` owns the `DesktopNotifier`, created in `OnOpened` only on Windows with a window handle, and gets the clicks through `Win32Properties.AddWndProcHookCallback`. The tray icon (the program's own icon) is added with the first notification and removed when the window closes; the balloon plays no sound, OVS plays its own tones. A sender's further notifications within 5 s replace the shown one with "<n> neue Nachrichten von <Name>". The page sits in the group APP between Darstellung and Über und Updates. Test names got a third part (RL601). Manual check on Windows 11 still open.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

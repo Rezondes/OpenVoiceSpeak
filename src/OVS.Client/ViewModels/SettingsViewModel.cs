@@ -56,6 +56,9 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
     [ObservableProperty] bool streamerMode; // Package 160
     [ObservableProperty] bool compact; // Package 161
     [ObservableProperty] double chatTextScale;
+    [ObservableProperty] bool notifyPrivate; // Package 162
+    [ObservableProperty] bool notifyMention;
+    [ObservableProperty] bool notifyJoin;
     [ObservableProperty] bool noiseSuppression;
     [ObservableProperty] bool autoGain;
     [ObservableProperty] bool echoCancellation; // Package 140
@@ -107,6 +110,9 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         streamerMode = current.StreamerMode;
         compact = current.Compact;
         chatTextScale = current.ChatTextScale;
+        notifyPrivate = current.NotifyPrivate;
+        notifyMention = current.NotifyMention;
+        notifyJoin = current.NotifyJoin;
         SoundRows = Enum.GetValues<SoundEvent>().Select(soundEvent => new SoundRowViewModel(soundEvent, current.SoundFor(soundEvent), this)).ToList();
         soundVolumePercent = current.SoundVolume * 100f;
         opened = MarkUntouched(); // Package 114: what the page shows before anyone touched it
@@ -479,6 +485,9 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         StreamerMode = values.StreamerMode;
         Compact = values.Compact;
         ChatTextScale = values.ChatTextScale;
+        NotifyPrivate = values.NotifyPrivate;
+        NotifyMention = values.NotifyMention;
+        NotifyJoin = values.NotifyJoin;
         foreach (var row in SoundRows) row.Restore(values.SoundFor(row.Event));
         SoundVolumePercent = values.SoundVolume * 100f;
         Preview();
@@ -564,6 +573,9 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         StreamerMode = StreamerMode,
         Compact = Compact,
         ChatTextScale = (int)Math.Round(ChatTextScale),
+        NotifyPrivate = NotifyPrivate,
+        NotifyMention = NotifyMention,
+        NotifyJoin = NotifyJoin,
         Display = SelectedDisplay.Value,
         Sounds = SoundRows.Select(soundRow => (soundRow.Event, Setting: soundRow.ToSetting())).Where(sound => !sound.Setting.IsDefaultFor(sound.Event)).ToDictionary(sound => sound.Event, sound => sound.Setting),
     }.Clamp();

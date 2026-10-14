@@ -49,6 +49,9 @@ public sealed class SettingsRoundTripTests
         StreamerMode = true,
         Compact = true,
         ChatTextScale = 120,
+        NotifyPrivate = false,
+        NotifyMention = false,
+        NotifyJoin = true,
     };
 
     static SettingsViewModel Page(ClientSettings settings) =>

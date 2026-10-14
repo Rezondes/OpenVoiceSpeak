@@ -814,7 +814,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         var sections = SettingsPages.Sections(main);
-        Assert.Equal(["SPRECHEN UND HÖREN", "Audio", "Sendemodus", "Tastenbelegung", "Sounds", "APP", "Darstellung", "Über und Updates"],
+        Assert.Equal(["SPRECHEN UND HÖREN", "Audio", "Sendemodus", "Tastenbelegung", "Sounds", "APP", "Darstellung", "Benachrichtigungen", "Über und Updates"],
             sections.Items.OfType<TabItem>().Select(tabItem => tabItem.Header as string));
         Assert.Equal(["SPRECHEN UND HÖREN", "APP"], sections.Items.OfType<TabItem>().Where(tabItem => tabItem.Classes.Contains("navGroup")).Select(tabItem => tabItem.Header as string));
         Assert.Equal("Audio", ((TabItem)sections.SelectedItem!).Header);

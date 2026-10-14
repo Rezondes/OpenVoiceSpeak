@@ -667,4 +667,13 @@
   <data name="Settings_Compact" xml:space="preserve"><value>Kompakt</value></data>
   <data name="Settings_CompactHint" xml:space="preserve"><value>Engere Zeilen in der Channel-Liste und im Chat.</value></data>
   <data name="Settings_ChatTextScale" xml:space="preserve"><value>Textgröße im Chat</value></data>
+  <data name="Nav_Notifications" xml:space="preserve"><value>Benachrichtigungen</value></data>
+  <data name="Settings_NotifyHint" xml:space="preserve"><value>Windows-Benachrichtigungen erscheinen nur, wenn OVS nicht im Vordergrund ist. Ein Klick darauf öffnet den passenden Chat.</value></data>
+  <data name="Settings_NotifyPrivate" xml:space="preserve"><value>Privatnachrichten</value></data>
+  <data name="Settings_NotifyMention" xml:space="preserve"><value>Erwähnungen mit @Name</value></data>
+  <data name="Settings_NotifyJoin" xml:space="preserve"><value>Jemand betritt meinen Channel</value></data>
+  <data name="Notify_MentionTitle" xml:space="preserve"><value>{0} hat dich erwähnt</value></data>
+  <data name="Notify_JoinTitle" xml:space="preserve"><value>Neu in deinem Channel</value></data>
+  <data name="Notify_Joined" xml:space="preserve"><value>{0} ist deinem Channel beigetreten</value></data>
+  <data name="Notify_More" xml:space="preserve"><value>{0} neue Nachrichten von {1}</value></data>
 </root>

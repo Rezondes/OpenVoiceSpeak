@@ -383,6 +383,22 @@
           </StackPanel>
         </ScrollViewer>
       </TabItem>
+      <!-- Package 162: desktop notifications while the window is not in front, each kind on its own -->
+      <TabItem x:Name="NotificationsPage" Header="{x:Static l:Strings.Nav_Notifications}">
+        <ScrollViewer anim:PageMotion.Reveal="True">
+          <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Left">
+            <Border Classes="card">
+              <StackPanel Spacing="4">
+                <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Settings_NotifyHint}" />
+                <CheckBox x:Name="NotifyPrivateBox" Content="{x:Static l:Strings.Settings_NotifyPrivate}" IsChecked="{Binding NotifyPrivate}" Margin="0,6,0,0" />
+                <CheckBox Content="{x:Static l:Strings.Settings_NotifyMention}" IsChecked="{Binding NotifyMention}" />
+                <CheckBox Content="{x:Static l:Strings.Settings_NotifyJoin}" IsChecked="{Binding NotifyJoin}" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <TabItem x:Name="AboutPage" Header="{x:Static l:Strings.Nav_About}">
         <ScrollViewer anim:PageMotion.Reveal="True">
           <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Left">
