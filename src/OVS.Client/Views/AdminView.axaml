@@ -463,7 +463,7 @@
                             <Border Classes="banner warning" IsVisible="{Binding IsServerMuted}">
                               <DockPanel>
                                 <PathIcon DockPanel.Dock="Left" Classes="sm" Data="{StaticResource Icon.SpeakerMute}" VerticalAlignment="Top" Margin="0,2,8,0" />
-                                <TextBlock Text="{x:Static l:Strings.Ui_ServerMuted}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding ServerMutedText}" TextWrapping="Wrap" />
                               </DockPanel>
                             </Border>
                             <ItemsControl ItemsSource="{Binding Toggles}">

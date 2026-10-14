@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace OVS.Server.Data.Records;
 
 /// <summary>A user as stored, with statistics.</summary>
@@ -29,6 +31,9 @@ internal sealed class UserRecord
     public int ChatMessages { get; set; }
     /// <summary>Package 85: a server mute outlasts the session; applied on login before the Welcome.</summary>
     public bool ServerMuted { get; set; }
+    /// <summary>Package 166 (A168): when a timed server mute ends by itself; null lasts until lifted (and is not written).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? ServerMutedUntil { get; set; }
 
     /// <summary>How many earlier nicknames are kept.</summary>
     public const int MaxPreviousNicknames = 5;

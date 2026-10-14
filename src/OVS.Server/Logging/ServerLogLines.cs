@@ -263,7 +263,11 @@ static partial class ServerLogLines
     [LoggerMessage(EventId = 126, EventName = "Audit:Unbanned", Level = LogLevel.Information, Message = "Ban of {Nickname} lifted by {Moderator}")]
     public static partial void Unbanned(this ILogger logger, string nickname, string moderator);
 
-    /// <summary>Change is "server-muted" or "server-unmuted"; offline is empty, or " (offline)".</summary>
+    /// <summary>Package 166: a timed mute's time is over, also for an offline user.</summary>
+    [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} no longer server-muted, the time is over")]
+    public static partial void ServerMuteEnded(this ILogger logger, string nickname);
+
+    /// <summary>Change is "server-muted", "server-muted for N minutes" or "server-unmuted"; offline is empty, or " (offline)".</summary>
     [LoggerMessage(EventId = 127, EventName = "Audit:ServerMuteChanged", Level = LogLevel.Information, Message = "{Nickname} {Change} by {Moderator}{Offline}")]
     public static partial void ServerMuteChanged(this ILogger logger, string nickname, string change, string moderator, string offline);
 }

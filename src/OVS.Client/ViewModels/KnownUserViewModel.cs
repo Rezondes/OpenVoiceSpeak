@@ -58,6 +58,10 @@ internal sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnli
     public bool CanDelete { get; } = canDelete;
     /// <summary>Package 85: the stored server mute, applied again on every login.</summary>
     public bool IsServerMuted => Info.ServerMuted;
+
+    /// <summary>Package 166: the mute banner's text, with the end of a timed mute.</summary>
+    public string ServerMutedText => Info.ServerMutedUntil is { } until
+        ? TextFormat.Of(Strings.Ui_ServerMutedUntil, until.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)) : Strings.Ui_ServerMuted;
     /// <summary>The lift mute button shows.</summary>
     public bool CanLiftMute { get; } = canLiftMute;
     /// <summary>The card has any button.</summary>

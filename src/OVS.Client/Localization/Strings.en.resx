@@ -691,4 +691,12 @@
   <data name="Audit_Hint" xml:space="preserve"><value>Every change to groups, channels, members, bans and server settings, with who, what and when. Kept as long as the logs.</value></data>
   <data name="Audit_None" xml:space="preserve"><value>No entries found.</value></data>
   <data name="Audit_Partial" xml:space="preserve"><value>Only part of the entries: the search found too many or took too long.</value></data>
+  <data name="Ui_ServerMutedUntil" xml:space="preserve"><value>Server muted until {0}</value></data>
+  <data name="Mute_Title" xml:space="preserve"><value>Mute {0}</value></data>
+  <data name="Mute_FiveMinutes" xml:space="preserve"><value>5 minutes</value></data>
+  <data name="Mute_OwnMinutes" xml:space="preserve"><value>Own minutes</value></data>
+  <data name="Mute_Unlimited" xml:space="preserve"><value>Unlimited, until I lift it</value></data>
+  <data name="Mute_Minutes" xml:space="preserve"><value>Minutes</value></data>
+  <data name="Mute_Confirm" xml:space="preserve"><value>Mute</value></data>
+  <data name="Mute_Hint" xml:space="preserve"><value>The mute ends by itself after the duration, also while the user is offline. Chatting stays allowed.</value></data>
 </root>

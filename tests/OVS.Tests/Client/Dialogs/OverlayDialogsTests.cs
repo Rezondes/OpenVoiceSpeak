@@ -31,6 +31,7 @@ public sealed class OverlayDialogsTests
         { "PageFlow.EditKeyBinding", "KeyBinding" },
         { "Server.Confirm", "Confirm" },
         { "Server.Ban", "Ban" },
+        { "Server.Mute", "Mute" }, // Package 166
         { "Server.AskText", "Text" },
         { "Server.PickChannel", "ChannelPicker" },
         { "Server.AskChannelPassword", "ChannelPassword" },
@@ -95,6 +96,7 @@ public sealed class OverlayDialogsTests
         "PageFlow.EditKeyBinding" => dialogs.PageFlow.EditKeyBinding!(null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)),
         "Server.Confirm" => dialogs.Server.Confirm!("Wirklich?"),
         "Server.Ban" => dialogs.Server.Ban!("anna", true, null),
+        "Server.Mute" => dialogs.Server.Mute!("anna", null),
         "Server.AskText" => dialogs.Server.AskText!("Titel", "Text:", null),
         "Server.PickChannel" => dialogs.Server.PickChannel!("Verschieben nach", [], null),
         "Server.AskChannelPassword" => dialogs.Server.AskChannelPassword!("Raid"),

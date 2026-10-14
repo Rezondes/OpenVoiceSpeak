@@ -691,4 +691,12 @@
   <data name="Audit_Hint" xml:space="preserve"><value>Jede Änderung an Gruppen, Channels, Mitgliedern, Sperren und Servereinstellungen, mit wer, was und wann. So lange aufbewahrt wie die Logs.</value></data>
   <data name="Audit_None" xml:space="preserve"><value>Keine Einträge gefunden.</value></data>
   <data name="Audit_Partial" xml:space="preserve"><value>Nur ein Teil der Einträge: die Suche hat zu viele gefunden oder zu lange gebraucht.</value></data>
+  <data name="Ui_ServerMutedUntil" xml:space="preserve"><value>Vom Server stummgeschaltet bis {0}</value></data>
+  <data name="Mute_Title" xml:space="preserve"><value>{0} stummschalten</value></data>
+  <data name="Mute_FiveMinutes" xml:space="preserve"><value>5 Minuten</value></data>
+  <data name="Mute_OwnMinutes" xml:space="preserve"><value>Eigene Minuten</value></data>
+  <data name="Mute_Unlimited" xml:space="preserve"><value>Unbegrenzt, bis ich es aufhebe</value></data>
+  <data name="Mute_Minutes" xml:space="preserve"><value>Minuten</value></data>
+  <data name="Mute_Confirm" xml:space="preserve"><value>Stummschalten</value></data>
+  <data name="Mute_Hint" xml:space="preserve"><value>Die Stummschaltung endet nach der Dauer von selbst, auch wenn der Nutzer offline ist. Chatten bleibt erlaubt.</value></data>
 </root>

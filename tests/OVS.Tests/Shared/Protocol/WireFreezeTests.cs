@@ -79,8 +79,8 @@ public sealed class WireFreezeTests
         "setChannelLinks: add, remove, requestId",
         "setSelfState: deafened, muted, requestId",
         "setServerIcon: pngBase64, requestId",
-        "setServerMute: muted, requestId, sessionId",
-        "setStoredServerMute: fingerprint, muted, requestId",
+        "setServerMute: minutes, muted, requestId, sessionId",
+        "setStoredServerMute: fingerprint, minutes, muted, requestId",
         "unassignGroup: fingerprint, groupId, requestId",
         "unban: banId, requestId",
         "unlinkChannels: a, b, requestId",
@@ -104,14 +104,14 @@ public sealed class WireFreezeTests
         "BanInfo: blockedAttempts, createdAt, createdBy, createdByFingerprint, durationMinutes, expiresAt, fingerprint, id, ip, lastAttempt, lastAttemptIp, liftedAt, liftedBy, nickname, reason",
         "ChannelInfo: allowedGroupIds, bitrate, description, hasPassword, id, isMuted, kind, maxUsers, name, order",
         "GroupInfo: assignableByMe, id, name, permissions",
-        "KnownUserInfo: bans, canBeModeratedByMe, chatMessages, fingerprint, firstSeen, groupIds, isOnline, lastIp, lastLogin, lastNickname, loginCount, onlineTime, previousNicknames, serverMuted, sessionId, speechTime",
+        "KnownUserInfo: bans, canBeModeratedByMe, chatMessages, fingerprint, firstSeen, groupIds, isOnline, lastIp, lastLogin, lastNickname, loginCount, onlineTime, previousNicknames, serverMuted, serverMutedUntil, sessionId, speechTime",
         "LinkInfo: a, b",
         "LogFileInfo: channelId, channelName, id, kind, lastWrite, size, start",
         "LogHit: fileId, line, text",
         "ServerLimits: autoRestart, autoRestartTime, logDays, logRotateDaily, maxUsers",
         "ServerSettingsInfo: hasPassword, iconHash, limits, name, welcomeText",
         "ServerSnapshot: channels, defaultChannelId, groups, links, settings, users",
-        "UserInfo: canBeModeratedByMe, channelId, fingerprint, groupIds, nickname, permissions, selfDeafened, selfMuted, serverMuted, sessionId",
+        "UserInfo: canBeModeratedByMe, channelId, fingerprint, groupIds, nickname, permissions, selfDeafened, selfMuted, serverMuted, serverMutedUntil, sessionId",
     ];
 
     static readonly string[] CodeValues =

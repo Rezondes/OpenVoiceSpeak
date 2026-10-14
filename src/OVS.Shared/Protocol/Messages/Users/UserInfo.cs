@@ -12,7 +12,8 @@ namespace OVS.Shared.Protocol.Messages.Users;
 /// <param name="SelfDeafened">The user deafened themselves.</param>
 /// <param name="ServerMuted">A moderator muted the user at the server.</param>
 /// <param name="GroupIds">The user's groups.</param>
+/// <param name="ServerMutedUntil">Package 166: when a timed server mute ends by itself; null while it lasts until lifted.</param>
 public sealed record UserInfo(
     uint SessionId, string Fingerprint, string Nickname, Guid ChannelId,
     bool SelfMuted, bool SelfDeafened, bool ServerMuted,
-    Permission Permissions, IReadOnlyList<Guid> GroupIds, bool CanBeModeratedByMe = false);
+    Permission Permissions, IReadOnlyList<Guid> GroupIds, bool CanBeModeratedByMe = false, DateTimeOffset? ServerMutedUntil = null);

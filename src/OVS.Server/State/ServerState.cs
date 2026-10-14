@@ -82,6 +82,7 @@ internal sealed partial class ServerState
         if (data.Migrate(config) || pruned) store.Save(data);
         logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);
         HintIgnoredStartValues();
+        EndMutes(); // Package 166: an end that passed while the server was down, and the timer of the next
         if (!data.Users.Any(user => user.GroupIds.Contains(AdminGroupId)))
         {
             // The token is a secret: console only, never in a log file (files end up in backups).
@@ -381,7 +382,7 @@ internal sealed partial class ServerState
     /// <summary>Package 92 (A104): the own entry with its full rights; others without their rights, but with the recipient's flag.</summary>
     static UserInfo Info(Session session, Session to) =>
         new(session.Id, session.Fingerprint, session.Nickname, session.ChannelId, session.SelfMuted, session.SelfDeafened, session.ServerMuted,
-            session == to ? session.Permissions : Permission.None, session.GroupIds, Moderates(to, session));
+            session == to ? session.Permissions : Permission.None, session.GroupIds, Moderates(to, session), session.ServerMutedUntil);
 
     static ChannelInfo Info(ChannelRecord channel) =>
         new(channel.Id, channel.Name, channel.Description, channel.Order, channel.IsMuted, channel.MaxUsers, channel.AllowedGroupIds?.ToList(), channel.StoredPassword is not null, channel.Kind,

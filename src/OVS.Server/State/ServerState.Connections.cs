@@ -124,6 +124,7 @@ internal sealed partial class ServerState
                 GroupIds = user.GroupIds.ToList(),
                 Permissions = Effective(user.GroupIds, data.Groups),
                 ServerMuted = user.ServerMuted, // Package 85: set before the Welcome, so no voice slips through in between
+                ServerMutedUntil = user.ServerMutedUntil, // Package 166
             };
             sessions.Add(session.Id, session);
             voiceSessions[session.Id] = session;
@@ -170,6 +171,7 @@ internal sealed partial class ServerState
                 ChannelLogger(session.ChannelId)?.Left(session.Nickname, why);
             }
             logs.Server.AllDisconnected(why, sessions.Count);
+            muteEnd?.Dispose(); // Package 166: no mute ends after the close
             saves.Close(force: sessions.Count > 0); // the running sessions' statistics, or what is still pending
             sessions.Clear();
             voiceSessions.Clear();

@@ -48,6 +48,8 @@ internal sealed class Session(uint id, string fingerprint, string nickname, IPAd
     public bool SelfDeafened { get; set; }
     /// <summary>A moderator muted the user at the server.</summary>
     public bool ServerMuted { get; set; }
+    /// <summary>Package 166: when a timed server mute ends by itself.</summary>
+    public DateTimeOffset? ServerMutedUntil { get; set; }
     /// <summary>The user's rights, from the groups.</summary>
     public Permission Permissions { get; set; }
     /// <summary>The user's groups.</summary>

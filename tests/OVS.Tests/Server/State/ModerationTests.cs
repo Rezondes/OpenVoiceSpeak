@@ -696,4 +696,69 @@ public sealed class ModerationTests : IAsyncLifetime
         Assert.Equal("entbanner", Assert.Single(await BansAsync(moderator)).LiftedBy);
         Assert.IsType<Welcome>(await ReconnectGuestAsync());
     }
+
+    // ---- Package 166: timed server mutes ----
+
+    [Fact]
+    public async Task Mute_WithMinutes_LiftedAtEnd()
+    {
+        // online: the end comes with the mute, and at the end the mute goes by itself
+        await moderator.SendAsync(new SetSessionServerMute(guest.Id, true, 5));
+        var muted = (await admin.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == guest.Id && userUpdated.User.ServerMuted)).User;
+        Assert.Equal(time.GetUtcNow().AddMinutes(5), muted.ServerMutedUntil);
+        Assert.Equal(time.GetUtcNow().AddMinutes(5), StoredUser(guestId.Fingerprint).ServerMutedUntil);
+        time.Advance(TimeSpan.FromMinutes(4));
+        Assert.True((await UsersAsync(admin)).Single(knownUser => knownUser.Fingerprint == guestId.Fingerprint).ServerMuted);
+        time.Advance(TimeSpan.FromMinutes(1));
+        var lifted = (await admin.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == guest.Id && !userUpdated.User.ServerMuted)).User;
+        Assert.Null(lifted.ServerMutedUntil);
+
+        // offline: lifted and stored at the end, so the next login is not muted
+        await guest.DisposeAsync();
+        await admin.SendAsync(new SetKnownUserServerMute(guestId.Fingerprint, true, 60));
+        var offline = (await UsersAsync(admin)).Single(knownUser => knownUser.Fingerprint == guestId.Fingerprint); // answered after the mute
+        Assert.Equal((true, time.GetUtcNow().AddMinutes(60)), (offline.ServerMuted, offline.ServerMutedUntil));
+        time.Advance(TimeSpan.FromMinutes(60));
+        time.Advance(ServerTuningSaveDelay); // the debounced save of the lifted mute
+        await AsyncWait.UntilAsync(() => !StoredUser(guestId.Fingerprint).ServerMuted);
+        Assert.Null(StoredUser(guestId.Fingerprint).ServerMutedUntil);
+        guest = await TestClient.ConnectAsync(server, "gast", guestId);
+        Assert.False(guest.Welcome.Snapshot.Users.Single(user => user.SessionId == guest.Id).ServerMuted);
+    }
+
+    [Fact]
+    public async Task Mute_EndPassedWhileDown_LiftedAtStart()
+    {
+        await moderator.SendAsync(new SetSessionServerMute(guest.Id, true, 5));
+        await admin.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == guest.Id && userUpdated.User.ServerMuted);
+        foreach (var client in new[] { admin, moderator, guest }) await client.DisposeAsync();
+        server = await server.RestartAsync(time);
+        Assert.NotNull(StoredUser(guestId.Fingerprint).ServerMutedUntil); // a restart before the end keeps it
+
+        foreach (var client in new[] { admin, moderator, guest }) await client.DisposeAsync();
+        time.Advance(TimeSpan.FromMinutes(10)); // the server is down when the end passes
+        server = await server.RestartAsync(time);
+        admin = await TestClient.ConnectAsync(server, "admin", adminId);
+        moderator = await TestClient.ConnectAsync(server, "mod", modId);
+        guest = await TestClient.ConnectAsync(server, "gast", guestId);
+        Assert.False(guest.Welcome.Snapshot.Users.Single(user => user.SessionId == guest.Id).ServerMuted);
+        Assert.False((await UsersAsync(admin)).Single(knownUser => knownUser.Fingerprint == guestId.Fingerprint).ServerMuted);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    [InlineData(28 * 24 * 60 + 1)]
+    public async Task Mute_DurationOutOfRange_Refused(int minutes)
+    {
+        await moderator.SendAsync(new SetSessionServerMute(guest.Id, true, minutes) { RequestId = "m" });
+        Assert.Equal(ReasonCodes.InvalidValue, (await moderator.ErrorAsync("m")).Code);
+        await moderator.SendAsync(new SetKnownUserServerMute(guestId.Fingerprint, true, minutes) { RequestId = "k" });
+        Assert.Equal(ReasonCodes.InvalidValue, (await moderator.ErrorAsync("k")).Code);
+        Assert.False((await UsersAsync(admin)).Single(knownUser => knownUser.Fingerprint == guestId.Fingerprint).ServerMuted);
+        await moderator.SendAsync(new SetSessionServerMute(guest.Id, true, 28 * 24 * 60)); // 28 days is the longest
+        await admin.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == guest.Id && userUpdated.User.ServerMuted);
+    }
+
+    static readonly TimeSpan ServerTuningSaveDelay = OVS.Server.ServerTuning.SaveDelay;
 }

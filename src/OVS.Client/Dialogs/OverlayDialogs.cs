@@ -42,6 +42,7 @@ internal static class OverlayDialogs
         PickChannel = (title, channels, submit) => ChannelPickerDialog.ShowAsync(overlay, title, channels, submit),
         AskText = (title, prompt, submit) => TextDialog.ShowAsync(overlay, title, prompt, submit),
         Ban = (nickname, ipKnown, submit) => BanDialog.ShowAsync(overlay, nickname, ipKnown, submit),
+        Mute = (nickname, submit) => MuteDialog.ShowAsync(overlay, nickname, submit), // Package 166
         Confirm = text => ConfirmDialog.ShowAsync(overlay, text),
         AskChannelPassword = name => ChannelPasswordDialog.ShowAsync(overlay, name), // Package 94
     };

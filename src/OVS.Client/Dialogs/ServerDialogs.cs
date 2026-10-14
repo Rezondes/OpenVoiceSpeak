@@ -20,6 +20,8 @@ internal sealed record ServerDialogs
     public Func<string, string, Func<string, PendingActionViewModel>?, Task<string?>>? AskText { get; init; }
     /// <summary>Nickname, and whether an IP is known to ban as well (Package 72: not for every offline user).</summary>
     public Func<string, bool, Func<BanChoice, PendingActionViewModel>?, Task<BanChoice?>>? Ban { get; init; }
+    /// <summary>Package 166: how long a server mute lasts (nickname, sending).</summary>
+    public Func<string, Func<MuteChoice, PendingActionViewModel>?, Task<MuteChoice?>>? Mute { get; init; }
     /// <summary>Asks a yes or no question.</summary>
     public Func<string, Task<bool>>? Confirm { get; init; }
 }

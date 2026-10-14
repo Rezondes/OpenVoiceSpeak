@@ -20,4 +20,11 @@ internal static class Formats
 
     /// <summary>The time of day as hours and minutes, as chat lines and notices show it.</summary>
     public static string ClockTime(DateTime time) => time.ToString("HH:mm", CultureInfo.CurrentCulture);
+
+    /// <summary>Package 166: a coming moment as the time of day when it is today, otherwise with its date.</summary>
+    public static string Moment(DateTimeOffset at, DateTimeOffset now)
+    {
+        var local = at.ToOffset(now.Offset);
+        return local.Date == now.Date ? ClockTime(local.DateTime) : local.ToString("g", CultureInfo.CurrentCulture);
+    }
 }

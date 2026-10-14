@@ -9588,12 +9588,12 @@ Package 85 stores a server mute on the user record and keeps it over reconnects;
 
 ### Acceptance Criteria
 
-- [ ] AC1: Muting asks for the duration (5 Min, 1 Std, 1 Tag, eigene Minuten, unbegrenzt); the server stores the end.
-- [ ] AC2: At the end the mute is lifted on the server, stored and broadcast, also when the user is offline (then not muted at the next login).
-- [ ] AC3: A restart in between keeps the end; an end that passed while the server was down is lifted at start.
-- [ ] AC4: Card and channel tree show "Server-stumm bis 14:05" ("Server muted until 14:05").
-- [ ] AC5: A duration outside 1 minute to 28 days is refused with `InvalidValue`.
-- [ ] AC6: The protocol version is raised; an older client is refused as before.
+- [x] AC1: Muting asks for the duration (5 Min, 1 Std, 1 Tag, eigene Minuten, unbegrenzt); the server stores the end.
+- [x] AC2: At the end the mute is lifted on the server, stored and broadcast, also when the user is offline (then not muted at the next login).
+- [x] AC3: A restart in between keeps the end; an end that passed while the server was down is lifted at start.
+- [x] AC4: Card and channel tree show "Server-stumm bis 14:05" ("Server muted until 14:05").
+- [x] AC5: A duration outside 1 minute to 28 days is refused with `InvalidValue`.
+- [x] AC6: The protocol version is raised; an older client is refused as before.
 
 ### Tests (TDD)
 
@@ -9602,6 +9602,8 @@ Package 85 stores a server mute on the user record and keeps it over reconnects;
 3. `ModerationTests > "Mute_DurationOutOfRange_Refused"` (AC5)
 4. `KnownUserViewModelTests > "Muted_WithEnd_TextShowsTime"` (AC4)
 5. `WireFreezeTests`, `SmokeTests` (AC6)
+
+(as built: the end is stored on the user record (`ServerMutedUntil`, written only while set, so older data files stay as they were) and sent in `UserInfo` and `KnownUserInfo`; one timer on the injected clock waits for the earliest end, lifts every mute that is over, broadcasts it, saves with the debounced save (a file that cannot be written is tried again from the timer) and sets itself to the next end; the start runs the same, so an end that passed while the server was down is lifted then. The log says "server-muted for N minutes" and "no longer server-muted, the time is over". Muting from the channel tree asks with the new `MuteDialog`; lifting acts at once, as before. The card shows the end with its date, the tree's tooltip only the time of day when the end is today (`Formats.Moment`). The protocol version is 17.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

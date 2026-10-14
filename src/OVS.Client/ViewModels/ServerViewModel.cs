@@ -463,10 +463,13 @@ internal sealed partial class ServerViewModel : ObservableObject
     public PendingActionViewModel Ban(uint sessionId, BanChoice choice) =>
         SendConfirmed(new BanSession(sessionId, choice.Reason, choice.DurationMinutes, choice.IncludeIp), message => message is UserLeft userLeft && userLeft.SessionId == sessionId, notify: false);
     /// <summary>Mutes or unmutes a user at the server; the mark ends with their update.</summary>
-    public PendingActionViewModel ServerMute(uint sessionId, bool muted)
+    /// <param name="sessionId">The user's session.</param>
+    /// <param name="muted">Muted or not.</param>
+    /// <param name="minutes">Package 166: the mute ends by itself after this many minutes; null lasts until lifted.</param>
+    public PendingActionViewModel ServerMute(uint sessionId, bool muted, int? minutes = null)
     {
         var row = Tree.FindUser(sessionId);
-        return SendConfirmed(new SetSessionServerMute(sessionId, muted), message => message is UserUpdated userUpdated && userUpdated.User.SessionId == sessionId && userUpdated.User.ServerMuted == muted,
+        return SendConfirmed(new SetSessionServerMute(sessionId, muted, minutes), message => message is UserUpdated userUpdated && userUpdated.User.SessionId == sessionId && userUpdated.User.ServerMuted == muted,
             busy: on => row?.IsBusy = on);
     }
 

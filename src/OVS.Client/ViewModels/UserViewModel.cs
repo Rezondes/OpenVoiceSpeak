@@ -28,6 +28,8 @@ internal sealed partial class UserViewModel(ServerViewModel owner, uint sessionI
     [NotifyPropertyChangedFor(nameof(CanAdjustVolume))]
     bool isSelf;
     [ObservableProperty] bool serverMuted;
+    /// <summary>Package 166: "Vom Server stummgeschaltet", with the end of a timed mute.</summary>
+    [ObservableProperty] string serverMutedText = Strings.Ui_ServerMuted;
     [ObservableProperty] bool isDeafened;
     [ObservableProperty] bool isSelfMutedOnly;
     [ObservableProperty] bool isSpeaking;
@@ -102,6 +104,7 @@ internal sealed partial class UserViewModel(ServerViewModel owner, uint sessionI
         ChannelId = info.ChannelId;
         IsSelf = isSelf;
         ServerMuted = info.ServerMuted;
+        ServerMutedText = info.ServerMutedUntil is { } until ? TextFormat.Of(Strings.Ui_ServerMutedUntil, Formats.Moment(until, owner.Time.GetLocalNow())) : Strings.Ui_ServerMuted;
         IsDeafened = info.SelfDeafened;
         // Deafened implies muted and a server mute has its own icon, so the plain mic-off icon only shows for a mute on its own.
         IsSelfMutedOnly = info.SelfMuted && !info.SelfDeafened && !info.ServerMuted;
@@ -178,8 +181,13 @@ internal sealed partial class UserViewModel(ServerViewModel owner, uint sessionI
     [RelayCommand]
     Task ToggleServerMuteAsync()
     {
-        owner.ServerMute(SessionId, !ServerMuted);
-        return Task.CompletedTask;
+        // Package 166: muting asks how long; lifting and a page without dialogs (tests) act at once
+        if (ServerMuted || owner.Dialogs.Mute is not { } ask)
+        {
+            owner.ServerMute(SessionId, !ServerMuted);
+            return Task.CompletedTask;
+        }
+        return ServerViewModel.AskAsync<MuteChoice>(submit => ask(Nickname, submit), choice => owner.ServerMute(SessionId, true, choice.Minutes));
     }
 
     [RelayCommand]

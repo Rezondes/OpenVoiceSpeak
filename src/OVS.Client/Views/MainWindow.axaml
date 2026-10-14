@@ -321,7 +321,7 @@
                                 <PathIcon anim:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsLocallyMuted}"
                                           ToolTip.Tip="{Binding VolumeText}" />
                                 <PathIcon anim:LiveMotion.Pop="True" Classes="sm danger" Data="{StaticResource Icon.SpeakerMute}" IsVisible="{Binding ServerMuted}"
-                                          ToolTip.Tip="{x:Static l:Strings.Ui_ServerMuted}" />
+                                          ToolTip.Tip="{Binding ServerMutedText}" />
                                 <PathIcon anim:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.SpeakerOff}" IsVisible="{Binding IsDeafened}"
                                           ToolTip.Tip="{x:Static l:Strings.Ui_Deafen}" />
                                 <PathIcon anim:LiveMotion.Pop="True" Classes="sm muted" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsSelfMutedOnly}"

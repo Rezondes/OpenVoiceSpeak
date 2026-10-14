@@ -103,29 +103,84 @@ internal sealed partial class ServerState
 
     void OnSetSessionServerMute(Session session, SetSessionServerMute request)
     {
-        if (!Require(session, request, Permission.UserMute) || !FindTarget(session, request, request.SessionId, out var target)) return;
-        SetServerMuted(session, FindUser(target.Fingerprint), target, target.Nickname, request.Muted);
+        if (!Require(session, request, Permission.UserMute) || Refuse(session, request, ModerationRule.CheckMuteMinutes(request.Minutes))
+            || !FindTarget(session, request, request.SessionId, out var target)) return;
+        SetServerMuted(session, FindUser(target.Fingerprint), target, target.Nickname, request.Muted, request.Minutes);
     }
 
     /// <summary>Package 85: the same by fingerprint, for offline users too (the user card).</summary>
     void OnSetKnownUserServerMute(Session session, SetKnownUserServerMute request)
     {
-        if (!Require(session, request, Permission.UserMute) || !FindKnownTarget(session, request, request.Fingerprint, out var user, out var online)) return;
-        SetServerMuted(session, user, online, online?.Nickname ?? user.LastNickname, request.Muted);
+        if (!Require(session, request, Permission.UserMute) || Refuse(session, request, ModerationRule.CheckMuteMinutes(request.Minutes))
+            || !FindKnownTarget(session, request, request.Fingerprint, out var user, out var online)) return;
+        SetServerMuted(session, user, online, online?.Nickname ?? user.LastNickname, request.Muted, request.Minutes);
     }
 
     /// <summary>Package 85: stored on the record so the next login starts muted; a running session follows at once.</summary>
-    void SetServerMuted(Session session, UserRecord? user, Session? online, string nickname, bool muted)
+    /// <param name="session">Who mutes or unmutes.</param>
+    /// <param name="user">The stored user, null when none.</param>
+    /// <param name="online">The user's running session, null when offline.</param>
+    /// <param name="nickname">The user's name for the log.</param>
+    /// <param name="muted">Muted or not.</param>
+    /// <param name="minutes">Package 166: a timed mute ends by itself after this many minutes; null lasts until lifted.</param>
+    void SetServerMuted(Session session, UserRecord? user, Session? online, string nickname, bool muted, int? minutes = null)
     {
-        if (user is not null && user.ServerMuted != muted)
+        DateTimeOffset? until = muted && minutes is { } length ? time.GetUtcNow().AddMinutes(length) : null;
+        if (user is not null && (user.ServerMuted != muted || user.ServerMutedUntil != until))
         {
             user.ServerMuted = muted;
+            user.ServerMutedUntil = until;
             saves.Persist();
+            ScheduleMuteEnd();
         }
-        logs.Server.ServerMuteChanged(nickname, muted ? "server-muted" : "server-unmuted", session.Nickname, online is null ? " (offline)" : "");
+        var change = !muted ? "server-unmuted" : minutes is { } timed ? $"server-muted for {timed} minutes" : "server-muted";
+        logs.Server.ServerMuteChanged(nickname, change, session.Nickname, online is null ? " (offline)" : "");
         if (online is null) return;
         online.ServerMuted = muted;
+        online.ServerMutedUntil = until;
         BroadcastUser(online);
+    }
+
+    /// <summary>Package 166: the timer of the next timed mute's end, on the injected clock.</summary>
+    ITimer? muteEnd;
+
+    /// <summary>Package 166: sets the timer to the earliest end of a timed mute, or stops it when there is none.</summary>
+    void ScheduleMuteEnd()
+    {
+        var next = data.Users.Where(user => user.ServerMutedUntil is not null).Min(user => user.ServerMutedUntil);
+        if (next is not { } end)
+        {
+            muteEnd?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            return;
+        }
+        muteEnd ??= time.CreateTimer(_ =>
+        {
+            lock (gate) EndMutes();
+        }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        var due = end - time.GetUtcNow();
+        muteEnd.Change(due > TimeSpan.Zero ? due : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>
+    /// Package 166: lifts every timed mute whose end has come, online or offline, stores and broadcasts it; also at start for
+    /// an end that passed while the server was down. Then sets the timer to the next end.
+    /// </summary>
+    void EndMutes()
+    {
+        var now = time.GetUtcNow();
+        var ended = data.Users.Where(user => user.ServerMutedUntil <= now).ToList();
+        foreach (var user in ended)
+        {
+            user.ServerMuted = false;
+            user.ServerMutedUntil = null;
+            logs.Server.ServerMuteEnded(user.LastNickname);
+            if (sessions.Values.FirstOrDefault(session => session.Fingerprint == user.Fingerprint) is not { } online) continue;
+            online.ServerMuted = false;
+            online.ServerMutedUntil = null;
+            BroadcastUser(online);
+        }
+        if (ended.Count > 0) saves.PersistSoon(); // from the timer too: a file that cannot be written is tried again, never thrown
+        ScheduleMuteEnd();
     }
 
     /// <summary>Package 80: active bans and the history; the client filters. Package 87: one page, the client asks for the rest.</summary>

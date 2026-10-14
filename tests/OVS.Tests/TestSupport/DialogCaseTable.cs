@@ -56,6 +56,9 @@ static class DialogCaseTable
         // no channel: nothing to select, so the plain "OK"
         new("ChannelPicker", typeof(ChannelPickerDialog), overlayHost => AcceptedAsync(ChannelPickerDialog.ShowAsync(overlayHost, "Verschieben nach", []), channel => channel is not null),
             () => [Strings.Dlg_Cancel, "OK"], Red: false, EnterAccepts: null),
+        // Package 166: an hour, chosen from the start
+        new("Mute", typeof(MuteDialog), overlayHost => AcceptedAsync(MuteDialog.ShowAsync(overlayHost, "anna"), choice => choice?.Minutes == 60),
+            () => [Strings.Dlg_Cancel, Strings.Mute_Confirm], Red: true, EnterAccepts: null),
         // Package 163: one saved server, chosen from the start
         new("QuickSwitcher", typeof(QuickSwitcherDialog), overlayHost => AcceptedAsync(QuickSwitcherDialog.ShowAsync(overlayHost,
                 new QuickSwitcherViewModel([], [new Bookmark("Gilde", "h", 7000, "ich")], _ => Task.CompletedTask)), hit => hit is not null),

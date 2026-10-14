@@ -438,9 +438,11 @@ public sealed class MotionCoverageTests
         yield return new("someone joins", walk => walk.Server.Apply(new UserJoined(Bert(FakeServers.Lobby))));
         foreach (var step in Menu("a user's menu", walk => Row(walk, value => value is UserViewModel { Nickname: "bert" }))) yield return step;
         yield return new("move a user", walk => walk.Server.Apply(new UserUpdated(Bert(FakeServers.Raid))));
+        // Package 166: muting asks how long first; the walk sends the answer itself
+        foreach (var step in Dialog("mute", walk => _ = User(walk, "bert").ToggleServerMuteCommand.ExecuteAsync(null))) yield return step;
         yield return new("mute a user", walk =>
         {
-            User(walk, "bert").ToggleServerMuteCommand.Execute(null);
+            walk.Server.ServerMute(3, true, 60);
             walk.Server.Apply(new UserUpdated(Bert(FakeServers.Raid, serverMuted: true)));
         });
         yield return new("lift a user's mute", walk =>
