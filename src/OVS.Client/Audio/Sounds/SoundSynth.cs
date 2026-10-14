@@ -49,6 +49,21 @@ internal static class SoundSynth
 
     static readonly Dictionary<SoundEvent, float[]> Cache = [];
 
+    /// <summary>Package 159: the speaker test, one second of a soft 440 Hz tone with short fades.</summary>
+    public static float[] TestTone { get; } = RenderTestTone();
+
+    static float[] RenderTestTone()
+    {
+        int count = AudioFormat.SampleRate;
+        var samples = new float[count];
+        for (int index = 0; index < count; index++)
+        {
+            float envelope = Math.Min(1f, Math.Min(index, count - 1 - index) / (float)FadeSamples);
+            samples[index] = Amplitude * envelope * MathF.Sin(2 * MathF.PI * 440 * index / AudioFormat.SampleRate);
+        }
+        return samples;
+    }
+
     /// <summary>48 kHz mono samples, rendered once per event.</summary>
     public static float[] Render(SoundEvent sound)
     {

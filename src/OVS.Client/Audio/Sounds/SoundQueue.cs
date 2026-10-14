@@ -43,6 +43,13 @@ internal sealed class SoundQueue
         for (int index = 0; index < frame.Length; index++) frame[index] = Math.Clamp(frame[index], -1f, 1f);
     }
 
+    /// <summary>Package 159: starts samples anew, stopping the same samples if they still play, so a sound never overlaps itself.</summary>
+    public void Restart(float[] samples, float gain)
+    {
+        lock (playing) playing.RemoveAll(tone => ReferenceEquals(tone.Samples, samples));
+        Add(samples, gain);
+    }
+
     /// <summary>Stops every sound.</summary>
     public void Clear()
     {

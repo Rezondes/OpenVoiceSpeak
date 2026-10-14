@@ -125,4 +125,50 @@ public class SoundTests
         await PressAndReleaseAsync(KeyAction.PushToTalk, 4);
         Assert.Equal(4, engine.Sounds.Recent.Count);
     }
+    /// <summary>Package 159: a speaker test player on a queue, with all sounds off and deafened, so only the test can play.</summary>
+    static SoundPlayer TestPlayer(SoundQueue queue, Action woken) =>
+        new(queue, () => new ClientSettings { SoundsEnabled = false }, () => true, woken);
+
+    /// <summary>Package 159: the test plays one second of its tone at the output volume and wakes the playback.</summary>
+    [Fact]
+    public void SpeakerTest_Played_OneSecondAtVolume()
+    {
+        var queue = new SoundQueue();
+        int woken = 0;
+        TestPlayer(queue, () => woken++).PlayTest(0.5f);
+        Assert.Equal((1, 1), (queue.Count, woken));
+        Assert.Equal(AudioFormat.SampleRate, SoundSynth.TestTone.Length);
+        var frame = new float[2 * AudioFormat.SampleRate];
+        queue.MixInto(frame);
+        Assert.Equal(SoundSynth.TestTone.Max(Math.Abs) * 0.5f, frame.Max(Math.Abs), 4);
+        Assert.Equal(0, queue.Count); // one second, then it ends
+    }
+
+    /// <summary>Package 159: a second test while one plays starts it anew instead of a second tone on top.</summary>
+    [Fact]
+    public void SpeakerTest_Twice_NoOverlap()
+    {
+        var queue = new SoundQueue();
+        var player = TestPlayer(queue, () => { });
+        player.PlayTest(1f);
+        queue.MixInto(new float[200]);
+        player.PlayTest(1f);
+        Assert.Equal(1, queue.Count);
+        var frame = new float[2];
+        queue.MixInto(frame);
+        Assert.Equal(SoundSynth.TestTone[0], frame[0]); // from its start again
+    }
+
+    /// <summary>Package 159: all sounds off and deafened do not silence the test, which is no notification.</summary>
+    [Fact]
+    public void SpeakerTest_AllSoundsOff_StillPlays()
+    {
+        var queue = new SoundQueue();
+        var player = TestPlayer(queue, () => { });
+        player.Play(SoundEvent.PrivateMessage); // a notification: silent
+        Assert.Equal(0, queue.Count);
+        player.PlayTest(0.8f);
+        Assert.Equal(1, queue.Count);
+    }
+
 }

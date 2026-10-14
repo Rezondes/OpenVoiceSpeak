@@ -69,13 +69,23 @@
                   </StackPanel>
                   <StackPanel Spacing="4">
                     <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Speaker}" />
-                    <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding SelectedOutput}" HorizontalAlignment="Stretch">
-                      <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="m:AudioDeviceOption">
-                          <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                        </DataTemplate>
-                      </ComboBox.ItemTemplate>
-                    </ComboBox>
+                    <!-- Package 159: a test tone on the chosen speaker, without connecting -->
+                    <DockPanel>
+                      <Button Name="TestSpeakerButton" DockPanel.Dock="Right" Margin="8,0,0,0" Command="{Binding TestSpeakerNowCommand}"
+                              ToolTip.Tip="{Binding TestSpeakerTip}" ToolTip.ShowOnDisabled="True">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <PathIcon Classes="sm" Data="{StaticResource Icon.Speaker}" />
+                          <TextBlock Text="{x:Static l:Strings.Ui_TestSpeaker}" />
+                        </StackPanel>
+                      </Button>
+                      <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding SelectedOutput}" HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="m:AudioDeviceOption">
+                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </DockPanel>
                   </StackPanel>
                   <Border Classes="banner warning" IsVisible="{Binding DeviceHint, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <DockPanel>

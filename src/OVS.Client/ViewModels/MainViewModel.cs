@@ -95,7 +95,7 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         PageFlow = new PageFlowViewModel(time: time, post: post, settings: () => Settings, knownDevices: () => Devices.Known,
             refreshDevices: () => Devices.RefreshAsync(), captureChord: keys.CaptureNextChordAsync, setKeyBindings: bindings => keys.Bindings = bindings,
             dialogs: () => Dialogs.PageFlow, adminDialogs: () => Dialogs.Admin, checkNow: Update.CheckAsync, importSound: (path, sound) => SoundImport.Prepare(path, storageDir, sound),
-            previewSound: audio.Sounds.Preview, applyLive: audio.ApplyLive, showAppearance: appearance => Appearance = appearance,
+            previewSound: audio.Sounds.Preview, testSpeaker: audio.Sounds.PlayTest, applyLive: audio.ApplyLive, showAppearance: appearance => Appearance = appearance,
             setSelfTest: SelfTest.SetAsync, applySaved: ApplySettingsAsync,
             startLevelMeter: handler =>
             {

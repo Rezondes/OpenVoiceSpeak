@@ -1793,6 +1793,34 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Close();
     }
 
+    /// <summary>Package 159: without an output device the speaker test is off and its tooltip says why; with one it plays.</summary>
+    [AvaloniaFact]
+    public void SpeakerTest_NoDevice_Off()
+    {
+        var settings = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System);
+        var played = new List<float>();
+        settings.TestSpeaker = played.Add;
+        var window = new Window { Width = 1100, Height = 800, Content = new SettingsView { DataContext = settings } };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            var button = window.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Name == "TestSpeakerButton");
+            Assert.False(button.IsEffectivelyEnabled);
+            Assert.Equal(Strings.Ui_TestSpeakerNoDevice, ToolTip.GetTip(button));
+            settings.ShowDevices([], [new OVS.Client.Audio.Devices.AudioDevice("box", "Lautsprecher")]);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(button.IsEffectivelyEnabled);
+            settings.OutputVolumePercent = 50;
+            button.Command!.Execute(null);
+            Assert.Equal([0.5f], played);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     sealed record ChannelDialogLook(string Title, List<string?> Buttons, string? Name, bool? Muted, decimal? Slots, bool SlotsEnabled);
 
     sealed record WaitingScene(MainWindow Main, MainViewModel Vm, ServerViewModel Server, List<Request> Sent, ManualTimeProvider Time);

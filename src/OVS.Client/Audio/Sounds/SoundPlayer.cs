@@ -58,6 +58,16 @@ internal sealed class SoundPlayer(SoundQueue queue, Func<ClientSettings> setting
     /// </summary>
     public void Preview(SoundEvent sound, SoundSetting setting, float overall) => Add(SamplesOf(sound, setting), Loudness(overall, setting));
 
+    /// <summary>
+    /// Package 159: the speaker test at the given output volume, also with all sounds off (it is no notification) and
+    /// while deafened; a second test while one plays starts it anew.
+    /// </summary>
+    public void PlayTest(float volume)
+    {
+        queue.Restart(SoundSynth.TestTone, volume);
+        wakePlayback();
+    }
+
     float[] SamplesOf(SoundEvent sound, SoundSetting setting) => samples is null ? SoundSynth.Render(sound) : samples(sound, setting);
 
     void Add(float[] tone, float gain)

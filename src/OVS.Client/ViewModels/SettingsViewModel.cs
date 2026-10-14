@@ -119,6 +119,26 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
 
     internal SoundImportResult Import(string path, SoundEvent sound) => ImportSound?.Invoke(path, sound) ?? new SoundImportResult(null, null);
 
+    /// <summary>Package 159: plays the speaker test at the given output volume, on the speaker the page previews.</summary>
+    public Action<float>? TestSpeaker { get; set; }
+
+    /// <summary>Package 159: an output device is there to test (the list is loaded and holds one).</summary>
+    public bool CanTestSpeaker => Outputs.Count > 1;
+
+    /// <summary>Package 159: what the test does, or why it is off.</summary>
+    public string TestSpeakerTip => CanTestSpeaker ? Strings.Ui_TestSpeakerHint : Strings.Ui_TestSpeakerNoDevice;
+
+    /// <summary>"Testen": the test tone at the volume the page shows now.</summary>
+    [RelayCommand(CanExecute = nameof(CanTestSpeaker))]
+    void TestSpeakerNow() => TestSpeaker?.Invoke((float)(OutputVolumePercent / 100));
+
+    partial void OnOutputsChanged(IReadOnlyList<AudioDeviceOption> value)
+    {
+        OnPropertyChanged(nameof(CanTestSpeaker));
+        OnPropertyChanged(nameof(TestSpeakerTip));
+        TestSpeakerNowCommand.NotifyCanExecuteChanged();
+    }
+
     /// <summary>Package 43: "Nach Updates suchen"; the answer is shown under the button.</summary>
     public Func<Task<string>>? CheckNow { get; set; }
 

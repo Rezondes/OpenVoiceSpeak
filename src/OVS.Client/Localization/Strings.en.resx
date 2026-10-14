@@ -658,4 +658,7 @@
   <data name="Ui_MoreActions" xml:space="preserve"><value>More actions</value></data>
   <data name="Settings_Search" xml:space="preserve"><value>Search settings</value></data>
   <data name="Settings_SearchNone" xml:space="preserve"><value>No setting found</value></data>
+  <data name="Ui_TestSpeaker" xml:space="preserve"><value>Test</value></data>
+  <data name="Ui_TestSpeakerHint" xml:space="preserve"><value>Plays a tone for one second on this speaker, at the set volume.</value></data>
+  <data name="Ui_TestSpeakerNoDevice" xml:space="preserve"><value>No output device found.</value></data>
 </root>

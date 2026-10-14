@@ -9246,17 +9246,19 @@ The settings preview the chosen devices (`DeviceList`, `EngineSync.ConfigureAsyn
 
 ### Acceptance Criteria
 
-- [ ] AC1: "Testen" ("Test") plays a 1 s tone on the chosen speaker at the set output volume, also before saving.
-- [ ] AC2: A second click while it plays restarts it, it never overlaps.
-- [ ] AC3: With all sounds off (Package 47) the test still plays (it is no notification).
-- [ ] AC4: Without an output device the button is off with a tooltip that says why.
+- [x] AC1: "Testen" ("Test") plays a 1 s tone on the chosen speaker at the set output volume, also before saving.
+- [x] AC2: A second click while it plays restarts it, it never overlaps.
+- [x] AC3: With all sounds off (Package 47) the test still plays (it is no notification).
+- [x] AC4: Without an output device the button is off with a tooltip that says why.
 
 ### Tests (TDD)
 
-1. `SoundTests > "SpeakerTest_PlaysOnChosenDeviceAtVolume"` (AC1): the fake hardware's output gets 1 s of the tone, scaled by the volume.
+1. `SoundTests > "SpeakerTest_Played_OneSecondAtVolume"` (AC1): the fake hardware's output gets 1 s of the tone, scaled by the volume.
 2. `SoundTests > "SpeakerTest_Twice_NoOverlap"` (AC2)
 3. `SoundTests > "SpeakerTest_AllSoundsOff_StillPlays"` (AC3)
 4. `UiSmokeTests > "SpeakerTest_NoDevice_Off"` (AC4)
+
+(as built: `SoundSynth.TestTone` is one second of a soft 440 Hz tone; `SoundPlayer.PlayTest` puts it into the tone queue through the new `SoundQueue.Restart`, which stops the same samples first, and wakes the playback loop, whatever the sounds' switches and the deafened state say. The settings get it as `TestSpeaker` through `PageFlowViewModel`; `TestSpeakerNowCommand` plays at the page's output volume and is off while the device list holds no output (`CanTestSpeaker`), with `TestSpeakerTip` saying why. The tone goes to the speaker the engine has open, which the page previews (Package 52). Manual check: a real speaker change while the page is open.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

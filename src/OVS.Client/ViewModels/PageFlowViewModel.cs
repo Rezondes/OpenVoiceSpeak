@@ -28,6 +28,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     readonly Func<Task<string>> checkNow;
     readonly Func<string, SoundEvent, SoundImportResult> importSound;
     readonly Action<SoundEvent, SoundSetting, float> previewSound;
+    readonly Action<float> testSpeaker;
     readonly Action<ClientSettings> applyLive;
     readonly Action<BackgroundAppearance> showAppearance;
     readonly Func<bool, Task> setSelfTest;
@@ -68,12 +69,13 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     /// <param name="stopLevelMeter">Removes that handler and closes the meter.</param>
     /// <param name="readThresholdDb">The voice activation threshold in use, read with each level (Package 129).</param>
     /// <param name="shownServer">The server view model now shown; the administration needs one.</param>
+    /// <param name="testSpeaker">Package 159: plays the speaker test at a volume.</param>
     internal PageFlowViewModel(TimeProvider time, Action<Action> post, Func<ClientSettings> settings, Func<ActiveDevices?> knownDevices,
         Action refreshDevices, Func<Task<KeyChord>> captureChord, Action<IReadOnlyList<KeyBinding>> setKeyBindings, Func<PageFlowDialogs> dialogs, Func<AdminDialogs> adminDialogs,
         Func<Task<string>> checkNow, Func<string, SoundEvent, SoundImportResult> importSound,
         Action<SoundEvent, SoundSetting, float> previewSound, Action<ClientSettings> applyLive, Action<BackgroundAppearance> showAppearance,
         Func<bool, Task> setSelfTest, Func<ClientSettings, Task> applySaved, Action<Action<float>> startLevelMeter,
-        Action<Action<float>> stopLevelMeter, Func<float> readThresholdDb, Func<ServerViewModel?> shownServer)
+        Action<Action<float>> stopLevelMeter, Func<float> readThresholdDb, Func<ServerViewModel?> shownServer, Action<float>? testSpeaker = null)
     {
         this.time = time;
         this.post = post;
@@ -95,6 +97,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
         this.stopLevelMeter = stopLevelMeter;
         this.readThresholdDb = readThresholdDb;
         this.shownServer = shownServer;
+        this.testSpeaker = testSpeaker ?? (_ => { });
     }
 
     public bool IsHomePage => Page == Page.Home;
@@ -119,6 +122,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
             CheckNow = checkNow,
             ImportSound = importSound,
             PreviewSound = previewSound,
+            TestSpeaker = testSpeaker, // Package 159
             LivePreview = live => // Package 53, 61, 121
             {
                 applyLive(live);
