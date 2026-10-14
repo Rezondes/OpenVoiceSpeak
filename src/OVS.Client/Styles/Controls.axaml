@@ -5,7 +5,8 @@
   (Package 99); everything the animated display adds lives in Motion.axaml.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="using:OVS.Client.Localization">
 
   <!-- ===== Width steps (Package 68, A93): classes set on the window by Responsive ===== -->
   <!-- Only below 700 px window width, e.g. the button that opens the sidebar drawer -->
@@ -443,6 +444,104 @@
   </Style>
   <Style Selector="Window.narrow TabItem">
     <Setter Property="Padding" Value="8,0" />
+  </Style>
+
+  <!-- ===== Side navigation (settings, administration) as in Discord: pages listed on the left, the chosen one beside.
+       Stacked (too narrow for both, SideNav) the list or the page fills the width; the page then has a back button. ===== -->
+  <Style Selector="TabControl.sideNav">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <StackPanel Orientation="Vertical" Spacing="2" />
+      </ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Name="PART_Nav" Width="232" Background="{DynamicResource Ovs.Sidebar}"
+                  BorderBrush="{DynamicResource Ovs.Border}" BorderThickness="0,0,1,0">
+            <ScrollViewer Name="PART_TabStrip" HorizontalScrollBarVisibility="Disabled">
+              <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Margin="12,12,12,16" />
+            </ScrollViewer>
+          </Border>
+          <DockPanel Name="PART_Page" Grid.Column="1">
+            <DockPanel Name="PART_PageTitle" DockPanel.Dock="Top" Margin="24,16,24,0">
+              <Button Name="PART_Back" DockPanel.Dock="Left" Classes="icon" Margin="0,0,8,0"
+                      ToolTip.Tip="{x:Static l:Strings.Nav_Back}" AutomationProperties.Name="{x:Static l:Strings.Nav_Back}">
+                <PathIcon Classes="sm" Data="{StaticResource Icon.ChevronRight}" RenderTransform="rotate(180deg)" />
+              </Button>
+              <TextBlock Classes="h1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                         Text="{Binding ((TabItem)SelectedItem).Header, RelativeSource={RelativeSource TemplatedParent}}" />
+            </DockPanel>
+            <ContentPresenter Name="PART_SelectedContentHost" Margin="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                              Content="{TemplateBinding SelectedContent}"
+                              ContentTemplate="{TemplateBinding SelectedContentTemplate}" />
+          </DockPanel>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="TabControl.sideNav:not(.stacked) /template/ Button#PART_Back">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="TabControl.sideNav.stacked /template/ Border#PART_Nav">
+    <Setter Property="Width" Value="NaN" />
+    <Setter Property="Grid.ColumnSpan" Value="2" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="TabControl.sideNav.stacked.listShown /template/ DockPanel#PART_Page">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="TabControl.sideNav.stacked:not(.listShown) /template/ Border#PART_Nav">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="TabControl.sideNav.stacked:not(.listShown) /template/ DockPanel#PART_Page">
+    <Setter Property="Grid.Column" Value="0" />
+    <Setter Property="Grid.ColumnSpan" Value="2" />
+  </Style>
+  <Style Selector="Window.narrow TabControl.sideNav /template/ DockPanel#PART_PageTitle">
+    <Setter Property="Margin" Value="12,12,12,0" />
+  </Style>
+  <!-- One page in the list: a row that is lit while chosen -->
+  <Style Selector="TabControl.sideNav TabItem">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.TextMuted}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}"
+                MinHeight="{TemplateBinding MinHeight}">
+          <ContentPresenter Name="PART_ContentPresenter" VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}"
+                            Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="TabControl.sideNav TabItem:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+  </Style>
+  <Style Selector="TabControl.sideNav TabItem:selected">
+    <Setter Property="Background" Value="{DynamicResource Ovs.AccentSurface}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <!-- A group title in the list: no page of its own, never chosen or focused -->
+  <Style Selector="TabControl.sideNav TabItem.navGroup">
+    <Setter Property="IsEnabled" Value="False" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="Margin" Value="0,12,0,0" />
+  </Style>
+  <Style Selector="TabControl.sideNav TabItem.navGroup:nth-child(1)">
+    <Setter Property="Margin" Value="0" />
   </Style>
   <!-- Package 96 (A112): the lifted item of a reorder drag (ReorderDrag). Rows rest without a shadow,
        the preview gets 8 px of offset and blur; scale and tilt come from the code (no tilt with reduced animations). -->

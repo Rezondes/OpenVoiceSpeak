@@ -635,4 +635,5 @@
   <data name="ConnDetails_ConcealedValue" xml:space="preserve"><value>{0} ({1} per FEC ersetzt, {2} aus Kopien gespielt)</value></data>
   <data name="ConnDetails_Bitrate" xml:space="preserve"><value>Bitrate</value></data>
   <data name="ConnDetails_Hint" xml:space="preserve"><value>Über UDP gemessen und alle 2 s neu. Verlust: fehlende Frames der letzten 5 s. Die Umlaufzeit wird mit der gewohnten verglichen.</value></data>
+  <data name="Nav_Back" xml:space="preserve"><value>Zurück zur Übersicht</value></data>
 </root>

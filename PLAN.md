@@ -8849,22 +8849,24 @@ The settings (`SettingsView.axaml`) are one long page of eight cards and the adm
 
 ### Acceptance Criteria
 
-- [ ] AC1: From 800 px the list (232 px) is on the left and the chosen page beside it; the page has a title row with the chosen page's name.
-- [ ] AC2: A `TabItem` with the class `navGroup` shows as a small muted title, cannot be chosen, focused or clicked, and the arrow keys skip it.
-- [ ] AC3: Below 800 px the tab control shows only the list; a click, a tap, Enter or Space on a page opens it, the arrow keys only move the choice; the page then fills the width and its back button ("Zurück zur Übersicht" / "Back to the list") brings the list back.
-- [ ] AC4: A new data context (the page opened again) starts on the list again.
-- [ ] AC5: A click inside a page (a list row, a button) does not change list or page.
-- [ ] AC6: The chosen row is lit (accent surface, semibold), the row under the pointer has the hover surface; the colours come from the tokens in `Theme.axaml` and pass AA in both themes.
+- [x] AC1: From 800 px the list (232 px) is on the left and the chosen page beside it; the page has a title row with the chosen page's name.
+- [x] AC2: A `TabItem` with the class `navGroup` shows as a small muted title, cannot be chosen, focused or clicked, and the arrow keys skip it.
+- [x] AC3: Below 800 px the tab control shows only the list; a click, a tap, Enter or Space on a page opens it, the arrow keys only move the choice; the page then fills the width and its back button ("Zurück zur Übersicht" / "Back to the list") brings the list back.
+- [x] AC4: A new data context (the page opened again) starts on the list again.
+- [x] AC5: A click inside a page (a list row, a button) does not change list or page.
+- [ ] AC6 (manual): The chosen row is lit (accent surface, semibold), the row under the pointer has the hover surface; the colours come from the tokens in `Theme.axaml` and pass AA in both themes.
 
 ### Tests (TDD)
 
 1. `SideNavTests > "Wide_ListAndPage_SideBySide"` (AC1): a test window of 1000 px with a `sideNav` tab control of three pages; the list is 232 px, the page right of it, the title shows the chosen header.
-2. `SideNavTests > "GroupTitle_NeverChosen"` (AC2): a group title at index 0 and pages after it; clicking it and Down from the first page never select it.
+2. `SideNavTests > "GroupTitle_ClickedOrArrowed_NeverChosen"` (AC2): a group title at index 0 and pages after it; clicking it and Down from the first page never select it.
 3. `SideNavTests > "Narrow_ClickOpensPage_BackShowsList"` (AC3): at 600 px only the list is visible; a click on a page shows the page and the back button; the back button shows the list.
 4. `SideNavTests > "Narrow_ArrowKeys_StayOnList"` (AC3): Down moves the selection, the list stays; Enter opens the page.
-5. `SideNavTests > "NewDataContext_StartsOnList"` (AC4)
-6. `SideNavTests > "ClickInsidePage_ListStaysHidden"` (AC5): a button inside the page is clicked while the page is shown; the page stays.
+5. `SideNavTests > "DataContext_New_StartsOnList"` (AC4)
+6. `SideNavTests > "PageClick_Inside_ListStaysHidden"` (AC5): a button inside the page is clicked while the page is shown; the page stays.
 7. Manual check (AC6): both themes, both displays, a screenshot of the list with a chosen and a hovered row.
+
+(as built: `SideNav.ListDetail` sets `listShown` at once and on every new data context; a tap or Enter or Space whose source lies in one of the tab control's own `TabItem` containers removes it, so clicks inside a page and the arrow keys never do; the template's back button adds it again. The page title binds `((TabItem)SelectedItem).Header` (compiled bindings need the cast). The group title is a disabled, unfocusable, hit-test-invisible `TabItem.navGroup`; Up from the first page stays on it. The code was written before the plan (A163), so these tests were written after it and seen green, not red. Manual check AC6: done with the settings of Package 152, which use these rows.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

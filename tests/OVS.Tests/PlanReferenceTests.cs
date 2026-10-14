@@ -16,12 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["SideNavTests > \"Wide_ListAndPage_SideBySide\""] = "planned in Package 151, written when it is built",
-        ["SideNavTests > \"GroupTitle_NeverChosen\""] = "planned in Package 151, written when it is built",
-        ["SideNavTests > \"Narrow_ClickOpensPage_BackShowsList\""] = "planned in Package 151, written when it is built",
-        ["SideNavTests > \"Narrow_ArrowKeys_StayOnList\""] = "planned in Package 151, written when it is built",
-        ["SideNavTests > \"NewDataContext_StartsOnList\""] = "planned in Package 151, written when it is built",
-        ["SideNavTests > \"ClickInsidePage_ListStaysHidden\""] = "planned in Package 151, written when it is built",
         ["UiSmokeTests > \"Settings_Pages_ListedInGroups\""] = "planned in Package 152, written when it is built",
         ["UiSmokeTests > \"Settings_EveryControl_OnOnePage\""] = "planned in Package 152, written when it is built",
         ["UnsavedBarTests > \"NoChanges_Hidden_ChangeShows\""] = "planned in Package 153, written when it is built",
