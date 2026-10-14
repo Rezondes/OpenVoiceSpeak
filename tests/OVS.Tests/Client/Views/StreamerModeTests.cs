@@ -95,6 +95,7 @@ public sealed partial class StreamerModeTests() : TempDirectoryTest("ovs-streame
                 }
             }
             Assert.NotEmpty(selected);
+            Assert.DoesNotContain(main.GetVisualDescendants().OfType<OVS.Client.Controls.CopyButton>(), button => button.IsEffectivelyVisible); // Package 164: nothing to copy
             Assert.DoesNotContain(selected, text => FullFingerprint().IsMatch(text) || text.Contains("2001:db8", StringComparison.Ordinal));
         }
         finally
@@ -154,6 +155,7 @@ public sealed partial class StreamerModeTests() : TempDirectoryTest("ovs-streame
                 foreach (Match match in BindingPath().Matches(lines[index]))
                 {
                     if (!PrivatePath().IsMatch(match.Groups["path"].Value)) continue;
+                    if (lines[index].Contains("<ctl:CopyButton", StringComparison.Ordinal)) continue; // Package 164: hides itself in streamer mode
                     // only the value of a MultiBinding whose converter is one of PrivacyConverters, on the line above
                     var throughConverter = match.Value.StartsWith("<Binding", StringComparison.Ordinal) && index > 0
                         && lines[index - 1].Contains("PrivacyConverters", StringComparison.Ordinal);

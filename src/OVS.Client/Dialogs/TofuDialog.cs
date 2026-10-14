@@ -27,7 +27,15 @@ internal static class TofuDialog
         {
             Padding = new Thickness(12, 10),
             CornerRadius = new CornerRadius(8),
-            Child = new SelectableTextBlock { Text = fingerprint, FontFamily = new FontFamily("Cascadia Mono,Consolas,monospace"), TextWrapping = TextWrapping.Wrap, MaxWidth = 420 },
+            Child = new DockPanel
+            {
+                Children =
+                {
+                    // Package 164: the 64 characters without the spaces, to compare elsewhere
+                    DockAt(new CopyButton { Text = prompt.Fingerprint, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(6, 0, 0, 0) }, Dock.Right),
+                    new SelectableTextBlock { Text = fingerprint, FontFamily = new FontFamily("Cascadia Mono,Consolas,monospace"), TextWrapping = TextWrapping.Wrap, MaxWidth = 420 },
+                },
+            },
         };
         code.Bind(Border.BackgroundProperty, code.GetResourceObservable("Ovs.Surface"));
         Control message = CreateText(text);

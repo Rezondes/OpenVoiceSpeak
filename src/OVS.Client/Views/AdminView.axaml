@@ -522,14 +522,18 @@
                             </WrapPanel>
                             <StackPanel>
                               <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_IdentityFingerprint}" />
-                              <SelectableTextBlock Classes="caption" TextWrapping="Wrap" FontFamily="Cascadia Mono,Consolas,monospace">
-                                <SelectableTextBlock.Text>
-                                  <MultiBinding Converter="{x:Static conv:PrivacyConverters.FingerprintText}">
-                                    <Binding Path="Fingerprint" />
-                                    <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
-                                  </MultiBinding>
-                                </SelectableTextBlock.Text>
-                              </SelectableTextBlock>
+                              <!-- Package 164: the whole fingerprint with one click -->
+                              <DockPanel>
+                                <ctl:CopyButton DockPanel.Dock="Right" Text="{Binding Fingerprint}" VerticalAlignment="Top" Margin="6,0,0,0" />
+                                <SelectableTextBlock Classes="caption" TextWrapping="Wrap" FontFamily="Cascadia Mono,Consolas,monospace">
+                                  <SelectableTextBlock.Text>
+                                    <MultiBinding Converter="{x:Static conv:PrivacyConverters.FingerprintText}">
+                                      <Binding Path="Fingerprint" />
+                                      <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                    </MultiBinding>
+                                  </SelectableTextBlock.Text>
+                                </SelectableTextBlock>
+                              </DockPanel>
                             </StackPanel>
                             <!-- Package 98: the card's action waits for a user list that shows it; refused, the reason -->
                             <StackPanel Name="CardBusy" Orientation="Horizontal" Spacing="6" IsVisible="{Binding Busy.IsBusy}">
@@ -709,14 +713,18 @@
                             </WrapPanel>
                             <StackPanel>
                               <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_IdentityFingerprint}" />
-                              <SelectableTextBlock Classes="caption" TextWrapping="Wrap" FontFamily="Cascadia Mono,Consolas,monospace">
-                                <SelectableTextBlock.Text>
-                                  <MultiBinding Converter="{x:Static conv:PrivacyConverters.FingerprintText}">
-                                    <Binding Path="Fingerprint" />
-                                    <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
-                                  </MultiBinding>
-                                </SelectableTextBlock.Text>
-                              </SelectableTextBlock>
+                              <!-- Package 164: the whole fingerprint with one click -->
+                              <DockPanel>
+                                <ctl:CopyButton DockPanel.Dock="Right" Text="{Binding Fingerprint}" VerticalAlignment="Top" Margin="6,0,0,0" />
+                                <SelectableTextBlock Classes="caption" TextWrapping="Wrap" FontFamily="Cascadia Mono,Consolas,monospace">
+                                  <SelectableTextBlock.Text>
+                                    <MultiBinding Converter="{x:Static conv:PrivacyConverters.FingerprintText}">
+                                      <Binding Path="Fingerprint" />
+                                      <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                                    </MultiBinding>
+                                  </SelectableTextBlock.Text>
+                                </SelectableTextBlock>
+                              </DockPanel>
                             </StackPanel>
                           </StackPanel>
                         </DockPanel>

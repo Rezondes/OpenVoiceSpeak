@@ -9490,15 +9490,17 @@ Fingerprints are selectable text in the user and ban cards and in the TOFU dialo
 
 ### Acceptance Criteria
 
-- [ ] AC1: Beside each full fingerprint a copy icon ("Fingerprint kopieren" / "Copy fingerprint") puts exactly the 64 characters on the clipboard.
-- [ ] AC2: After copying its tooltip says "Kopiert" ("Copied") for 2 s (on the injected clock).
-- [ ] AC3: Without a value the button is hidden.
+- [x] AC1: Beside each full fingerprint a copy icon ("Fingerprint kopieren" / "Copy fingerprint") puts exactly the 64 characters on the clipboard.
+- [x] AC2: After copying its tooltip says "Kopiert" ("Copied") for 2 s (on the injected clock).
+- [x] AC3: Without a value the button is hidden.
 
 ### Tests (TDD)
 
-1. `CopyButtonTests > "Click_CopiesExactText"` (AC1)
+1. `CopyButtonTests > "Click_Fingerprint_CopiesExactText"` (AC1)
 2. `CopyButtonTests > "Click_TooltipCopied_ThenBack"` (AC2), manual clock.
-3. `CopyButtonTests > "NoText_Hidden"` (AC3)
+3. `CopyButtonTests > "Button_NoText_Hidden"` (AC3)
+
+(as built: the button sits beside the full fingerprint of the user and ban cards and of the TOFU question, which copies the 64 characters without the spaces it shows; the connection details show no fingerprint, so nothing changed there. The button also hides itself in streamer mode, so `StreamerModeTests` lets its plain binding through. The copy icon `Icon.Copy` is new. Two test names got a third part (RL601).)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

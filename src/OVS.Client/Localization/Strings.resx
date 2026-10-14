@@ -682,4 +682,6 @@
   <data name="Quick_Nothing" xml:space="preserve"><value>Nichts gefunden</value></data>
   <data name="Quick_Users" xml:space="preserve"><value>{0} im Channel</value></data>
   <data name="Quick_Server" xml:space="preserve"><value>Server</value></data>
+  <data name="Ui_CopyFingerprint" xml:space="preserve"><value>Fingerprint kopieren</value></data>
+  <data name="Ui_Copied" xml:space="preserve"><value>Kopiert</value></data>
 </root>

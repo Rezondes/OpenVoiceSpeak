@@ -682,4 +682,6 @@
   <data name="Quick_Nothing" xml:space="preserve"><value>Nothing found</value></data>
   <data name="Quick_Users" xml:space="preserve"><value>{0} in the channel</value></data>
   <data name="Quick_Server" xml:space="preserve"><value>Server</value></data>
+  <data name="Ui_CopyFingerprint" xml:space="preserve"><value>Copy fingerprint</value></data>
+  <data name="Ui_Copied" xml:space="preserve"><value>Copied</value></data>
 </root>
