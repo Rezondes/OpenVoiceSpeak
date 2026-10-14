@@ -507,6 +507,24 @@
   <Style Selector="Window.narrow TabControl.sideNav /template/ DockPanel#PART_PageTitle">
     <Setter Property="Margin" Value="12,12,12,0" />
   </Style>
+  <!-- Package 153: the unsaved-changes bar floats above the page's bottom edge; lit after a way out was tried -->
+  <Style Selector="Border.unsavedBar">
+    <Setter Property="Margin" Value="16,0,16,16" />
+    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource Ovs.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="0 4 12 0 #40000000" />
+  </Style>
+  <Style Selector="Border.unsavedBar.attention">
+    <Setter Property="BorderBrush" Value="{DynamicResource Ovs.Accent}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Window.narrow Border.unsavedBar">
+    <Setter Property="Margin" Value="8,0,8,8" />
+    <Setter Property="Padding" Value="12,8" />
+  </Style>
   <!-- One page in the list: a row that is lit while chosen -->
   <Style Selector="TabControl.sideNav TabItem">
     <Setter Property="FontSize" Value="14" />

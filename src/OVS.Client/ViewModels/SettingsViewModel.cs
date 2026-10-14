@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using OVS.Client.Localization;
 using System.Collections.ObjectModel;
@@ -102,7 +103,7 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         blurBackground = current.BlurBackground;
         SoundRows = Enum.GetValues<SoundEvent>().Select(soundEvent => new SoundRowViewModel(soundEvent, current.SoundFor(soundEvent), this)).ToList();
         soundVolumePercent = current.SoundVolume * 100f;
-        untouched = ToSettings(basis).ToJson(); // Package 114: what the page shows before anyone touched it
+        opened = MarkUntouched(); // Package 114: what the page shows before anyone touched it
     }
 
     // ---- Package 48: every sound on its own ----
@@ -268,7 +269,7 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         SelectedInput = input; // replacing the items may have cleared the combo box's selection
         SelectedOutput = output;
         showingDevices = false;
-        if (!changed) untouched = ToSettings(basis).ToJson(); // the loaded list is no change of the user's
+        if (!changed) opened = MarkUntouched(); // the loaded list is no change of the user's
         DeviceHint = inputFellBack || outputFellBack ? Strings.Device_Missing : null;
     }
 
@@ -409,7 +410,46 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
             await apply();
             Saving.Done();
         }
+        opened = MarkUntouched(); // Package 153: what is saved is the new start, the bar goes
         return true;
+    }
+
+    /// <summary>Package 153: "Speichern" in the bar; the page stays open.</summary>
+    [RelayCommand]
+    async Task SaveKeepingOpenAsync()
+    {
+        if (!Saving.IsRunning) await SaveAsync();
+    }
+
+    /// <summary>Package 153: "Zurücksetzen": every value back to what the page opened with (or last saved), heard at once.</summary>
+    [RelayCommand]
+    void Reset()
+    {
+        var values = opened;
+        SelectedInput = Inputs.FirstOrDefault(option => option.Id == values.InputDeviceId) ?? Inputs[0];
+        SelectedOutput = Outputs.FirstOrDefault(option => option.Id == values.OutputDeviceId) ?? Outputs[0];
+        InputGainPercent = values.InputGain * 100f;
+        OutputVolumePercent = values.OutputVolume * 100f;
+        VoiceActivation = values.Mode == TransmitMode.VoiceActivation;
+        VadThresholdDb = values.VadThresholdDb;
+        VadAutomatic = values.VadAutomatic;
+        NoiseSuppression = values.NoiseSuppression;
+        AutoGain = values.AutoGain;
+        EchoCancellation = values.EchoCancellation;
+        IsMusic = values.AudioContent == AudioContent.Music;
+        PttReleaseDelayMs = values.PttReleaseDelayMs;
+        KeyBindings.Clear();
+        foreach (var keyBinding in values.KeyBindings) KeyBindings.Add(new KeyBindingViewModel(keyBinding, this));
+        SelectedTheme = Themes.First(choice => choice.Value == values.Theme);
+        SelectedDisplay = Displays.First(displayOption => displayOption.Value == values.Display);
+        SelectedLanguage = Languages.First(choice => choice.Value == values.Language);
+        CheckForUpdates = values.CheckForUpdates;
+        AllSoundsOff = !values.SoundsEnabled;
+        BackgroundOpacityPercent = values.BackgroundOpacity * 100f;
+        BlurBackground = values.BlurBackground;
+        foreach (var row in SoundRows) row.Restore(values.SoundFor(row.Event));
+        SoundVolumePercent = values.SoundVolume * 100f;
+        Preview();
     }
 
     /// <summary>"Abbrechen": discards on purpose, without asking (A122).</summary>
@@ -428,7 +468,40 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
     /// </summary>
     public bool HasChanges => ToSettings(basis).ToJson() != untouched;
 
-    string untouched;
+    string untouched = "";
+    ClientSettings opened;
+
+    /// <summary>Notes the page's values as the unchanged ones and returns them.</summary>
+    ClientSettings MarkUntouched()
+    {
+        var values = ToSettings(basis);
+        untouched = values.ToJson();
+        OnPropertyChanged(nameof(HasChanges));
+        return values;
+    }
+
+    /// <summary>Package 153: values the engine reports, and texts that follow the values, change nothing the user set.</summary>
+    static readonly HashSet<string> NoUserValue =
+    [
+        nameof(HasChanges), nameof(InputLevelDb), nameof(ThresholdInUseDb), nameof(IsAboveThreshold), nameof(MeterThresholdDb),
+        nameof(UpdateStatus), nameof(IsSelfTesting), nameof(SelfTestText), nameof(DeviceHint), nameof(Inputs), nameof(Outputs),
+    ];
+
+    /// <summary>Package 153: every change of a value the user sets tells the bar whether the page differs now.</summary>
+    protected override void OnPropertyChanged(PropertyChangedEventArgs args)
+    {
+        base.OnPropertyChanged(args);
+        if (args.PropertyName is { } name && !NoUserValue.Contains(name)) OnUserValueChanged();
+    }
+
+    /// <summary>A value the user sets changed (also in a sound row).</summary>
+    internal void OnUserValueChanged() => base.OnPropertyChanged(new PropertyChangedEventArgs(nameof(HasChanges)));
+
+    /// <summary>Package 153: a way out with changes asks the view to point at the bar first.</summary>
+    public event Action? AttentionRequested;
+
+    /// <inheritdoc/>
+    public void RequestAttention() => AttentionRequested?.Invoke();
 
     /// <summary>New settings based on the old ones (keeps bookmarks), clamped.</summary>
     public ClientSettings ToSettings(ClientSettings basis) => new ClientSettings

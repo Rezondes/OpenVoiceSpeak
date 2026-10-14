@@ -356,7 +356,7 @@ public sealed class MotionCoverageTests
                     break;
             }
         }
-        var cancel = view.GetVisualDescendants().OfType<Button>().First(button => button.Content is string text && text == Strings.Dlg_Cancel);
+        var cancel = view.GetVisualDescendants().OfType<Button>().First(button => AutomationProperties.GetName(button) == Strings.Ui_CloseSettings); // Package 153: the bar has no "Abbrechen"
         yield return new("settings: hover a button", otherWalk => otherWalk.Main.MouseMove(TestSupport.Rows.Center(cancel, otherWalk.Main)), _ => cancel, Show(_ => cancel), Away);
     }
 

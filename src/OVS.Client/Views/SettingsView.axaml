@@ -24,24 +24,9 @@
         </StackPanel>
       </DockPanel>
     </Border>
-    <!-- Button bar -->
-    <Border DockPanel.Dock="Bottom" Classes="settingsBar" Background="{DynamicResource Ovs.Sidebar}"
-            BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Ovs.Border}">
-      <DockPanel>
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-          <Button Content="{x:Static l:Strings.Dlg_Cancel}" Command="{Binding CancelCommand}" MinWidth="96" HorizontalContentAlignment="Center" />
-          <!-- Package 98: busy while the audio devices restart, the page closes afterwards -->
-          <Button Name="SaveSettingsButton" Classes="accent" Command="{Binding SaveAndCloseCommand}" IsEnabled="{Binding CanSave}"
-                  MinWidth="96" HorizontalContentAlignment="Center">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <ctl:BusySpinner IsVisible="{Binding Saving.IsBusy}" />
-              <TextBlock Text="{x:Static l:Strings.Dlg_Save}" />
-            </StackPanel>
-          </Button>
-        </StackPanel>
-        <TextBlock Classes="danger" Text="{Binding Error}" IsVisible="{Binding HasKeyConflict}" VerticalAlignment="Center" TextWrapping="Wrap" />
-      </DockPanel>
-    </Border>
+    <!-- Package 153: only while something is changed, saving or refused, as in Discord; a way out with changes points at it -->
+    <ctl:UnsavedBar x:Name="Unsaved" DockPanel.Dock="Bottom" HasChanges="{Binding HasChanges}" IsSaving="{Binding Saving.IsBusy}"
+                    Error="{Binding Error}" SaveCommand="{Binding SaveKeepingOpenCommand}" ResetCommand="{Binding ResetCommand}" />
 
     <!-- Pages listed on the left as in Discord (SideNav); stacked below 640 px: the list, then the chosen page -->
     <TabControl x:Name="Sections" Classes="sideNav" SelectedIndex="1" anim:PageMotion.Tabs="True"

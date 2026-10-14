@@ -16,11 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["UnsavedBarTests > \"NoChanges_Hidden_ChangeShows\""] = "planned in Package 153, written when it is built",
-        ["SettingsTests > \"Reset_AfterChanges_ValuesAsOpened\""] = "planned in Package 153, written when it is built",
-        ["PageFlowViewModelTests > \"Save_KeepsPageOpen_BarGone\""] = "planned in Package 153, written when it is built",
-        ["PageFlowViewModelTests > \"KeyConflict_SaveOff_TextInBar\""] = "planned in Package 153, written when it is built",
-        ["LeaveGuardTests > \"Leave_WithChanges_AttentionThenQuestion\""] = "planned in Package 153, written when it is built",
         ["UiSmokeTests > \"Admin_Pages_GroupedByTask\""] = "planned in Package 154, written when it is built",
         ["UiSmokeTests > \"Admin_ServerControls_OnOnePage\""] = "planned in Package 154, written when it is built",
         ["LeaveGuardTests > \"Admin_OverviewChanged_LeavingAsks\""] = "planned in Package 154, written when it is built",

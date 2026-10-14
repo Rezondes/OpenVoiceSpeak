@@ -644,4 +644,6 @@
   <data name="Nav_Sounds" xml:space="preserve"><value>Sounds</value></data>
   <data name="Nav_Appearance" xml:space="preserve"><value>Darstellung</value></data>
   <data name="Nav_About" xml:space="preserve"><value>Über und Updates</value></data>
+  <data name="Unsaved_Text" xml:space="preserve"><value>Ungespeicherte Änderungen</value></data>
+  <data name="Unsaved_Reset" xml:space="preserve"><value>Zurücksetzen</value></data>
 </root>

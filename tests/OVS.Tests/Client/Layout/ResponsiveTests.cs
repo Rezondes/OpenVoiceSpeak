@@ -26,6 +26,7 @@ namespace OVS.Tests.Client.Layout;
 [Collection(MotionCollection.Name)]
 public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: true)
 {
+    static readonly string[] UnsavedButtons = ["UnsavedReset", "UnsavedSave"];
     static readonly string[] ServerSectionControls = ["MaxUsersInput", "LogDaysInput", "LogRotateDailyInput", "AutoRestartInput", "AutoRestartTimeInput"];
     static readonly string[] BackupControls = ["UploadBackupButton", "UploadRestoreButton", "BackupTransfer"];
     static readonly string[] LogPageControls = ["LogPager", "LogLineFilter", "LogLines"];
@@ -358,6 +359,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var main = OpenSettings(width);
         var page = main.GetVisualDescendants().OfType<SettingsView>().Single();
         LayoutAssert.FitsHorizontally(main); // the list of pages, shown first when stacked
+        ((SettingsViewModel)page.DataContext!).CheckForUpdates = !((SettingsViewModel)page.DataContext!).CheckForUpdates; // a change: the bar shows
         // Package 152: every page in turn, each scrolled through
         foreach (var settingsPage in SettingsPages.All(page))
         {
@@ -384,15 +386,13 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
                 Assert.True(name.Bounds.Width > 60, $"Name {name.Text}: {name.Bounds.Width}");
             }
 
-            // the button bar stays in view
-            foreach (var text in new[] { Strings.Dlg_Cancel, Strings.Dlg_Save })
+            // Package 153: with a change the unsaved-changes bar stays in view with both buttons
+            foreach (var name in UnsavedButtons)
             {
-                // Package 98: "Speichern" holds its text beside a spinner
-                var button = page.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Content as string == text
-                    || otherButton.Content is Panel panel && panel.Children.OfType<TextBlock>().Any(textBlock => textBlock.Text == text));
-                Assert.True(button.IsEffectivelyVisible);
+                var button = page.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Name == name);
+                Assert.True(button.IsEffectivelyVisible, name);
                 var top = button.TranslatePoint(default, main)!.Value.Y;
-                Assert.True(top >= 0 && top + button.Bounds.Height <= main.Bounds.Height + 1, $"{text} at {top}");
+                Assert.True(top >= 0 && top + button.Bounds.Height <= main.Bounds.Height + 1, $"{name} at {top}");
             }
         }
         main.Close();
@@ -1034,7 +1034,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         Dispatcher.UIThread.RunJobs();
         var settings = main.GetVisualDescendants().OfType<SettingsView>().Single();
         Assert.True(settings.FindControl<Control>("UpdateCheckBusy")?.IsEffectivelyVisible);
-        Assert.Contains(settings.FindControl<Button>("SaveSettingsButton")!.GetVisualDescendants().OfType<BusySpinner>(), busySpinner => busySpinner.IsEffectivelyVisible);
+        Assert.Contains(settings.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "UnsavedSave").GetVisualDescendants().OfType<BusySpinner>(), busySpinner => busySpinner.IsEffectivelyVisible);
         foreach (var scroller in settings.GetVisualDescendants().OfType<ScrollViewer>().Where(scrollViewer => scrollViewer.Viewport.Height > 0).ToList())
         {
             scroller.Offset = new Vector(0, scroller.Extent.Height);

@@ -1062,5 +1062,56 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal(automatic, settings.VadAutomatic);
     }
 
+    /// <summary>Package 153: "Zurücksetzen" puts every value back as the page opened, the previewed ones included.</summary>
+    [Fact]
+    public void Reset_AfterChanges_ValuesAsOpened()
+    {
+        var settings = Vm(new ClientSettings { OutputVolume = 0.8f, Theme = AppTheme.Dark, KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(0x70))] });
+        var live = new List<ClientSettings>();
+        settings.LivePreview = live.Add;
+        settings.OutputVolumePercent = 150;
+        settings.SelectedTheme = SettingsViewModel.Themes.Single(choice => choice.Value == AppTheme.Light);
+        settings.KeyBindings.Clear();
+        settings.SoundRows[0].Muted = !settings.SoundRows[0].Muted;
+        Assert.True(settings.HasChanges);
+
+        settings.ResetCommand.Execute(null);
+
+        Assert.False(settings.HasChanges);
+        Assert.Equal(80, settings.OutputVolumePercent, 1);
+        Assert.Equal(AppTheme.Dark, settings.SelectedTheme.Value);
+        Assert.Equal([new KeyBinding(KeyAction.PushToTalk, new KeyChord(0x70))], settings.KeyBindings.Select(keyBinding => keyBinding.Binding));
+        Assert.Equal(0.8f, live[^1].OutputVolume, 3); // the engine hears the old volume again
+    }
+
+    /// <summary>Package 153: "Speichern" in the bar saves and keeps the page; afterwards nothing counts as changed.</summary>
+    [Fact]
+    public async Task SaveKeepingOpen_Saved_PageStaysNoChanges()
+    {
+        var settings = Vm();
+        int saved = 0, closed = 0;
+        settings.ApplySaved = () => { saved++; return Task.CompletedTask; };
+        settings.CloseRequested += _ => closed++;
+        settings.OutputVolumePercent = 50;
+        Assert.True(settings.HasChanges);
+
+        await settings.SaveKeepingOpenCommand.ExecuteAsync(null);
+
+        Assert.Equal((1, 0), (saved, closed));
+        Assert.False(settings.HasChanges);
+    }
+
+    /// <summary>Package 153: a key conflict keeps the bar's Save off and names the conflict there.</summary>
+    [Fact]
+    public async Task KeyConflict_SaveRefused_ErrorNamed()
+    {
+        var settings = Vm(new ClientSettings { KeyBindings = [new KeyBinding(KeyAction.PushToTalk, new KeyChord(0x70)), new KeyBinding(KeyAction.ToggleMute, new KeyChord(0x70))] });
+        int saved = 0;
+        settings.ApplySaved = () => { saved++; return Task.CompletedTask; };
+        Assert.NotNull(settings.Error);
+        await settings.SaveKeepingOpenCommand.ExecuteAsync(null);
+        Assert.Equal(0, saved);
+    }
+
     sealed record FocusedSettings(Window Window, SettingsViewModel Vm);
 }

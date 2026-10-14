@@ -37,7 +37,24 @@ internal sealed partial class SoundRowViewModel : ObservableObject
     /// <summary>Own or default sound, as shown.</summary>
     public string SourceText => HasOwnFile ? Strings.Ui_CustomSound : Strings.Ui_DefaultSound;
 
-    partial void OnVolumePercentChanged(double value) => VolumePercent = Math.Clamp(value, 0, 100);
+    partial void OnVolumePercentChanged(double value)
+    {
+        VolumePercent = Math.Clamp(value, 0, 100);
+        owner.OnUserValueChanged(); // Package 153: the bar follows
+    }
+
+    partial void OnMutedChanged(bool value) => owner.OnUserValueChanged();
+
+    partial void OnFileChanged(string? value) => owner.OnUserValueChanged();
+
+    /// <summary>Package 153: the row as the page opened with it.</summary>
+    public void Restore(SoundSetting setting)
+    {
+        VolumePercent = setting.Volume * 100;
+        Muted = setting.Muted;
+        File = setting.File;
+        Error = null;
+    }
 
     /// <summary>The row as a setting.</summary>
     public SoundSetting ToSetting() => new((float)(VolumePercent / 100), Muted, File);

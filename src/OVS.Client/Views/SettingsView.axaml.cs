@@ -17,7 +17,16 @@ internal partial class SettingsView : UserControl
         InitializeComponent();
         SelfTestButton.AddHandler(KeyDownEvent, OnSelfTestKey, RoutingStrategies.Tunnel);
         SelfTestButton.AddHandler(KeyUpEvent, OnSelfTestKey, RoutingStrategies.Tunnel);
+        // Package 153: a way out with changes points at the bar before the question
+        DataContextChanged += (_, _) =>
+        {
+            if (shown is not null) shown.AttentionRequested -= Unsaved.Attention;
+            shown = DataContext as SettingsViewModel;
+            if (shown is not null) shown.AttentionRequested += Unsaved.Attention;
+        };
     }
+
+    SettingsViewModel? shown;
 
     /// <summary>
     /// Package 121: Space and Enter click a focused button, but as a bound key (push-to-talk in the self test) they

@@ -15,6 +15,9 @@ internal interface IPageViewModel
     /// <summary>Lets go of what the page holds while shown; the page flow calls it when the page closes.</summary>
     void Detach();
 
+    /// <summary>Package 153: a way out with changes points at the page's unsaved-changes bar before it asks.</summary>
+    void RequestAttention();
+
     /// <summary>The page's own way out that asks first when something is not saved (the X, the close button, Esc).</summary>
     event Action? LeaveRequested;
 }

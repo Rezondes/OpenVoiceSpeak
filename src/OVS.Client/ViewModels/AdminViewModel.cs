@@ -88,6 +88,12 @@ internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     [RelayCommand]
     void Close() => LeaveRequested?.Invoke();
 
+    /// <summary>Package 153: a way out with changes asks the view to point at the save bar first (Package 157 shows it).</summary>
+    public event Action? AttentionRequested;
+
+    /// <inheritdoc/>
+    public void RequestAttention() => AttentionRequested?.Invoke();
+
     /// <summary>Stops following the server; answers that come later are ignored.</summary>
     public void Detach()
     {

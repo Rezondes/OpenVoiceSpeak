@@ -32,6 +32,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     Task<LeaveChoice> AskLeaveAsync()
     {
         asked++;
+        order.Add("question");
         return Task.FromResult(answers.Dequeue());
     }
 
@@ -417,4 +418,29 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         Assert.Equal("Neu von jemand anderem", admin.ServerSettings.WelcomeText); // the untouched field follows
         Assert.True(admin.ServerSettings.Place.HasChanges());
     }
+
+    /// <summary>Package 153: a way out with changes points at the bar first, then asks; without changes neither.</summary>
+    [AvaloniaFact]
+    public async Task Leave_WithChanges_AttentionThenQuestion()
+    {
+        var viewModel = Main(connected: false);
+        answers.Enqueue(LeaveChoice.Stay);
+        viewModel.PageFlow.OpenSettings();
+        var settings = viewModel.PageFlow.SettingsPage!;
+        settings.AttentionRequested += () => order.Add("attention");
+
+        await viewModel.PageFlow.ClosePageAsync();
+        Assert.Empty(order);
+        Assert.True(viewModel.PageFlow.IsHomePage);
+
+        viewModel.PageFlow.OpenSettings();
+        settings = viewModel.PageFlow.SettingsPage!;
+        settings.AttentionRequested += () => order.Add("attention");
+        settings.VadThresholdDb -= 5;
+        await viewModel.PageFlow.ClosePageAsync();
+        Assert.Equal(["attention", "question"], order);
+        Assert.True(viewModel.PageFlow.IsSettingsPage);
+    }
+
+    readonly List<string> order = [];
 }

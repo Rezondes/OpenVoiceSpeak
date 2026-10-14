@@ -8949,19 +8949,21 @@ Today the settings have Cancel and Save always visible at the bottom (`SettingsV
 
 ### Acceptance Criteria
 
-- [ ] AC1: Without changes no bar shows; the first change shows it with "Ungespeicherte Änderungen" ("Unsaved changes"), "Zurücksetzen" ("Reset") and "Speichern" ("Save").
-- [ ] AC2: "Zurücksetzen" puts every setting back to the value the page opened with, also the previewed ones (volume, filters, theme), and the bar goes away.
-- [ ] AC3: "Speichern" saves and leaves the page open (the bar goes away); the busy state of Package 98 shows on the button; a key conflict shows its text in the bar and Save is off.
-- [ ] AC4: Esc, the close button or another page while changes are open make the bar pulse (light up in the simplified display) and then ask as today; without changes the page closes at once.
-- [ ] AC5: The bar fits from 360 px, in both languages, and is reachable by keyboard (Tab order: Reset, Save).
+- [x] AC1: Without changes no bar shows; the first change shows it with "Ungespeicherte Änderungen" ("Unsaved changes"), "Zurücksetzen" ("Reset") and "Speichern" ("Save").
+- [x] AC2: "Zurücksetzen" puts every setting back to the value the page opened with, also the previewed ones (volume, filters, theme), and the bar goes away.
+- [x] AC3: "Speichern" saves and leaves the page open (the bar goes away); the busy state of Package 98 shows on the button; a key conflict shows its text in the bar and Save is off.
+- [x] AC4: Esc, the close button or another page while changes are open make the bar pulse (light up in the simplified display) and then ask as today; without changes the page closes at once.
+- [x] AC5: The bar fits from 360 px, in both languages, and is reachable by keyboard (Tab order: Reset, Save).
 
 ### Tests (TDD)
 
-1. `UnsavedBarTests > "NoChanges_Hidden_ChangeShows"` (AC1)
+1. `UnsavedBarTests > "Bar_NoChangesThenChange_HiddenThenShown"` (AC1), `UnsavedBarTests > "Bar_Error_TextShownSaveOff"` (AC3), `UnsavedBarTests > "Bar_Saving_SpinnerShownButtonsOff"` (AC3), `UnsavedBarTests > "Attention_ShownBar_LitUntilHidden"` (AC4)
 2. `SettingsTests > "Reset_AfterChanges_ValuesAsOpened"` (AC2): change volume, theme and a key; Reset; every value as before, `HasChanges` false, the engine got the old volume again.
-3. `PageFlowViewModelTests > "Save_KeepsPageOpen_BarGone"` and `"KeyConflict_SaveOff_TextInBar"` (AC3)
+3. `SettingsTests > "SaveKeepingOpen_Saved_PageStaysNoChanges"` and `SettingsTests > "KeyConflict_SaveRefused_ErrorNamed"` (AC3)
 4. `LeaveGuardTests > "Leave_WithChanges_AttentionThenQuestion"` (AC4): the order of the two events is checked; without changes no question.
 5. `ResponsiveTests > "Settings_At360To1100_Fit"` (AC5): the bar is checked with a change on every page.
+
+(as built: `UnsavedBar` is a `Border` built in code like `ErrorIdButton`, bound in `SettingsView` to `HasChanges`, `Saving.IsBusy`, `Error`, `SaveKeepingOpenCommand` and `ResetCommand`; it replaces Abbrechen and Speichern. `SettingsViewModel` raises `HasChanges` on every change of a value the user sets (an `OnPropertyChanged` override that leaves out the engine's level, the threshold in use and the texts that follow them; the sound rows tell their owner), keeps the values it opened with (`opened`, renewed after a save and when the device list arrives untouched) and `Reset` puts them back and previews them. `IPageViewModel.RequestAttention` is new: `PageFlowViewModel.ConfirmLeaveAsync` calls it before the question; the settings view lets the bar shake (animated display) and light up with an accent border until it hides; the administration only raises the event until Package 157. `SaveAndCloseCommand` and `CancelCommand` stay for the page flow's tests and the keyboard flows that use them. The motion walk hovers the page's close button now. Manual check: screenshots at 1200 px dark and 420 px light, the bar lit after a way out was tried.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

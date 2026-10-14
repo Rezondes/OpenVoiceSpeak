@@ -200,6 +200,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     internal async Task<bool> ConfirmLeaveAsync(bool adminOnly = false)
     {
         if (!HasUnsavedChanges(adminOnly)) return true;
+        ShownPage!.RequestAttention(); // Package 153: the bar shakes, then the question
         var choice = dialogs().AskLeave is { } ask ? await ask() : LeaveChoice.Discard;
         if (choice == LeaveChoice.Stay) return false;
         if (choice == LeaveChoice.Discard) return true;
