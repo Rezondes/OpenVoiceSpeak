@@ -434,6 +434,34 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Close();
     }
 
+    /// <summary>Package 163: Ctrl+K opens the quick switcher with the focus in its field, Esc closes it.</summary>
+    [AvaloniaFact]
+    public void CtrlK_Pressed_OpensAndEscCloses()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action(), server: FakeServers.Crowded());
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 800 };
+        main.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        main.KeyPress(Key.K, RawInputModifiers.Control, PhysicalKey.K, "k");
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(main.Overlay.IsOpen);
+        var field = main.Overlay.GetVisualDescendants().OfType<TextBox>().Single(textBox => textBox.Name == "QuickSwitcherField");
+        Assert.True(field.IsFocused);
+        field.Text = "raid";
+        main.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+        Dispatcher.UIThread.RunJobs();
+        var hits = main.Overlay.GetVisualDescendants().OfType<ListBox>().Single(listBox => listBox.Name == "QuickSwitcherHits");
+        Assert.Equal(1, hits.SelectedIndex); // Down moved through the hits while the field kept the focus
+        Assert.True(field.IsFocused);
+
+        main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(main.Overlay.IsOpen);
+        Assert.True(viewModel.PageFlow.IsHomePage); // Esc closed only the switcher
+        main.Close();
+    }
+
     /// <summary>Package 27: own title bar with the three window buttons instead of the Windows frame.</summary>
     [AvaloniaFact]
     public void TitleBar_ButtonsChangeWindowState_ShowsTitleAndServer()

@@ -996,6 +996,21 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         main.Close();
     }
 
+    /// <summary>Package 163: the quick switcher's card at the narrowest width, with nothing found too.</summary>
+    [AvaloniaFact]
+    public void QuickSwitcher_At360_Fits()
+    {
+        var main = Open(360, FakeServers.Crowded());
+        main.KeyPress(Key.K, RawInputModifiers.Control, PhysicalKey.K, "k");
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(main.Overlay.IsOpen);
+        LayoutAssert.FitsHorizontally(main.Overlay);
+        main.Overlay.GetVisualDescendants().OfType<TextBox>().Single(textBox => textBox.Name == "QuickSwitcherField").Text = "zzzqqq";
+        Dispatcher.UIThread.RunJobs();
+        LayoutAssert.FitsHorizontally(main.Overlay);
+        main.Close();
+    }
+
     /// <summary>Package 98 (AC7): the waiting states outside the administration: busy rows, a sent and a failed message, a busy dialog and settings.</summary>
     [AvaloniaTheory]
     [InlineData(360, "de-DE")]

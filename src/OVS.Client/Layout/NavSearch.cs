@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using OVS.Client.Models;
@@ -44,29 +42,13 @@ internal sealed class NavSearch
     }
 
     /// <summary>The hits for <paramref name="query"/>: the same text first, then texts and words that start with it, then any that hold it; at most <see cref="MaxHits"/>.</summary>
-    public IReadOnlyList<NavSearchHit> Find(string? query)
-    {
-        var wanted = Fold(query ?? "").Trim();
-        if (wanted.Length == 0) return [];
-        return entries
-            .Select(entry => new { Entry = entry, Folded = Fold(entry.Text) })
-            .Where(candidate => candidate.Folded.Contains(wanted, StringComparison.Ordinal))
-            .OrderBy(candidate => candidate.Folded == wanted ? 0 : candidate.Folded.StartsWith(wanted, StringComparison.Ordinal) ? 1 : StartsAWord(candidate.Folded, wanted) ? 2 : 3)
+    public IReadOnlyList<NavSearchHit> Find(string? query) =>
+        entries
+            .Select(entry => new { Entry = entry, Rank = TextMatch.Rank(entry.Text, query) })
+            .Where(candidate => candidate.Rank is not null)
+            .OrderBy(candidate => candidate.Rank)
             .Select(candidate => candidate.Entry)
             .DistinctBy(entry => (entry.Text, entry.Page))
             .Take(MaxHits)
             .ToList();
-    }
-
-    static bool StartsAWord(string text, string wanted) =>
-        text.StartsWith(wanted, StringComparison.Ordinal) || text.Contains(" " + wanted, StringComparison.Ordinal) || text.Contains("-" + wanted, StringComparison.Ordinal);
-
-    /// <summary>Upper case without accents, and the German umlauts as their base letter, so "Gerate" finds "Geräte".</summary>
-    static string Fold(string text)
-    {
-        var builder = new StringBuilder(text.Length);
-        foreach (var letter in text.Replace("ß", "ss", StringComparison.Ordinal).ToUpperInvariant().Normalize(NormalizationForm.FormD))
-            if (CharUnicodeInfo.GetUnicodeCategory(letter) != UnicodeCategory.NonSpacingMark) builder.Append(letter);
-        return builder.ToString();
-    }
 }

@@ -676,4 +676,10 @@
   <data name="Notify_JoinTitle" xml:space="preserve"><value>New in your channel</value></data>
   <data name="Notify_Joined" xml:space="preserve"><value>{0} joined your channel</value></data>
   <data name="Notify_More" xml:space="preserve"><value>{0} new messages from {1}</value></data>
+  <data name="Quick_Title" xml:space="preserve"><value>Quick switch</value></data>
+  <data name="Quick_Watermark" xml:space="preserve"><value>Find a channel or server</value></data>
+  <data name="Quick_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Quick_Nothing" xml:space="preserve"><value>Nothing found</value></data>
+  <data name="Quick_Users" xml:space="preserve"><value>{0} in the channel</value></data>
+  <data name="Quick_Server" xml:space="preserve"><value>Server</value></data>
 </root>

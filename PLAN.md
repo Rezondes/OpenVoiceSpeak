@@ -9444,18 +9444,20 @@ Discord and Fluxer have a quick switcher. Joining goes through `ChannelTreeViewM
 
 ### Acceptance Criteria
 
-- [ ] AC1: Ctrl+K opens the switcher with the focus in the field; Esc or a click beside it closes it.
-- [ ] AC2: Typing filters channels (with their user count) and saved servers by name, start-of-word hits first; separators never show.
-- [ ] AC3: Up and Down move, Enter joins the channel (asking for a password or refused by a lock as a double click would) or connects to the server (asking before leaving a connection as today).
-- [ ] AC4: Without a connection only servers show; with nothing found "Nichts gefunden" ("Nothing found").
-- [ ] AC5: It fits from 360 px.
+- [x] AC1: Ctrl+K opens the switcher with the focus in the field; Esc or a click beside it closes it.
+- [x] AC2: Typing filters channels (with their user count) and saved servers by name, start-of-word hits first; separators never show.
+- [x] AC3: Up and Down move, Enter joins the channel (asking for a password or refused by a lock as a double click would) or connects to the server (asking before leaving a connection as today).
+- [x] AC4: Without a connection only servers show; with nothing found "Nichts gefunden" ("Nothing found").
+- [x] AC5: It fits from 360 px.
 
 ### Tests (TDD)
 
 1. `QuickSwitcherViewModelTests > "Filter_StartOfWordFirst_NoSeparators"` (AC2)
 2. `QuickSwitcherViewModelTests > "Enter_Channel_JoinsLikeDoubleClick"` and `"Enter_Server_ConnectsLikeBookmark"` (AC3)
-3. `QuickSwitcherViewModelTests > "NoConnection_OnlyServers"` (AC4)
-4. `UiSmokeTests > "CtrlK_Opens_EscCloses"` (AC1), `ResponsiveTests > "QuickSwitcher_At360_Fits"` (AC5)
+3. `QuickSwitcherViewModelTests > "Hits_NoConnection_OnlyServers"` (AC4)
+4. `UiSmokeTests > "CtrlK_Pressed_OpensAndEscCloses"` (AC1), `ResponsiveTests > "QuickSwitcher_At360_Fits"` (AC5)
+
+(as built: the card is `Dialogs/QuickSwitcherDialog.cs` on `DialogFrame`, like every other dialog of the overlay, instead of a separate `QuickSwitcherView.axaml`; Up and Down are caught on the field (tunnel), so the focus stays in it. The match ranking moved from `NavSearch` into `Models/TextMatch.cs`, which the settings search and the switcher share. A server hit shows "Server" instead of its address, so the switcher reveals nothing in streamer mode (Package 160). Two test names got a third part (RL601).)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

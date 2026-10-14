@@ -139,11 +139,27 @@ internal partial class MainWindow : Window
     /// <summary>Esc closes the drawer, otherwise leaves settings (without saving) or the administration. An open dialog handles Esc itself first.</summary>
     void OnKeyDown(object? sender, KeyEventArgs args)
     {
+        if (!args.Handled && args.Key == Key.K && args.KeyModifiers == KeyModifiers.Control && !Overlay.IsOpen)
+        {
+            _ = OpenQuickSwitcherAsync(); // Package 163
+            args.Handled = true;
+            return;
+        }
         if (args.Handled || args.Key != Key.Escape || Overlay.IsOpen) return;
         if (drawer.IsOpen) drawer.Set(false);
         else if (!Vm.PageFlow.IsHomePage) _ = Vm.PageFlow.ClosePageAsync(); // Package 114: asks first when something is not saved
         else return;
         args.Handled = true;
+    }
+
+    /// <summary>Package 163: Ctrl+K, the channels of the connected server and the saved servers; Enter opens the chosen one.</summary>
+    async Task OpenQuickSwitcherAsync()
+    {
+        var switcher = new QuickSwitcherViewModel(Vm.Server?.Tree.Channels ?? [], Vm.Bookmarks.Saved,
+            bookmark => Vm.Connection.IsConnecting ? Task.CompletedTask : Vm.Connection.ConnectBookmarkAsync(bookmark));
+        if (await QuickSwitcherDialog.ShowAsync(Overlay, switcher) is not { } hit) return;
+        drawer.Set(false);
+        await switcher.ChooseAsync(hit);
     }
 
     void OnChannelDoubleTapped(object? sender, TappedEventArgs args)
