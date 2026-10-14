@@ -27,6 +27,8 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     readonly UsersAndBansDialogs dialogs;
     readonly Action<bool> markOwnGroupChange;
     IReadOnlyList<KnownUserInfo> knownUsers = [];
+    /// <summary>Package 155: the fingerprints of the rows the user opened.</summary>
+    readonly HashSet<string> expandedUsers = [];
     // Package 87: the lists come in pages, collected until complete
     readonly PagedListCollector<KnownUserInfo> userPages = new();
     readonly PagedListCollector<BanInfo> banPages = new();
@@ -258,7 +260,9 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
                 canBan: Actor.Has(Permission.UserBan) && weaker && !isLastAdmin && activeBans.Count == 0,
                 canUnban: Actor.Has(Permission.UserBan) && weaker && activeBans.Count > 0,
                 canDelete: Actor.Has(Permission.UserDelete) && weaker && !isLastAdmin,
-                canLiftMute: Actor.Has(Permission.UserMute) && weaker && user.ServerMuted); // Package 85
+                canLiftMute: Actor.Has(Permission.UserMute) && weaker && user.ServerMuted, // Package 85
+                isExpanded: expandedUsers.Contains(user.Fingerprint), // Package 155: an open row stays open when the list comes again
+                expandedChanged: expanded => { if (expanded) expandedUsers.Add(user.Fingerprint); else expandedUsers.Remove(user.Fingerprint); });
         }).ToList();
         var visible = all.Where(card => card.Matches(search) && (filterGroupId is null || card.Info.GroupIds.Contains(filterGroupId.Value)) && status switch
         {

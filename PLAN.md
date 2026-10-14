@@ -9050,19 +9050,21 @@ A user card shows eight details, the group check boxes and up to four buttons at
 
 ### Acceptance Criteria
 
-- [ ] AC1: A collapsed row shows avatar with the online dot, name, status, fingerprint short form, one chip per group, the last login, and the banners "Gebannt" and "Server-stumm" as chips.
-- [ ] AC2: A click on the row or Enter on it opens its details (the eight values, the full fingerprint, the group check boxes, the actions); again closes them; several can be open.
-- [ ] AC3: Search, filters, order, the busy state and the errors of Packages 97 and 98 behave as before.
-- [ ] AC4: An open row stays open when the list refreshes and the user is still in it.
-- [ ] AC5: The list fits from 360 px; under narrow the chips wrap below the name.
+- [x] AC1: A collapsed row shows avatar with the online dot, name, status, fingerprint short form, one chip per group, the last login, and the banners "Gebannt" and "Server-stumm" as chips.
+- [x] AC2: A click on the row or Enter on it opens its details (the eight values, the full fingerprint, the group check boxes, the actions); again closes them; several can be open.
+- [x] AC3: Search, filters, order, the busy state and the errors of Packages 97 and 98 behave as before.
+- [x] AC4: An open row stays open when the list refreshes and the user is still in it.
+- [x] AC5: The list fits from 360 px; under narrow the chips wrap below the name.
 
 ### Tests (TDD)
 
 1. `UiSmokeTests > "Members_Row_CollapsedShowsSummary"` (AC1)
 2. `UiSmokeTests > "Members_Row_ClickOpensDetails"` (AC2): mouse and Enter.
-3. `KnownUserViewModelTests > "Refresh_SameUser_StaysExpanded"` (AC4)
+3. `UsersAndBansViewModelTests > "Refresh_SameUser_StaysExpanded"` (AC4)
 4. The existing `UsersAndBansViewModelTests` stay green (AC3).
 5. `ResponsiveTests > "Admin_EveryTab_Fits"` with one row opened (AC5).
+
+(as built: the row is a `Button.memberHeader` bound to `KnownUserViewModel.ToggleExpandedCommand`, so a click, Enter and Space open and close it; a chevron turns while open; the last login hides under narrow (`wideOnly`). `KnownUserViewModel` is an `ObservableObject` now with `IsExpanded` and `GroupNames` (the names of the checked group boxes, one chip each); the chips "Gebannt" and "Server-stumm" (new text `Ui_ServerMutedChip`) sit beside them. The cards are built again for every list, so `UsersAndBansViewModel` keeps the opened fingerprints and hands each new card its state. The test of AC4 sits with the section that rebuilds the cards (`UsersAndBansViewModelTests`). `ResponsiveTests` opens every row of the crowded list (the widest case); the smoke test of Package 71 opens anna's row. Manual check: screenshots at 1300 px dark and 420 px light with one row open.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

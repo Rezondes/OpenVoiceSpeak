@@ -654,4 +654,5 @@
   <data name="Nav_GroupsRights" xml:space="preserve"><value>Groups and rights</value></data>
   <data name="Nav_ChannelLinks" xml:space="preserve"><value>Channel links</value></data>
   <data name="Nav_Members" xml:space="preserve"><value>Members</value></data>
+  <data name="Ui_ServerMutedChip" xml:space="preserve"><value>Server muted</value></data>
 </root>

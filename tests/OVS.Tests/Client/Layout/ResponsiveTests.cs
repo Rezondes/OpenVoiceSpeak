@@ -461,6 +461,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
                 index % 5 == 0, // Package 85: stored server mute with its banner and lift button
                 CanBeModeratedByMe: index % 3 != 0)) // Package 92: as the server judges it, members of the Admin group are not weaker
             .ToList()));
+        foreach (var user in admin.UsersAndBans.Users) user.IsExpanded = true; // Package 155: every row open, the widest case
         // Package 80: 12 bans of every status (active, expired, lifted, old without details), all shown
         var now = DateTimeOffset.Now;
         admin.UsersAndBans.Apply(new OVS.Shared.Protocol.Messages.Moderation.BanList("r", Enumerable.Range(0, 12).Select(index => new OVS.Shared.Protocol.Messages.Moderation.BanInfo(Guid.NewGuid(),

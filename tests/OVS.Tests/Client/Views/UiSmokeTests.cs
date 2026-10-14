@@ -295,6 +295,8 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         viewModel.PageFlow.AdminPage!.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], DateTimeOffset.Now.AddDays(-3),
             DateTimeOffset.Now, 4, TimeSpan.FromHours(2), "10.0.0.2", ["anni"], TimeSpan.FromMinutes(3), 7, CanBeModeratedByMe: true)]));
         AdminPages.Open(main, Strings.Nav_Members);
+        viewModel.PageFlow.AdminPage!.UsersAndBans.Users.Single().IsExpanded = true; // Package 155: the details open on a click
+        Dispatcher.UIThread.RunJobs();
         foreach (var text in new[] { "1 von 1 Nutzern", "anni", "10.0.0.2", "2 h", "3 min", "Online", "Frühere Nicknames" })
             Assert.Contains(text, Texts(main));
         Assert.Single(main.GetVisualDescendants().OfType<TextBox>(), textBox => AutomationProperties.GetName(textBox) == "Name, Fingerabdruck oder IP suchen");
@@ -1637,6 +1639,54 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         server.IconPng = TestImages.Encode(64, 64);
         Dispatcher.UIThread.RunJobs();
         Assert.Contains(page.GetVisualDescendants().OfType<Image>(), image => image.IsEffectivelyVisible && image.Source is not null);
+        main.Close();
+    }
+
+    /// <summary>Package 155: the members page with one known user, its row collapsed.</summary>
+    static async Task<MainWindow> OpenMembersAsync(MainViewModel viewModel)
+    {
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 900 };
+        main.Show();
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+        await viewModel.PageFlow.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        viewModel.PageFlow.AdminPage!.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], DateTimeOffset.Now.AddDays(-3),
+            DateTimeOffset.Now, 4, TimeSpan.FromHours(2), "10.0.0.2", ["anni"], TimeSpan.FromMinutes(3), 7, ServerMuted: true, CanBeModeratedByMe: true)]));
+        AdminPages.Open(main, Strings.Nav_Members);
+        return main;
+    }
+
+    /// <summary>Package 155: a collapsed row shows name, status, chips and the last login; the details stay closed.</summary>
+    [AvaloniaFact]
+    public async Task Members_Row_CollapsedShowsSummary()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = await OpenMembersAsync(viewModel);
+        var texts = main.GetVisualDescendants().OfType<TextBlock>().Where(textBlock => textBlock.IsEffectivelyVisible).Select(textBlock => textBlock.Text).ToList();
+        foreach (var text in new[] { "anna", Strings.Ui_StatusOnline, "Gast", Strings.Ui_ServerMutedChip })
+            Assert.True(texts.Contains(text), $"{text} not in: {string.Join(" | ", texts)}");
+        Assert.DoesNotContain("10.0.0.2", texts); // a detail: closed
+        Assert.DoesNotContain(Strings.Ui_LiftServerMute, texts);
+        main.Close();
+    }
+
+    /// <summary>Package 155: a click or Enter on the row opens its details, again closes them.</summary>
+    [AvaloniaFact]
+    public async Task Members_Row_ClickOpensDetails()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = await OpenMembersAsync(viewModel);
+        var row = main.GetVisualDescendants().OfType<Button>().Single(button => button.Classes.Contains("memberHeader"));
+        bool Open() => main.GetVisualDescendants().OfType<TextBlock>().Any(textBlock => textBlock.IsEffectivelyVisible && textBlock.Text == "10.0.0.2");
+        var point = Rows.Center(row, main);
+        main.MouseDown(point, MouseButton.Left);
+        main.MouseUp(point, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(Open());
+        row.Focus();
+        main.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(Open());
         main.Close();
     }
 

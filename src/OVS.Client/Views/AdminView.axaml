@@ -432,24 +432,47 @@
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:KnownUserViewModel">
-                      <Border Classes="card" Padding="12,10">
-                        <DockPanel>
-                          <Panel DockPanel.Dock="Left" VerticalAlignment="Top" Width="32" Height="32">
-                            <Border Classes="avatar" Width="32" Height="32"
-                                    Background="{Binding Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
-                              <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="13" />
-                            </Border>
-                            <Ellipse Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-2,-2"
-                                     Fill="{DynamicResource Ovs.Speaking}" Stroke="{DynamicResource Ovs.Surface}" StrokeThickness="2"
-                                     IsVisible="{Binding IsOnline}" ToolTip.Tip="{Binding StatusText}" />
-                          </Panel>
-                          <StackPanel Margin="12,0,0,0" Spacing="6">
-                            <WrapPanel ItemSpacing="8">
-                              <TextBlock Text="{Binding Nickname}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextWrapping="Wrap" />
-                              <TextBlock Classes="caption" Text="{Binding StatusText}" VerticalAlignment="Center" />
-                              <TextBlock Classes="caption" Text="{Binding ShortFingerprint}" FontFamily="Cascadia Mono,Consolas,monospace"
-                                         VerticalAlignment="Center" ToolTip.Tip="{Binding Fingerprint}" />
-                            </WrapPanel>
+                      <Border Classes="card memberRow" Padding="0">
+                        <StackPanel>
+                          <!-- Package 155: one row with what matters at a glance; a click or Enter opens the details and the actions -->
+                          <Button Classes="memberHeader" Command="{Binding ToggleExpandedCommand}" AutomationProperties.Name="{Binding Nickname}">
+                            <DockPanel>
+                              <Panel DockPanel.Dock="Left" VerticalAlignment="Top" Width="32" Height="32">
+                                <Border Classes="avatar" Width="32" Height="32"
+                                        Background="{Binding Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
+                                  <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="13" />
+                                </Border>
+                                <Ellipse Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-2,-2"
+                                         Fill="{DynamicResource Ovs.Speaking}" Stroke="{DynamicResource Ovs.Surface}" StrokeThickness="2"
+                                         IsVisible="{Binding IsOnline}" ToolTip.Tip="{Binding StatusText}" />
+                              </Panel>
+                              <PathIcon DockPanel.Dock="Right" Classes="sm muted expandChevron" Classes.open="{Binding IsExpanded}" Data="{StaticResource Icon.ChevronRight}"
+                                        Margin="8,0,0,0" VerticalAlignment="Center" />
+                              <TextBlock DockPanel.Dock="Right" Classes="caption wideOnly" Text="{Binding LastLoginText}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                         ToolTip.Tip="{x:Static l:Strings.Ui_LastLogin}" />
+                              <StackPanel Margin="12,0,0,0" Spacing="4" VerticalAlignment="Center">
+                                <WrapPanel ItemSpacing="8">
+                                  <TextBlock Text="{Binding Nickname}" FontWeight="SemiBold" Foreground="{DynamicResource Ovs.Text}" TextWrapping="Wrap" />
+                                  <TextBlock Classes="caption" Text="{Binding StatusText}" VerticalAlignment="Center" />
+                                  <TextBlock Classes="caption" Text="{Binding ShortFingerprint}" FontFamily="Cascadia Mono,Consolas,monospace"
+                                             VerticalAlignment="Center" ToolTip.Tip="{Binding Fingerprint}" />
+                                </WrapPanel>
+                                <WrapPanel ItemSpacing="4" LineSpacing="4">
+                                  <Border Classes="chip danger" IsVisible="{Binding IsBanned}"><TextBlock Text="{x:Static l:Strings.Ui_StatusBanned}" /></Border>
+                                  <Border Classes="chip warning" IsVisible="{Binding IsServerMuted}"><TextBlock Text="{x:Static l:Strings.Ui_ServerMutedChip}" /></Border>
+                                  <ItemsControl ItemsSource="{Binding GroupNames}">
+                                    <ItemsControl.ItemsPanel>
+                                      <ItemsPanelTemplate><WrapPanel ItemSpacing="4" LineSpacing="4" /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                      <DataTemplate x:DataType="x:String"><Border Classes="chip"><TextBlock Text="{Binding}" /></Border></DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                  </ItemsControl>
+                                </WrapPanel>
+                              </StackPanel>
+                            </DockPanel>
+                          </Button>
+                          <StackPanel Classes="memberDetails" Spacing="6" IsVisible="{Binding IsExpanded}">
                             <Border Classes="banner danger" IsVisible="{Binding IsBanned}">
                               <DockPanel>
                                 <PathIcon DockPanel.Dock="Left" Classes="sm danger" Data="{StaticResource Icon.Prohibited}" VerticalAlignment="Top" Margin="0,2,8,0" />
@@ -551,7 +574,7 @@
                               </Button>
                             </WrapPanel>
                           </StackPanel>
-                        </DockPanel>
+                        </StackPanel>
                       </Border>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>

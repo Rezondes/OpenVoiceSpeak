@@ -326,6 +326,23 @@ public sealed class UsersAndBansViewModelTests
         Assert.All(sent, request => Assert.Null(server.Routes.Find(request.RequestId!)));
     }
 
+    /// <summary>Package 155: an opened row stays open when the list comes again with the same user; a new list closes no row.</summary>
+    [Fact]
+    public void Refresh_SameUser_StaysExpanded()
+    {
+        var (section, _) = Create();
+        section.Apply(new UserList("r", [Me, Yvonne]));
+        section.Users.Single(user => user.Nickname == "Yvonne").IsExpanded = true;
+
+        section.Apply(new UserList("r2", [Me, Yvonne]));
+
+        Assert.True(section.Users.Single(user => user.Nickname == "Yvonne").IsExpanded);
+        Assert.False(section.Users.Single(user => user.Nickname == "ich").IsExpanded);
+        section.Users.Single(user => user.Nickname == "Yvonne").IsExpanded = false;
+        section.Apply(new UserList("r3", [Me, Yvonne]));
+        Assert.False(section.Users.Single(user => user.Nickname == "Yvonne").IsExpanded);
+    }
+
     sealed record Rig(UsersAndBansViewModel Section, ServerViewModel Server);
 
     sealed record OwnGroupMark(bool Pending, int SentBefore);

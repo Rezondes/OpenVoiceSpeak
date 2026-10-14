@@ -2,6 +2,7 @@ using System.Globalization;
 using OVS.Client.Collections;
 using OVS.Client.Localization;
 using OVS.Client.Models;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OVS.Shared.Protocol.Messages.Moderation;
 using OVS.Shared.Protocol.Messages.Users;
@@ -19,8 +20,11 @@ namespace OVS.Client.ViewModels;
 /// <param name="canUnban">The unban button shows.</param>
 /// <param name="canDelete">The delete button shows.</param>
 /// <param name="canLiftMute">The lift mute button shows.</param>
+/// <param name="isExpanded">Package 155: the row starts with its details open (it was open before the list came again).</param>
+/// <param name="expandedChanged">Package 155: told when the row opens or closes, so the list keeps it open.</param>
 internal sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnline, IReadOnlyList<GroupAssignmentViewModel> toggles, IReadOnlyList<BanInfo> bans,
-    KnownUserActions actions, PendingActionViewModel busy, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false) : IMotionKey
+    KnownUserActions actions, PendingActionViewModel busy, bool canBan = false, bool canUnban = false, bool canDelete = false, bool canLiftMute = false,
+    bool isExpanded = false, Action<bool>? expandedChanged = null) : ObservableObject, IMotionKey
 {
     /// <summary>The user as the server lists them.</summary>
     public KnownUserInfo Info { get; } = info;
@@ -58,6 +62,18 @@ internal sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnli
     public bool CanLiftMute { get; } = canLiftMute;
     /// <summary>The card has any button.</summary>
     public bool HasActions => CanBan || CanUnban || CanDelete || CanLiftMute;
+
+    /// <summary>Package 155: the row shows its details, groups and actions.</summary>
+    [ObservableProperty] bool isExpanded = isExpanded;
+
+    partial void OnIsExpandedChanged(bool value) => expandedChanged?.Invoke(value);
+
+    /// <summary>Package 155: a click or Enter on the row opens or closes its details.</summary>
+    [RelayCommand]
+    void ToggleExpanded() => IsExpanded = !IsExpanded;
+
+    /// <summary>Package 155: the names of the user's groups, one chip each in the collapsed row.</summary>
+    public IReadOnlyList<string> GroupNames => Toggles.Where(toggle => toggle.IsChecked).Select(toggle => toggle.Name).ToList();
 
     [RelayCommand(CanExecute = nameof(CanLiftMute))]
     Task LiftMuteAsync() => actions.LiftMute(this);

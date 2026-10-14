@@ -16,9 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["UiSmokeTests > \"Members_Row_CollapsedShowsSummary\""] = "planned in Package 155, written when it is built",
-        ["UiSmokeTests > \"Members_Row_ClickOpensDetails\""] = "planned in Package 155, written when it is built",
-        ["KnownUserViewModelTests > \"Refresh_SameUser_StaysExpanded\""] = "planned in Package 155, written when it is built",
         ["BackupCardViewModelTests > \"Delete_Cancelled_NothingSent\""] = "planned in Package 156, written when it is built",
         ["BackupCardViewModelTests > \"Delete_Confirmed_Sent\""] = "planned in Package 156, written when it is built",
         ["UiSmokeTests > \"MemberRow_RiskyActions_InMenu\""] = "planned in Package 156, written when it is built",
