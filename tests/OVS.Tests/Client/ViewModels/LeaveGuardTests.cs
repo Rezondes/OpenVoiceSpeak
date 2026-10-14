@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using OVS.Client.Controls;
 using OVS.Client.Dialogs;
 using OVS.Client.Models;
 using OVS.Client.Settings;
@@ -488,6 +489,27 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(1, asked);
         Assert.Same(page.FindControl<TabItem>("OperationTab"), tabs.SelectedItem);
+        main.Close();
+    }
+
+    /// <summary>Package 157: leaving an administration page with changes points at the bar first, then asks.</summary>
+    [AvaloniaFact]
+    public async Task Admin_LeaveWithChanges_AttentionThenQuestion()
+    {
+        var viewModel = Main();
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
+        main.Show();
+        await viewModel.PageFlow.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        var page = Page(main);
+        var admin = viewModel.PageFlow.AdminPage!;
+        admin.AttentionRequested += () => order.Add("attention");
+        admin.ServerSettings.Name = "Neu";
+        answers.Enqueue(LeaveChoice.Stay);
+        page.FindControl<TabControl>("Tabs")!.SelectedItem = page.FindControl<TabItem>("GroupsTab");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(["attention", "question"], order);
+        Assert.Contains(UnsavedBar.AttentionClass, page.GetVisualDescendants().OfType<UnsavedBar>().Single().Classes);
         main.Close();
     }
 

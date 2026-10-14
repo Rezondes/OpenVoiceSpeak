@@ -20,6 +20,8 @@ internal sealed class UnsavedBar : Border
     public static readonly StyledProperty<bool> IsSavingProperty = AvaloniaProperty.Register<UnsavedBar, bool>(nameof(IsSaving));
     /// <summary>What keeps the page from being saved, shown in the bar; Save is off meanwhile.</summary>
     public static readonly StyledProperty<string?> ErrorProperty = AvaloniaProperty.Register<UnsavedBar, string?>(nameof(Error));
+    /// <summary>Package 157: a text of the page instead of "Ungespeicherte Änderungen" (the links' pending count).</summary>
+    public static readonly StyledProperty<string?> NoteProperty = AvaloniaProperty.Register<UnsavedBar, string?>(nameof(Note));
     /// <summary>Saves and keeps the page open.</summary>
     public static readonly StyledProperty<ICommand?> SaveCommandProperty = AvaloniaProperty.Register<UnsavedBar, ICommand?>(nameof(SaveCommand));
     /// <summary>Puts every value back to what the page opened with.</summary>
@@ -68,6 +70,13 @@ internal sealed class UnsavedBar : Border
         set => SetValue(ErrorProperty, value);
     }
 
+    /// <summary>A text of the page instead of the default one.</summary>
+    public string? Note
+    {
+        get => GetValue(NoteProperty);
+        set => SetValue(NoteProperty, value);
+    }
+
     /// <summary>Saves and keeps the page open.</summary>
     public ICommand? SaveCommand
     {
@@ -96,14 +105,14 @@ internal sealed class UnsavedBar : Border
         base.OnPropertyChanged(change);
         if (change.Property == SaveCommandProperty) save.Command = SaveCommand;
         else if (change.Property == ResetCommandProperty) reset.Command = ResetCommand;
-        else if (change.Property == HasChangesProperty || change.Property == IsSavingProperty || change.Property == ErrorProperty) Update();
+        else if (change.Property == HasChangesProperty || change.Property == IsSavingProperty || change.Property == ErrorProperty || change.Property == NoteProperty) Update();
     }
 
     void Update()
     {
         IsVisible = HasChanges || IsSaving || Error is not null;
         if (!IsVisible) Classes.Remove(AttentionClass);
-        text.Text = Error ?? Strings.Unsaved_Text;
+        text.Text = Error ?? Note ?? Strings.Unsaved_Text;
         text.Classes.Set("danger", Error is not null);
         spinner.IsVisible = IsSaving;
         save.IsEnabled = Error is null && !IsSaving;

@@ -262,6 +262,14 @@ public sealed class MotionCoverageTests
 
     static Button CommandButton(Walk walk, System.Windows.Input.ICommand command) => Shown<Button>(walk, button => button.Command == command);
 
+    /// <summary>Package 157: a button of the save bar ("UnsavedSave", "UnsavedReset").</summary>
+    static Button BarButton(Walk walk, string name)
+    {
+        var button = AdminPage(walk).GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Name == name);
+        Assert.True(button.IsEffectivelyVisible, $"{name} hidden: place {walk.Admin.ShownPlace is not null}, changes {walk.Admin.ShownPlaceHasChanges}, tab {AdminTabs(walk).SelectedIndex}");
+        return button;
+    }
+
     static KnownUserViewModel Anna(Walk walk) => walk.Admin.UsersAndBans.Users.Single(knownUser => knownUser.Nickname == "anna");
 
     /// <summary>The id of the last request of that type: the server answers under it (answers to other ids reach nobody).</summary>
@@ -295,7 +303,9 @@ public sealed class MotionCoverageTests
     static Step Click(string name, Func<Walk, Button> button, Action<Walk>? then = null, Action<Walk>? prepare = null) =>
         new(name, walk =>
         {
-            var at = TestSupport.Rows.Center(button(walk), walk.Main);
+            var target = button(walk);
+            Assert.True(target.IsEffectivelyVisible && target.TranslatePoint(default, walk.Main) is not null, $"{name}: the button is hidden or not in the window");
+            var at = TestSupport.Rows.Center(target, walk.Main);
             walk.Main.MouseMove(at);
             walk.Main.MouseDown(at, MouseButton.Left);
             walk.Main.MouseUp(at, MouseButton.Left);
@@ -465,7 +475,7 @@ public sealed class MotionCoverageTests
         yield return new("create a group", walk => walk.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, FakeServers.ModeratorGroup])));
         yield return new("choose a group", walk => walk.Admin.GroupList.SelectedGroup = walk.Admin.GroupList.Groups.Single(groupEdit => groupEdit.Name == "Moderator"), walk => Named<ListBox>(walk, "GroupRows"));
         yield return Toggle("toggle a group's right", walk => Shown<CheckBox>(walk, checkBox => checkBox.DataContext is PermissionToggleViewModel { Permission: Permission.UserMute }));
-        yield return Click("save a group", walk => Named<Button>(walk, "SaveGroupButton"), walk =>
+        yield return Click("save a group", walk => BarButton(walk, "UnsavedSave"), walk =>
         {
             Watch(250); // busy until the server's groups come
             walk.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, FakeServers.ModeratorGroup with { Permissions = FakeServers.ModeratorGroup.Permissions | Permission.UserMute }]));
@@ -515,9 +525,9 @@ public sealed class MotionCoverageTests
         Func<Walk, ToggleButton> cellBox = walk => Shown<CheckBox>(walk, checkBox => checkBox.DataContext is LinkCellViewModel);
         yield return Toggle("select a channel in the link matrix", rowBox, back: true);
         yield return Toggle("change a link in the matrix", cellBox);
-        yield return Click("discard the link changes", walk => CommandButton(walk, walk.Admin.Links.DiscardCommand));
+        yield return Click("discard the link changes", walk => BarButton(walk, "UnsavedReset"));
         yield return Toggle("change a link in the matrix again", cellBox);
-        yield return Click("apply the link changes", walk => Named<Button>(walk, "ApplyLinksButton"), walk =>
+        yield return Click("apply the link changes", walk => BarButton(walk, "UnsavedSave"), walk =>
         {
             Watch(250); // busy until the server's links match
             walk.Server.Apply(new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid));
@@ -528,8 +538,12 @@ public sealed class MotionCoverageTests
         var serverBoxes = AdminPage(otherWalk).GetVisualDescendants().OfType<CheckBox>().Where(checkBox => checkBox.IsEffectivelyVisible && checkBox.IsEffectivelyEnabled).ToList();
         foreach (var box in serverBoxes)
             yield return Toggle($"server settings: {box.Content as string ?? box.Name}", _ => box, back: true);
-        yield return Click("save the server settings", walk => CommandButton(walk, walk.Admin.ServerSettings.SaveCommand),
-            walk => walk.Server.Apply(new ServerSettingsChanged(walk.Server.Mirror.Settings)));
+        yield return Click("save the server settings", walk => BarButton(walk, "UnsavedSave"),
+            walk => walk.Server.Apply(new ServerSettingsChanged(walk.Server.Mirror.Settings with
+            {
+                Limits = walk.Server.Mirror.Settings.Limits! with { LogRotateDaily = walk.Admin.ServerSettings.LogRotateDaily }, // the server took it
+            })),
+            prepare: walk => walk.Admin.ServerSettings.LogRotateDaily = !walk.Admin.ServerSettings.LogRotateDaily); // Package 157: the bar shows with a change
         yield return new("upload a logo", walk =>
         {
             var png = TestImages.Encode(64, 64);

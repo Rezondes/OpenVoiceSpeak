@@ -1760,6 +1760,39 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Close();
     }
 
+    /// <summary>Package 157: the administration's save bar shows only with a change of the shown page; the pages' own save buttons are gone.</summary>
+    [AvaloniaFact]
+    public async Task Admin_SaveBar_OnlyWithChanges()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 900 };
+        main.Show();
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+        await viewModel.PageFlow.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        var admin = viewModel.PageFlow.AdminPage!;
+        var bar = main.GetVisualDescendants().OfType<UnsavedBar>().Single();
+        foreach (var header in new[] { Strings.Nav_Overview, Strings.Nav_Operation, Strings.Nav_GroupsRights, Strings.Nav_ChannelLinks })
+        {
+            AdminPages.Open(main, header);
+            Assert.False(bar.IsVisible, header);
+            Assert.DoesNotContain(main.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.IsEffectivelyVisible
+                && textBlock.Text is { } text && (text == Strings.Ui_SaveServerSettings || text == Strings.Ui_SaveGroup || text == Strings.Ui_Apply || text == Strings.Ui_Discard));
+        }
+        AdminPages.Open(main, Strings.Nav_Overview);
+        admin.ServerSettings.Name = "Neu";
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(bar.IsEffectivelyVisible);
+        admin.ResetShownPlaceCommand.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(bar.IsVisible);
+        AdminPages.Open(main, Strings.Nav_ChannelLinks);
+        admin.Links.Set(FakeServers.Lobby, FakeServers.Raid, false);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains(bar.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == admin.Links.PendingText); // the pending count in the bar
+        main.Close();
+    }
+
     sealed record ChannelDialogLook(string Title, List<string?> Buttons, string? Name, bool? Muted, decimal? Slots, bool SlotsEnabled);
 
     sealed record WaitingScene(MainWindow Main, MainViewModel Vm, ServerViewModel Server, List<Request> Sent, ManualTimeProvider Time);

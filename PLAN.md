@@ -9150,18 +9150,20 @@ Four save places with three looks (`AdminView.axaml`: the accent button in the s
 
 ### Acceptance Criteria
 
-- [ ] AC1: On these four pages the bar of Package 153 shows only with changes; "Speichern" saves the place with the busy state and errors of Package 98, the error ID button of Package 143 included.
-- [ ] AC2: "Zurücksetzen" restores what the server last sent (settings, all edited groups including drafts, pending links).
-- [ ] AC3: The four old save and discard buttons are gone; the links' pending count stays as text in the bar.
-- [ ] AC4: Leaving with changes makes the bar pulse and then asks (as Package 153 for the settings).
-- [ ] AC5: All four pages fit from 360 px with the bar shown.
+- [x] AC1: On these four pages the bar of Package 153 shows only with changes; "Speichern" saves the place with the busy state and errors of Package 98, the error ID button of Package 143 included.
+- [x] AC2: "Zurücksetzen" restores what the server last sent (settings, all edited groups including drafts, pending links).
+- [x] AC3: The four old save and discard buttons are gone; the links' pending count stays as text in the bar.
+- [x] AC4: Leaving with changes makes the bar pulse and then asks (as Package 153 for the settings).
+- [x] AC5: All four pages fit from 360 px with the bar shown.
 
 ### Tests (TDD)
 
 1. `AdminPlaceTests > "Reset_EachPlace_BackToServerState"` (AC2), one case per place.
 2. `UiSmokeTests > "Admin_SaveBar_OnlyWithChanges"` (AC1, AC3)
 3. `LeaveGuardTests > "Admin_LeaveWithChanges_AttentionThenQuestion"` (AC4)
-4. `ResponsiveTests > "Admin_EveryTab_Fits"` with a change on each of the four pages (AC5)
+4. `ResponsiveTests > [Theory] "SaveBar_EveryPlace_Fits"` with a change on each of the four pages (AC5)
+
+(as built: no `AdminPlace.Reset` was needed: every place already had `Discard`, which puts it back to what the server last sent; "Zurücksetzen" calls it. `AdminViewModel.ShownPlace` is the place of the shown page (set by the view on every page change, null on pages without one); `ShownPlaceHasChanges`, `ShownPlaceIsSaving` (the bar's command, the group save or the links' apply, so a save started elsewhere shows its busy state too) and `ShownPlaceNote` (the links' pending count) are raised on every change of the server settings, the groups and their right boxes, the links and the pending saves. `SaveShownPlaceCommand` saves the place; its errors and error ID stay where the pages showed them. `UnsavedBar` got `Note`. The old buttons (server settings save on both pages, group save, links apply and discard with the pending count) are gone; the view models keep their commands, which the tests and the place's save use. A tab change of the administration with changes now also lets the bar shake before the question (`ConfirmLeaveAsync`). The motion walk clicks the bar's buttons; its server settings save answers with the changed value.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

@@ -62,6 +62,9 @@
       </DockPanel>
     </Border>
 
+      <!-- Package 157: one save bar for Übersicht, Betrieb, groups and links, only while the shown page holds changes -->
+      <ctl:UnsavedBar x:Name="Unsaved" DockPanel.Dock="Bottom" HasChanges="{Binding ShownPlaceHasChanges}" IsSaving="{Binding ShownPlaceIsSaving}"
+                      Note="{Binding ShownPlaceNote}" SaveCommand="{Binding SaveShownPlaceCommand}" ResetCommand="{Binding ResetShownPlaceCommand}" />
       <!-- Package 154: the pages listed on the left as in Discord, grouped by task (SideNav); stacked below 640 px: the list, then the page -->
       <TabControl x:Name="Tabs" Classes="sideNav adminNav" anim:PageMotion.Tabs="True"
                   lay:Responsive.StackBelow="640" lay:SideNav.ListDetail="True">
@@ -134,12 +137,6 @@
                     <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
                                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
                     <ctl:ErrorIdButton Text="{Binding Error}" HorizontalAlignment="Left" />
-                    <Button Classes="accent" Command="{Binding SaveCommand}" HorizontalAlignment="Left">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />
-                        <TextBlock Text="{x:Static l:Strings.Ui_SaveServerSettings}" />
-                      </StackPanel>
-                    </Button>
                   </StackPanel>
                 </StackPanel>
               </Border>
@@ -183,12 +180,6 @@
                 <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
                            IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 <ctl:ErrorIdButton Text="{Binding Error}" HorizontalAlignment="Left" />
-                <Button Classes="accent" Command="{Binding SaveCommand}" HorizontalAlignment="Left">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />
-                    <TextBlock Text="{x:Static l:Strings.Ui_SaveServerSettings}" />
-                  </StackPanel>
-                </Button>
               </StackPanel>
             </Border>
           </ScrollViewer>
@@ -241,14 +232,6 @@
                 <TextBlock DockPanel.Dock="Bottom" Classes="danger" Text="{Binding GroupSave.Error}" TextWrapping="Wrap" Margin="0,8,0,0"
                            IsVisible="{Binding GroupSave.HasError}" />
                 <WrapPanel DockPanel.Dock="Bottom" ItemSpacing="8" LineSpacing="8" Margin="0,12,0,0">
-                  <!-- Package 98: busy until the server's groups arrive -->
-                  <Button Name="SaveGroupButton" Classes="accent" Command="{Binding SaveGroupCommand}" IsEnabled="{Binding !GroupSave.IsBusy}">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" IsVisible="{Binding !GroupSave.IsBusy}" />
-                      <ctl:BusySpinner IsVisible="{Binding GroupSave.IsBusy}" />
-                      <TextBlock Text="{x:Static l:Strings.Ui_SaveGroup}" />
-                    </StackPanel>
-                  </Button>
                   <Button Classes="danger" Command="{Binding DeleteGroupCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                       <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
@@ -313,16 +296,6 @@
                   <TextBlock Text="{x:Static l:Strings.Ui_UnlinkSelected}" />
                 </StackPanel>
               </Button>
-              <!-- Package 98: busy until the server's link changes match what was sent -->
-              <Button Name="ApplyLinksButton" Classes="accent" Command="{Binding ApplyCommand}" IsEnabled="{Binding HasPending}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" IsVisible="{Binding !Applying.IsBusy}" />
-                  <ctl:BusySpinner IsVisible="{Binding Applying.IsBusy}" />
-                  <TextBlock Text="{x:Static l:Strings.Ui_Apply}" />
-                </StackPanel>
-              </Button>
-              <Button Classes="subtle" Command="{Binding DiscardCommand}" IsEnabled="{Binding HasPending}" Content="{x:Static l:Strings.Ui_Discard}" />
-              <TextBlock Classes="caption" Text="{Binding PendingText}" VerticalAlignment="Center" />
               <TextBlock Classes="caption danger" Text="{Binding Applying.Error}" TextWrapping="Wrap" VerticalAlignment="Center"
                          IsVisible="{Binding Applying.HasError}" />
               <ctl:ErrorIdButton Text="{Binding Applying.Error}" VerticalAlignment="Center" />

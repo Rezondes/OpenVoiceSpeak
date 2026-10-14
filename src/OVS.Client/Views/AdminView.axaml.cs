@@ -27,6 +27,21 @@ internal partial class AdminView : UserControl
         MaxUsersInput.Maximum = ProtocolLimits.MaxUsersMax;
         LogDaysInput.Maximum = ProtocolLimits.LogDaysMax;
         // Package 154: SideNav starts on the first page the user may see (hidden pages stay selectable otherwise).
+        // Package 157: the save bar follows the shown page's place, and a way out with changes points at it
+        Tabs.SelectionChanged += (_, args) =>
+        {
+            if (args.Source == Tabs && Vm is { } admin) admin.ShownPlace = (Tabs.SelectedItem as TabItem)?.Tag as AdminPlace;
+        };
+        DataContextChanged += (_, _) =>
+        {
+            if (attentionOf is not null) attentionOf.AttentionRequested -= Unsaved.Attention;
+            attentionOf = Vm;
+            if (attentionOf is not null)
+            {
+                attentionOf.AttentionRequested += Unsaved.Attention;
+                attentionOf.ShownPlace = (Tabs.SelectedItem as TabItem)?.Tag as AdminPlace;
+            }
+        };
         // Package 78: a tab scrolled out of the header strip comes into view when chosen
         Tabs.SelectionChanged += (_, args) =>
         {
@@ -73,6 +88,8 @@ internal partial class AdminView : UserControl
     }
 
     AdminViewModel? Vm => DataContext as AdminViewModel;
+
+    AdminViewModel? attentionOf;
 
     bool stepping;
 

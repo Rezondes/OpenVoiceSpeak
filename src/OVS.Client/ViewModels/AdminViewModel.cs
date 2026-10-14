@@ -32,6 +32,19 @@ internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
         Logs = new LogsViewModel(server, Transfer);
         GroupList = new GroupListViewModel(server, ConfirmLeaveAsync);
         Places = [GroupList.Place, Links.Place, ServerSettings.Place];
+        // Package 157: every edit of a place's values tells the save bar
+        ServerSettings.PropertyChanged += (_, _) => RefreshShownPlace();
+        Links.PropertyChanged += (_, _) => RefreshShownPlace();
+        GroupList.PropertyChanged += (_, _) => RefreshShownPlace();
+        GroupList.Groups.CollectionChanged += (_, args) =>
+        {
+            foreach (var group in args.NewItems?.OfType<GroupEditViewModel>() ?? []) WatchGroup(group);
+            RefreshShownPlace();
+        };
+        foreach (var group in GroupList.Groups) WatchGroup(group);
+        GroupList.GroupSave.PropertyChanged += (_, _) => RefreshShownPlace();
+        Links.Applying.PropertyChanged += (_, _) => RefreshShownPlace();
+        SaveShownPlaceCommand.PropertyChanged += (_, _) => RefreshShownPlace();
         // The lists are asked for in this order (a section without a refresh, like the icon first, is listed only to follow
         // the server and to let go of it); each section owns the right its own code checks (users and bans, backups,
         // settings, logs), the page keeps those of the groups and links tabs, which have no refresh.
@@ -132,6 +145,54 @@ internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
         OnPropertyChanged(nameof(ShowLogs));
     }
 
+    // ---- Package 157: the save bar of the shown page ----
+
+    /// <summary>The place of the shown page (Übersicht, Betrieb, groups, links); null on a page that saves nothing itself.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShownPlaceHasChanges), nameof(ShownPlaceNote), nameof(ShownPlaceIsSaving))]
+    AdminPlace? shownPlace;
+
+    /// <summary>The shown page's save runs (Package 98: busy on the bar's button, also for a save started elsewhere).</summary>
+    public bool ShownPlaceIsSaving =>
+        SaveShownPlaceCommand.IsRunning
+        || ShownPlace == GroupList.Place && GroupList.GroupSave.IsBusy
+        || ShownPlace == Links.Place && Links.Applying.IsBusy;
+
+    /// <summary>The shown page holds changes.</summary>
+    public bool ShownPlaceHasChanges => ShownPlace?.HasChanges() == true;
+
+    /// <summary>The links' pending count in the bar, on the links page.</summary>
+    public string? ShownPlaceNote => ShownPlace == Links.Place && Links.HasPending ? Links.PendingText : null;
+
+    void RefreshShownPlace()
+    {
+        OnPropertyChanged(nameof(ShownPlaceHasChanges));
+        OnPropertyChanged(nameof(ShownPlaceNote));
+        OnPropertyChanged(nameof(ShownPlaceIsSaving));
+    }
+
+    void WatchGroup(GroupEditViewModel group)
+    {
+        group.PropertyChanged += (_, _) => RefreshShownPlace();
+        foreach (var toggle in group.Toggles) toggle.PropertyChanged += (_, _) => RefreshShownPlace();
+    }
+
+    /// <summary>"Speichern": saves the shown page's place; its busy state and errors show on the page as before.</summary>
+    [RelayCommand]
+    async Task SaveShownPlaceAsync()
+    {
+        if (ShownPlace is { } place) await place.SaveAsync();
+        RefreshShownPlace();
+    }
+
+    /// <summary>"Zurücksetzen": back to what the server last sent.</summary>
+    [RelayCommand]
+    void ResetShownPlace()
+    {
+        ShownPlace?.Discard();
+        RefreshShownPlace();
+    }
+
     // Package 114: the places that need a manual save; each section builds its own and its tab of the view carries it
     /// <summary>Every place in saving order (the edited group comes first).</summary>
     internal IReadOnlyList<AdminPlace> Places { get; }
@@ -151,6 +212,7 @@ internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     internal async Task<bool> ConfirmLeaveAsync(AdminPlace place)
     {
         if (!place.HasChanges()) return true;
+        RequestAttention(); // Package 157: the bar shakes, then the question
         switch (dialogs.AskLeave is { } ask ? await ask() : LeaveChoice.Discard)
         {
             case LeaveChoice.Stay:

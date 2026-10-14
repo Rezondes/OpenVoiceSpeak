@@ -91,4 +91,32 @@ public sealed class AdminPlaceTests
         foreach (var place in admin.Places) Assert.True(await HangGuard.BoundAsync(place.SaveAsync()));
         Assert.Empty(sent);
     }
+    /// <summary>Package 157: the bar's "Zurücksetzen" puts each place back to what the server last sent.</summary>
+    [AvaloniaFact]
+    public async Task Reset_EachPlace_BackToServerState()
+    {
+        var admin = Admin();
+        admin.ShownPlace = admin.ServerSettings.Place;
+        var name = admin.ServerSettings.Name;
+        admin.ServerSettings.Name = "Neu";
+        Assert.True(admin.ShownPlaceHasChanges);
+        admin.ResetShownPlaceCommand.Execute(null);
+        Assert.Equal((name, false), (admin.ServerSettings.Name, admin.ShownPlaceHasChanges));
+
+        admin.ShownPlace = admin.GroupList.Place;
+        admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(group => group.IsEditable);
+        admin.GroupList.SelectedGroup.Name += "2";
+        await admin.GroupList.NewGroupCommand.ExecuteAsync(null); // a draft as well
+        Assert.True(admin.ShownPlaceHasChanges);
+        admin.ResetShownPlaceCommand.Execute(null);
+        Assert.False(admin.ShownPlaceHasChanges);
+
+        admin.ShownPlace = admin.Links.Place;
+        admin.Links.Set(FakeServers.Lobby, FakeServers.Raid, false);
+        Assert.True(admin.ShownPlaceHasChanges);
+        Assert.Equal(admin.Links.PendingText, admin.ShownPlaceNote);
+        admin.ResetShownPlaceCommand.Execute(null);
+        Assert.Equal((false, null), (admin.ShownPlaceHasChanges, admin.ShownPlaceNote));
+    }
+
 }

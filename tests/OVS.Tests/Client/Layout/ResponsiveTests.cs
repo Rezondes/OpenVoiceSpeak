@@ -600,6 +600,38 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         return 0;
     });
 
+    /// <summary>Package 157: with a change on each of the four saving pages the save bar fits with both buttons.</summary>
+    [AvaloniaTheory]
+    [InlineData(360)]
+    [InlineData(1100)]
+    public void SaveBar_EveryPlace_Fits(double width)
+    {
+        var main = OpenAdmin(width, out var page);
+        var admin = (AdminViewModel)page.DataContext!;
+        foreach (var (header, change) in new (string, Action)[]
+        {
+            (Strings.Nav_Overview, () => admin.ServerSettings.Name = "Ein sehr langer neuer Servername"),
+            (Strings.Nav_Operation, () => admin.ServerSettings.RemovePassword = !admin.ServerSettings.RemovePassword),
+            (Strings.Nav_GroupsRights, () => admin.GroupList.SelectedGroup = admin.GroupList.Groups.First(group => group.IsEditable)),
+            (Strings.Nav_ChannelLinks, () => admin.Links.Set(admin.Links.Rows[0].Id, admin.Links.Rows[1].Id, !admin.Links.Rows[0].Cells[1].IsLinked)),
+        })
+        {
+            AdminPages.Open(page, header);
+            change();
+            if (header == Strings.Nav_GroupsRights) admin.GroupList.SelectedGroup!.Name += "2";
+            Dispatcher.UIThread.RunJobs();
+            foreach (var name in UnsavedButtons)
+            {
+                var button = page.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Name == name);
+                Assert.True(button.IsEffectivelyVisible, $"{header}: {name}");
+                FullyInside(main, button);
+            }
+            LayoutAssert.FitsHorizontally(main, page.GetVisualDescendants().OfType<ScrollViewer>().SingleOrDefault(scrollViewer => scrollViewer.Name == "LinkCells")); // the matrix scrolls sideways
+            admin.ResetShownPlaceCommand.Execute(null);
+        }
+        main.Close();
+    }
+
     /// <summary>Package 81 (AC8): the file list beside the opened file; under narrow one after the other, each on the whole page.</summary>
     [AvaloniaTheory]
     [InlineData(360, true)]
