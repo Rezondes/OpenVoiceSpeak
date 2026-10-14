@@ -461,7 +461,10 @@
           <Border Name="PART_Nav" Width="232" Background="{DynamicResource Ovs.Sidebar}"
                   BorderBrush="{DynamicResource Ovs.Border}" BorderThickness="0,0,1,0">
             <ScrollViewer Name="PART_TabStrip" HorizontalScrollBarVisibility="Disabled">
-              <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Margin="12,12,12,16" />
+              <!-- the padding on a border: FluentTheme sets the presenter's own margin by placement -->
+              <Border Padding="12,12,12,16">
+                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+              </Border>
             </ScrollViewer>
           </Border>
           <DockPanel Name="PART_Page" Grid.Column="1">

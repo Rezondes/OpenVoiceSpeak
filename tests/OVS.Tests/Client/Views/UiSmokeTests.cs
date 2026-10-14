@@ -260,20 +260,25 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
 
         viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
-        Assert.Contains("DARSTELLUNG", Texts(main));
+        SettingsPages.Open(main, Strings.Nav_Appearance); // Package 152: one page at a time
+        Assert.Contains("Darstellung", Texts(main));
         Assert.Contains("Wirkt nach einem Neustart des Clients.", Texts(main)); // Package 45: language choice
+        SettingsPages.Open(main, Strings.Nav_Sounds);
         Assert.Contains("Alle Sounds aus", Texts(main)); // Package 47
         var soundControls = main.GetVisualDescendants().OfType<Control>().Select(AutomationProperties.GetName).ToList(); // Package 48
         foreach (var label in new[] { "Mikrofon aus", "Neue Privatnachricht" })
             foreach (var name in new[] { $"{label} abspielen", $"{label}: Lautstärke", $"{label}: stumm", $"{label}: Datei wählen", $"{label}: zurücksetzen" })
                 Assert.Contains(name, soundControls);
         // Package 59: without a PTT key the transmit section says so (here the profile was saved before, so it has none)
+        SettingsPages.Open(main, Strings.Nav_Transmit);
         bool hasPtt = viewModel.Settings.KeyBindings.Any(keyBinding => keyBinding.Action == OVS.Client.Input.KeyAction.PushToTalk);
         Assert.Equal(!hasPtt, main.GetVisualDescendants().OfType<TextBlock>()
             .Any(textBlock => textBlock.Text == "Push-to-Talk ist gewählt, aber keine Taste belegt. Ohne Taste hört dich niemand." && textBlock.IsEffectivelyVisible));
         // Package 42: version in "Über"; "dev.<stamp>" locally, the release version in GitHub Actions (GITHUB_ACTIONS=true)
+        SettingsPages.Open(main, Strings.Nav_About);
         Assert.Contains($"OpenVoiceSpeak {OVS.Shared.BuildInfo.Current.Version}", Texts(main));
         Assert.Contains("Nach Updates suchen", Texts(main)); // Package 43
+        SettingsPages.Open(main, Strings.Nav_Keys);
         Assert.Contains("Tastenaktion hinzufügen", Texts(main));
         viewModel.PageFlow.CloseWithoutAsking();
 
@@ -747,6 +752,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Show();
         viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
+        SettingsPages.Open(main, Strings.Nav_Transmit);
         Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(),
             textBlock => textBlock.Text == "Push-to-Talk ist gewählt, aber keine Taste belegt. Ohne Taste hört dich niemand." && textBlock.IsEffectivelyVisible);
         var button = main.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Content is "Taste festlegen");
@@ -797,19 +803,41 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         }
     }
 
-    /// <summary>Package 58: transmit and keys come right after the volume, the long sound list after them.</summary>
+    /// <summary>Package 152: the settings pages under their two groups; Audio is chosen when the page opens.</summary>
     [AvaloniaFact]
-    public void Settings_Opened_SectionsInOrder()
+    public void Settings_Pages_ListedInGroups()
     {
         var viewModel = MainViewModelSetup.Create(dir, action => action());
-        var main = new MainWindow { DataContext = viewModel, Width = 1000, Height = 3200 };
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 800 };
         main.Show();
         viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
-        var page = main.GetVisualDescendants().OfType<SettingsView>().Single();
-        var sections = page.GetVisualDescendants().OfType<TextBlock>().Where(textBlock => textBlock.Classes.Contains("section") && textBlock.IsEffectivelyVisible)
-            .OrderBy(textBlock => textBlock.TranslatePoint(default, main)!.Value.Y).Select(textBlock => textBlock.Text).ToList();
-        Assert.Equal(["GERÄTE", "LAUTSTÄRKE", "SPRACHFILTER", "ÜBERTRAGUNG", "TASTEN", "SOUNDS", "DARSTELLUNG", "ÜBER"], sections.Select(text => text!.ToUpperInvariant()));
+        var sections = SettingsPages.Sections(main);
+        Assert.Equal(["SPRECHEN UND HÖREN", "Audio", "Sendemodus", "Tastenbelegung", "Sounds", "APP", "Darstellung", "Über und Updates"],
+            sections.Items.OfType<TabItem>().Select(tabItem => tabItem.Header as string));
+        Assert.Equal(["SPRECHEN UND HÖREN", "APP"], sections.Items.OfType<TabItem>().Where(tabItem => tabItem.Classes.Contains("navGroup")).Select(tabItem => tabItem.Header as string));
+        Assert.Equal("Audio", ((TabItem)sections.SelectedItem!).Header);
+        main.Close();
+    }
+
+    /// <summary>Package 152 (and 58): every section and named control of the former single page is on exactly one page.</summary>
+    [AvaloniaFact]
+    public void Settings_EveryControl_OnOnePage()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 3200 };
+        main.Show();
+        viewModel.PageFlow.OpenSettings();
+        Dispatcher.UIThread.RunJobs();
+        var found = new List<string>();
+        foreach (var settingsPage in SettingsPages.All(main))
+        {
+            SettingsPages.Open(main, (string)settingsPage.Header!);
+            var content = (Control)settingsPage.Content!;
+            found.AddRange(content.GetVisualDescendants().OfType<TextBlock>().Where(textBlock => textBlock.Classes.Contains("section")).Select(textBlock => $"{settingsPage.Header}: {textBlock.Text}"));
+            found.AddRange(content.GetVisualDescendants().OfType<Control>().Where(control => control.Name is "SelfTestButton" or "UpdateCheckBusy").Select(control => $"{settingsPage.Header}: {control.Name}"));
+        }
+        Assert.Equal(["Audio: GERÄTE", "Audio: LAUTSTÄRKE", "Audio: SPRACHFILTER", "Sendemodus: SelfTestButton", "Über und Updates: UpdateCheckBusy"], found);
         main.Close();
     }
 
@@ -822,6 +850,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Show();
         viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
+        SettingsPages.Open(main, Strings.Nav_Transmit);
         Button SelfTest() => main.GetVisualDescendants().OfType<Button>().Single(button => AutomationProperties.GetName(button) is "Selbsttest starten" or "Selbsttest beenden");
         Assert.Contains(Texts(main), text => text?.Contains("Kopfhörer", StringComparison.Ordinal) == true);
         Assert.Equal("Selbsttest starten", AutomationProperties.GetName(SelfTest()));
@@ -1229,7 +1258,11 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             seen.AddRange(AllUserTexts(main));
             viewModel.PageFlow.OpenSettings();
             Dispatcher.UIThread.RunJobs();
-            seen.AddRange(AllUserTexts(main));
+            foreach (var settingsPage in SettingsPages.All(main))
+            {
+                SettingsPages.Open(main, (string)settingsPage.Header!);
+                seen.AddRange(AllUserTexts(main));
+            }
             viewModel.PageFlow.CloseWithoutAsking();
             _ = viewModel.PageFlow.OpenAdminAsync();
             Dispatcher.UIThread.RunJobs();
@@ -1261,7 +1294,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             var leftovers = seen.Where(german.Contains).Distinct().ToList();
             Assert.True(leftovers.Count == 0, "Noch deutsch: " + string.Join(" | ", leftovers));
             Assert.Contains("Settings", seen);
-            Assert.Contains("APPEARANCE", seen);
+            Assert.Contains("Appearance", seen);
         }
         finally
         {
@@ -1516,6 +1549,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         viewModel.PageFlow.ShownPage = new SettingsViewModel(viewModel.Settings, [], [], time: time) { ApplySaved = () => restart.Task, CheckNow = () => check.Task };
         viewModel.PageFlow.Page = Page.Settings;
         Dispatcher.UIThread.RunJobs();
+        SettingsPages.Open(main, OVS.Client.Localization.Strings.Nav_About);
         Waits("update check", () => _ = viewModel.PageFlow.SettingsPage!.CheckUpdatesCommand.ExecuteAsync(null), () =>
         {
             check.SetResult("Aktuell");

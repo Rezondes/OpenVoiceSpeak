@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 
 namespace OVS.Client.Layout;
@@ -30,8 +31,13 @@ internal static class SideNav
     {
         if (!args.GetNewValue<bool>()) return;
         ShowList(tabs);
-        // a page opened anew (a new view model) starts on the list again
-        tabs.DataContextChanged += (_, _) => ShowList(tabs);
+        // a page opened anew (a new view model) starts on the list again, on its first page; posted, since the pages'
+        // IsVisible bindings follow the new data context first
+        tabs.DataContextChanged += (_, _) =>
+        {
+            ShowList(tabs);
+            Dispatcher.UIThread.Post(() => SelectFirst(tabs));
+        };
         tabs.AddHandler(InputElement.TappedEvent, (_, tapped) => OnPicked(tabs, tapped), RoutingStrategies.Bubble, handledEventsToo: true);
         tabs.AddHandler(InputElement.KeyDownEvent, (_, key) =>
         {
@@ -45,6 +51,13 @@ internal static class SideNav
 
     /// <summary>Shows the list of pages (only seen while stacked).</summary>
     public static void ShowList(TabControl tabs) => tabs.Classes.Add(ListShownClass);
+
+    /// <summary>Package 152: chooses the first page the user may see, never a group title.</summary>
+    public static void SelectFirst(TabControl tabs) =>
+        tabs.SelectedItem = tabs.Items.OfType<TabItem>().FirstOrDefault(tabItem => tabItem.IsVisible && !tabItem.Classes.Contains(GroupClass));
+
+    /// <summary>The class of a group title in the list.</summary>
+    public const string GroupClass = "navGroup";
 
     /// <summary>Shows the chosen page (only seen while stacked).</summary>
     public static void ShowPage(TabControl tabs) => tabs.Classes.Remove(ListShownClass);

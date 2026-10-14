@@ -43,322 +43,349 @@
       </DockPanel>
     </Border>
 
-    <ScrollViewer anim:PageMotion.Reveal="True">
-      <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Stretch">
-
-        <!-- Devices -->
-        <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_DevicesSection}" />
-          <Border Classes="card">
-            <StackPanel Spacing="12">
-              <StackPanel Spacing="4">
-                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Microphone}" />
-                <ComboBox ItemsSource="{Binding Inputs}" SelectedItem="{Binding SelectedInput}" HorizontalAlignment="Stretch">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="m:AudioDeviceOption">
-                      <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                    </DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-              </StackPanel>
-              <StackPanel Spacing="4">
-                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Speaker}" />
-                <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding SelectedOutput}" HorizontalAlignment="Stretch">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="m:AudioDeviceOption">
-                      <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                    </DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-              </StackPanel>
-              <Border Classes="banner warning" IsVisible="{Binding DeviceHint, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <DockPanel>
-                  <PathIcon DockPanel.Dock="Left" Classes="warning" Data="{StaticResource Icon.Warning}" Margin="0,0,8,0" VerticalAlignment="Top" />
-                  <TextBlock Classes="warning" Text="{Binding DeviceHint}" TextWrapping="Wrap" />
-                </DockPanel>
-              </Border>
-            </StackPanel>
-          </Border>
-        </StackPanel>
-
-        <!-- Volume -->
-        <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_VolumeSection}" />
-          <Border Classes="card">
-            <StackPanel Spacing="10">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding InputGainPercent, StringFormat='{}{0:0} %'}" />
-                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_MicGain}" />
-              </DockPanel>
-              <Slider Minimum="0" Maximum="200" Value="{Binding InputGainPercent}" AutomationProperties.Name="{x:Static l:Strings.Ui_MicGain}" />
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding OutputVolumePercent, StringFormat='{}{0:0} %'}" />
-                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Volume}" />
-              </DockPanel>
-              <Slider Minimum="0" Maximum="200" Value="{Binding OutputVolumePercent}" AutomationProperties.Name="{x:Static l:Strings.Ui_Volume}" />
-            </StackPanel>
-          </Border>
-        </StackPanel>
-
-        <!-- Voice filters (Package 123): act on what is sent, heard at once in the self test -->
-        <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_VoiceFilterSection}" />
-          <Border Classes="card">
-            <StackPanel Spacing="4">
-              <!-- Package 142 (A151): music turns the filters below off, they keep their values for speech -->
-              <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Transmission}" />
-              <WrapPanel>
-                <RadioButton Content="{x:Static l:Strings.Ui_TransmissionVoice}" IsChecked="{Binding IsVoice}" Margin="0,0,16,0" />
-                <RadioButton Content="{x:Static l:Strings.Ui_TransmissionMusic}" IsChecked="{Binding IsMusic}" />
-              </WrapPanel>
-              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_TransmissionHint}" />
-              <CheckBox Content="{x:Static l:Strings.Ui_NoiseSuppression}" IsChecked="{Binding NoiseSuppression}" IsEnabled="{Binding IsVoice}" Margin="0,8,0,0" />
-              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_NoiseSuppressionHint}" />
-              <CheckBox Content="{x:Static l:Strings.Ui_AutoGain}" IsChecked="{Binding AutoGain}" IsEnabled="{Binding IsVoice}" Margin="0,8,0,0" />
-              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AutoGainHint}" />
-              <CheckBox Content="{x:Static l:Strings.Ui_EchoCancellation}" IsChecked="{Binding EchoCancellation}" IsEnabled="{Binding IsVoice}" Margin="0,8,0,0" />
-              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_EchoCancellationHint}" />
-            </StackPanel>
-          </Border>
-        </StackPanel>
-
-        <!-- Transmit mode -->
-        <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_TransmitSection}" />
-          <Border Classes="card">
-            <StackPanel Spacing="10">
-              <RadioButton IsChecked="{Binding IsPushToTalk}">
-                <TextBlock Text="{x:Static l:Strings.Ui_ModePtt}" TextWrapping="Wrap" />
-              </RadioButton>
-              <!-- Package 59: push-to-talk without a key cannot work -->
-              <Border Classes="banner warning" IsVisible="{Binding ShowPttHint}" Margin="28,0,0,0">
-                <DockPanel>
-                  <PathIcon DockPanel.Dock="Left" Classes="warning" Data="{StaticResource Icon.Warning}" Margin="0,0,8,0" VerticalAlignment="Top" />
-                  <Button Classes="pttKey" Content="{x:Static l:Strings.Ui_SetPttKey}" Command="{Binding SetPttKeyCommand}" />
-                  <TextBlock Classes="warning" Text="{x:Static l:Strings.Ui_PttHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                </DockPanel>
-              </Border>
-              <RadioButton IsChecked="{Binding VoiceActivation}">
-                <TextBlock Text="{x:Static l:Strings.Ui_ModeVad}" TextWrapping="Wrap" />
-              </RadioButton>
-              <StackPanel Spacing="6" IsVisible="{Binding VoiceActivation}" Margin="28,4,0,0">
-                <!-- Package 129 (A138): the gate learns the room's noise; the slider then only shows the threshold in use -->
-                <CheckBox Content="{x:Static l:Strings.Ui_VadAutomatic}" IsChecked="{Binding VadAutomatic}" />
-                <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_VadAutomaticHint}" />
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding MeterThresholdDb, StringFormat='{}{0:0} dBFS'}" />
-                  <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Threshold}" />
-                </DockPanel>
-                <!-- Meter and threshold slider share one scale, so the slider thumb marks the threshold in use on the meter. -->
-                <ProgressBar Minimum="-60" Maximum="-10" anim:LiveMotion.Level="{Binding InputLevelDb}" Height="8" Margin="10,0" CornerRadius="4" />
-                <Slider Minimum="-60" Maximum="-10" Value="{Binding MeterThresholdDb}" IsEnabled="{Binding IsManualThreshold}" Margin="0,-6,0,0"
-                        AutomationProperties.Name="{x:Static l:Strings.Ui_ThresholdName}" />
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <TextBlock Classes="caption" Text="{Binding InputLevelDb, StringFormat={x:Static l:Strings.Ui_LevelFmt}}" />
-                  <TextBlock Classes="caption speaking" Text="{x:Static l:Strings.Ui_AboveThreshold}" IsVisible="{Binding IsAboveThreshold}" />
-                  <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BelowThreshold}" IsVisible="{Binding !IsAboveThreshold}" />
-                </StackPanel>
-              </StackPanel>
-              <!-- Package 53: hear yourself the way the others do -->
-              <DockPanel Classes="selfTest" Margin="0,4,0,0">
-                <Button x:Name="SelfTestButton" Command="{Binding ToggleSelfTestCommand}" Classes.accent="{Binding IsSelfTesting}"
-                        AutomationProperties.Name="{Binding SelfTestText}" VerticalAlignment="Top">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Data="{StaticResource Icon.Headphones}" Classes="sm" />
-                    <TextBlock Text="{Binding SelfTestText}" />
+    <!-- Pages listed on the left as in Discord (SideNav); stacked below 640 px: the list, then the chosen page -->
+    <TabControl x:Name="Sections" Classes="sideNav" SelectedIndex="1" anim:PageMotion.Tabs="True"
+                lay:Responsive.StackBelow="640" lay:SideNav.ListDetail="True">
+      <TabItem Classes="navGroup" Header="{x:Static l:Strings.Nav_VoiceGroup}" />
+      <TabItem x:Name="AudioPage" Header="{x:Static l:Strings.Nav_Audio}">
+        <ScrollViewer anim:PageMotion.Reveal="True">
+          <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Left">
+            <!-- Devices -->
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_DevicesSection}" />
+              <Border Classes="card">
+                <StackPanel Spacing="12">
+                  <StackPanel Spacing="4">
+                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Microphone}" />
+                    <ComboBox ItemsSource="{Binding Inputs}" SelectedItem="{Binding SelectedInput}" HorizontalAlignment="Stretch">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="m:AudioDeviceOption">
+                          <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
                   </StackPanel>
-                </Button>
-                <TextBlock Classes="caption" TextWrapping="Wrap" VerticalAlignment="Center"
-                           Text="{x:Static l:Strings.Ui_SelfTestHint}" />
-              </DockPanel>
-            </StackPanel>
-          </Border>
-        </StackPanel>
-
-        <!-- Keys: a free list (Package 41). Keys work globally, also while a game has the focus. -->
-        <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_KeysSection}" />
-          <Border Classes="card">
-            <StackPanel Spacing="10">
-              <TextBlock Classes="caption" TextWrapping="Wrap"
-                         Text="{x:Static l:Strings.Ui_KeysHelp}" />
-              <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoKeyActions}" IsVisible="{Binding !HasKeyBindings}" />
-              <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding KeyBindings}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Spacing="10" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:KeyBindingViewModel">
+                  <StackPanel Spacing="4">
+                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Speaker}" />
+                    <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding SelectedOutput}" HorizontalAlignment="Stretch">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="m:AudioDeviceOption">
+                          <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </StackPanel>
+                  <Border Classes="banner warning" IsVisible="{Binding DeviceHint, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <DockPanel>
-                      <StackPanel Classes="keyActions" Orientation="Horizontal" Spacing="4">
-                        <Button Command="{Binding EditCommand}" AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ChangeFmt}}">
-                          <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Classes="sm" Data="{StaticResource Icon.Edit}" />
-                            <TextBlock Text="{x:Static l:Strings.Ui_ChangeMenu}" />
-                          </StackPanel>
-                        </Button>
-                        <Button Classes="icon" Command="{Binding RemoveCommand}"
-                                ToolTip.Tip="{x:Static l:Strings.Ui_Delete}" AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_DeleteFmt}}">
-                          <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
-                        </Button>
-                      </StackPanel>
-                      <StackPanel Spacing="4">
-                        <TextBlock Classes="label" Text="{Binding Label}" TextWrapping="Wrap" />
-                        <Border Classes="keycap" HorizontalAlignment="Left">
-                          <TextBlock Text="{Binding ChordName}" />
-                        </Border>
-                      </StackPanel>
+                      <PathIcon DockPanel.Dock="Left" Classes="warning" Data="{StaticResource Icon.Warning}" Margin="0,0,8,0" VerticalAlignment="Top" />
+                      <TextBlock Classes="warning" Text="{Binding DeviceHint}" TextWrapping="Wrap" />
                     </DockPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <Button Classes="subtle" Command="{Binding AddKeyBindingCommand}" HorizontalAlignment="Left">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" />
-                  <TextBlock Text="{x:Static l:Strings.Dlg_AddKeyAction}" />
+                  </Border>
                 </StackPanel>
-              </Button>
-              <!-- Package 130 (A139): the talk keys keep sending a moment after they are let go -->
-              <StackPanel Spacing="4" IsVisible="{Binding ShowReleaseDelay}" Margin="0,4,0,0">
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding PttReleaseDelayMs, StringFormat='{}{0:0} ms'}" />
-                  <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_PttReleaseDelay}" />
-                </DockPanel>
-                <Slider Minimum="0" Maximum="2000" Value="{Binding PttReleaseDelayMs}" AutomationProperties.Name="{x:Static l:Strings.Ui_PttReleaseDelay}" />
-                <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_PttReleaseDelayHint}" />
-              </StackPanel>
+              </Border>
             </StackPanel>
-          </Border>
-        </StackPanel>
 
-        <!-- Sounds (Package 47) -->
-        <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_SoundsSection}" />
-          <Border Classes="card">
-            <StackPanel Spacing="10">
-              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsHint}" />
-              <CheckBox Content="{x:Static l:Strings.Ui_AllSoundsOff}" IsChecked="{Binding AllSoundsOff}" />
-              <DockPanel IsEnabled="{Binding !AllSoundsOff}">
-                <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding SoundVolumePercent, StringFormat='{}{0:0} %'}" />
-                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_SoundVolume}" />
-              </DockPanel>
-              <Slider Minimum="0" Maximum="100" Value="{Binding SoundVolumePercent}" IsEnabled="{Binding !AllSoundsOff}"
-                      AutomationProperties.Name="{x:Static l:Strings.Ui_SoundVolume}" />
-              <!-- Package 48: every sound on its own -->
-              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsEachHint}" Margin="0,6,0,0" />
-              <!-- Package 77: below 670 px name and controls no longer fit side by side (German texts), the controls go below -->
-              <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding SoundRows}" IsEnabled="{Binding !AllSoundsOff}" lay:Responsive.StackBelow="670">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Spacing="6" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:SoundRowViewModel">
-                    <Border Classes="soundRow">
-                      <StackPanel Spacing="4">
-                        <!-- Package 77: one line when wide; when stacked the controls move below play and name (Controls.axaml) -->
-                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-                          <Button Classes="icon" Command="{Binding PlayCommand}" Margin="0,0,6,0"
-                                  ToolTip.Tip="{Binding Label, StringFormat={x:Static l:Strings.Ui_PlayFmt}}"
-                                  AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_PlayFmt}}">
-                            <PathIcon Classes="sm" Data="{StaticResource Icon.Play}" />
-                          </Button>
-                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <!-- Package 73: longer names may be cut off on wide windows, the tooltip shows them whole -->
-                            <TextBlock Classes="label" Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Label}" />
-                            <TextBlock Classes="caption" Text="{Binding SourceText}" TextTrimming="CharacterEllipsis" />
-                          </StackPanel>
-                          <Grid Classes="soundControls" ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
-                            <Slider Minimum="0" Maximum="100" Value="{Binding VolumePercent}" IsEnabled="{Binding !Muted}"
-                                    VerticalAlignment="Center"
-                                    AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_SoundVolumeFmt}}" />
-                            <TextBlock Grid.Column="1" Classes="muted" Width="44" Margin="6,0,0,0" TextAlignment="Right" VerticalAlignment="Center"
-                                       Text="{Binding VolumePercent, StringFormat='{}{0:0} %'}" />
-                            <WrapPanel ItemSpacing="6" LineSpacing="4" VerticalAlignment="Center">
-                              <CheckBox Content="{x:Static l:Strings.Ui_Muted}" IsChecked="{Binding Muted}"
-                                        AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_SoundMutedFmt}}" />
-                              <Button Click="OnPickSound" Content="{x:Static l:Strings.Ui_ChooseFile}"
-                                      AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ChooseFileFmt}}" />
-                              <Button Classes="icon" Command="{Binding ResetCommand}"
-                                      ToolTip.Tip="{x:Static l:Strings.Ui_Reset}"
-                                      AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ResetFmt}}">
-                                <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
-                              </Button>
-                            </WrapPanel>
-                          </Grid>
-                        </Grid>
-                        <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
-                                   IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                      </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
+            <!-- Volume -->
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_VolumeSection}" />
+              <Border Classes="card">
+                <StackPanel Spacing="10">
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding InputGainPercent, StringFormat='{}{0:0} %'}" />
+                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_MicGain}" />
+                  </DockPanel>
+                  <Slider Minimum="0" Maximum="200" Value="{Binding InputGainPercent}" AutomationProperties.Name="{x:Static l:Strings.Ui_MicGain}" />
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding OutputVolumePercent, StringFormat='{}{0:0} %'}" />
+                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Volume}" />
+                  </DockPanel>
+                  <Slider Minimum="0" Maximum="200" Value="{Binding OutputVolumePercent}" AutomationProperties.Name="{x:Static l:Strings.Ui_Volume}" />
+                </StackPanel>
+              </Border>
             </StackPanel>
-          </Border>
-        </StackPanel>
 
-        <!-- Appearance -->
-        <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_AppearanceSection}" />
-          <Border Classes="card">
-            <StackPanel Spacing="4">
-              <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Theme}" />
-              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Themes}" SelectedItem="{Binding SelectedTheme}" Classes="settingsChoice" />
-              <!-- Package 99: animated or the plain look from before -->
-              <TextBlock Classes="label" Text="{x:Static l:Strings.Display_Label}" Margin="0,10,0,0" />
-              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Displays}" SelectedItem="{Binding SelectedDisplay}" Classes="settingsChoice"
-                        AutomationProperties.Name="{x:Static l:Strings.Display_Label}">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="m:DisplayOption">
-                    <TextBlock Text="{Binding Name}" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding SelectedDisplay.Hint}" />
-              <!-- Package 45 -->
-              <TextBlock Classes="label" Text="{x:Static l:Strings.Settings_Language}" Margin="0,10,0,0" />
-              <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding SelectedLanguage}" Classes="settingsChoice"
-                        AutomationProperties.Name="{x:Static l:Strings.Settings_Language}" />
-              <TextBlock Classes="caption" Text="{x:Static l:Strings.Settings_LanguageHint}" />
-              <!-- Package 61: see-through backgrounds -->
-              <DockPanel Margin="0,10,0,0">
-                <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding BackgroundOpacityPercent, StringFormat='{}{0:0} %'}" />
-                <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_BackgroundOpacity}" />
-              </DockPanel>
-              <Slider Minimum="0" Maximum="100" Value="{Binding BackgroundOpacityPercent}" AutomationProperties.Name="{x:Static l:Strings.Ui_BackgroundOpacity}" />
-              <CheckBox Content="{x:Static l:Strings.Ui_BlurBackground}" IsChecked="{Binding BlurBackground}" />
-              <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_BackgroundOpacityHint}" />
+            <!-- Voice filters (Package 123): act on what is sent, heard at once in the self test -->
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_VoiceFilterSection}" />
+              <Border Classes="card">
+                <StackPanel Spacing="4">
+                  <!-- Package 142 (A151): music turns the filters below off, they keep their values for speech -->
+                  <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Transmission}" />
+                  <WrapPanel>
+                    <RadioButton Content="{x:Static l:Strings.Ui_TransmissionVoice}" IsChecked="{Binding IsVoice}" Margin="0,0,16,0" />
+                    <RadioButton Content="{x:Static l:Strings.Ui_TransmissionMusic}" IsChecked="{Binding IsMusic}" />
+                  </WrapPanel>
+                  <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_TransmissionHint}" />
+                  <CheckBox Content="{x:Static l:Strings.Ui_NoiseSuppression}" IsChecked="{Binding NoiseSuppression}" IsEnabled="{Binding IsVoice}" Margin="0,8,0,0" />
+                  <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_NoiseSuppressionHint}" />
+                  <CheckBox Content="{x:Static l:Strings.Ui_AutoGain}" IsChecked="{Binding AutoGain}" IsEnabled="{Binding IsVoice}" Margin="0,8,0,0" />
+                  <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AutoGainHint}" />
+                  <CheckBox Content="{x:Static l:Strings.Ui_EchoCancellation}" IsChecked="{Binding EchoCancellation}" IsEnabled="{Binding IsVoice}" Margin="0,8,0,0" />
+                  <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_EchoCancellationHint}" />
+                </StackPanel>
+              </Border>
             </StackPanel>
-          </Border>
-        </StackPanel>
-
-        <!-- About (Package 42) -->
-        <StackPanel Spacing="8">
-          <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_AboutSection}" />
-          <Border Classes="card">
-            <StackPanel Spacing="4">
-              <SelectableTextBlock Classes="label" Text="{Binding AppVersion}" />
-              <TextBlock Classes="caption" Text="{Binding BuildDetails}" />
-              <CheckBox Content="{x:Static l:Strings.Ui_CheckUpdatesAtStart}" IsChecked="{Binding CheckForUpdates}" Margin="0,8,0,0" />
-              <DockPanel>
-                <Button DockPanel.Dock="Left" Command="{Binding CheckUpdatesCommand}" Margin="0,0,10,0" VerticalAlignment="Top">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
-                    <TextBlock Text="{x:Static l:Strings.Ui_CheckUpdates}" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem x:Name="TransmitPage" Header="{x:Static l:Strings.Nav_Transmit}">
+        <ScrollViewer anim:PageMotion.Reveal="True">
+          <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Left">
+            <!-- Transmit mode -->
+            <StackPanel Spacing="8">
+              <Border Classes="card">
+                <StackPanel Spacing="10">
+                  <RadioButton IsChecked="{Binding IsPushToTalk}">
+                    <TextBlock Text="{x:Static l:Strings.Ui_ModePtt}" TextWrapping="Wrap" />
+                  </RadioButton>
+                  <!-- Package 59: push-to-talk without a key cannot work -->
+                  <Border Classes="banner warning" IsVisible="{Binding ShowPttHint}" Margin="28,0,0,0">
+                    <DockPanel>
+                      <PathIcon DockPanel.Dock="Left" Classes="warning" Data="{StaticResource Icon.Warning}" Margin="0,0,8,0" VerticalAlignment="Top" />
+                      <Button Classes="pttKey" Content="{x:Static l:Strings.Ui_SetPttKey}" Command="{Binding SetPttKeyCommand}" />
+                      <TextBlock Classes="warning" Text="{x:Static l:Strings.Ui_PttHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    </DockPanel>
+                  </Border>
+                  <RadioButton IsChecked="{Binding VoiceActivation}">
+                    <TextBlock Text="{x:Static l:Strings.Ui_ModeVad}" TextWrapping="Wrap" />
+                  </RadioButton>
+                  <StackPanel Spacing="6" IsVisible="{Binding VoiceActivation}" Margin="28,4,0,0">
+                    <!-- Package 129 (A138): the gate learns the room's noise; the slider then only shows the threshold in use -->
+                    <CheckBox Content="{x:Static l:Strings.Ui_VadAutomatic}" IsChecked="{Binding VadAutomatic}" />
+                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_VadAutomaticHint}" />
+                    <DockPanel>
+                      <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding MeterThresholdDb, StringFormat='{}{0:0} dBFS'}" />
+                      <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Threshold}" />
+                    </DockPanel>
+                    <!-- Meter and threshold slider share one scale, so the slider thumb marks the threshold in use on the meter. -->
+                    <ProgressBar Minimum="-60" Maximum="-10" anim:LiveMotion.Level="{Binding InputLevelDb}" Height="8" Margin="10,0" CornerRadius="4" />
+                    <Slider Minimum="-60" Maximum="-10" Value="{Binding MeterThresholdDb}" IsEnabled="{Binding IsManualThreshold}" Margin="0,-6,0,0"
+                            AutomationProperties.Name="{x:Static l:Strings.Ui_ThresholdName}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Classes="caption" Text="{Binding InputLevelDb, StringFormat={x:Static l:Strings.Ui_LevelFmt}}" />
+                      <TextBlock Classes="caption speaking" Text="{x:Static l:Strings.Ui_AboveThreshold}" IsVisible="{Binding IsAboveThreshold}" />
+                      <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_BelowThreshold}" IsVisible="{Binding !IsAboveThreshold}" />
+                    </StackPanel>
                   </StackPanel>
-                </Button>
-                <!-- Package 98: a spinner next to the text while the check runs -->
-                <ctl:BusySpinner Name="UpdateCheckBusy" DockPanel.Dock="Left" Margin="0,0,6,0" IsVisible="{Binding Checking.IsBusy}" />
-                <TextBlock Classes="caption" Text="{Binding UpdateStatus}" VerticalAlignment="Center" TextWrapping="Wrap" />
-              </DockPanel>
+                  <!-- Package 53: hear yourself the way the others do -->
+                  <DockPanel Classes="selfTest" Margin="0,4,0,0">
+                    <Button x:Name="SelfTestButton" Command="{Binding ToggleSelfTestCommand}" Classes.accent="{Binding IsSelfTesting}"
+                            AutomationProperties.Name="{Binding SelfTestText}" VerticalAlignment="Top">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource Icon.Headphones}" Classes="sm" />
+                        <TextBlock Text="{Binding SelfTestText}" />
+                      </StackPanel>
+                    </Button>
+                    <TextBlock Classes="caption" TextWrapping="Wrap" VerticalAlignment="Center"
+                               Text="{x:Static l:Strings.Ui_SelfTestHint}" />
+                  </DockPanel>
+                </StackPanel>
+              </Border>
             </StackPanel>
-          </Border>
-        </StackPanel>
-      </StackPanel>
-    </ScrollViewer>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem x:Name="KeysPage" Header="{x:Static l:Strings.Nav_Keys}">
+        <ScrollViewer anim:PageMotion.Reveal="True">
+          <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Left">
+            <!-- Keys: a free list (Package 41). Keys work globally, also while a game has the focus. -->
+            <StackPanel Spacing="8">
+              <Border Classes="card">
+                <StackPanel Spacing="10">
+                  <TextBlock Classes="caption" TextWrapping="Wrap"
+                             Text="{x:Static l:Strings.Ui_KeysHelp}" />
+                  <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoKeyActions}" IsVisible="{Binding !HasKeyBindings}" />
+                  <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding KeyBindings}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel Spacing="10" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:KeyBindingViewModel">
+                        <DockPanel>
+                          <StackPanel Classes="keyActions" Orientation="Horizontal" Spacing="4">
+                            <Button Command="{Binding EditCommand}" AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ChangeFmt}}">
+                              <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Classes="sm" Data="{StaticResource Icon.Edit}" />
+                                <TextBlock Text="{x:Static l:Strings.Ui_ChangeMenu}" />
+                              </StackPanel>
+                            </Button>
+                            <Button Classes="icon" Command="{Binding RemoveCommand}"
+                                    ToolTip.Tip="{x:Static l:Strings.Ui_Delete}" AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_DeleteFmt}}">
+                              <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
+                            </Button>
+                          </StackPanel>
+                          <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="{Binding Label}" TextWrapping="Wrap" />
+                            <Border Classes="keycap" HorizontalAlignment="Left">
+                              <TextBlock Text="{Binding ChordName}" />
+                            </Border>
+                          </StackPanel>
+                        </DockPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Button Classes="subtle" Command="{Binding AddKeyBindingCommand}" HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" />
+                      <TextBlock Text="{x:Static l:Strings.Dlg_AddKeyAction}" />
+                    </StackPanel>
+                  </Button>
+                  <!-- Package 130 (A139): the talk keys keep sending a moment after they are let go -->
+                  <StackPanel Spacing="4" IsVisible="{Binding ShowReleaseDelay}" Margin="0,4,0,0">
+                    <DockPanel>
+                      <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding PttReleaseDelayMs, StringFormat='{}{0:0} ms'}" />
+                      <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_PttReleaseDelay}" />
+                    </DockPanel>
+                    <Slider Minimum="0" Maximum="2000" Value="{Binding PttReleaseDelayMs}" AutomationProperties.Name="{x:Static l:Strings.Ui_PttReleaseDelay}" />
+                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_PttReleaseDelayHint}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem x:Name="SoundsPage" Header="{x:Static l:Strings.Nav_Sounds}">
+        <ScrollViewer anim:PageMotion.Reveal="True">
+          <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Left">
+            <!-- Sounds (Package 47) -->
+            <StackPanel Spacing="8">
+              <Border Classes="card">
+                <StackPanel Spacing="10">
+                  <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsHint}" />
+                  <CheckBox Content="{x:Static l:Strings.Ui_AllSoundsOff}" IsChecked="{Binding AllSoundsOff}" />
+                  <DockPanel IsEnabled="{Binding !AllSoundsOff}">
+                    <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding SoundVolumePercent, StringFormat='{}{0:0} %'}" />
+                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_SoundVolume}" />
+                  </DockPanel>
+                  <Slider Minimum="0" Maximum="100" Value="{Binding SoundVolumePercent}" IsEnabled="{Binding !AllSoundsOff}"
+                          AutomationProperties.Name="{x:Static l:Strings.Ui_SoundVolume}" />
+                  <!-- Package 48: every sound on its own -->
+                  <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_SoundsEachHint}" Margin="0,6,0,0" />
+                  <!-- Package 77: below 670 px name and controls no longer fit side by side (German texts), the controls go below -->
+                  <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding SoundRows}" IsEnabled="{Binding !AllSoundsOff}" lay:Responsive.StackBelow="670">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel Spacing="6" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:SoundRowViewModel">
+                        <Border Classes="soundRow">
+                          <StackPanel Spacing="4">
+                            <!-- Package 77: one line when wide; when stacked the controls move below play and name (Controls.axaml) -->
+                            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                              <Button Classes="icon" Command="{Binding PlayCommand}" Margin="0,0,6,0"
+                                      ToolTip.Tip="{Binding Label, StringFormat={x:Static l:Strings.Ui_PlayFmt}}"
+                                      AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_PlayFmt}}">
+                                <PathIcon Classes="sm" Data="{StaticResource Icon.Play}" />
+                              </Button>
+                              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <!-- Package 73: longer names may be cut off on wide windows, the tooltip shows them whole -->
+                                <TextBlock Classes="label" Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Label}" />
+                                <TextBlock Classes="caption" Text="{Binding SourceText}" TextTrimming="CharacterEllipsis" />
+                              </StackPanel>
+                              <Grid Classes="soundControls" ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
+                                <Slider Minimum="0" Maximum="100" Value="{Binding VolumePercent}" IsEnabled="{Binding !Muted}"
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_SoundVolumeFmt}}" />
+                                <TextBlock Grid.Column="1" Classes="muted" Width="44" Margin="6,0,0,0" TextAlignment="Right" VerticalAlignment="Center"
+                                           Text="{Binding VolumePercent, StringFormat='{}{0:0} %'}" />
+                                <WrapPanel ItemSpacing="6" LineSpacing="4" VerticalAlignment="Center">
+                                  <CheckBox Content="{x:Static l:Strings.Ui_Muted}" IsChecked="{Binding Muted}"
+                                            AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_SoundMutedFmt}}" />
+                                  <Button Click="OnPickSound" Content="{x:Static l:Strings.Ui_ChooseFile}"
+                                          AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ChooseFileFmt}}" />
+                                  <Button Classes="icon" Command="{Binding ResetCommand}"
+                                          ToolTip.Tip="{x:Static l:Strings.Ui_Reset}"
+                                          AutomationProperties.Name="{Binding Label, StringFormat={x:Static l:Strings.Ui_ResetFmt}}">
+                                    <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
+                                  </Button>
+                                </WrapPanel>
+                              </Grid>
+                            </Grid>
+                            <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
+                                       IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Classes="navGroup" Header="{x:Static l:Strings.Nav_AppGroup}" />
+      <TabItem x:Name="AppearancePage" Header="{x:Static l:Strings.Nav_Appearance}">
+        <ScrollViewer anim:PageMotion.Reveal="True">
+          <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Left">
+            <!-- Appearance -->
+            <StackPanel Spacing="8">
+              <Border Classes="card">
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Theme}" />
+                  <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Themes}" SelectedItem="{Binding SelectedTheme}" Classes="settingsChoice" />
+                  <!-- Package 99: animated or the plain look from before -->
+                  <TextBlock Classes="label" Text="{x:Static l:Strings.Display_Label}" Margin="0,10,0,0" />
+                  <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Displays}" SelectedItem="{Binding SelectedDisplay}" Classes="settingsChoice"
+                            AutomationProperties.Name="{x:Static l:Strings.Display_Label}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="m:DisplayOption">
+                        <TextBlock Text="{Binding Name}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding SelectedDisplay.Hint}" />
+                  <!-- Package 45 -->
+                  <TextBlock Classes="label" Text="{x:Static l:Strings.Settings_Language}" Margin="0,10,0,0" />
+                  <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.Languages}" SelectedItem="{Binding SelectedLanguage}" Classes="settingsChoice"
+                            AutomationProperties.Name="{x:Static l:Strings.Settings_Language}" />
+                  <TextBlock Classes="caption" Text="{x:Static l:Strings.Settings_LanguageHint}" />
+                  <!-- Package 61: see-through backgrounds -->
+                  <DockPanel Margin="0,10,0,0">
+                    <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding BackgroundOpacityPercent, StringFormat='{}{0:0} %'}" />
+                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_BackgroundOpacity}" />
+                  </DockPanel>
+                  <Slider Minimum="0" Maximum="100" Value="{Binding BackgroundOpacityPercent}" AutomationProperties.Name="{x:Static l:Strings.Ui_BackgroundOpacity}" />
+                  <CheckBox Content="{x:Static l:Strings.Ui_BlurBackground}" IsChecked="{Binding BlurBackground}" />
+                  <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_BackgroundOpacityHint}" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem x:Name="AboutPage" Header="{x:Static l:Strings.Nav_About}">
+        <ScrollViewer anim:PageMotion.Reveal="True">
+          <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Left">
+            <!-- About (Package 42) -->
+            <StackPanel Spacing="8">
+              <Border Classes="card">
+                <StackPanel Spacing="4">
+                  <SelectableTextBlock Classes="label" Text="{Binding AppVersion}" />
+                  <TextBlock Classes="caption" Text="{Binding BuildDetails}" />
+                  <CheckBox Content="{x:Static l:Strings.Ui_CheckUpdatesAtStart}" IsChecked="{Binding CheckForUpdates}" Margin="0,8,0,0" />
+                  <DockPanel>
+                    <Button DockPanel.Dock="Left" Command="{Binding CheckUpdatesCommand}" Margin="0,0,10,0" VerticalAlignment="Top">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
+                        <TextBlock Text="{x:Static l:Strings.Ui_CheckUpdates}" />
+                      </StackPanel>
+                    </Button>
+                    <!-- Package 98: a spinner next to the text while the check runs -->
+                    <ctl:BusySpinner Name="UpdateCheckBusy" DockPanel.Dock="Left" Margin="0,0,6,0" IsVisible="{Binding Checking.IsBusy}" />
+                    <TextBlock Classes="caption" Text="{Binding UpdateStatus}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                  </DockPanel>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
   </DockPanel>
 </UserControl>

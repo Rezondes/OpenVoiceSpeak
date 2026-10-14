@@ -636,4 +636,12 @@
   <data name="ConnDetails_Bitrate" xml:space="preserve"><value>Bitrate</value></data>
   <data name="ConnDetails_Hint" xml:space="preserve"><value>Measured over UDP, every 2 s. Loss: frames missing in the last 5 s. The round trip is compared with the usual one.</value></data>
   <data name="Nav_Back" xml:space="preserve"><value>Back to the list</value></data>
+  <data name="Nav_VoiceGroup" xml:space="preserve"><value>VOICE</value></data>
+  <data name="Nav_AppGroup" xml:space="preserve"><value>APP</value></data>
+  <data name="Nav_Audio" xml:space="preserve"><value>Audio</value></data>
+  <data name="Nav_Transmit" xml:space="preserve"><value>Transmit mode</value></data>
+  <data name="Nav_Keys" xml:space="preserve"><value>Keybinds</value></data>
+  <data name="Nav_Sounds" xml:space="preserve"><value>Sounds</value></data>
+  <data name="Nav_Appearance" xml:space="preserve"><value>Appearance</value></data>
+  <data name="Nav_About" xml:space="preserve"><value>About and updates</value></data>
 </root>

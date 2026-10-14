@@ -213,7 +213,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public void SettingsSections_Opened_FadeUpOnce()
     {
-        var main = Open();
+        var main = Open(height: 480); // Package 152: the Audio page's last section below the fold
         var viewModel = (MainViewModel)main.DataContext!;
         viewModel.PageFlow.OpenSettings();
         MotionWait.Settle(500);
@@ -264,7 +264,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
     [AvaloniaFact]
     public void SettingsSections_SwitchToSimplified_WaitingOnesShown()
     {
-        var main = Open();
+        var main = Open(height: 480); // Package 152: the Audio page's last section below the fold
         var viewModel = (MainViewModel)main.DataContext!;
         viewModel.PageFlow.OpenSettings();
         MotionWait.Settle(500);

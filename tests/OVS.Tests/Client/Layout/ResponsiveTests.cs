@@ -357,39 +357,43 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     {
         var main = OpenSettings(width);
         var page = main.GetVisualDescendants().OfType<SettingsView>().Single();
-        var scroller = page.GetVisualDescendants().OfType<ScrollViewer>().First();
-        foreach (var section in page.GetVisualDescendants().OfType<TextBlock>().Where(textBlock => textBlock.Classes.Contains("section")).ToList())
+        LayoutAssert.FitsHorizontally(main); // the list of pages, shown first when stacked
+        // Package 152: every page in turn, each scrolled through
+        foreach (var settingsPage in SettingsPages.All(page))
         {
-            section.BringIntoView();
-            Dispatcher.UIThread.RunJobs();
-            LayoutAssert.FitsHorizontally(page);
-        }
-        // Package 129: voice activation shows the "Automatisch" box, its hint, the meter and the slider
-        ((SettingsViewModel)page.DataContext!).VoiceActivation = true;
-        Dispatcher.UIThread.RunJobs();
-        var automatic = page.GetVisualDescendants().OfType<CheckBox>().Single(checkBox => checkBox.Content as string == Strings.Ui_VadAutomatic);
-        automatic.BringIntoView();
-        Dispatcher.UIThread.RunJobs();
-        Assert.True(automatic.IsEffectivelyVisible);
-        LayoutAssert.FitsHorizontally(page);
-        scroller.Offset = new Vector(0, scroller.Extent.Height);
-        Dispatcher.UIThread.RunJobs();
-        LayoutAssert.FitsHorizontally(main);
-        foreach (var row in page.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("soundRow")))
-        {
-            var name = row.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("label"));
-            Assert.True(name.Bounds.Width > 60, $"Name {name.Text}: {name.Bounds.Width}");
-        }
+            SettingsPages.Open(page, (string)settingsPage.Header!);
+            if ((string)settingsPage.Header! == Strings.Nav_Transmit)
+            {
+                // Package 129: voice activation shows the "Automatisch" box, its hint, the meter and the slider
+                ((SettingsViewModel)page.DataContext!).VoiceActivation = true;
+                Dispatcher.UIThread.RunJobs();
+                var automatic = page.GetVisualDescendants().OfType<CheckBox>().Single(checkBox => checkBox.Content as string == Strings.Ui_VadAutomatic);
+                Assert.True(automatic.IsEffectivelyVisible);
+            }
+            var scroller = ((Control)settingsPage.Content!).GetSelfAndVisualDescendants().OfType<ScrollViewer>().First();
+            for (var scrolled = 0.0; ; scrolled += Math.Max(1, scroller.Viewport.Height))
+            {
+                scroller.Offset = new Vector(0, scrolled);
+                Dispatcher.UIThread.RunJobs();
+                LayoutAssert.FitsHorizontally(main);
+                if (scrolled + scroller.Viewport.Height >= scroller.Extent.Height) break;
+            }
+            foreach (var row in page.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("soundRow")))
+            {
+                var name = row.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("label"));
+                Assert.True(name.Bounds.Width > 60, $"Name {name.Text}: {name.Bounds.Width}");
+            }
 
-        // the button bar stays in view
-        foreach (var text in new[] { Strings.Dlg_Cancel, Strings.Dlg_Save })
-        {
-            // Package 98: "Speichern" holds its text beside a spinner
-            var button = page.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Content as string == text
-                || otherButton.Content is Panel panel && panel.Children.OfType<TextBlock>().Any(textBlock => textBlock.Text == text));
-            Assert.True(button.IsEffectivelyVisible);
-            var top = button.TranslatePoint(default, main)!.Value.Y;
-            Assert.True(top >= 0 && top + button.Bounds.Height <= main.Bounds.Height + 1, $"{text} at {top}");
+            // the button bar stays in view
+            foreach (var text in new[] { Strings.Dlg_Cancel, Strings.Dlg_Save })
+            {
+                // Package 98: "Speichern" holds its text beside a spinner
+                var button = page.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Content as string == text
+                    || otherButton.Content is Panel panel && panel.Children.OfType<TextBlock>().Any(textBlock => textBlock.Text == text));
+                Assert.True(button.IsEffectivelyVisible);
+                var top = button.TranslatePoint(default, main)!.Value.Y;
+                Assert.True(top >= 0 && top + button.Bounds.Height <= main.Bounds.Height + 1, $"{text} at {top}");
+            }
         }
         main.Close();
         return 0;
@@ -397,6 +401,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
 
     static SoundRowParts FirstSoundRow(MainWindow main)
     {
+        SettingsPages.Open(main, Strings.Nav_Sounds); // Package 152
         var row = main.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("soundRow"));
         return new(row.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("label")),
             row.GetVisualDescendants().OfType<Slider>().Single());
@@ -424,7 +429,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     [AvaloniaFact]
     public void Settings_Wide_LayoutUnchanged()
     {
-        var main = OpenSettings(1100);
+        var main = OpenSettings(1400); // Package 152: beside the page list the sound rows need a wider window for one line
         Assert.DoesNotContain("narrow", main.Classes);
         var (name, slider) = FirstSoundRow(main);
         var (top, bottom) = Vertical(slider, main);

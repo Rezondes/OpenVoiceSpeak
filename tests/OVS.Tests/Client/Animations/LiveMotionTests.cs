@@ -11,6 +11,7 @@ using OVS.Client.Animations;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Controls;
 using OVS.Client.Dialogs;
+using OVS.Client.Localization;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
@@ -331,6 +332,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         viewModel.PageFlow.OpenSettings();
         MotionWait.Settle(500);
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in
+        SettingsPages.Open(main, Strings.Nav_Transmit);
         var meter = main.GetVisualDescendants().OfType<ProgressBar>().Single(progressBar => progressBar.Minimum == -60 && progressBar.Maximum == -10);
         Assert.True(meter.IsEffectivelyVisible);
         Assert.Equal(-60, meter.Value);
@@ -339,6 +341,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible);
 
         viewModel.PageFlow.OpenSettings(); // the new model's level is -60 as well
+        SettingsPages.Open(main, Strings.Nav_Transmit); // a new model starts on Audio (Package 152)
         double high = -60;
         Watch(400, () => high = Math.Max(high, meter.Value));
         Assert.True(high <= -59.9, $"the meter starts at the level, no sweep from full ({high})");

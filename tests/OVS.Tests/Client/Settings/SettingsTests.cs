@@ -594,6 +594,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = settings } };
         window.Show();
         Dispatcher.UIThread.RunJobs();
+        SettingsPages.Open(window, Strings.Nav_Transmit);
         var slider = window.GetVisualDescendants().OfType<Slider>().Single(otherSlider => AutomationProperties.GetName(otherSlider) == Strings.Ui_ThresholdName);
         Assert.True(settings.VadAutomatic);
         Assert.False(slider.IsEnabled);
@@ -650,6 +651,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = settings } };
         window.Show();
         Dispatcher.UIThread.RunJobs();
+        SettingsPages.Open(window, Strings.Nav_Keys);
         var slider = window.GetVisualDescendants().OfType<Slider>().Single(otherSlider => AutomationProperties.GetName(otherSlider) == Strings.Ui_PttReleaseDelay);
         Assert.True(slider.IsEffectivelyVisible);
         Assert.Equal(300, slider.Value);
@@ -915,6 +917,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
             var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = settings } };
             window.Show();
             Dispatcher.UIThread.RunJobs();
+            SettingsPages.Open(window, Strings.Nav_Transmit);
             var button = window.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Command == settings.ToggleSelfTestCommand);
             settings.IsSelfTesting = true;
             Assert.True(button.Focus());

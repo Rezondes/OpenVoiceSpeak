@@ -3915,7 +3915,7 @@ In `SettingsView.axaml` stehen die Abschnitte heute in der Reihenfolge Geräte, 
 
 ### Tests (TDD)
 
-1. `UiSmokeTests > "Settings_Opened_SectionsInOrder"` (AC1)
+1. `UiSmokeTests > "Settings_EveryControl_OnOnePage"` (AC1)
    - Gegeben: Einstellungen geöffnet
    - Erwartet: die Abschnittsüberschriften (`Classes="section"`) in der genannten Reihenfolge, von oben nach unten
 2. Alle bestehenden Einstellungstests bleiben grün (AC2)
@@ -5034,7 +5034,7 @@ Wird der Hauptbereich schmal, verdrängt die rechte Gruppe den Namen und läuft 
 1. `ResponsiveTests > "Settings_At360To1100_Fit"` (AC2 bis AC5, Theory über Breite und Sprache): jede Sektion in den Blick scrollen und `LayoutAssert.FitsHorizontally` prüfen. Vorher rot, entspricht Screenshot 2.
 2. `ResponsiveTests > "SoundRow_Narrow_TwoLinesWithNameVisible"` (AC2): bei 360 px liegen Name und Regler in verschiedenen Zeilen, der Name hat Breite > 0
 3. `ResponsiveTests > "Settings_Wide_LayoutUnchanged"` (AC1): bei 1100 px Sound-Zeile einzeilig wie bisher
-4. Bestehende `UiSmokeTests` zu Einstellungen (`UiSmokeTests > "Settings_Opened_SectionsInOrder"`, `UiSmokeTests > "Settings_PttHint_WithSetKeyButton"` usw.) bleiben grün
+4. Bestehende `UiSmokeTests` zu Einstellungen (`UiSmokeTests > "Settings_EveryControl_OnOnePage"`, `UiSmokeTests > "Settings_PttHint_WithSetKeyButton"` usw.) bleiben grün
 
 Testbefehl: `dotnet test`
 
@@ -8854,7 +8854,7 @@ The settings (`SettingsView.axaml`) are one long page of eight cards and the adm
 - [x] AC3: Below 800 px the tab control shows only the list; a click, a tap, Enter or Space on a page opens it, the arrow keys only move the choice; the page then fills the width and its back button ("Zurück zur Übersicht" / "Back to the list") brings the list back.
 - [x] AC4: A new data context (the page opened again) starts on the list again.
 - [x] AC5: A click inside a page (a list row, a button) does not change list or page.
-- [ ] AC6 (manual): The chosen row is lit (accent surface, semibold), the row under the pointer has the hover surface; the colours come from the tokens in `Theme.axaml` and pass AA in both themes.
+- [x] AC6 (manual): The chosen row is lit (accent surface, semibold), the row under the pointer has the hover surface; the colours come from the tokens in `Theme.axaml` and pass AA in both themes.
 
 ### Tests (TDD)
 
@@ -8866,7 +8866,7 @@ The settings (`SettingsView.axaml`) are one long page of eight cards and the adm
 6. `SideNavTests > "PageClick_Inside_ListStaysHidden"` (AC5): a button inside the page is clicked while the page is shown; the page stays.
 7. Manual check (AC6): both themes, both displays, a screenshot of the list with a chosen and a hovered row.
 
-(as built: `SideNav.ListDetail` sets `listShown` at once and on every new data context; a tap or Enter or Space whose source lies in one of the tab control's own `TabItem` containers removes it, so clicks inside a page and the arrow keys never do; the template's back button adds it again. The page title binds `((TabItem)SelectedItem).Header` (compiled bindings need the cast). The group title is a disabled, unfocusable, hit-test-invisible `TabItem.navGroup`; Up from the first page stays on it. The code was written before the plan (A163), so these tests were written after it and seen green, not red. Manual check AC6: done with the settings of Package 152, which use these rows.)
+(as built: `SideNav.ListDetail` sets `listShown` at once and on every new data context; a tap or Enter or Space whose source lies in one of the tab control's own `TabItem` containers removes it, so clicks inside a page and the arrow keys never do; the template's back button adds it again. The page title binds `((TabItem)SelectedItem).Header` (compiled bindings need the cast). The group title is a disabled, unfocusable, hit-test-invisible `TabItem.navGroup`; Up from the first page stays on it. The code was written before the plan (A163), so these tests were written after it and seen green, not red. Manual check AC6 (14 October 2026): headless screenshots of the settings of Package 152 at 1200 px (dark and light) and 520 px (dark): chosen row on the accent surface in semibold, the others muted, the group titles small and muted. Found on the way: FluentTheme sets the items presenter's margin by tab placement, so the list's padding sits on a border around it.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 
@@ -8899,18 +8899,20 @@ The page holds, top to bottom: Devices, Volume, Voice filters, Transmit mode, Ke
 
 ### Acceptance Criteria
 
-- [ ] AC1: The list shows the group "SPRECHEN UND HÖREN" ("VOICE") with Audio, Sendemodus, Tastenbelegung, Sounds and the group "APP" with Darstellung, Über und Updates; Audio is chosen when the page opens.
-- [ ] AC2: Every control of today's page is on exactly one of the six pages, with its binding unchanged.
-- [ ] AC3: Every page fits from 360 to 1100 px in German and English, in both displays (as Package 77 and 104 checked the single page).
-- [ ] AC4: Save and Cancel stay visible on every page and keep their behaviour.
-- [ ] AC5: The self test keys of Package 121 and the file pickers of the sounds work on their pages.
+- [x] AC1: The list shows the group "SPRECHEN UND HÖREN" ("VOICE") with Audio, Sendemodus, Tastenbelegung, Sounds and the group "APP" with Darstellung, Über und Updates; Audio is chosen when the page opens.
+- [x] AC2: Every control of today's page is on exactly one of the six pages, with its binding unchanged.
+- [x] AC3: Every page fits from 360 to 1100 px in German and English, in both displays (as Package 77 and 104 checked the single page).
+- [x] AC4: Save and Cancel stay visible on every page and keep their behaviour.
+- [x] AC5: The self test keys of Package 121 and the file pickers of the sounds work on their pages.
 
 ### Tests (TDD)
 
 1. `UiSmokeTests > "Settings_Pages_ListedInGroups"` (AC1): the headers in order, the two group titles, Audio chosen.
 2. `UiSmokeTests > "Settings_EveryControl_OnOnePage"` (AC2): every named control and every `Classes="section"` text of the old page is found on exactly one page after opening it.
 3. `ResponsiveTests > "Settings_At360To1100_Fit"` (AC3, AC4): changed to open each page through `SettingsPages.Open` and check width and the button bar per page.
-4. The existing settings tests that look for a control first open its page (AC5): `ResponsiveTests > "SoundRow_Narrow_TwoLinesWithNameVisible"`, `ResponsiveTests > "Settings_Wide_LayoutUnchanged"`, `ResponsiveTests > "Settings_TransmitModeChanged_Refits"` and the self test tests of Package 121.
+4. `SettingsTests > "SelfTest_SpaceAsPttKey_DoesNotToggleButton"` (AC5) and `UiSmokeTests > "SelfTestButton_Clicked_TogglesTextAndShowsHeadphoneHint"` (AC5) on the Sendemodus page; the other tests that look for a control first open its page as well: `ResponsiveTests > "SoundRow_Narrow_TwoLinesWithNameVisible"`, `ResponsiveTests > "Settings_Wide_LayoutUnchanged"`, `ResponsiveTests > "Settings_TransmitModeChanged_Refits"` and the self test tests of Package 121.
+
+(as built: the settings break at 640 px of their width instead of the 800 px of the side navigation's own tests: beside the main window's sidebar a 1100 px window leaves the settings about 800 px, and they should show list and page side by side there. `SideNav` now also chooses the first page the user may see on every new data context (posted, after the pages' visibility bindings), so the settings open on Audio every time; `SettingsView` keeps `SelectedIndex="1"` for a view without a data context. `SettingsPages` in `TestSupport` opens a page by its header; the tests that looked for a control on the single page now open its page first (`SettingsTests`, `PageMotionTests` on a 480 px window so the Audio page has a section below the fold, `LiveMotionTests`, `UiSmokeTests`, `ResponsiveTests`). the former test of the section order (Package 58) became `Settings_EveryControl_OnOnePage`. `Settings_Wide_LayoutUnchanged` runs at 1400 px: beside the page list the sound rows (`StackBelow` 670) need a wider window for one line.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 
