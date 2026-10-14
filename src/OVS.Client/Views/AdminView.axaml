@@ -548,12 +548,6 @@
                             <ctl:ErrorIdButton Text="{Binding Busy.Error}" HorizontalAlignment="Left" />
                             <!-- Package 72: works for offline users too; deleting asks first -->
                             <WrapPanel ItemSpacing="8" LineSpacing="8" Margin="0,4,0,0" IsVisible="{Binding HasActions}" IsEnabled="{Binding !Busy.IsBusy}">
-                              <Button Command="{Binding BanCommand}" IsVisible="{Binding CanBan}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                  <PathIcon Classes="sm" Data="{StaticResource Icon.Prohibited}" />
-                                  <TextBlock Text="{x:Static l:Strings.Ui_BanUser}" />
-                                </StackPanel>
-                              </Button>
                               <Button Command="{Binding UnbanCommand}" IsVisible="{Binding CanUnban}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                   <PathIcon Classes="turn sm" Data="{StaticResource Icon.Dismiss}" />
@@ -566,11 +560,19 @@
                                   <TextBlock Text="{x:Static l:Strings.Ui_LiftServerMute}" />
                                 </StackPanel>
                               </Button>
-                              <Button Classes="danger" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                  <PathIcon Classes="sm" Data="{StaticResource Icon.PersonDelete}" />
-                                  <TextBlock Text="{x:Static l:Strings.Ui_DeleteUser}" />
-                                </StackPanel>
+                              <!-- Package 156: the risky actions one step away, in the "..." menu; each asks first -->
+                              <Button Classes="icon moreActions" ToolTip.Tip="{x:Static l:Strings.Ui_MoreActions}" AutomationProperties.Name="{x:Static l:Strings.Ui_MoreActions}" IsVisible="{Binding HasMenuActions}">
+                                <PathIcon Classes="sm" Data="{StaticResource Icon.MoreHorizontal}" />
+                                <Button.Flyout>
+                                  <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuItem Header="{x:Static l:Strings.Ui_BanUser}" Command="{Binding BanCommand}" IsVisible="{Binding CanBan}">
+                                      <MenuItem.Icon><PathIcon Classes="sm" Data="{StaticResource Icon.Prohibited}" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Classes="danger" Header="{x:Static l:Strings.Ui_DeleteUser}" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}">
+                                      <MenuItem.Icon><PathIcon Classes="sm danger" Data="{StaticResource Icon.PersonDelete}" /></MenuItem.Icon>
+                                    </MenuItem>
+                                  </MenuFlyout>
+                                </Button.Flyout>
                               </Button>
                             </WrapPanel>
                           </StackPanel>
@@ -967,17 +969,19 @@
                                   <TextBlock Text="{x:Static l:Strings.Ui_Download}" />
                                 </StackPanel>
                               </Button>
-                              <Button Classes="danger" Command="{Binding RestoreCommand}" IsVisible="{Binding CanRestore}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                  <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
-                                  <TextBlock Text="{x:Static l:Strings.Ui_Restore}" />
-                                </StackPanel>
-                              </Button>
-                              <Button Classes="subtle" Command="{Binding DeleteCommand}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                  <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
-                                  <TextBlock Text="{x:Static l:Strings.Ui_Delete}" />
-                                </StackPanel>
+                              <!-- Package 156: the risky actions one step away, in the "..." menu; each asks first -->
+                              <Button Classes="icon moreActions" ToolTip.Tip="{x:Static l:Strings.Ui_MoreActions}" AutomationProperties.Name="{x:Static l:Strings.Ui_MoreActions}">
+                                <PathIcon Classes="sm" Data="{StaticResource Icon.MoreHorizontal}" />
+                                <Button.Flyout>
+                                  <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuItem Classes="danger" Header="{x:Static l:Strings.Ui_Restore}" Command="{Binding RestoreCommand}" IsVisible="{Binding CanRestore}">
+                                      <MenuItem.Icon><PathIcon Classes="sm danger" Data="{StaticResource Icon.ArrowSync}" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Classes="danger" Header="{x:Static l:Strings.Ui_Delete}" Command="{Binding DeleteCommand}">
+                                      <MenuItem.Icon><PathIcon Classes="sm danger" Data="{StaticResource Icon.Delete}" /></MenuItem.Icon>
+                                    </MenuItem>
+                                  </MenuFlyout>
+                                </Button.Flyout>
                               </Button>
                             </WrapPanel>
                           </StackPanel>

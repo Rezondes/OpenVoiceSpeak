@@ -62,6 +62,8 @@ internal sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnli
     public bool CanLiftMute { get; } = canLiftMute;
     /// <summary>The card has any button.</summary>
     public bool HasActions => CanBan || CanUnban || CanDelete || CanLiftMute;
+    /// <summary>Package 156: the "..." menu has an entry (ban, delete).</summary>
+    public bool HasMenuActions => CanBan || CanDelete;
 
     /// <summary>Package 155: the row shows its details, groups and actions.</summary>
     [ObservableProperty] bool isExpanded = isExpanded;

@@ -9103,19 +9103,21 @@ Test command: `dotnet test OpenVoiceSpeak.slnx`
 
 ### Acceptance Criteria
 
-- [ ] AC1: A member row shows "Entbannen" or "Server-Stummschaltung aufheben" as buttons when they apply; "Bannen" and "Benutzer löschen" are in its "..." menu ("Weitere Aktionen" / "More actions"), the delete entry red.
-- [ ] AC2: A backup row shows "Herunterladen"; "Wiederherstellen" and "Löschen" are in its "..." menu, both red.
-- [ ] AC3: Deleting a backup asks first, naming the backup; cancelled, nothing is sent.
-- [ ] AC4: The menu opens with a click, with Enter on the focused "..." button and with Shift+F10; Esc closes it.
-- [ ] AC5: An entry the user may not use is not in the menu; without any entry the "..." button is hidden.
+- [x] AC1: A member row shows "Entbannen" or "Server-Stummschaltung aufheben" as buttons when they apply; "Bannen" and "Benutzer löschen" are in its "..." menu ("Weitere Aktionen" / "More actions"), the delete entry red.
+- [x] AC2: A backup row shows "Herunterladen"; "Wiederherstellen" and "Löschen" are in its "..." menu, both red.
+- [x] AC3: Deleting a backup asks first, naming the backup; cancelled, nothing is sent.
+- [x] AC4: The menu opens with a click, with Enter on the focused "..." button and with Shift+F10; Esc closes it.
+- [x] AC5: An entry the user may not use is not in the menu; without any entry the "..." button is hidden.
 
 ### Tests (TDD)
 
-1. `BackupCardViewModelTests > "Delete_Cancelled_NothingSent"` and `"Delete_Confirmed_Sent"` (AC3)
+1. `BackupCardViewModelTests > "DeleteAndRestore_AnsweredNo_AskForTheBackupsTitleAndSendNothing"` and `"DeleteAndRestore_AnsweredYes_SendDeleteThenRestoreOfThatBackup"` (AC3)
 2. `UiSmokeTests > "MemberRow_RiskyActions_InMenu"` (AC1, AC5)
 3. `UiSmokeTests > "BackupRow_RestoreAndDelete_InMenu"` (AC2)
 4. `UiSmokeTests > "ActionsMenu_Keyboard_OpensAndCloses"` (AC4)
 5. `ResponsiveTests > "Admin_EveryTab_Fits"`: the counts of restore and delete texts change to the menu entries (AC2).
+
+(as built: deleting a backup already asked first (`BackupCardViewModel.DeleteBackupAsync` with `Backup_ConfirmDelete`, Package 74), so AC3 holds with the existing tests and no code changed there; the context above was wrong on this point. The "..." button (`Button.moreActions`, new icon `Icon.MoreHorizontal`, text `Ui_MoreActions`) holds a `MenuFlyout`; a member row shows it in its opened details with Bannen and Benutzer löschen (red, `MenuItem.danger`), visible only with one of them (`KnownUserViewModel.HasMenuActions`); a backup row with Wiederherstellen (only for the Admin group, as before) and Löschen, both red. Unbannen and Server-Stummschaltung aufheben stay buttons. Shift+F10 and the menu key open the menu through a key handler of `AdminView` (the headless platform raises no context request for them). `ResponsiveTests` counts the backups' menus instead of their buttons; the smoke test of Package 72 reads the menu's entries.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

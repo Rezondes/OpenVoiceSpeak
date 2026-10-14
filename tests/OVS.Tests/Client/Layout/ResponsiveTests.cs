@@ -557,9 +557,8 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         foreach (var name in ServerSectionControls)
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         AdminPages.Open(page, Strings.Ui_Backups);
-        // Package 74: every backup with its restore and delete button, all checked for width above
-        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_Restore && textBlock.IsEffectivelyVisible));
-        Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_Delete && textBlock.IsEffectivelyVisible));
+        // Package 74, 156: every backup with its "..." menu (restore, delete), all checked for width above
+        Assert.Equal(3, page.GetVisualDescendants().OfType<Button>().Count(button => button.Classes.Contains("moreActions") && button.IsEffectivelyVisible));
         // Package 75: download per backup, both upload buttons and the progress
         Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_Download && textBlock.IsEffectivelyVisible));
         foreach (var name in BackupControls)

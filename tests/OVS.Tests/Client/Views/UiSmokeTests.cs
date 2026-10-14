@@ -303,8 +303,10 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Equal(["Status", "Gruppe", "Sortierung"], main.GetVisualDescendants().OfType<AdminView>().Single()
             .GetVisualDescendants().OfType<ComboBox>().Select(AutomationProperties.GetName));
         Assert.Contains("Alle Nutzer", Texts(main)); // the combo boxes show their labels
-        foreach (var text in new[] { "Bannen", "Nutzerdaten löschen" }) // Package 72: the actions of the card
-            Assert.Contains(text, Texts(main));
+        // Package 72, 156: the card's risky actions sit in its "..." menu
+        var more = main.GetVisualDescendants().OfType<Button>().Single(button => button.Classes.Contains("moreActions") && button.IsEffectivelyVisible);
+        var entries = ((MenuFlyout)more.Flyout!).Items.OfType<MenuItem>().Where(menuItem => menuItem.IsVisible).Select(menuItem => menuItem.Header as string).ToList();
+        Assert.Equal(["Bannen", "Nutzerdaten löschen"], entries);
         // Package 80: the ban overview with search, filters and every detail
         viewModel.PageFlow.AdminPage!.UsersAndBans.Apply(new BanList("r", [new BanInfo(Guid.NewGuid(), "fp3", "troll", "10.0.0.3", "Spam", "anna", null, DateTimeOffset.Now.AddDays(-1),
             "fp2", null, null, null, 2, DateTimeOffset.Now, "10.0.0.4")]));
@@ -1687,6 +1689,74 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
         Dispatcher.UIThread.RunJobs();
         Assert.False(Open());
+        main.Close();
+    }
+
+    static List<string?> MenuEntries(Button more) =>
+        ((MenuFlyout)more.Flyout!).Items.OfType<MenuItem>().Where(menuItem => menuItem.IsVisible).Select(menuItem => menuItem.Header as string).ToList();
+
+    /// <summary>Package 156: banning and deleting a user sit in the row's "..." menu, delete in red; a user nobody may act on has no menu.</summary>
+    [AvaloniaFact]
+    public async Task MemberRow_RiskyActions_InMenu()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = await OpenMembersAsync(viewModel);
+        var admin = viewModel.PageFlow.AdminPage!;
+        admin.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], CanBeModeratedByMe: true),
+            new KnownUserInfo("fp9", "chef", [WellKnownGroups.Admin], CanBeModeratedByMe: false)]));
+        foreach (var user in admin.UsersAndBans.Users) user.IsExpanded = true;
+        Dispatcher.UIThread.RunJobs();
+        var menus = main.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("moreActions")).ToList();
+        var anna = menus.Single(button => button.DataContext is KnownUserViewModel { Nickname: "anna" });
+        Assert.True(anna.IsEffectivelyVisible);
+        Assert.Equal([Strings.Ui_BanUser, Strings.Ui_DeleteUser], MenuEntries(anna));
+        Assert.Contains("danger", ((MenuFlyout)anna.Flyout!).Items.OfType<MenuItem>().Single(menuItem => menuItem.Header as string == Strings.Ui_DeleteUser).Classes);
+        Assert.False(menus.Single(button => button.DataContext is KnownUserViewModel { Nickname: "chef" }).IsVisible);
+        Assert.DoesNotContain(main.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.IsEffectivelyVisible && textBlock.Text == Strings.Ui_DeleteUser);
+        main.Close();
+    }
+
+    /// <summary>Package 156: a backup row shows "Herunterladen"; restore and delete sit in its menu, both red.</summary>
+    [AvaloniaFact]
+    public async Task BackupRow_RestoreAndDelete_InMenu()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 900 };
+        main.Show();
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+        await viewModel.PageFlow.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        viewModel.PageFlow.AdminPage!.BackupCard.Apply(new BackupList("r", [new("2026-09-29_12-00-00.ovsbackup", DateTimeOffset.Now, 800_000, "dev.0000")]));
+        AdminPages.Open(main, Strings.Ui_Backups);
+        var more = main.GetVisualDescendants().OfType<Button>().Single(button => button.Classes.Contains("moreActions"));
+        Assert.Equal([Strings.Ui_Restore, Strings.Ui_Delete], MenuEntries(more));
+        Assert.All(((MenuFlyout)more.Flyout!).Items.OfType<MenuItem>(), menuItem => Assert.Contains("danger", menuItem.Classes));
+        Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.IsEffectivelyVisible && textBlock.Text == Strings.Ui_Download);
+        main.Close();
+    }
+
+    /// <summary>Package 156: the "..." menu opens by click, Enter and Shift+F10, and Esc closes it.</summary>
+    [AvaloniaFact]
+    public async Task ActionsMenu_Keyboard_OpensAndCloses()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = await OpenMembersAsync(viewModel);
+        viewModel.PageFlow.AdminPage!.UsersAndBans.Users.Single().IsExpanded = true;
+        Dispatcher.UIThread.RunJobs();
+        var more = main.GetVisualDescendants().OfType<Button>().Single(button => button.Classes.Contains("moreActions"));
+        var menu = (MenuFlyout)more.Flyout!;
+        more.Focus();
+        main.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(menu.IsOpen);
+        main.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(menu.IsOpen);
+        more.Focus();
+        main.KeyPress(Key.F10, RawInputModifiers.Shift, PhysicalKey.F10, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(menu.IsOpen);
+        menu.Hide();
         main.Close();
     }
 

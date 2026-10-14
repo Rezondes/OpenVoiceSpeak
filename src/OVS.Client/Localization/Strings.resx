@@ -655,4 +655,5 @@
   <data name="Nav_ChannelLinks" xml:space="preserve"><value>Kanal-Verknüpfungen</value></data>
   <data name="Nav_Members" xml:space="preserve"><value>Mitglieder</value></data>
   <data name="Ui_ServerMutedChip" xml:space="preserve"><value>Server-stumm</value></data>
+  <data name="Ui_MoreActions" xml:space="preserve"><value>Weitere Aktionen</value></data>
 </root>

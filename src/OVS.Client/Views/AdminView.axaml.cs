@@ -54,6 +54,16 @@ internal partial class AdminView : UserControl
             var again = wanted?.Id is { } id ? groups.Groups.Live().FirstOrDefault(group => group.Id == id) : groups.Groups.Contains(wanted!) ? wanted : null;
             if (again is not null) Step(() => groups.SelectedGroup = again);
         };
+        // Package 156: Shift+F10 or the menu key on a focused "..." button opens its menu like a click
+        AddHandler(KeyDownEvent, (_, key) =>
+        {
+            if ((key.Key == Key.F10 && key.KeyModifiers == KeyModifiers.Shift || key.Key == Key.Apps)
+                && key.Source is Button { Flyout: { } menu } more && more.Classes.Contains("moreActions"))
+            {
+                menu.ShowAt(more);
+                key.Handled = true;
+            }
+        });
         IconDrop.AddHandler(DragDrop.DragOverEvent, OnIconDragOver);
         IconDrop.AddHandler(DragDrop.DragLeaveEvent, (_, _) => IconDrop.Classes.Remove("dropHover"));
         IconDrop.AddHandler(DragDrop.DropEvent, OnIconDrop);

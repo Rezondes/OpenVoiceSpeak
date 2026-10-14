@@ -695,6 +695,10 @@
   <Style Selector="WrapPanel.userDetails > StackPanel">
     <Setter Property="Width" Value="180" />
   </Style>
+  <!-- Package 156: a risky entry of a "..." menu is red -->
+  <Style Selector="MenuItem.danger">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Danger}" />
+  </Style>
   <!-- Package 155: a member as one row; its details open below it -->
   <Style Selector="Button.memberHeader">
     <Setter Property="HorizontalAlignment" Value="Stretch" />
