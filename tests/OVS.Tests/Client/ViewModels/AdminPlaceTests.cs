@@ -37,12 +37,14 @@ public sealed class AdminPlaceTests
     }
 
     [AvaloniaFact]
-    public void Places_EveryPlace_CarriedByExactlyOneTab()
+    public void Places_EveryPlace_CarriedByItsPagesOnly()
     {
         var admin = Admin();
         WithTabs(admin, (_, tabs) =>
         {
-            foreach (var place in admin.Places) Assert.Single(tabs, tabItem => ReferenceEquals(tabItem.Tag, place));
+            // Package 154: Übersicht and Betrieb share the server settings' place (one request saves both)
+            foreach (var place in admin.Places)
+                Assert.Equal(place == admin.ServerSettings.Place ? 2 : 1, tabs.Count(tabItem => ReferenceEquals(tabItem.Tag, place)));
             Assert.All(tabs.Where(tabItem => tabItem.Tag is AdminPlace), tabItem => Assert.Contains(tabItem.Tag as AdminPlace, admin.Places));
         });
     }
@@ -55,7 +57,8 @@ public sealed class AdminPlaceTests
         {
             Assert.Same(admin.GroupList.Place, page.FindControl<TabItem>("GroupsTab")!.Tag);
             Assert.Same(admin.Links.Place, page.FindControl<TabItem>("LinksTab")!.Tag);
-            Assert.Same(admin.ServerSettings.Place, page.FindControl<TabItem>("ServerTab")!.Tag);
+            Assert.Same(admin.ServerSettings.Place, page.FindControl<TabItem>("OverviewTab")!.Tag);
+            Assert.Same(admin.ServerSettings.Place, page.FindControl<TabItem>("OperationTab")!.Tag);
         });
     }
 

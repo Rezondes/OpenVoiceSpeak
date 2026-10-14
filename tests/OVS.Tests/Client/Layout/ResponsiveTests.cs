@@ -497,13 +497,6 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         return main;
     }
 
-    static TabControl AdminTabs(AdminView page) => page.FindControl<TabControl>("Tabs")!;
-
-    static void SelectTab(AdminView page, int index)
-    {
-        AdminTabs(page).SelectedIndex = index;
-        Dispatcher.UIThread.RunJobs();
-    }
 
     [AvaloniaTheory]
     [InlineData(360, "de-DE")]
@@ -519,9 +512,9 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var main = OpenAdmin(width, out var page);
         var admin = (AdminViewModel)page.DataContext!;
         // Package 75: nothing running, so neither progress shows, the backups' on the Server tab and the logs' on theirs
-        foreach (var (header, progress) in new[] { (Strings.Ui_Server, "BackupTransfer"), (Strings.Ui_Logs, "LogTransfer") })
+        foreach (var (header, progress) in new[] { (Strings.Ui_Backups, "BackupTransfer"), (Strings.Ui_Logs, "LogTransfer") })
         {
-            SelectTab(page, Enumerable.Range(0, AdminTabs(page).ItemCount).Single(index => ((TabItem)AdminTabs(page).ContainerFromIndex(index)!).Header as string == header));
+            AdminPages.Open(page, header);
             Assert.False(page.FindControl<Control>(progress)!.IsEffectivelyVisible, progress);
         }
         // Package 75: a transfer in progress, so its progress line is checked with the rest of the Server tab
@@ -537,15 +530,11 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         admin.Logs.Searching.IsBusy = true;
         Assert.Equal(12, admin.UsersAndBans.Bans.Count); // Package 80: every ban of every status is checked for width below
         Dispatcher.UIThread.RunJobs();
-        var tabs = AdminTabs(page);
-        var strip = tabs.GetVisualDescendants().OfType<ScrollViewer>().Single(scrollViewer => scrollViewer.Name == "PART_TabStrip");
-        for (var index = 0; index < tabs.ItemCount; index++)
+        var tabs = AdminPages.Tabs(page);
+        LayoutAssert.FitsHorizontally(main); // Package 154: the list of pages, shown first when stacked
+        foreach (var adminPage in AdminPages.All(page))
         {
-            SelectTab(page, index);
-            // the chosen tab is in view of the (scrolling) tab strip
-            var header = (TabItem)tabs.ContainerFromIndex(index)!;
-            var left = header.TranslatePoint(default, strip)!.Value.X;
-            Assert.True(left >= -1 && left + header.Bounds.Width <= strip.Viewport.Width + 1, $"Tab {header.Header} at {left}, strip {strip.Viewport.Width}");
+            AdminPages.Open(page, adminPage);
 
             var content = tabs.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Single(contentPresenter => contentPresenter.Name == "PART_SelectedContentHost");
             var matrix = content.GetVisualDescendants().OfType<ScrollViewer>().SingleOrDefault(scrollViewer => scrollViewer.Name == "LinkCells");
@@ -562,10 +551,11 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
             }
             LayoutAssert.FitsHorizontally(main, matrix);
         }
-        // Package 69: the new server settings are part of the checked Server tab
-        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Server));
+        // Package 69: the new server settings are part of the checked pages (Betrieb since Package 154)
+        AdminPages.Open(page, Strings.Nav_Operation);
         foreach (var name in ServerSectionControls)
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
+        AdminPages.Open(page, Strings.Ui_Backups);
         // Package 74: every backup with its restore and delete button, all checked for width above
         Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_Restore && textBlock.IsEffectivelyVisible));
         Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_Delete && textBlock.IsEffectivelyVisible));
@@ -582,14 +572,14 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         LayoutAssert.FitsHorizontally(main);
         admin.BackupCard.Restoring.IsBusy = false;
         // Package 85: the stored server mute on four cards, the lift button where the viewer outranks the user (checked for width above)
-        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Users));
+        AdminPages.Open(page, Strings.Nav_Members);
         Assert.Equal(4, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_ServerMuted && textBlock.IsEffectivelyVisible));
         Assert.Equal(3, page.GetVisualDescendants().OfType<TextBlock>().Count(textBlock => textBlock.Text == Strings.Ui_LiftServerMute && textBlock.IsEffectivelyVisible));
         Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == Strings.Ui_Loading && textBlock.IsEffectivelyVisible); // Package 97: refreshing
-        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Bans));
+        AdminPages.Open(page, Strings.Ui_Bans);
         Assert.Contains(page.FindControl<ContentControl>("BansLoadState")!.GetVisualDescendants().OfType<BusySpinner>(), busySpinner => busySpinner.IsEffectivelyVisible);
         // Package 81: the Logs tab with the opened file (checked above), then with the hits of a search instead of the files
-        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Logs));
+        AdminPages.Open(page, Strings.Ui_Logs);
         foreach (var name in LogPageControls)
             Assert.True(page.FindControl<Control>(name)?.IsEffectivelyVisible, name);
         Assert.NotEmpty(page.FindControl<ListBox>("LogLines")!.GetRealizedContainers());
@@ -617,8 +607,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Admin_Logs_StackedWhenNarrow(double width, bool stacked)
     {
         var main = OpenAdmin(width, out var page);
-        var tabs = AdminTabs(page);
-        SelectTab(page, Enumerable.Range(0, tabs.ItemCount).Single(index => ((TabItem)tabs.ContainerFromIndex(index)!).Header as string == Strings.Ui_Logs));
+        AdminPages.Open(page, Strings.Ui_Logs);
         var list = page.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("logList"));
         var viewer = page.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("logViewer"));
         var lines = page.FindControl<ListBox>("LogLines")!;
@@ -652,7 +641,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Admin_Groups_StackedWhenNarrow(double width, bool stacked)
     {
         var main = OpenAdmin(width, out var page);
-        SelectTab(page, 0);
+        AdminPages.Open(page, Strings.Nav_GroupsRights);
         var list = page.FindControl<ListBox>("GroupRows")!;
         var listCard = list.FindAncestorOfType<Border>()!;
         var editor = page.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("groupEditor"));
@@ -681,7 +670,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var main = OpenAdmin(1100, out var page);
         try
         {
-            SelectTab(page, 4);
+            AdminPages.Open(page, Strings.Nav_Overview);
             var card = ((AdminViewModel)page.DataContext!).ServerSettings;
             var error = page.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Classes.Contains("danger") && text.DataContext == card);
             Assert.False(error.IsEffectivelyVisible);
@@ -706,7 +695,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Admin_LinkMatrix_ScrollsTitlesStay()
     {
         var main = OpenAdmin(360, out var page);
-        SelectTab(page, 3);
+        AdminPages.Open(page, Strings.Nav_ChannelLinks);
         var cells = page.FindControl<ScrollViewer>("LinkCells")!;
         Assert.True(cells.Extent.Width > cells.Viewport.Width + 1, $"Matrix {cells.Extent.Width} passt in {cells.Viewport.Width}");
         var title = page.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Classes.Contains("linkTitle"));

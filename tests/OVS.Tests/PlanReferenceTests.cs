@@ -16,12 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["UiSmokeTests > \"Admin_Pages_GroupedByTask\""] = "planned in Package 154, written when it is built",
-        ["UiSmokeTests > \"Admin_ServerControls_OnOnePage\""] = "planned in Package 154, written when it is built",
-        ["LeaveGuardTests > \"Admin_OverviewChanged_LeavingAsks\""] = "planned in Package 154, written when it is built",
-        ["LeaveGuardTests > \"Admin_OperationChanged_LeavingAsks\""] = "planned in Package 154, written when it is built",
-        ["UiSmokeTests > \"Admin_Header_ServerLogoAndName\""] = "planned in Package 154, written when it is built",
-        ["AdminViewModelTests > \"RefreshUsers_OnlyUsersAsked\""] = "planned in Package 154, written when it is built",
         ["UiSmokeTests > \"Members_Row_CollapsedShowsSummary\""] = "planned in Package 155, written when it is built",
         ["UiSmokeTests > \"Members_Row_ClickOpensDetails\""] = "planned in Package 155, written when it is built",
         ["KnownUserViewModelTests > \"Refresh_SameUser_StaysExpanded\""] = "planned in Package 155, written when it is built",

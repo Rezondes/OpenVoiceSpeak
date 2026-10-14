@@ -6,6 +6,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using OVS.Client.Animations;
+using OVS.Client.Localization;
 using OVS.Client.Models;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
@@ -110,12 +111,12 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         await viewModel.PageFlow.OpenAdminAsync();
         MotionWait.Settle(400);
         var tabs = main.GetVisualDescendants().OfType<AdminView>().Single().FindControl<TabControl>("Tabs")!;
-        tabs.SelectedIndex = 1;
+        tabs.SelectedIndex = 3; // Package 154: a later page of the side navigation
         viewModel.PageFlow.CloseWithoutAsking();
         MotionWait.Settle(400);
         await viewModel.PageFlow.OpenAdminAsync();
         MotionWait.Settle(400);
-        Assert.Equal(0, tabs.SelectedIndex);
+        Assert.Equal(1, tabs.SelectedIndex); // the first page, after the group title
         main.Close();
     }
 
@@ -135,17 +136,13 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         var content = tabs.GetVisualDescendants().OfType<Control>().First(control => control.Name == "PART_SelectedContentHost");
         var fades = MotionWait.Record(content, visual => visual.Opacity);
         var slides = MotionWait.Record(content, MotionWait.OffsetX);
-        var pipe = ((Control)tabs.ContainerFromIndex(1)!).GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_SelectedPipe");
-        tabs.SelectedIndex = 1;
-        Assert.Equal(0, pipe.Opacity); // the mark is on its way
-        MotionWait.Until(() => marks > 0);
-        Assert.Equal(1, marks);
+        tabs.SelectedIndex = 3; // Package 154: the side navigation's rows have no mark, only the page comes in
         MotionWait.Eventually(() =>
         {
-            Assert.True(fades.Any(fade => fade < 1) && slides.Any(slide => slide > 0), "the content comes in from the side of the new tab");
-            Assert.Empty(Ghosts(main, PageMotion.PipeGhostClass));
-            Assert.Equal((1d, 1d), (content.Opacity, pipe.Opacity));
+            Assert.True(fades.Any(fade => fade < 1) && slides.Any(slide => slide > 0), "the content comes in from the side of the new page");
+            Assert.Equal(1d, content.Opacity);
         });
+        Assert.Equal(0, marks);
 
         viewModel.PageFlow.CloseWithoutAsking();
         MotionWait.Settle(450);
@@ -174,6 +171,8 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         MotionWait.Settle(400);
         var admin = main.GetVisualDescendants().OfType<AdminView>().Single();
         var tabs = admin.FindControl<TabControl>("Tabs")!;
+        AdminPages.Open(admin, Strings.Nav_GroupsRights); // Package 154
+        MotionWait.Settle(400);
         var groups = admin.FindControl<ListBox>("GroupRows")!;
         Assert.True(groups.ItemCount >= 2);
         groups.SelectedIndex = 0;
@@ -254,7 +253,7 @@ public sealed class PageMotionTests() : TempDirectoryTest("ovs-pages-", quiet: t
         await viewModel.PageFlow.OpenAdminAsync();
         Frame();
         var tabs = main.GetVisualDescendants().OfType<AdminView>().Single().FindControl<TabControl>("Tabs")!;
-        tabs.SelectedIndex = 1;
+        tabs.SelectedIndex = 3;
         Frame();
         Assert.Empty(Ghosts(main, PageMotion.PipeGhostClass));
         main.Close();

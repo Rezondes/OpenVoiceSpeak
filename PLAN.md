@@ -7046,7 +7046,7 @@ Dialogs live in the main window's overlay (`SimpleDialogs`, A20). `Pending` (Pac
    - Given: a fake `AskLeave` that answers each choice in turn.
    - Expected: correct behaviour for a page change, a disconnect and a window close.
 4. `LeaveGuardTests > "LeaveGuard_LeaveWithoutSaving_Discards"` and `"SaveAndLeave_LeavesAfterConfirm_StaysOnRefusal"`, `PageFlowViewModelTests > "ConfirmLeaveAsync_FirstAdminPlaceFails_StopsThereAndReturnsFalse"`, `DialogFrameTests > "ShowAsync_ThirdAnswer_ThreeButtonsDefaultFirstAndItsValueReturned"`, `DialogButtonsTests > [Theory] "ShowAsync_EnterPressed_AcceptsOnlyWhereThatIsSafe"`, `AdminPlaceTests > "SaveAsync_NoChanges_TrueWithoutSending"` and `"Places_SavingOrder_GroupsLinksServer"`, `GroupListViewModelTests > "Place_GroupSaveOnItsWay_SavingWaitsForItAndSendsNoSecondOne"`, `"Place_OtherGroupEdited_SavingSendsItAndSucceedsOnceConfirmed"`, `"Place_TwoGroupsEdited_SendsTheSecondOnlyOnceTheFirstIsConfirmedAndSucceedsAfterBoth"`, `"Place_SecondGroupRefused_FailsSelectsItAndItKeepsItsEdit"`, `"Place_FirstGroupRefused_FailsAndTheSecondIsNeverSentAndBothKeepTheirEdits"`, `"Place_FirstGroupGetsNoAnswer_FailsAfterTheTimeoutAndTheSecondIsNeverSent"`, `"Place_SavedAgainAfterATimeout_OneAnswerConfirmsOnlyTheFirstGroup"`, `"Place_SecondGroupNameBlank_FailsSelectsItWithTheNameErrorAfterTheFirstWasSaved"`, `"Place_RightsLostWhileTheFirstGroupIsOnItsWay_TheRebuiltSecondGroupIsNotSentStale"`, `"Place_GroupRebuiltWhileOnItsWayThenRefused_FailsAndSelectsTheRowThatIsInTheList"`, `"Place_DraftAndEditedSavedGroup_SendsTheUpdateThenTheCreateAndSucceedsAfterBoth"`, `"SaveGroup_OtherGroupEditedToo_SendsOnlyTheSelectedGroup"`, `LinkMatrixViewModelTests > "Place_SaveOnItsWay_SavingWaitsForItAndSendsNoSecondOne"`, `"Place_LinkMarked_HasChangesAndSavingSendsItAndWaitsForTheServer"`, `"PlaceDiscard_LinkMarked_LinkBackAndNoChanges"`, `ServerSettingsViewModelTests > "Place_NameEdited_HasChangesAndSavingSendsTheSettingsAndWaitsForTheServer"` and `"Place_NameBlank_HasChangesButSavingFailsWithoutSending"` (AC3, AC4)
-5. `LeaveGuardTests > "AdminTabSwitch_WithChanges_AsksAndStays"` and `"OtherGroup_WithChanges_AsksAndStays"`, `AdminPlaceTests > "Places_EveryPlace_CarriedByExactlyOneTab"` and `"SavingTabs_DataContextSet_CarryTheirOwnPlace"` (AC1, AC2)
+5. `LeaveGuardTests > "AdminTabSwitch_WithChanges_AsksAndStays"` and `"OtherGroup_WithChanges_AsksAndStays"`, `AdminPlaceTests > "Places_EveryPlace_CarriedByItsPagesOnly"` and `"SavingTabs_DataContextSet_CarryTheirOwnPlace"` (AC1, AC2)
 6. `LeaveGuardTests > "LeaveGuard_CancelOrDiscardButton_DoesNotAsk"` (AC5)
 7. `LocalizationTests` and `ResponsiveTests > [Theory] "Dialogs_At360_Fit"` (AC6)
 
@@ -8998,13 +8998,13 @@ Six tabs on top (`AdminView.axaml`); the Server tab holds the server settings an
 
 ### Acceptance Criteria
 
-- [ ] AC1: The list shows the three groups with their pages in the order above; a page the user may not see is hidden as today (`ShowGroups`, `ShowUsers`, `ShowBans`, `ShowLinks`, `ShowServerSettings`, `ShowBackups`, `ShowLogs`), and a group title without a visible page is hidden.
-- [ ] AC2: The page opens on the first page the user may see, never on a group title.
-- [ ] AC3: Übersicht holds logo, name, welcome text and password; Betrieb holds the limits; Backups the backups with transfer and restore; every control of the Server tab is on exactly one of the three.
-- [ ] AC4: Leaving Übersicht or Betrieb with changes asks as today (both share one place); leaving Gruppen und Rechte or Kanal-Verknüpfungen too.
-- [ ] AC5: The header shows the server logo (or its letter) and the server's name instead of the shield and "Verwaltung".
-- [ ] AC6: Mitglieder, Bans, Logs and Backups each have a refresh button in their title row that reloads only that list; the bottom bar is gone.
-- [ ] AC7: Every page fits from 360 to 1100 px in German and English in both displays (as Package 78 and 104 checked the tabs).
+- [x] AC1: The list shows the three groups with their pages in the order above; a page the user may not see is hidden as today (`ShowGroups`, `ShowUsers`, `ShowBans`, `ShowLinks`, `ShowServerSettings`, `ShowBackups`, `ShowLogs`), and a group title without a visible page is hidden.
+- [x] AC2: The page opens on the first page the user may see, never on a group title.
+- [x] AC3: Übersicht holds logo, name, welcome text and password; Betrieb holds the limits; Backups the backups with transfer and restore; every control of the Server tab is on exactly one of the three.
+- [x] AC4: Leaving Übersicht or Betrieb with changes asks as today (both share one place); leaving Gruppen und Rechte or Kanal-Verknüpfungen too.
+- [x] AC5: The header shows the server logo (or its letter) and the server's name instead of the shield and "Verwaltung".
+- [x] AC6: Mitglieder, Bans, Logs and Backups each have a refresh button in their title row that reloads only that list; the bottom bar is gone.
+- [x] AC7: Every page fits from 360 to 1100 px in German and English in both displays (as Package 78 and 104 checked the tabs).
 
 ### Tests (TDD)
 
@@ -9012,8 +9012,10 @@ Six tabs on top (`AdminView.axaml`); the Server tab holds the server settings an
 2. `UiSmokeTests > "Admin_ServerControls_OnOnePage"` (AC3)
 3. `LeaveGuardTests > "Admin_OverviewChanged_LeavingAsks"` and `"Admin_OperationChanged_LeavingAsks"` (AC4)
 4. `UiSmokeTests > "Admin_Header_ServerLogoAndName"` (AC5)
-5. `AdminViewModelTests > "RefreshUsers_OnlyUsersAsked"` (AC6), the same for bans, logs, backups.
+5. `AdminViewModelTests > "RefreshUsers_Clicked_OnlyUsersAsked"`, `AdminViewModelTests > "RefreshBans_Clicked_OnlyBansAsked"`, `AdminViewModelTests > "RefreshLogs_Clicked_OnlyLogsAsked"`, `AdminViewModelTests > "RefreshBackups_Clicked_OnlyBackupsAsked"` (AC6), `AdminViewModelTests > [Theory] "GroupTitles_Rights_ShownWithTheirPages"` (AC1)
 6. `ResponsiveTests > "Admin_EveryTab_Fits"`, `"Admin_Logs_StackedWhenNarrow"`, `"Admin_Groups_StackedWhenNarrow"`, `"Admin_LinkMatrix_ScrollsTitlesStay"` (AC7): pages opened through the side navigation.
+
+(as built: the administration breaks at 640 px like the settings. The header shows `Server.ServerName` and its logo or letter (`AdminViewModel.Server`) with "Verwaltung" as a caption. Übersicht and Betrieb both carry `ServerSettings.Place`; the leave guard of Package 114 does not ask when the next page carries the same place, and both pages keep the save button and the error until Package 157. `RefreshUsersCommand` and `RefreshBansCommand` (`UsersAndBansViewModel`) and the `RefreshCommand` of `LogsViewModel` and `BackupCardViewModel` back the icon buttons in each list page; `AdminViewModel.RefreshCommand` and `ShowServer` are gone, `ShowServerGroup`, `ShowMembersGroup` and `ShowManageGroup` decide the group titles. The side navigation's rows have no selection mark, so `PageMotion`'s flying mark only plays in the chat tabs now; the page still slides in. `AdminPages` in `TestSupport` opens a page by its header; the tests that chose a tab by index or header open the page instead (`ResponsiveTests`, `UiSmokeTests`, `LeaveGuardTests`, `AdminPlaceTests` with `Places_EveryPlace_CarriedByItsPagesOnly`, `PageMotionTests`, `LiveMotionTests`, `ItemMotionTests`, `MotionCoverageTests` and the website shots, which map the former tab numbers). Manual check: screenshots at 1300 px (dark on Mitglieder, light on Übersicht) and 420 px (the list first).)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

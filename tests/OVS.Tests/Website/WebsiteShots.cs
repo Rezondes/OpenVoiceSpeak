@@ -184,13 +184,20 @@ public sealed class WebsiteShots
     /// <summary>The administration on one of its tabs (0 groups, 1 users, 2 bans, 3 links, 4 server, 5 logs).</summary>
     static AdminScene Admin(string lang, string theme, int tab)
     {
+        // Package 154: the side navigation's index of each former tab (group titles between them; "server" is Übersicht)
+        int[] pageOf = [3, 6, 7, 4, 1, 9];
+        return AdminOnPage(lang, theme, pageOf[tab]);
+    }
+
+    static AdminScene AdminOnPage(string lang, string theme, int index)
+    {
         var scene = new WebsiteScene(lang, theme, 760);
         var showcase = scene.Connect();
         showcase.AnswerAdministration();
         _ = scene.Vm.PageFlow.OpenAdminAsync();
         ShotWriter.Settle(700);
         var page = scene.Window.GetVisualDescendants().OfType<AdminView>().Single();
-        page.FindControl<TabControl>("Tabs")!.SelectedIndex = tab;
+        page.FindControl<TabControl>("Tabs")!.SelectedIndex = index;
         ShotWriter.Settle(600);
         return new(scene, showcase);
     }
@@ -335,8 +342,8 @@ public sealed class WebsiteShots
         AdminView Page() => scene.Window.GetVisualDescendants().OfType<AdminView>().Single();
         ShotWriter.Record(scene.Window, Clip("clip-pages", scene), 5500, 2300, // the poster shows the administration, not the start the switch clip shares
             (400, () => _ = scene.Vm.PageFlow.OpenAdminAsync()),
-            (1700, () => Page().FindControl<TabControl>("Tabs")!.SelectedIndex = 1),
-            (2900, () => Page().FindControl<TabControl>("Tabs")!.SelectedIndex = 2),
+            (1700, () => Page().FindControl<TabControl>("Tabs")!.SelectedIndex = 6), // Package 154: Mitglieder
+            (2900, () => Page().FindControl<TabControl>("Tabs")!.SelectedIndex = 7), // Bans
             (4300, () => scene.Vm.PageFlow.CloseWithoutAsking()));
     }
 

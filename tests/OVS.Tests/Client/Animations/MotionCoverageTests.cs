@@ -459,6 +459,7 @@ public sealed class MotionCoverageTests
 
         // ---- administration ----
         yield return new("open the administration", walk => _ = walk.Vm.PageFlow.OpenAdminAsync());
+        yield return new("switch to the groups", walk => AdminTabs(walk).SelectedIndex = 3); // Package 154: Übersicht comes first
         yield return new("add a group", walk => walk.Admin.GroupList.NewGroupCommand.Execute(null));
         yield return new("drop the new group", walk => walk.Admin.GroupList.DeleteGroupCommand.Execute(null));
         yield return new("create a group", walk => walk.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, FakeServers.ModeratorGroup])));
@@ -483,10 +484,10 @@ public sealed class MotionCoverageTests
             walk.Server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup]));
         });
 
-        yield return new("switch to the users", walk => AdminTabs(walk).SelectedIndex = 1);
+        yield return new("switch to the users", walk => AdminTabs(walk).SelectedIndex = 6);
         yield return new("refresh the lists", walk =>
         {
-            _ = walk.Admin.RefreshCommand.ExecuteAsync(null);
+            _ = walk.Admin.RequestListsAsync(); // Package 154: the pages' refresh buttons
             walk.Server.Apply(new UserList(walk.Sent.LastRequestId<ListUsers>(), [KnownMe, KnownAnna(muted: true)]));
             walk.Server.Apply(new LogList(walk.Sent.LastRequestId<ListLogs>(), [ServerLog]));
         });
@@ -500,7 +501,7 @@ public sealed class MotionCoverageTests
         foreach (var step in Dialog("delete user", walk => _ = Anna(walk).DeleteCommand.ExecuteAsync(null))) yield return step;
         yield return new("delete a user", walk => walk.Server.Apply(new UserList(walk.Sent.LastRequestId<ListUsers>(), [KnownMe])));
 
-        yield return new("switch to the bans", walk => AdminTabs(walk).SelectedIndex = 2);
+        yield return new("switch to the bans", walk => AdminTabs(walk).SelectedIndex = 7);
         foreach (var name in new[] { "BanStatusFilter", "BanTypeFilter", "BanSortOrder" }) yield return Drop($"the ban list's {name}", walk => Named<ComboBox>(walk, name));
         yield return new("ban list shows the ban", walk => walk.Server.Apply(new BanList(walk.Sent.LastRequestId<ListBans>(), [new BanInfo(AnnasBan, "fp2", "anna", null, "Spam", "ich", null)])));
         yield return new("unban a user", walk =>
@@ -509,7 +510,7 @@ public sealed class MotionCoverageTests
             walk.Server.Apply(new BanList(walk.Sent.LastRequestId<Unban>(), []));
         });
 
-        yield return new("switch to the links", walk => AdminTabs(walk).SelectedIndex = 3);
+        yield return new("switch to the links", walk => AdminTabs(walk).SelectedIndex = 4);
         Func<Walk, ToggleButton> rowBox = walk => Shown<CheckBox>(walk, checkBox => checkBox.DataContext is LinkRowViewModel);
         Func<Walk, ToggleButton> cellBox = walk => Shown<CheckBox>(walk, checkBox => checkBox.DataContext is LinkCellViewModel);
         yield return Toggle("select a channel in the link matrix", rowBox, back: true);
@@ -522,7 +523,7 @@ public sealed class MotionCoverageTests
             walk.Server.Apply(new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid));
         });
 
-        yield return new("switch to the server", walk => AdminTabs(walk).SelectedIndex = 4, Prepare: walk => walk.Server.Apply(new ServerSettingsChanged(
+        yield return new("switch to the server's operation", walk => AdminTabs(walk).SelectedIndex = 2, Prepare: walk => walk.Server.Apply(new ServerSettingsChanged(
             walk.Server.Mirror.Settings with { Limits = new ServerLimits(50, 30, true, false, new TimeOnly(4, 0)) }))); // with limits: all its check boxes
         var serverBoxes = AdminPage(otherWalk).GetVisualDescendants().OfType<CheckBox>().Where(checkBox => checkBox.IsEffectivelyVisible && checkBox.IsEffectivelyEnabled).ToList();
         foreach (var box in serverBoxes)
@@ -537,6 +538,7 @@ public sealed class MotionCoverageTests
             walk.Server.Apply(new ServerSettingsChanged(walk.Server.Mirror.Settings));
             walk.Server.IconPng = png;
         });
+        yield return new("switch to the backups", walk => AdminTabs(walk).SelectedIndex = 10);
         yield return new("create a backup", walk =>
         {
             walk.Admin.BackupCard.NewBackupCommand.Execute(null);
@@ -548,7 +550,7 @@ public sealed class MotionCoverageTests
         foreach (var step in Dialog("delete backup", walk => _ = walk.Admin.BackupCard.Backups.Single().DeleteCommand.ExecuteAsync(null))) yield return step;
         yield return new("delete a backup", walk => walk.Server.Apply(new BackupList(walk.Sent.LastRequestId<ListBackups>(), [])));
 
-        yield return new("switch to the logs", walk => AdminTabs(walk).SelectedIndex = 5);
+        yield return new("switch to the logs", walk => AdminTabs(walk).SelectedIndex = 9);
         yield return Drop("the log source filter", walk => Named<ComboBox>(walk, "LogSourceFilter"));
         yield return Click("search the logs", walk => Named<Button>(walk, "LogSearchButton"), walk =>
         {

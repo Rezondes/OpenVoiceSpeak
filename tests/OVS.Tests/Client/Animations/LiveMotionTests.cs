@@ -402,6 +402,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         viewModel.TransmitText = "";
         _ = viewModel.PageFlow.OpenAdminAsync();
         MotionWait.Settle(300);
+        AdminPages.Open(main, Strings.Nav_GroupsRights); // Package 154: Übersicht comes first
         viewModel.PageFlow.AdminPage!.GroupList.GroupReorder.Start(); // waits for an answer that never comes: a spinner in the administration
         viewModel.PageFlow.AdminPage.GroupList.GroupSave.Start();
         MotionWait.Settle(400);

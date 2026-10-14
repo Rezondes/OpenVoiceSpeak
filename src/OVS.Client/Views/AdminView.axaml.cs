@@ -26,10 +26,7 @@ internal partial class AdminView : UserControl
         MaxUsersInput.Minimum = ProtocolLimits.MaxUsersMin;
         MaxUsersInput.Maximum = ProtocolLimits.MaxUsersMax;
         LogDaysInput.Maximum = ProtocolLimits.LogDaysMax;
-        // Hidden tabs stay selectable; start on the first one the user may see.
-        // Posted: the tabs' IsVisible bindings follow the new DataContext first.
-        DataContextChanged += (_, _) => Dispatcher.UIThread.Post(() =>
-            Tabs.SelectedItem = Tabs.Items.OfType<TabItem>().FirstOrDefault(tabItem => tabItem.IsVisible));
+        // Package 154: SideNav starts on the first page the user may see (hidden pages stay selectable otherwise).
         // Package 78: a tab scrolled out of the header strip comes into view when chosen
         Tabs.SelectionChanged += (_, args) =>
         {
@@ -39,7 +36,7 @@ internal partial class AdminView : UserControl
         Tabs.SelectionChanged += async (_, args) =>
         {
             if (args.Source != Tabs || stepping || Vm is not { } admin || args.RemovedItems is not [TabItem { Tag: AdminPlace place } left]
-                || !place.HasChanges())
+                || !place.HasChanges() || args.AddedItems is [TabItem { Tag: AdminPlace next }] && next == place) // Package 154: Übersicht and Betrieb share one place
                 return;
             var wanted = Tabs.SelectedItem;
             Step(() => Tabs.SelectedItem = left);

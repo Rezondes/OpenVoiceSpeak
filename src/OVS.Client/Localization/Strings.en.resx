@@ -646,4 +646,12 @@
   <data name="Nav_About" xml:space="preserve"><value>About and updates</value></data>
   <data name="Unsaved_Text" xml:space="preserve"><value>Unsaved changes</value></data>
   <data name="Unsaved_Reset" xml:space="preserve"><value>Reset</value></data>
+  <data name="Nav_ServerGroup" xml:space="preserve"><value>SERVER</value></data>
+  <data name="Nav_MembersGroup" xml:space="preserve"><value>MEMBERS</value></data>
+  <data name="Nav_ManageGroup" xml:space="preserve"><value>MANAGEMENT</value></data>
+  <data name="Nav_Overview" xml:space="preserve"><value>Overview</value></data>
+  <data name="Nav_Operation" xml:space="preserve"><value>Operation</value></data>
+  <data name="Nav_GroupsRights" xml:space="preserve"><value>Groups and rights</value></data>
+  <data name="Nav_ChannelLinks" xml:space="preserve"><value>Channel links</value></data>
+  <data name="Nav_Members" xml:space="preserve"><value>Members</value></data>
 </root>

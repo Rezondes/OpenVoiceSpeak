@@ -4,6 +4,7 @@ using OVS.Client.Dialogs;
 using OVS.Client.Localization;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using OVS.Client.Models;
 using OVS.Client.Services;
 using OVS.Shared.Moderation;
@@ -144,6 +145,14 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
         await banRefresh.RequestAsync();
         await users;
     }
+
+    /// <summary>Package 154: asks for the user list only (the members page's refresh button).</summary>
+    [RelayCommand]
+    internal Task RefreshUsersAsync() => userRefresh.RequestAsync();
+
+    /// <summary>Package 154: asks for the ban list only (the bans page's refresh button).</summary>
+    [RelayCommand]
+    internal Task RefreshBansAsync() => banRefresh.RequestAsync();
 
     /// <summary>
     /// The page closed: no more requests, and no answer reaches this section. Group changes still waiting for a user list

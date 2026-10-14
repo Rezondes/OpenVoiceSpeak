@@ -285,18 +285,16 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         _ = viewModel.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
         Assert.True(viewModel.PageFlow.IsAdminPage);
-        Assert.Contains("Gruppen", Texts(main));
+        AdminPages.Open(main, Strings.Nav_GroupsRights); // Package 154: Übersicht comes first
+        Assert.Contains("Gruppen und Rechte", Texts(main));
         Assert.Equal(2, main.GetVisualDescendants().OfType<Button>().Count(button => AutomationProperties.GetName(button) is "Gruppe nach oben" or "Gruppe nach unten"));
-        var linksTab = main.GetVisualDescendants().OfType<TabItem>().Single(tabItem => tabItem.Header is "Links");
-        linksTab.IsSelected = true; // Package 38: the link matrix
-        Dispatcher.UIThread.RunJobs();
+        AdminPages.Open(main, Strings.Nav_ChannelLinks); // Package 38: the link matrix
         Assert.Contains("Ausgewählte miteinander verlinken", Texts(main));
         Assert.Contains(main.GetVisualDescendants().OfType<CheckBox>(), checkBox => AutomationProperties.GetName(checkBox) == "Link Lobby und Raid");
         // Package 71: the user overview with search, filters and every stored value
         viewModel.PageFlow.AdminPage!.UsersAndBans.Apply(new UserList("r", [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], DateTimeOffset.Now.AddDays(-3),
             DateTimeOffset.Now, 4, TimeSpan.FromHours(2), "10.0.0.2", ["anni"], TimeSpan.FromMinutes(3), 7, CanBeModeratedByMe: true)]));
-        main.GetVisualDescendants().OfType<TabItem>().Single(tabItem => tabItem.Header is "Nutzer").IsSelected = true;
-        Dispatcher.UIThread.RunJobs();
+        AdminPages.Open(main, Strings.Nav_Members);
         foreach (var text in new[] { "1 von 1 Nutzern", "anni", "10.0.0.2", "2 h", "3 min", "Online", "Frühere Nicknames" })
             Assert.Contains(text, Texts(main));
         Assert.Single(main.GetVisualDescendants().OfType<TextBox>(), textBox => AutomationProperties.GetName(textBox) == "Name, Fingerabdruck oder IP suchen");
@@ -308,8 +306,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         // Package 80: the ban overview with search, filters and every detail
         viewModel.PageFlow.AdminPage!.UsersAndBans.Apply(new BanList("r", [new BanInfo(Guid.NewGuid(), "fp3", "troll", "10.0.0.3", "Spam", "anna", null, DateTimeOffset.Now.AddDays(-1),
             "fp2", null, null, null, 2, DateTimeOffset.Now, "10.0.0.4")]));
-        main.GetVisualDescendants().OfType<TabItem>().Single(tabItem => tabItem.Header is "Bans").IsSelected = true;
-        Dispatcher.UIThread.RunJobs();
+        AdminPages.Open(main, Strings.Ui_Bans);
         foreach (var text in new[] { "1 von 1 Bans", "troll", "Spam", "aktiv", "10.0.0.3", "Blockierte Versuche", "Erstellt von", "anna", "Aktive Bans" })
             Assert.Contains(text, Texts(main));
         Assert.Single(main.GetVisualDescendants().OfType<TextBox>(), textBox => AutomationProperties.GetName(textBox) == "Name, IP, Grund, Moderator suchen");
@@ -667,6 +664,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Show();
         _ = viewModel.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
+        AdminPages.Open(main, Strings.Nav_GroupsRights); // Package 154: Übersicht comes first
         Point Center(string name)
         {
             var item = main.GetVisualDescendants().OfType<ListBoxItem>().Single(listBoxItem => listBoxItem.DataContext is GroupEditViewModel groupEdit && groupEdit.Name == name);
@@ -693,8 +691,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Show();
         _ = viewModel.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
-        main.GetVisualDescendants().OfType<TabItem>().Single(tabItem => tabItem.Header is "Server").IsSelected = true;
-        Dispatcher.UIThread.RunJobs();
+        AdminPages.Open(main, Strings.Nav_Overview);
         var zone = main.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "IconDrop");
         var idle = zone.BorderBrush;
         void Raise(RoutedEvent<DragEventArgs> routed, IDataTransfer data) =>
@@ -1489,7 +1486,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         {
             _ = viewModel.PageFlow.OpenAdminAsync();
             Dispatcher.UIThread.RunJobs();
-            main.GetVisualDescendants().OfType<AdminView>().Single().GetVisualDescendants().OfType<TabItem>().Single(tabItem => tabItem.Header as string == "Nutzer").IsSelected = true;
+            AdminPages.Open(main, Strings.Nav_Members);
         }, () =>
         [
             new UserList(Last<ListUsers>().RequestId, [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], ServerMuted: true, CanBeModeratedByMe: true)]),
@@ -1499,12 +1496,8 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         ]);
         var admin = viewModel.PageFlow.AdminPage!;
         var page = main.GetVisualDescendants().OfType<AdminView>().Single();
-        void Tab(string header)
-        {
-            page.GetVisualDescendants().OfType<TabItem>().Single(tabItem => tabItem.Header as string == header).IsSelected = true;
-            Dispatcher.UIThread.RunJobs();
-        }
-        Tab("Gruppen");
+        void Tab(string header) => AdminPages.Open(page, header);
+        Tab(Strings.Nav_GroupsRights);
         Waits("group save", () =>
         {
             admin.GroupList.SelectedGroup = admin.GroupList.Groups.Single(groupEdit => groupEdit.Name == "Gast");
@@ -1512,7 +1505,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         }, () => [new GroupsChanged(server.Mirror.Groups)]);
         Waits("group order", () => _ = admin.GroupList.MoveGroupAsync(admin.GroupList.Groups.Single(groupEdit => groupEdit.Name == "Admin"), admin.GroupList.Groups[0], after: false),
             () => [new GroupsChanged([.. Enumerable.Reverse(server.Mirror.Groups)])]);
-        Tab("Nutzer");
+        Tab(Strings.Nav_Members);
         // the group changes asked for the user list again (the rights on others may change): answered first, also the wish
         // that came meanwhile and follows a second later
         for (var index = 0; index < 2; index++)
@@ -1522,20 +1515,21 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         }
         Waits("user card", () => _ = admin.UsersAndBans.Users.Single().LiftMuteCommand.ExecuteAsync(null),
             () => [new UserList(Last<ListUsers>().RequestId, [new KnownUserInfo("fp2", "anna", [WellKnownGroups.Guest], CanBeModeratedByMe: true)])]);
-        Tab("Bans");
+        Tab(Strings.Ui_Bans);
         Waits("unban", () => _ = admin.UsersAndBans.Bans.Single().UnbanCommand.ExecuteAsync(null), () => [new BanList(Last<Unban>().RequestId, [])]);
-        Tab("Links");
+        Tab(Strings.Nav_ChannelLinks);
         Waits("link apply", () =>
         {
             admin.Links.Set(FakeServers.Lobby, FakeServers.Raid, false);
             _ = admin.Links.ApplyCommand.ExecuteAsync(null);
         }, () => [new ChannelsUnlinked(FakeServers.Lobby, FakeServers.Raid)]);
-        Tab("Server");
+        Tab(Strings.Ui_Backups);
         page.FindControl<Button>("NewBackupButton")!.BringIntoView();
         Waits("backup", () => _ = admin.BackupCard.NewBackupCommand.ExecuteAsync(null), () => [new BackupList(Last<CreateBackup>().RequestId, [])]);
+        Tab(Strings.Nav_Overview);
         page.FindControl<Border>("IconDrop")!.BringIntoView();
         Waits("logo", () => admin.ServerIcon.UploadIcon(TestImages.Encode(64, 64), null), () => [new ServerSettingsChanged(server.Mirror.Settings)]);
-        Tab("Logs");
+        Tab(Strings.Ui_Logs);
         Waits("log search", () =>
         {
             admin.Logs.SearchText = "fehler";
@@ -1572,6 +1566,78 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Assert.Equal(brush.Color, again.Color);
         Assert.Equal("A", AvatarConverters.Initials.Convert(" anna", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
         Assert.Equal("?", AvatarConverters.Initials.Convert("", typeof(string), null, System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>Package 154: the administration's pages under SERVER, MITGLIEDER and VERWALTUNG; a moderator sees only theirs.</summary>
+    [AvaloniaFact]
+    public async Task Admin_Pages_GroupedByTask()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
+        main.Show();
+        var server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(viewModel, server);
+        await viewModel.PageFlow.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        var tabs = AdminPages.Tabs(main);
+        Assert.Equal([Strings.Nav_ServerGroup, Strings.Nav_Overview, Strings.Nav_Operation, Strings.Nav_GroupsRights, Strings.Nav_ChannelLinks,
+            Strings.Nav_MembersGroup, Strings.Nav_Members, Strings.Ui_Bans, Strings.Nav_ManageGroup, Strings.Ui_Logs, Strings.Ui_Backups],
+            tabs.Items.OfType<TabItem>().Where(tabItem => tabItem.IsVisible).Select(tabItem => tabItem.Header as string));
+        Assert.Equal(Strings.Nav_Overview, ((TabItem)tabs.SelectedItem!).Header);
+        viewModel.PageFlow.CloseWithoutAsking();
+
+        FakeServers.SetOwnRightsAndGroups(server, Permission.UsersView | Permission.UserBan | Permission.Speak, [WellKnownGroups.Guest]);
+        await viewModel.PageFlow.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        var shown = tabs.Items.OfType<TabItem>().Where(tabItem => tabItem.IsVisible).Select(tabItem => tabItem.Header as string).ToList();
+        Assert.DoesNotContain(Strings.Nav_ServerGroup, shown);
+        Assert.Contains(Strings.Nav_Members, shown);
+        Assert.Equal(Strings.Nav_Members, ((TabItem)tabs.SelectedItem!).Header);
+        main.Close();
+    }
+
+    /// <summary>Package 154: the server tab's controls on Übersicht, Betrieb and Backups, each on exactly one of them.</summary>
+    [AvaloniaFact]
+    public async Task Admin_ServerControls_OnOnePage()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 2400 };
+        main.Show();
+        MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin());
+        await viewModel.PageFlow.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        var found = new List<string>();
+        foreach (var header in new[] { Strings.Nav_Overview, Strings.Nav_Operation, Strings.Ui_Backups })
+        {
+            AdminPages.Open(main, header);
+            var content = (Control)AdminPages.Find(main, header).Content!;
+            found.AddRange(content.GetVisualDescendants().OfType<Control>()
+                .Where(control => control.Name is "IconDrop" or "MaxUsersInput" or "LogDaysInput" or "AutoRestartInput" or "NewBackupButton" or "UploadBackupButton" or "RefreshBackupsButton")
+                .Select(control => $"{header}: {control.Name}"));
+        }
+        Assert.Equal([$"{Strings.Nav_Overview}: IconDrop", $"{Strings.Nav_Operation}: MaxUsersInput", $"{Strings.Nav_Operation}: LogDaysInput",
+            $"{Strings.Nav_Operation}: AutoRestartInput", $"{Strings.Ui_Backups}: RefreshBackupsButton", $"{Strings.Ui_Backups}: NewBackupButton", $"{Strings.Ui_Backups}: UploadBackupButton"], found);
+        main.Close();
+    }
+
+    /// <summary>Package 154: the header names the administered server, with its letter while it has no logo.</summary>
+    [AvaloniaFact]
+    public async Task Admin_Header_ServerLogoAndName()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
+        main.Show();
+        var server = FakeServers.Admin();
+        MainViewModelSetup.ShowServer(viewModel, server);
+        await viewModel.PageFlow.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        var page = main.GetVisualDescendants().OfType<AdminView>().Single();
+        Assert.Equal(server.ServerName, page.FindControl<TextBlock>("AdminServerName")!.Text);
+        Assert.DoesNotContain(page.GetVisualDescendants().OfType<PathIcon>(), pathIcon => pathIcon.Classes.Contains("accent") && pathIcon.IsEffectivelyVisible);
+        server.IconPng = TestImages.Encode(64, 64);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains(page.GetVisualDescendants().OfType<Image>(), image => image.IsEffectivelyVisible && image.Source is not null);
+        main.Close();
     }
 
     sealed record ChannelDialogLook(string Title, List<string?> Buttons, string? Name, bool? Muted, decimal? Slots, bool SlotsEnabled);

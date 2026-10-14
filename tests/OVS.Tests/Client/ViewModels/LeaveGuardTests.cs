@@ -256,7 +256,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         Dispatcher.UIThread.RunJobs();
         var page = Page(main);
         var tabs = page.FindControl<TabControl>("Tabs")!;
-        var serverTab = page.FindControl<TabItem>("ServerTab")!;
+        var serverTab = page.FindControl<TabItem>("OverviewTab")!; // Package 154
         tabs.SelectedItem = serverTab;
         Dispatcher.UIThread.RunJobs();
         viewModel.PageFlow.AdminPage!.ServerSettings.Name = "Neu";
@@ -284,6 +284,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         main.Show();
         await viewModel.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
+        AdminPages.Open(main, OVS.Client.Localization.Strings.Nav_GroupsRights); // Package 154: Übersicht comes first
         var list = Page(main).FindControl<ListBox>("GroupRows")!;
         var admin = viewModel.PageFlow.AdminPage!;
         var edited = admin.GroupList.Groups.First(groupEdit => groupEdit.IsEditable);
@@ -316,6 +317,7 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
         main.Show();
         await viewModel.PageFlow.OpenAdminAsync();
         Dispatcher.UIThread.RunJobs();
+        AdminPages.Open(main, OVS.Client.Localization.Strings.Nav_GroupsRights); // Package 154: Übersicht comes first
         var list = Page(main).FindControl<ListBox>("GroupRows")!;
         var admin = viewModel.PageFlow.AdminPage!;
         var edited = admin.GroupList.Groups.First(groupEdit => groupEdit.IsEditable);
@@ -443,4 +445,50 @@ public sealed class LeaveGuardTests() : TempDirectoryTest("ovs-leave-", quiet: t
     }
 
     readonly List<string> order = [];
+    /// <summary>Package 154: Übersicht and Betrieb share the server settings' place: between them no question, away from them one.</summary>
+    [AvaloniaFact]
+    public async Task Admin_OverviewChanged_LeavingAsks()
+    {
+        var viewModel = Main();
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
+        main.Show();
+        await viewModel.PageFlow.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        var page = Page(main);
+        var tabs = page.FindControl<TabControl>("Tabs")!;
+        viewModel.PageFlow.AdminPage!.ServerSettings.Name = "Neu";
+        tabs.SelectedItem = page.FindControl<TabItem>("OperationTab");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(0, asked);
+        answers.Enqueue(LeaveChoice.Stay);
+        tabs.SelectedItem = page.FindControl<TabItem>("GroupsTab");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(1, asked);
+        Assert.Same(page.FindControl<TabItem>("OperationTab"), tabs.SelectedItem);
+        main.Close();
+    }
+
+    /// <summary>Package 154: a change on Betrieb asks too when another page is chosen.</summary>
+    [AvaloniaFact]
+    public async Task Admin_OperationChanged_LeavingAsks()
+    {
+        var viewModel = Main();
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 700 };
+        main.Show();
+        viewModel.Server!.Apply(new ServerSettingsChanged(viewModel.Server.Mirror.Settings with { Limits = new ServerLimits(50, 30, true, false, new TimeOnly(4, 0)) })); // with limits
+        await viewModel.PageFlow.OpenAdminAsync();
+        Dispatcher.UIThread.RunJobs();
+        var page = Page(main);
+        var tabs = page.FindControl<TabControl>("Tabs")!;
+        tabs.SelectedItem = page.FindControl<TabItem>("OperationTab");
+        Dispatcher.UIThread.RunJobs();
+        viewModel.PageFlow.AdminPage!.ServerSettings.LogDays = (viewModel.PageFlow.AdminPage.ServerSettings.LogDays ?? 0) + 1;
+        answers.Enqueue(LeaveChoice.Stay);
+        tabs.SelectedItem = page.FindControl<TabItem>("LinksTab");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(1, asked);
+        Assert.Same(page.FindControl<TabItem>("OperationTab"), tabs.SelectedItem);
+        main.Close();
+    }
+
 }

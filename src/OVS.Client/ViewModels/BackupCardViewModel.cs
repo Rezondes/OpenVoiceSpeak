@@ -57,7 +57,8 @@ internal sealed partial class BackupCardViewModel : ObservableObject
     internal ObservableCollection<BackupViewModel> Backups { get; } = [];
     internal bool HasNoBackups => !Backups.Live().Any();
 
-    /// <summary>Asks for the backup list when the backups are shown.</summary>
+    /// <summary>Asks for the backup list when the backups are shown (Package 154: also the page's refresh button).</summary>
+    [RelayCommand]
     internal Task RefreshAsync() => ShowBackups ? SendRoutedAsync(new ListBackups(), pending: BackupsLoad) : Task.CompletedTask;
 
     /// <summary>The page closed: no answer reaches this section.</summary>

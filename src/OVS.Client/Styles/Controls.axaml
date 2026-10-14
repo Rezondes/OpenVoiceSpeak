@@ -604,11 +604,12 @@
   </Style>
 
   <!-- ===== Administration (Package 78): as before from 560 px, stacked below (Window.narrow) ===== -->
-  <Style Selector="DockPanel.adminBody">
-    <Setter Property="Margin" Value="24,12,24,16" />
+  <!-- Package 154: the administration's pages keep their margin beside the side navigation -->
+  <Style Selector="TabControl.adminNav">
+    <Setter Property="Padding" Value="24,12,24,16" />
   </Style>
-  <Style Selector="Window.narrow DockPanel.adminBody">
-    <Setter Property="Margin" Value="12,8,12,12" />
+  <Style Selector="Window.narrow TabControl.adminNav">
+    <Setter Property="Padding" Value="12,8,12,12" />
   </Style>
   <!-- Groups: list (240 px) beside the editor; under narrow the list on top (40 % of the height), the editor below -->
   <Style Selector="Grid.adminGroups > Border.groupList">

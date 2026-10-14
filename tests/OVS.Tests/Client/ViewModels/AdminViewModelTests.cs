@@ -93,7 +93,7 @@ public class AdminViewModelTests
     public async Task Tabs_Rights_VisibleByPermission(P perms, bool groups, bool users, bool bans, bool server, bool logs)
     {
         var (admin, serverVm, sent) = Create(perms);
-        Assert.Equal((groups, users, bans, server, logs), (admin.ShowGroups, admin.ShowUsers, admin.ShowBans, admin.ShowServer, admin.ShowLogs));
+        Assert.Equal((groups, users, bans, server, logs), (admin.ShowGroups, admin.ShowUsers, admin.ShowBans, admin.ShowServerSettings || admin.ShowBackups, admin.ShowLogs));
         Assert.Equal(groups || users || bans || server || logs, serverVm.CanAdminister);
         await admin.RequestListsAsync();
         Assert.Equal(logs, sent.OfType<ListLogs>().Any());
@@ -265,7 +265,7 @@ public class AdminViewModelTests
     {
         var (admin, _, _) = Create(perms);
 
-        Assert.Equal((true, backups, settings), (admin.ShowServer, admin.ShowBackups, admin.ShowServerSettings));
+        Assert.Equal((backups, settings), (admin.ShowBackups, admin.ShowServerSettings)); // Package 154: Backups and Übersicht are pages of their own
     }
 
     // ---- Package 80: ban overview with details, history, search and filter ----
@@ -948,7 +948,7 @@ public class AdminViewModelTests
 
         // a refresh: the old cards stay, with a small spinner instead of the loading state
         time.Advance(TimeSpan.FromSeconds(1));
-        await admin.RefreshCommand.ExecuteAsync(null);
+        await admin.RequestListsAsync(); // Package 154: what each page's refresh button asks, all at once
         time.Advance(PendingActionViewModel.ShowAfter);
         Assert.All(loads, pendingAction => Assert.True(pendingAction.IsRefreshing && !pendingAction.IsFirstLoad));
         Assert.Equal(2, admin.UsersAndBans.Users.Count);
@@ -957,7 +957,7 @@ public class AdminViewModelTests
         time.Advance(TimeSpan.FromSeconds(10));
         Assert.All(loads, pendingAction => Assert.Equal(Strings.Pending_NoAnswer, pendingAction.Error));
         Assert.All(loads, pendingAction => Assert.False(pendingAction.IsBusy));
-        await admin.RefreshCommand.ExecuteAsync(null);
+        await admin.RequestListsAsync(); // Package 154: what each page's refresh button asks, all at once
         Assert.All(loads, pendingAction => Assert.True(pendingAction.IsRunning && pendingAction.Error is null));
     }
 
@@ -1251,6 +1251,53 @@ public class AdminViewModelTests
         Assert.Null(dialogs.AskLeave);
         Assert.Equal(new UsersAndBansDialogs(), dialogs.UsersAndBans);
         Assert.Equal(new BackupCardDialogs(), dialogs.BackupCard);
+    }
+
+    /// <summary>Package 154: each list page's refresh button asks for its own list only.</summary>
+    [Fact]
+    public async Task RefreshUsers_Clicked_OnlyUsersAsked()
+    {
+        var (admin, _, sent) = Create(P.All);
+        await admin.UsersAndBans.RefreshUsersCommand.ExecuteAsync(null);
+        Assert.Equal((1, 0, 0, 0), (sent.OfType<ListUsers>().Count(), sent.OfType<ListBans>().Count(), sent.OfType<ListLogs>().Count(), sent.OfType<ListBackups>().Count()));
+    }
+
+    /// <summary>Package 154: the bans page's refresh button.</summary>
+    [Fact]
+    public async Task RefreshBans_Clicked_OnlyBansAsked()
+    {
+        var (admin, _, sent) = Create(P.All);
+        await admin.UsersAndBans.RefreshBansCommand.ExecuteAsync(null);
+        Assert.Equal((0, 1, 0, 0), (sent.OfType<ListUsers>().Count(), sent.OfType<ListBans>().Count(), sent.OfType<ListLogs>().Count(), sent.OfType<ListBackups>().Count()));
+    }
+
+    /// <summary>Package 154: the logs page's refresh button.</summary>
+    [Fact]
+    public async Task RefreshLogs_Clicked_OnlyLogsAsked()
+    {
+        var (admin, _, sent) = Create(P.All);
+        await admin.Logs.RefreshCommand.ExecuteAsync(null);
+        Assert.Equal((0, 0, 1, 0), (sent.OfType<ListUsers>().Count(), sent.OfType<ListBans>().Count(), sent.OfType<ListLogs>().Count(), sent.OfType<ListBackups>().Count()));
+    }
+
+    /// <summary>Package 154: the backups page's refresh button.</summary>
+    [Fact]
+    public async Task RefreshBackups_Clicked_OnlyBackupsAsked()
+    {
+        var (admin, _, sent) = Create(P.All);
+        await admin.BackupCard.RefreshCommand.ExecuteAsync(null);
+        Assert.Equal((0, 0, 0, 1), (sent.OfType<ListUsers>().Count(), sent.OfType<ListBans>().Count(), sent.OfType<ListLogs>().Count(), sent.OfType<ListBackups>().Count()));
+    }
+
+    /// <summary>Package 154: a group title shows while one of its pages does.</summary>
+    [Theory]
+    [InlineData(P.All, true, true, true)]
+    [InlineData(P.UsersView | P.UserBan, false, true, false)]
+    [InlineData(P.LogsView, false, false, true)]
+    public void GroupTitles_Rights_ShownWithTheirPages(P perms, bool server, bool members, bool manage)
+    {
+        var (admin, _, _) = Create(perms);
+        Assert.Equal((server, members, manage), (admin.ShowServerGroup, admin.ShowMembersGroup, admin.ShowManageGroup));
     }
 
     sealed record BanButtonsShown(bool Ban, bool Unban, bool Delete);

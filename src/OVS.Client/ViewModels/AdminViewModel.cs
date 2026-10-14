@@ -57,8 +57,14 @@ internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     public bool ShowUsers => UsersAndBans.ShowUsers;
     /// <summary>The bans tab shows.</summary>
     public bool ShowBans => UsersAndBans.ShowBans;
-    /// <summary>Package 89: the server tab holds the settings (ServerConfig) and the backups (BackupsManage).</summary>
-    public bool ShowServer => ShowServerSettings || ShowBackups;
+    /// <summary>Package 154: the group title SERVER shows while one of its pages does (Übersicht, Betrieb, groups, links).</summary>
+    public bool ShowServerGroup => ShowServerSettings || ShowGroups || ShowLinks;
+    /// <summary>Package 154: the group title MITGLIEDER shows with the members or the bans page.</summary>
+    public bool ShowMembersGroup => ShowUsers || ShowBans;
+    /// <summary>Package 154: the group title VERWALTUNG shows with the logs or the backups page.</summary>
+    public bool ShowManageGroup => ShowLogs || ShowBackups;
+    /// <summary>Package 154: the server whose logo and name the page header shows.</summary>
+    public ServerViewModel Server => server;
     /// <summary>The server tab shows its settings card.</summary>
     public bool ShowServerSettings => ServerSettings.ShowServerSettings;
     /// <summary>The server tab shows its backups card.</summary>
@@ -118,7 +124,9 @@ internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
         OnPropertyChanged(nameof(ShowGroups));
         OnPropertyChanged(nameof(ShowUsers));
         OnPropertyChanged(nameof(ShowBans));
-        OnPropertyChanged(nameof(ShowServer));
+        OnPropertyChanged(nameof(ShowServerGroup));
+        OnPropertyChanged(nameof(ShowMembersGroup));
+        OnPropertyChanged(nameof(ShowManageGroup));
         OnPropertyChanged(nameof(ShowServerSettings));
         OnPropertyChanged(nameof(ShowBackups));
         OnPropertyChanged(nameof(ShowLogs));
@@ -158,6 +166,4 @@ internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     /// <summary>Packages 75 and 82: backups and log files to and from this PC, one transfer at a time; the backup card and the logs tab share it.</summary>
     internal AdminTransfer Transfer { get; }
 
-    [RelayCommand]
-    Task RefreshAsync() => RequestListsAsync();
 }

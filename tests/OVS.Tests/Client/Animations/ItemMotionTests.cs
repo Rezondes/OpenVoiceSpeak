@@ -605,6 +605,8 @@ public sealed class ItemMotionTests : TempDirectoryTest
         await viewModel.PageFlow.OpenAdminAsync();
         MotionWait.Settle(400);
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in: the list stands still
+        AdminPages.Open(main, OVS.Client.Localization.Strings.Nav_GroupsRights); // Package 154: Übersicht comes first
+        MotionWait.Settle(400);
         var groups = main.GetVisualDescendants().OfType<ListBox>().Single(listBox => listBox.Name == "GroupRows");
         Assert.True(ItemMotion.GetFlip(groups));
         var admin = viewModel.PageFlow.AdminPage!;

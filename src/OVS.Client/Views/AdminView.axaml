@@ -5,6 +5,7 @@
              xmlns:ctl="using:OVS.Client.Controls"
              xmlns:anim="using:OVS.Client.Animations"
              xmlns:conv="using:OVS.Client.Converters"
+             xmlns:lay="using:OVS.Client.Layout"
              x:Class="OVS.Client.Views.AdminView"
              x:DataType="vm:AdminViewModel">
   <UserControl.Resources>
@@ -44,29 +45,157 @@
           <PathIcon Classes="turn" Data="{StaticResource Icon.Dismiss}" />
         </Button>
         <StackPanel Orientation="Horizontal" Spacing="12">
-          <Border Width="36" Height="36" CornerRadius="10" Background="{DynamicResource Ovs.AccentSurface}">
-            <PathIcon Classes="accent" Data="{StaticResource Icon.ShieldPerson}" />
-          </Border>
-          <TextBlock Classes="h2" FontSize="17" Text="{x:Static l:Strings.Ui_Admin}" VerticalAlignment="Center" />
+          <!-- Package 154: which server: its logo (or its first letter) and its name -->
+          <Panel Width="36" Height="36">
+            <Border Classes="badge" Width="36" Height="36" IsVisible="{Binding Server.IconPng, Converter={x:Static ObjectConverters.IsNull}}">
+              <TextBlock Text="{Binding Server.ServerName, Converter={x:Static conv:AvatarConverters.Initials}}" />
+            </Border>
+            <Border Classes="badge" Width="36" Height="36" ClipToBounds="True" Background="Transparent" IsVisible="{Binding Server.IconPng, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <Image Source="{Binding Server.IconPng, Converter={x:Static conv:AvatarConverters.PngToBitmap}}" Stretch="UniformToFill" />
+            </Border>
+          </Panel>
+          <StackPanel VerticalAlignment="Center" Spacing="2">
+            <TextBlock Name="AdminServerName" Classes="h2" FontSize="17" Text="{Binding Server.ServerName}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_Admin}" />
+          </StackPanel>
         </StackPanel>
       </DockPanel>
     </Border>
-    <Border DockPanel.Dock="Bottom" Classes="settingsBar" Background="{DynamicResource Ovs.Sidebar}"
-            BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Ovs.Border}">
-      <DockPanel>
-        <Button Command="{Binding RefreshCommand}" HorizontalAlignment="Left">
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
-            <TextBlock Text="{x:Static l:Strings.Ui_Refresh}" />
-          </StackPanel>
-        </Button>
-      </DockPanel>
-    </Border>
 
-    <DockPanel Classes="adminBody">
-      <TabControl x:Name="Tabs" anim:PageMotion.Tabs="True">
+      <!-- Package 154: the pages listed on the left as in Discord, grouped by task (SideNav); stacked below 640 px: the list, then the page -->
+      <TabControl x:Name="Tabs" Classes="sideNav adminNav" anim:PageMotion.Tabs="True"
+                  lay:Responsive.StackBelow="640" lay:SideNav.ListDetail="True">
+        <TabItem Classes="navGroup" Header="{x:Static l:Strings.Nav_ServerGroup}" IsVisible="{Binding ShowServerGroup}" />
+        <TabItem x:Name="OverviewTab" Tag="{Binding ServerSettings.Place}" Header="{x:Static l:Strings.Nav_Overview}" IsVisible="{Binding ShowServerSettings}">
+          <ScrollViewer>
+            <!-- Package 154: logo, name, welcome text and password (Package 74, 89: with ServerConfig) -->
+            <StackPanel Spacing="12">
+              <Border Classes="card">
+                <StackPanel Spacing="12">
+                  <!-- Server logo (Package 30): pick a file or drop it onto the preview -->
+                  <StackPanel Spacing="4" DataContext="{Binding ServerIcon}" x:DataType="vm:ServerIconViewModel">
+                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_ServerLogo}" />
+                    <DockPanel>
+                      <Border x:Name="IconDrop" Classes="dropZone" DockPanel.Dock="Left" Width="72" Height="72" CornerRadius="16" ClipToBounds="True"
+                              DragDrop.AllowDrop="True" ToolTip.Tip="{x:Static l:Strings.Ui_DropImage}">
+                        <Panel>
+                          <PathIcon Classes="muted" Data="{StaticResource Icon.Add}" IsVisible="{Binding IconPng, Converter={x:Static ObjectConverters.IsNull}}" />
+                          <Image Source="{Binding IconPng, Converter={x:Static conv:AvatarConverters.PngToBitmap}}" Stretch="UniformToFill" />
+                          <!-- Package 98: the new logo is on its way until the server's settings carry it -->
+                          <Border Name="IconBusy" Background="{DynamicResource Ovs.Scrim}" IsVisible="{Binding IconUpload.IsBusy}">
+                            <ctl:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
+                          </Border>
+                        </Panel>
+                      </Border>
+                      <StackPanel Margin="14,0,0,0" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_LogoHint}" />
+                        <WrapPanel ItemSpacing="8" LineSpacing="8">
+                          <Button Click="OnPickIcon">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                              <PathIcon Classes="sm" Data="{StaticResource Icon.Edit}" />
+                              <TextBlock Text="{x:Static l:Strings.Ui_ChooseLogo}" />
+                            </StackPanel>
+                          </Button>
+                          <Button Classes="subtle" Command="{Binding RemoveIconCommand}" IsVisible="{Binding HasIcon}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                              <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
+                              <TextBlock Text="{x:Static l:Strings.Ui_RemoveLogo}" />
+                            </StackPanel>
+                          </Button>
+                        </WrapPanel>
+                      </StackPanel>
+                    </DockPanel>
+                    <TextBlock Classes="danger" Text="{Binding IconError}" TextWrapping="Wrap"
+                               IsVisible="{Binding IconError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <TextBlock Classes="danger" Text="{Binding IconUpload.Error}" TextWrapping="Wrap" IsVisible="{Binding IconUpload.HasError}" />
+                    <ctl:ErrorIdButton Text="{Binding IconUpload.Error}" HorizontalAlignment="Left" />
+                  </StackPanel>
+                  <Border Classes="divider" />
+                  <StackPanel Spacing="12" DataContext="{Binding ServerSettings}" x:DataType="vm:ServerSettingsViewModel">
+                    <StackPanel Spacing="4">
+                      <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_ServerName}" />
+                      <TextBox Text="{Binding Name}" />
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                      <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_WelcomeText}" />
+                      <TextBox Text="{Binding WelcomeText}" AcceptsReturn="True" TextWrapping="Wrap" Height="90" />
+                      <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_WelcomeHint}" />
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                      <TextBlock Classes="label" Text="{x:Static l:Strings.Dlg_ServerPassword}" />
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Classes="sm muted" Data="{StaticResource Icon.LockClosed}" />
+                        <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_HasPassword}" IsVisible="{Binding HasPassword}" />
+                        <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_NoPassword}" IsVisible="{Binding !HasPassword}" />
+                      </StackPanel>
+                      <TextBox Text="{Binding NewPassword}" PasswordChar="•" Watermark="{x:Static l:Strings.Ui_NewPassword}" />
+                      <CheckBox Content="{x:Static l:Strings.Ui_RemovePassword}" IsChecked="{Binding RemovePassword}" />
+                    </StackPanel>
+                    <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
+                               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <ctl:ErrorIdButton Text="{Binding Error}" HorizontalAlignment="Left" />
+                    <Button Classes="accent" Command="{Binding SaveCommand}" HorizontalAlignment="Left">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />
+                        <TextBlock Text="{x:Static l:Strings.Ui_SaveServerSettings}" />
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+        <TabItem x:Name="OperationTab" Tag="{Binding ServerSettings.Place}" Header="{x:Static l:Strings.Nav_Operation}" IsVisible="{Binding ShowServerSettings}">
+          <ScrollViewer>
+            <!-- Package 154: the limits of Package 69; saved with the overview (one request, one place) -->
+            <Border Classes="card" DataContext="{Binding ServerSettings}" x:DataType="vm:ServerSettingsViewModel">
+              <StackPanel Spacing="12">
+                <!-- Package 69: formerly environment variables, applied at once -->
+                <StackPanel Spacing="12" IsEnabled="{Binding HasLimits}">
+                  <StackPanel Spacing="4">
+                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Operation}" />
+                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_OperationHint}" />
+                  </StackPanel>
+                  <StackPanel Spacing="4">
+                    <TextBlock Classes="label" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_MaxUsers}" />
+                    <NumericUpDown x:Name="MaxUsersInput" Value="{Binding MaxUsers}" Increment="1" FormatString="0"
+                                   Width="160" HorizontalAlignment="Left" AutomationProperties.Name="{x:Static l:Strings.Ui_MaxUsers}" />
+                  </StackPanel>
+                  <StackPanel Spacing="4">
+                    <TextBlock Classes="label" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_LogDays}" />
+                    <NumericUpDown x:Name="LogDaysInput" Value="{Binding LogDays}" Minimum="0" Increment="1" FormatString="0"
+                                   Width="160" HorizontalAlignment="Left" AutomationProperties.Name="{x:Static l:Strings.Ui_LogDays}" />
+                  </StackPanel>
+                  <CheckBox x:Name="LogRotateDailyInput" IsChecked="{Binding LogRotateDaily}">
+                    <TextBlock TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_LogRotateDaily}" />
+                  </CheckBox>
+                  <StackPanel Spacing="4">
+                    <CheckBox x:Name="AutoRestartInput" IsChecked="{Binding AutoRestart}">
+                      <TextBlock TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AutoRestart}" />
+                    </CheckBox>
+                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AutoRestartTime}" />
+                    <TimePicker x:Name="AutoRestartTimeInput" SelectedTime="{Binding AutoRestartTime}" ClockIdentifier="24HourClock"
+                                IsEnabled="{Binding AutoRestart}" HorizontalAlignment="Left"
+                                AutomationProperties.Name="{x:Static l:Strings.Ui_AutoRestartTime}" />
+                  </StackPanel>
+                </StackPanel>
+                <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
+                           IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <ctl:ErrorIdButton Text="{Binding Error}" HorizontalAlignment="Left" />
+                <Button Classes="accent" Command="{Binding SaveCommand}" HorizontalAlignment="Left">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />
+                    <TextBlock Text="{x:Static l:Strings.Ui_SaveServerSettings}" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Border>
+          </ScrollViewer>
+        </TabItem>
+
         <!-- ===== Groups ===== -->
-        <TabItem x:Name="GroupsTab" Tag="{Binding GroupList.Place}" Header="{x:Static l:Strings.Ui_Groups}" IsVisible="{Binding ShowGroups}">
+        <TabItem x:Name="GroupsTab" Tag="{Binding GroupList.Place}" Header="{x:Static l:Strings.Nav_GroupsRights}" IsVisible="{Binding ShowGroups}">
           <!-- Package 78: list beside the editor, under narrow above it (styles in Controls.axaml) -->
           <Grid Classes="adminGroups" ColumnDefinitions="Auto,*" RowDefinitions="2*,3*" DataContext="{Binding GroupList}" x:DataType="vm:GroupListViewModel">
             <Border Classes="card groupList" Padding="6">
@@ -166,12 +295,112 @@
           </Grid>
         </TabItem>
 
+        <!-- ===== Links (Package 38) ===== -->
+        <TabItem x:Name="LinksTab" Tag="{Binding Links.Place}" Header="{x:Static l:Strings.Nav_ChannelLinks}" IsVisible="{Binding ShowLinks}">
+          <DockPanel DataContext="{Binding Links}" x:DataType="vm:LinkMatrixViewModel">
+            <TextBlock DockPanel.Dock="Top" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,12"
+                       Text="{x:Static l:Strings.Ui_LinksHelp}" />
+            <WrapPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0" ItemSpacing="8" LineSpacing="8">
+              <Button Command="{Binding LinkSelectedCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Classes="sm" Data="{StaticResource Icon.Link}" />
+                  <TextBlock Text="{x:Static l:Strings.Ui_LinkSelected}" />
+                </StackPanel>
+              </Button>
+              <Button Command="{Binding UnlinkSelectedCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Classes="sm" Data="{StaticResource Icon.LinkDismiss}" />
+                  <TextBlock Text="{x:Static l:Strings.Ui_UnlinkSelected}" />
+                </StackPanel>
+              </Button>
+              <!-- Package 98: busy until the server's link changes match what was sent -->
+              <Button Name="ApplyLinksButton" Classes="accent" Command="{Binding ApplyCommand}" IsEnabled="{Binding HasPending}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" IsVisible="{Binding !Applying.IsBusy}" />
+                  <ctl:BusySpinner IsVisible="{Binding Applying.IsBusy}" />
+                  <TextBlock Text="{x:Static l:Strings.Ui_Apply}" />
+                </StackPanel>
+              </Button>
+              <Button Classes="subtle" Command="{Binding DiscardCommand}" IsEnabled="{Binding HasPending}" Content="{x:Static l:Strings.Ui_Discard}" />
+              <TextBlock Classes="caption" Text="{Binding PendingText}" VerticalAlignment="Center" />
+              <TextBlock Classes="caption danger" Text="{Binding Applying.Error}" TextWrapping="Wrap" VerticalAlignment="Center"
+                         IsVisible="{Binding Applying.HasError}" />
+              <ctl:ErrorIdButton Text="{Binding Applying.Error}" VerticalAlignment="Center" />
+            </WrapPanel>
+            <!-- Package 78: the whole matrix scrolls up and down, only the cells sideways; the row titles stay put -->
+            <Border Classes="card" Padding="8">
+              <ScrollViewer>
+                <DockPanel>
+                  <StackPanel DockPanel.Dock="Left">
+                    <Border Classes="linkHeader" />
+                    <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Rows}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:LinkRowViewModel">
+                          <StackPanel Orientation="Horizontal" Height="32">
+                            <CheckBox IsChecked="{Binding IsSelected}" Width="36" MinWidth="36"
+                                      AutomationProperties.Name="{Binding Name, StringFormat={x:Static l:Strings.Ui_SelectFmt}}" />
+                            <TextBlock Classes="linkTitle" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                       Foreground="{DynamicResource Ovs.Text}" ToolTip.Tip="{Binding Name}" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                  <ScrollViewer x:Name="LinkCells" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                      <!-- column numbers -->
+                      <ItemsControl Classes="linkHeader" ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:LinkRowViewModel">
+                            <TextBlock Classes="caption" Width="34" TextAlignment="Center" VerticalAlignment="Bottom"
+                                       Text="{Binding Number}" ToolTip.Tip="{Binding Name}" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:LinkRowViewModel">
+                            <ItemsControl ItemsSource="{Binding Cells}">
+                              <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                              </ItemsControl.ItemsPanel>
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:LinkCellViewModel">
+                                  <Border Classes="linkCell" Classes.pending="{Binding IsPending}" ToolTip.Tip="{Binding Tooltip}">
+                                    <CheckBox IsChecked="{Binding IsLinked}" IsVisible="{Binding !IsDiagonal}" MinWidth="0" Padding="0"
+                                              HorizontalAlignment="Center" AutomationProperties.Name="{Binding Tooltip, StringFormat={x:Static l:Strings.Ui_LinkFmt}}" />
+                                  </Border>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </ScrollViewer>
+                </DockPanel>
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+        </TabItem>
+
+        <TabItem Classes="navGroup" Header="{x:Static l:Strings.Nav_MembersGroup}" IsVisible="{Binding ShowMembersGroup}" />
         <!-- ===== Users (Package 71: everything stored, with search, filters and order) ===== -->
-        <TabItem Header="{x:Static l:Strings.Ui_Users}" IsVisible="{Binding ShowUsers}">
+        <TabItem x:Name="MembersTab" Header="{x:Static l:Strings.Nav_Members}" IsVisible="{Binding ShowUsers}">
           <DockPanel DataContext="{Binding UsersAndBans}" x:DataType="vm:UsersAndBansViewModel">
             <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
-              <TextBox x:Name="UserSearch" Text="{Binding SearchText}" Watermark="{x:Static l:Strings.Ui_UserSearch}"
-                       AutomationProperties.Name="{x:Static l:Strings.Ui_UserSearch}" />
+              <DockPanel>
+                <!-- Package 154: reloads only this list -->
+                <Button Name="RefreshUsersButton" DockPanel.Dock="Right" Classes="icon" Margin="8,0,0,0" Command="{Binding RefreshUsersCommand}"
+                        ToolTip.Tip="{x:Static l:Strings.Ui_Refresh}" AutomationProperties.Name="{x:Static l:Strings.Ui_Refresh}">
+                  <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
+                </Button>
+                <TextBox x:Name="UserSearch" Text="{Binding SearchText}" Watermark="{x:Static l:Strings.Ui_UserSearch}"
+                         AutomationProperties.Name="{x:Static l:Strings.Ui_UserSearch}" />
+              </DockPanel>
               <WrapPanel ItemSpacing="8" LineSpacing="8">
                 <ComboBox x:Name="StatusFilter" ItemsSource="{Binding StatusFilters}" SelectedItem="{Binding SelectedStatusFilter}"
                           MinWidth="120" AutomationProperties.Name="{x:Static l:Strings.Ui_StatusFilter}" />
@@ -333,11 +562,18 @@
         </TabItem>
 
         <!-- ===== Bans (Package 80: active bans and history with every detail, search, filters and order) ===== -->
-        <TabItem Header="{x:Static l:Strings.Ui_Bans}" IsVisible="{Binding ShowBans}">
+        <TabItem x:Name="BansTab" Header="{x:Static l:Strings.Ui_Bans}" IsVisible="{Binding ShowBans}">
           <DockPanel DataContext="{Binding UsersAndBans}" x:DataType="vm:UsersAndBansViewModel">
             <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
-              <TextBox x:Name="BanSearch" Text="{Binding BanSearchText}" Watermark="{x:Static l:Strings.Ui_BanSearch}"
-                       AutomationProperties.Name="{x:Static l:Strings.Ui_BanSearch}" />
+              <DockPanel>
+                <!-- Package 154: reloads only this list -->
+                <Button Name="RefreshBansButton" DockPanel.Dock="Right" Classes="icon" Margin="8,0,0,0" Command="{Binding RefreshBansCommand}"
+                        ToolTip.Tip="{x:Static l:Strings.Ui_Refresh}" AutomationProperties.Name="{x:Static l:Strings.Ui_Refresh}">
+                  <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
+                </Button>
+                <TextBox x:Name="BanSearch" Text="{Binding BanSearchText}" Watermark="{x:Static l:Strings.Ui_BanSearch}"
+                         AutomationProperties.Name="{x:Static l:Strings.Ui_BanSearch}" />
+              </DockPanel>
               <WrapPanel ItemSpacing="8" LineSpacing="8">
                 <ComboBox x:Name="BanStatusFilter" ItemsSource="{Binding BanStatusFilters}" SelectedItem="{Binding SelectedBanStatusFilter}"
                           MinWidth="120" AutomationProperties.Name="{x:Static l:Strings.Ui_StatusFilter}" />
@@ -442,312 +678,17 @@
           </DockPanel>
         </TabItem>
 
-        <!-- ===== Server ===== -->
-        <!-- ===== Links (Package 38) ===== -->
-        <TabItem x:Name="LinksTab" Tag="{Binding Links.Place}" Header="{x:Static l:Strings.Ui_Links}" IsVisible="{Binding ShowLinks}">
-          <DockPanel DataContext="{Binding Links}" x:DataType="vm:LinkMatrixViewModel">
-            <TextBlock DockPanel.Dock="Top" Classes="muted" TextWrapping="Wrap" Margin="0,0,0,12"
-                       Text="{x:Static l:Strings.Ui_LinksHelp}" />
-            <WrapPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0" ItemSpacing="8" LineSpacing="8">
-              <Button Command="{Binding LinkSelectedCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <PathIcon Classes="sm" Data="{StaticResource Icon.Link}" />
-                  <TextBlock Text="{x:Static l:Strings.Ui_LinkSelected}" />
-                </StackPanel>
-              </Button>
-              <Button Command="{Binding UnlinkSelectedCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <PathIcon Classes="sm" Data="{StaticResource Icon.LinkDismiss}" />
-                  <TextBlock Text="{x:Static l:Strings.Ui_UnlinkSelected}" />
-                </StackPanel>
-              </Button>
-              <!-- Package 98: busy until the server's link changes match what was sent -->
-              <Button Name="ApplyLinksButton" Classes="accent" Command="{Binding ApplyCommand}" IsEnabled="{Binding HasPending}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" IsVisible="{Binding !Applying.IsBusy}" />
-                  <ctl:BusySpinner IsVisible="{Binding Applying.IsBusy}" />
-                  <TextBlock Text="{x:Static l:Strings.Ui_Apply}" />
-                </StackPanel>
-              </Button>
-              <Button Classes="subtle" Command="{Binding DiscardCommand}" IsEnabled="{Binding HasPending}" Content="{x:Static l:Strings.Ui_Discard}" />
-              <TextBlock Classes="caption" Text="{Binding PendingText}" VerticalAlignment="Center" />
-              <TextBlock Classes="caption danger" Text="{Binding Applying.Error}" TextWrapping="Wrap" VerticalAlignment="Center"
-                         IsVisible="{Binding Applying.HasError}" />
-              <ctl:ErrorIdButton Text="{Binding Applying.Error}" VerticalAlignment="Center" />
-            </WrapPanel>
-            <!-- Package 78: the whole matrix scrolls up and down, only the cells sideways; the row titles stay put -->
-            <Border Classes="card" Padding="8">
-              <ScrollViewer>
-                <DockPanel>
-                  <StackPanel DockPanel.Dock="Left">
-                    <Border Classes="linkHeader" />
-                    <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Rows}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:LinkRowViewModel">
-                          <StackPanel Orientation="Horizontal" Height="32">
-                            <CheckBox IsChecked="{Binding IsSelected}" Width="36" MinWidth="36"
-                                      AutomationProperties.Name="{Binding Name, StringFormat={x:Static l:Strings.Ui_SelectFmt}}" />
-                            <TextBlock Classes="linkTitle" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                       Foreground="{DynamicResource Ovs.Text}" ToolTip.Tip="{Binding Name}" />
-                          </StackPanel>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                  </StackPanel>
-                  <ScrollViewer x:Name="LinkCells" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <StackPanel>
-                      <!-- column numbers -->
-                      <ItemsControl Classes="linkHeader" ItemsSource="{Binding Rows}">
-                        <ItemsControl.ItemsPanel>
-                          <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:LinkRowViewModel">
-                            <TextBlock Classes="caption" Width="34" TextAlignment="Center" VerticalAlignment="Bottom"
-                                       Text="{Binding Number}" ToolTip.Tip="{Binding Name}" />
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                      <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Rows}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:LinkRowViewModel">
-                            <ItemsControl ItemsSource="{Binding Cells}">
-                              <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                              </ItemsControl.ItemsPanel>
-                              <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:LinkCellViewModel">
-                                  <Border Classes="linkCell" Classes.pending="{Binding IsPending}" ToolTip.Tip="{Binding Tooltip}">
-                                    <CheckBox IsChecked="{Binding IsLinked}" IsVisible="{Binding !IsDiagonal}" MinWidth="0" Padding="0"
-                                              HorizontalAlignment="Center" AutomationProperties.Name="{Binding Tooltip, StringFormat={x:Static l:Strings.Ui_LinkFmt}}" />
-                                  </Border>
-                                </DataTemplate>
-                              </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                    </StackPanel>
-                  </ScrollViewer>
-                </DockPanel>
-              </ScrollViewer>
-            </Border>
-          </DockPanel>
-        </TabItem>
-
-        <TabItem x:Name="ServerTab" Tag="{Binding ServerSettings.Place}" Header="{x:Static l:Strings.Ui_Server}" IsVisible="{Binding ShowServer}">
-          <ScrollViewer>
-            <!-- Package 74: both cards share one width. Package 89: settings with ServerConfig, backups with BackupsManage -->
-            <StackPanel Spacing="12">
-              <Border Classes="card" IsVisible="{Binding ShowServerSettings}">
-                <StackPanel Spacing="12">
-                  <!-- Server logo (Package 30): pick a file or drop it onto the preview -->
-                  <StackPanel Spacing="4" DataContext="{Binding ServerIcon}" x:DataType="vm:ServerIconViewModel">
-                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_ServerLogo}" />
-                    <DockPanel>
-                      <Border x:Name="IconDrop" Classes="dropZone" DockPanel.Dock="Left" Width="72" Height="72" CornerRadius="16" ClipToBounds="True"
-                              DragDrop.AllowDrop="True" ToolTip.Tip="{x:Static l:Strings.Ui_DropImage}">
-                        <Panel>
-                          <PathIcon Classes="muted" Data="{StaticResource Icon.Add}" IsVisible="{Binding IconPng, Converter={x:Static ObjectConverters.IsNull}}" />
-                          <Image Source="{Binding IconPng, Converter={x:Static conv:AvatarConverters.PngToBitmap}}" Stretch="UniformToFill" />
-                          <!-- Package 98: the new logo is on its way until the server's settings carry it -->
-                          <Border Name="IconBusy" Background="{DynamicResource Ovs.Scrim}" IsVisible="{Binding IconUpload.IsBusy}">
-                            <ctl:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
-                          </Border>
-                        </Panel>
-                      </Border>
-                      <StackPanel Margin="14,0,0,0" Spacing="8" VerticalAlignment="Center">
-                        <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_LogoHint}" />
-                        <WrapPanel ItemSpacing="8" LineSpacing="8">
-                          <Button Click="OnPickIcon">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                              <PathIcon Classes="sm" Data="{StaticResource Icon.Edit}" />
-                              <TextBlock Text="{x:Static l:Strings.Ui_ChooseLogo}" />
-                            </StackPanel>
-                          </Button>
-                          <Button Classes="subtle" Command="{Binding RemoveIconCommand}" IsVisible="{Binding HasIcon}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                              <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
-                              <TextBlock Text="{x:Static l:Strings.Ui_RemoveLogo}" />
-                            </StackPanel>
-                          </Button>
-                        </WrapPanel>
-                      </StackPanel>
-                    </DockPanel>
-                    <TextBlock Classes="danger" Text="{Binding IconError}" TextWrapping="Wrap"
-                               IsVisible="{Binding IconError, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                    <TextBlock Classes="danger" Text="{Binding IconUpload.Error}" TextWrapping="Wrap" IsVisible="{Binding IconUpload.HasError}" />
-                    <ctl:ErrorIdButton Text="{Binding IconUpload.Error}" HorizontalAlignment="Left" />
-                  </StackPanel>
-                  <Border Classes="divider" />
-
-                  <StackPanel Spacing="12" DataContext="{Binding ServerSettings}" x:DataType="vm:ServerSettingsViewModel">
-                    <StackPanel Spacing="4">
-                      <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_ServerName}" />
-                      <TextBox Text="{Binding Name}" />
-                    </StackPanel>
-                    <StackPanel Spacing="4">
-                      <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_WelcomeText}" />
-                      <TextBox Text="{Binding WelcomeText}" AcceptsReturn="True" TextWrapping="Wrap" Height="90" />
-                      <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_WelcomeHint}" />
-                    </StackPanel>
-                    <StackPanel Spacing="4">
-                      <TextBlock Classes="label" Text="{x:Static l:Strings.Dlg_ServerPassword}" />
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Classes="sm muted" Data="{StaticResource Icon.LockClosed}" />
-                        <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_HasPassword}" IsVisible="{Binding HasPassword}" />
-                        <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_NoPassword}" IsVisible="{Binding !HasPassword}" />
-                      </StackPanel>
-                      <TextBox Text="{Binding NewPassword}" PasswordChar="•" Watermark="{x:Static l:Strings.Ui_NewPassword}" />
-                      <CheckBox Content="{x:Static l:Strings.Ui_RemovePassword}" IsChecked="{Binding RemovePassword}" />
-                    </StackPanel>
-                    <Border Classes="divider" />
-
-                    <!-- Package 69: formerly environment variables, applied at once -->
-                    <StackPanel Spacing="12" IsEnabled="{Binding HasLimits}">
-                      <StackPanel Spacing="4">
-                        <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Operation}" />
-                        <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_OperationHint}" />
-                      </StackPanel>
-                      <StackPanel Spacing="4">
-                        <TextBlock Classes="label" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_MaxUsers}" />
-                        <NumericUpDown x:Name="MaxUsersInput" Value="{Binding MaxUsers}" Increment="1" FormatString="0"
-                                       Width="160" HorizontalAlignment="Left" AutomationProperties.Name="{x:Static l:Strings.Ui_MaxUsers}" />
-                      </StackPanel>
-                      <StackPanel Spacing="4">
-                        <TextBlock Classes="label" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_LogDays}" />
-                        <NumericUpDown x:Name="LogDaysInput" Value="{Binding LogDays}" Minimum="0" Increment="1" FormatString="0"
-                                       Width="160" HorizontalAlignment="Left" AutomationProperties.Name="{x:Static l:Strings.Ui_LogDays}" />
-                      </StackPanel>
-                      <CheckBox x:Name="LogRotateDailyInput" IsChecked="{Binding LogRotateDaily}">
-                        <TextBlock TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_LogRotateDaily}" />
-                      </CheckBox>
-                      <StackPanel Spacing="4">
-                        <CheckBox x:Name="AutoRestartInput" IsChecked="{Binding AutoRestart}">
-                          <TextBlock TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AutoRestart}" />
-                        </CheckBox>
-                        <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AutoRestartTime}" />
-                        <TimePicker x:Name="AutoRestartTimeInput" SelectedTime="{Binding AutoRestartTime}" ClockIdentifier="24HourClock"
-                                    IsEnabled="{Binding AutoRestart}" HorizontalAlignment="Left"
-                                    AutomationProperties.Name="{x:Static l:Strings.Ui_AutoRestartTime}" />
-                      </StackPanel>
-                    </StackPanel>
-                    <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
-                               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                    <ctl:ErrorIdButton Text="{Binding Error}" HorizontalAlignment="Left" />
-                    <Button Classes="accent" Command="{Binding SaveCommand}" HorizontalAlignment="Left">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Classes="sm" Data="{StaticResource Icon.Checkmark}" />
-                        <TextBlock Text="{x:Static l:Strings.Ui_SaveServerSettings}" />
-                      </StackPanel>
-                    </Button>
-                  </StackPanel>
-                </StackPanel>
-              </Border>
-              <!-- Package 74: backups on the server, restored after a red question -->
-              <Border Classes="card" IsVisible="{Binding ShowBackups}">
-                <Panel DataContext="{Binding BackupCard}" x:DataType="vm:BackupCardViewModel">
-                  <!-- Package 97: the whole card waits for the disconnect that follows a restore -->
-                  <StackPanel Name="RestoringState" Spacing="8" Margin="0,24" HorizontalAlignment="Center" IsVisible="{Binding Restoring.IsBusy}">
-                    <ctl:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
-                    <TextBlock Classes="body" Text="{x:Static l:Strings.Ui_Restoring}" TextAlignment="Center" />
-                  </StackPanel>
-                  <StackPanel Spacing="8" IsVisible="{Binding !Restoring.IsBusy}">
-                    <TextBlock Classes="danger" Text="{Binding Restoring.Error}" TextWrapping="Wrap" IsVisible="{Binding Restoring.HasError}" />
-                    <ctl:ErrorIdButton Text="{Binding Restoring.Error}" HorizontalAlignment="Left" />
-                    <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Backups}" />
-                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_BackupsHint}" />
-                    <!-- Package 75: upload from this PC, optionally restored right away (after the same red question) -->
-                    <WrapPanel ItemSpacing="8" LineSpacing="6">
-                      <!-- Package 97: busy until the new list arrives -->
-                      <Button Name="NewBackupButton" Command="{Binding NewBackupCommand}" IsEnabled="{Binding !BackupCreate.IsBusy}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                          <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" IsVisible="{Binding !BackupCreate.IsBusy}" />
-                          <ctl:BusySpinner IsVisible="{Binding BackupCreate.IsBusy}" />
-                          <TextBlock Text="{x:Static l:Strings.Ui_CreateBackup}" />
-                        </StackPanel>
-                      </Button>
-                      <!-- Package 89 (A101): upload and restore only for members of the Admin group -->
-                      <Button Name="UploadBackupButton" Click="OnUploadBackup" IsEnabled="{Binding !Transfer.IsRunning}" IsVisible="{Binding CanUploadRestore}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                          <PathIcon Classes="nudgeUp sm" Data="{StaticResource Icon.ArrowUp}" />
-                          <TextBlock Text="{x:Static l:Strings.Ui_UploadBackup}" />
-                        </StackPanel>
-                      </Button>
-                      <Button Name="UploadRestoreButton" Classes="danger" Click="OnUploadBackup" IsEnabled="{Binding !Transfer.IsRunning}" IsVisible="{Binding CanUploadRestore}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                          <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
-                          <TextBlock Text="{x:Static l:Strings.Ui_UploadAndRestore}" TextWrapping="Wrap" />
-                        </StackPanel>
-                      </Button>
-                    </WrapPanel>
-                    <StackPanel Name="BackupTransfer" Spacing="4" IsVisible="{Binding Transfer.IsRunning}">
-                      <TextBlock Classes="caption" Text="{Binding Transfer.ProgressText}" />
-                      <ProgressBar Minimum="0" Maximum="100" Value="{Binding Transfer.Percent}" Height="8" CornerRadius="4" />
-                    </StackPanel>
-                    <TextBlock Classes="danger" Text="{Binding BackupCreate.Error}" TextWrapping="Wrap" IsVisible="{Binding BackupCreate.HasError}" />
-                    <ctl:ErrorIdButton Text="{Binding BackupCreate.Error}" HorizontalAlignment="Left" />
-                    <ContentControl Content="{Binding BackupsLoad}" ContentTemplate="{StaticResource ListRefresh}" IsVisible="{Binding BackupsLoad.HasState}" />
-                    <ContentControl Name="BackupsLoadState" Content="{Binding BackupsLoad}" ContentTemplate="{StaticResource ListLoad}" IsVisible="{Binding BackupsLoad.HasState}" />
-                    <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoBackups}">
-                      <TextBlock.IsVisible>
-                        <MultiBinding Converter="{x:Static BoolConverters.And}">
-                          <Binding Path="HasNoBackups" />
-                          <Binding Path="BackupsLoad.HasSucceeded" />
-                        </MultiBinding>
-                      </TextBlock.IsVisible>
-                    </TextBlock>
-                    <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Backups}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                          <StackPanel Spacing="6" />
-                        </ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:BackupViewModel">
-                          <Border Classes="soundRow">
-                            <StackPanel Spacing="6">
-                              <StackPanel>
-                                <TextBlock Classes="body" Text="{Binding Title}" TextWrapping="Wrap" />
-                                <TextBlock Classes="caption" Text="{Binding Details}" TextWrapping="Wrap" />
-                              </StackPanel>
-                              <WrapPanel ItemSpacing="8" LineSpacing="6">
-                                <Button Click="OnDownloadBackup">
-                                  <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <PathIcon Classes="nudgeDown sm" Data="{StaticResource Icon.ArrowDown}" />
-                                    <TextBlock Text="{x:Static l:Strings.Ui_Download}" />
-                                  </StackPanel>
-                                </Button>
-                                <Button Classes="danger" Command="{Binding RestoreCommand}" IsVisible="{Binding CanRestore}">
-                                  <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
-                                    <TextBlock Text="{x:Static l:Strings.Ui_Restore}" />
-                                  </StackPanel>
-                                </Button>
-                                <Button Classes="subtle" Command="{Binding DeleteCommand}">
-                                  <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
-                                    <TextBlock Text="{x:Static l:Strings.Ui_Delete}" />
-                                  </StackPanel>
-                                </Button>
-                              </WrapPanel>
-                            </StackPanel>
-                          </Border>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                  </StackPanel>
-                </Panel>
-              </Border>
-            </StackPanel>
-          </ScrollViewer>
-        </TabItem>
-
+        <TabItem Classes="navGroup" Header="{x:Static l:Strings.Nav_ManageGroup}" IsVisible="{Binding ShowManageGroup}" />
         <!-- ===== Logs (Package 81, A98: server and channel logs, page by page, search over all files) ===== -->
-        <TabItem Header="{x:Static l:Strings.Ui_Logs}" IsVisible="{Binding ShowLogs}">
+        <TabItem x:Name="LogsTab" Header="{x:Static l:Strings.Ui_Logs}" IsVisible="{Binding ShowLogs}">
           <DockPanel DataContext="{Binding Logs}" x:DataType="vm:LogsViewModel" Classes="logsPage" Classes.fileOpen="{Binding IsFileOpen}">
             <StackPanel DockPanel.Dock="Top" Classes="logFilters" Spacing="8" Margin="0,0,0,12">
               <DockPanel>
+                <!-- Package 154: reloads only this list -->
+                <Button Name="RefreshLogsButton" DockPanel.Dock="Right" Classes="icon" Margin="8,0,0,0" Command="{Binding RefreshCommand}"
+                        ToolTip.Tip="{x:Static l:Strings.Ui_Refresh}" AutomationProperties.Name="{x:Static l:Strings.Ui_Refresh}">
+                  <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
+                </Button>
                 <Button Name="LogSearchButton" DockPanel.Dock="Right" Margin="8,0,0,0" Command="{Binding SearchCommand}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Classes="sm" Data="{StaticResource Icon.Search}" IsVisible="{Binding !Searching.IsBusy}" />
@@ -921,7 +862,111 @@
             </Grid>
           </DockPanel>
         </TabItem>
+
+        <TabItem x:Name="BackupsTab" Header="{x:Static l:Strings.Ui_Backups}" IsVisible="{Binding ShowBackups}">
+          <ScrollViewer>
+            <!-- Package 74: backups on the server, restored after a red question -->
+            <Border Classes="card" IsVisible="{Binding ShowBackups}">
+              <Panel DataContext="{Binding BackupCard}" x:DataType="vm:BackupCardViewModel">
+                <!-- Package 97: the whole card waits for the disconnect that follows a restore -->
+                <StackPanel Name="RestoringState" Spacing="8" Margin="0,24" HorizontalAlignment="Center" IsVisible="{Binding Restoring.IsBusy}">
+                  <ctl:BusySpinner Width="24" Height="24" HorizontalAlignment="Center" />
+                  <TextBlock Classes="body" Text="{x:Static l:Strings.Ui_Restoring}" TextAlignment="Center" />
+                </StackPanel>
+                <StackPanel Spacing="8" IsVisible="{Binding !Restoring.IsBusy}">
+                  <TextBlock Classes="danger" Text="{Binding Restoring.Error}" TextWrapping="Wrap" IsVisible="{Binding Restoring.HasError}" />
+                  <ctl:ErrorIdButton Text="{Binding Restoring.Error}" HorizontalAlignment="Left" />
+                  <TextBlock Classes="label" Text="{x:Static l:Strings.Ui_Backups}" />
+                  <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_BackupsHint}" />
+                  <!-- Package 75: upload from this PC, optionally restored right away (after the same red question) -->
+                  <WrapPanel ItemSpacing="8" LineSpacing="6">
+                    <!-- Package 97: busy until the new list arrives -->
+                    <!-- Package 154: reloads only this list -->
+                    <Button Name="RefreshBackupsButton" Classes="icon" Command="{Binding RefreshCommand}"
+                            ToolTip.Tip="{x:Static l:Strings.Ui_Refresh}" AutomationProperties.Name="{x:Static l:Strings.Ui_Refresh}">
+                      <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
+                    </Button>
+                    <Button Name="NewBackupButton" Command="{Binding NewBackupCommand}" IsEnabled="{Binding !BackupCreate.IsBusy}">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Classes="sm" Data="{StaticResource Icon.Add}" IsVisible="{Binding !BackupCreate.IsBusy}" />
+                        <ctl:BusySpinner IsVisible="{Binding BackupCreate.IsBusy}" />
+                        <TextBlock Text="{x:Static l:Strings.Ui_CreateBackup}" />
+                      </StackPanel>
+                    </Button>
+                    <!-- Package 89 (A101): upload and restore only for members of the Admin group -->
+                    <Button Name="UploadBackupButton" Click="OnUploadBackup" IsEnabled="{Binding !Transfer.IsRunning}" IsVisible="{Binding CanUploadRestore}">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Classes="nudgeUp sm" Data="{StaticResource Icon.ArrowUp}" />
+                        <TextBlock Text="{x:Static l:Strings.Ui_UploadBackup}" />
+                      </StackPanel>
+                    </Button>
+                    <Button Name="UploadRestoreButton" Classes="danger" Click="OnUploadBackup" IsEnabled="{Binding !Transfer.IsRunning}" IsVisible="{Binding CanUploadRestore}">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
+                        <TextBlock Text="{x:Static l:Strings.Ui_UploadAndRestore}" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Button>
+                  </WrapPanel>
+                  <StackPanel Name="BackupTransfer" Spacing="4" IsVisible="{Binding Transfer.IsRunning}">
+                    <TextBlock Classes="caption" Text="{Binding Transfer.ProgressText}" />
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding Transfer.Percent}" Height="8" CornerRadius="4" />
+                  </StackPanel>
+                  <TextBlock Classes="danger" Text="{Binding BackupCreate.Error}" TextWrapping="Wrap" IsVisible="{Binding BackupCreate.HasError}" />
+                  <ctl:ErrorIdButton Text="{Binding BackupCreate.Error}" HorizontalAlignment="Left" />
+                  <ContentControl Content="{Binding BackupsLoad}" ContentTemplate="{StaticResource ListRefresh}" IsVisible="{Binding BackupsLoad.HasState}" />
+                  <ContentControl Name="BackupsLoadState" Content="{Binding BackupsLoad}" ContentTemplate="{StaticResource ListLoad}" IsVisible="{Binding BackupsLoad.HasState}" />
+                  <TextBlock Classes="muted" Text="{x:Static l:Strings.Ui_NoBackups}">
+                    <TextBlock.IsVisible>
+                      <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="HasNoBackups" />
+                        <Binding Path="BackupsLoad.HasSucceeded" />
+                      </MultiBinding>
+                    </TextBlock.IsVisible>
+                  </TextBlock>
+                  <ItemsControl anim:ItemMotion.Enter="True" ItemsSource="{Binding Backups}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel Spacing="6" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:BackupViewModel">
+                        <Border Classes="soundRow">
+                          <StackPanel Spacing="6">
+                            <StackPanel>
+                              <TextBlock Classes="body" Text="{Binding Title}" TextWrapping="Wrap" />
+                              <TextBlock Classes="caption" Text="{Binding Details}" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <WrapPanel ItemSpacing="8" LineSpacing="6">
+                              <Button Click="OnDownloadBackup">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <PathIcon Classes="nudgeDown sm" Data="{StaticResource Icon.ArrowDown}" />
+                                  <TextBlock Text="{x:Static l:Strings.Ui_Download}" />
+                                </StackPanel>
+                              </Button>
+                              <Button Classes="danger" Command="{Binding RestoreCommand}" IsVisible="{Binding CanRestore}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
+                                  <TextBlock Text="{x:Static l:Strings.Ui_Restore}" />
+                                </StackPanel>
+                              </Button>
+                              <Button Classes="subtle" Command="{Binding DeleteCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <PathIcon Classes="sm" Data="{StaticResource Icon.Delete}" />
+                                  <TextBlock Text="{x:Static l:Strings.Ui_Delete}" />
+                                </StackPanel>
+                              </Button>
+                            </WrapPanel>
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Panel>
+            </Border>
+          </ScrollViewer>
+        </TabItem>
       </TabControl>
-    </DockPanel>
   </DockPanel>
 </UserControl>

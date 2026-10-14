@@ -103,7 +103,8 @@ internal sealed partial class LogsViewModel : ObservableObject
     /// <summary>Package 81: the logs are shown and asked for with LogsView.</summary>
     internal bool ShowLogs => server.SelfPermissions.Has(Permission.LogsView);
 
-    /// <summary>Asks for the log file list when the logs are shown.</summary>
+    /// <summary>Asks for the log file list when the logs are shown (Package 154: also the page's refresh button).</summary>
+    [RelayCommand]
     internal Task RefreshAsync() => ShowLogs ? SendRoutedAsync(new ListLogs(), pending: FilesLoad) : Task.CompletedTask;
 
     /// <summary>Sends a request whose answers, and the server's error for it, come back to <see cref="Apply"/>.</summary>
