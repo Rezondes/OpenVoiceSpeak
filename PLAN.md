@@ -9535,19 +9535,21 @@ The server already logs most administrative actions with the acting nickname (`S
 
 ### Acceptance Criteria
 
-- [ ] AC1: Every administrative action writes one line with `[audit] ` after the time stamp; all other lines stay byte for byte as before.
-- [ ] AC2: Every handler that changes groups, channels, links, users, bans, mutes, server settings, the logo or backups writes such a line naming the actor, the target and the change; a test lists the handlers and fails for one without.
-- [ ] AC3: The page "Audit-Log" shows the lines newest first as rows (time, actor, action), with a search field and a person filter; it shows with `LogsView` only.
-- [ ] AC4: The busy, empty and error states of Package 97 apply; the refresh button of Package 154 reloads it.
-- [ ] AC5: The page fits from 360 px.
+- [x] AC1: Every administrative action writes one line with `[audit] ` after the time stamp; all other lines stay byte for byte as before.
+- [x] AC2: Every handler that changes groups, channels, links, users, bans, mutes, server settings, the logo or backups writes such a line naming the actor, the target and the change; a test lists the handlers and fails for one without.
+- [x] AC3: The page "Audit-Log" shows the lines newest first as rows (time, actor, action), with a search field and a person filter; it shows with `LogsView` only.
+- [x] AC4: The busy, empty and error states of Package 97 apply; the refresh button of Package 154 reloads it.
+- [x] AC5: The page fits from 360 px.
 
 ### Tests (TDD)
 
 1. `LogFileLoggerProviderTests > "AuditEvent_MarkerAdded_OtherLinesUnchanged"` (AC1)
-2. `AuditLineTests > "EveryAdministrativeRequest_WritesAuditLine"` (AC2): drives each request of a fixed list through `ServerState` and checks one `[audit]` line each; a request type of the admin areas without an entry fails.
-3. `AuditLogViewModelTests > "Load_SearchesAuditMarker_NewestFirst"` and `"PersonFilter_OnlyThatActor"` (AC3)
+2. `AuditLineTests > "AdministrativeRequest_Each_WritesAuditLine"` (AC2): drives each request of a fixed list through `ServerState` and checks one `[audit]` line each; a request type of the admin areas without an entry fails.
+3. `AuditLogViewModelTests > "Load_SearchesAuditMarker_NewestFirst"` and `"PersonFilter_Chosen_OnlyThatActor"` (AC3)
 4. `AuditLogViewModelTests > "Load_Error_ShownWithId"` (AC4)
 5. `ResponsiveTests > "Admin_EveryTab_Fits"` covers the page (AC5).
+
+(as built: an audit line is `<time> [audit] "<actor>" <usual text>`, the actor as a JSON string because a nickname may hold spaces, quotes or brackets; `OVS.Shared/Logging/AuditLine.cs` writes the prefix and parses it back, so server and client share one format. The 28 administrative lines of `ServerLogLines` carry event names "Audit:<Name>" (the generator wants each name once), the provider takes the actor from the line's "Moderator", or else its "Nickname". Missing server lines were added for a channel's change, a user's move and a single link or unlink (they were only in the channel logs). The test drives every administrative request except the restore (it restarts the server) and the backup upload, whose log lines are checked to be audit lines; `BackupTests` drive both. The page sits under VERWALTUNG between Logs and Backups. Two test names got a third part (RL601).)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

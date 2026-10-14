@@ -17,6 +17,7 @@ internal sealed partial class ServerState
         if (data.Links.Contains(link)) return;
         data.Links.Add(link);
         saves.Persist();
+        logs.Server.LinksChanged(session.Nickname, 1, 0); // Package 165: the audit log
         LogLink(link, session.Nickname, set: true);
         Broadcast(new ChannelsLinked(link.A, link.B));
     }
@@ -27,6 +28,7 @@ internal sealed partial class ServerState
         var link = ChannelLinkRecord.Of(request.A, request.B);
         if (!data.Links.Remove(link)) return;
         saves.Persist();
+        logs.Server.LinksChanged(session.Nickname, 0, 1); // Package 165: the audit log
         LogLink(link, session.Nickname, set: false);
         Broadcast(new ChannelsUnlinked(link.A, link.B));
     }

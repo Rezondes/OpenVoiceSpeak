@@ -1613,7 +1613,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Dispatcher.UIThread.RunJobs();
         var tabs = AdminPages.Tabs(main);
         Assert.Equal([Strings.Nav_ServerGroup, Strings.Nav_Overview, Strings.Nav_Operation, Strings.Nav_GroupsRights, Strings.Nav_ChannelLinks,
-            Strings.Nav_MembersGroup, Strings.Nav_Members, Strings.Ui_Bans, Strings.Nav_ManageGroup, Strings.Ui_Logs, Strings.Ui_Backups],
+            Strings.Nav_MembersGroup, Strings.Nav_Members, Strings.Ui_Bans, Strings.Nav_ManageGroup, Strings.Ui_Logs, Strings.Ui_AuditLog, Strings.Ui_Backups],
             tabs.Items.OfType<TabItem>().Where(tabItem => tabItem.IsVisible).Select(tabItem => tabItem.Header as string));
         Assert.Equal(Strings.Nav_Overview, ((TabItem)tabs.SelectedItem!).Header);
         viewModel.PageFlow.CloseWithoutAsking();

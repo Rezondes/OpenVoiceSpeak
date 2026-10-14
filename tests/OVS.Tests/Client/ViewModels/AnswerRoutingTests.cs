@@ -204,7 +204,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         [nameof(AssignGroup)] = "users and bans", [nameof(UnassignGroup)] = "users and bans",
         [nameof(BanKnownUser)] = "users and bans", [nameof(DeleteKnownUser)] = "users and bans", [nameof(SetKnownUserServerMute)] = "users and bans",
         [nameof(ListBackups)] = "backups", [nameof(CreateBackup)] = "backups", [nameof(DeleteBackup)] = "backups",
-        [nameof(ListLogs)] = "logs", [nameof(ReadLog)] = "logs", [nameof(SearchLogs)] = "logs",
+        [nameof(ListLogs)] = "logs", [nameof(ReadLog)] = "logs", [nameof(SearchLogs)] = "audit log, logs",
         [nameof(DownloadBackup)] = "transfer", [nameof(UploadBackupChunk)] = "transfer", [nameof(PrepareLogDownload)] = "transfer",
         [nameof(DownloadLogChunk)] = "transfer",
     };
@@ -335,6 +335,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
             : route == (Action<Message>)page.UsersAndBans.Apply ? "users and bans"
             : route == (Action<Message>)page.BackupCard.Apply ? "backups"
             : route == (Action<Message>)page.Logs.Apply ? "logs"
+            : route == (Action<Message>)page.AuditLog.Apply ? "audit log" // Package 165
             : route.Method.DeclaringType?.DeclaringType == typeof(AdminTransfer) ? "transfer" // a request's own closure in the transfer
             : "other";
         var owners = routes.GroupBy(route => route.Request.GetType().Name)

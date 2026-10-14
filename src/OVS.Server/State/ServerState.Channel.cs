@@ -137,6 +137,7 @@ internal sealed partial class ServerState
         saves.Persist();
         #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         if (changes.Count > 0) ChannelLogger(channel.Id)?.Changed(session.Nickname, string.Join(", ", changes));
+        if (changes.Count > 0) logs.Server.ChannelChanged(channel.Name, session.Nickname, string.Join(", ", changes)); // Package 165: the audit log
         #pragma warning restore CA1873
         Broadcast(new ChannelUpdated(Info(channel)));
     }
@@ -292,6 +293,7 @@ internal sealed partial class ServerState
         #pragma warning restore CA1873
         #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         ChannelLogger(request.ChannelId)?.MovedIn(target.Nickname, session.Nickname, ChannelName(from));
+        logs.Server.UserMoved(target.Nickname, ChannelName(from), ChannelName(request.ChannelId), session.Nickname); // Package 165: the audit log
         #pragma warning restore CA1873
         target.ChannelId = request.ChannelId;
         BroadcastUser(target);

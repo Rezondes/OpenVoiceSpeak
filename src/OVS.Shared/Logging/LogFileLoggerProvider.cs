@@ -22,6 +22,13 @@ public sealed class LogFileLoggerProvider(LogFileWriter files, Action<string> co
     /// <summary>A line only for the file; matched by its name like <see cref="ConsoleOnly"/>.</summary>
     public static readonly EventId FileOnly = new(2, nameof(FileOnly));
 
+    /// <summary>
+    /// Package 165: the start of the event name of an administrative action (who changed what), such as "Audit:GroupCreated";
+    /// its line carries the audit marker and the actor after the time stamp (<see cref="AuditLine"/>), so the administration
+    /// finds them with the log search. The actor is the line's "Moderator", or else its "Nickname".
+    /// </summary>
+    public const string AuditEventPrefix = "Audit:";
+
     /// <summary>The log of one channel, in a folder named by its id, so a rename keeps its history together.</summary>
     public static string ChannelCategory(Guid channelId) => "channels/" + channelId;
 
@@ -51,9 +58,18 @@ public sealed class LogFileLoggerProvider(LogFileWriter files, Action<string> co
         {
             if (!IsEnabled(logLevel)) return;
             var text = exception is null ? formatter(state, exception) : $"{formatter(state, exception)} {exception}"; // Package 143: with the stack trace
-            var line = LogFileWriter.EscapeToOneLine($"{files!.FormatNow()} {text}"); // Package 90: the console gets the escaped line too
+            var marker = eventId.Name?.StartsWith(AuditEventPrefix, StringComparison.Ordinal) == true ? AuditLine.Prefix(ActorOf(state)) : ""; // Package 165
+            var line = LogFileWriter.EscapeToOneLine($"{files!.FormatNow()} {marker}{text}"); // Package 90: the console gets the escaped line too
             if (console is not null && eventId.Name != FileOnly.Name) console(line);
             if (folder is not null && eventId.Name != ConsoleOnly.Name) files.Append(folder.Replace('/', Path.DirectorySeparatorChar), "", line);
+        }
+
+        /// <summary>Package 165: who did it, the moderator of a moderation line, else the nickname.</summary>
+        static string ActorOf<TState>(TState state)
+        {
+            var values = state as IEnumerable<KeyValuePair<string, object?>> ?? [];
+            return values.FirstOrDefault(pair => pair.Key == "Moderator").Value?.ToString()
+                ?? values.FirstOrDefault(pair => pair.Key == "Nickname").Value?.ToString() ?? "";
         }
     }
 }

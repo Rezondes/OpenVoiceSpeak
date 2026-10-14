@@ -124,39 +124,39 @@ static partial class ServerLogLines
     [LoggerMessage(Level = LogLevel.Warning, Message = "Wrong admin token from {Nickname} ({Ip})")]
     public static partial void AdminTokenWrong(this ILogger logger, string nickname, IPAddress ip);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} redeemed the admin token")]
+    [LoggerMessage(EventId = 100, EventName = "Audit:AdminTokenRedeemed", Level = LogLevel.Information, Message = "{Nickname} redeemed the admin token")]
     public static partial void AdminTokenRedeemed(this ILogger logger, string nickname);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Group '{Group}' created by {Nickname} ({Permissions})")]
+    [LoggerMessage(EventId = 101, EventName = "Audit:GroupCreated", Level = LogLevel.Information, Message = "Group '{Group}' created by {Nickname} ({Permissions})")]
     public static partial void GroupCreated(this ILogger logger, string group, string nickname, Permission permissions);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Groups reordered by {Nickname}: {Order}")]
+    [LoggerMessage(EventId = 102, EventName = "Audit:GroupsReordered", Level = LogLevel.Information, Message = "Groups reordered by {Nickname}: {Order}")]
     public static partial void GroupsReordered(this ILogger logger, string nickname, string order);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Group '{Group}' changed by {Nickname}: {Changes}")]
+    [LoggerMessage(EventId = 103, EventName = "Audit:GroupChanged", Level = LogLevel.Information, Message = "Group '{Group}' changed by {Nickname}: {Changes}")]
     public static partial void GroupChanged(this ILogger logger, string group, string nickname, string changes);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Group '{Group}' deleted by {Nickname}")]
+    [LoggerMessage(EventId = 104, EventName = "Audit:GroupDeleted", Level = LogLevel.Information, Message = "Group '{Group}' deleted by {Nickname}")]
     public static partial void GroupDeleted(this ILogger logger, string group, string nickname);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Group '{Group}' given to {User} by {Nickname}")]
+    [LoggerMessage(EventId = 105, EventName = "Audit:GroupAssigned", Level = LogLevel.Information, Message = "Group '{Group}' given to {User} by {Nickname}")]
     public static partial void GroupAssigned(this ILogger logger, string group, string user, string nickname);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Group '{Group}' taken from {User} by {Nickname}")]
+    [LoggerMessage(EventId = 106, EventName = "Audit:GroupRevoked", Level = LogLevel.Information, Message = "Group '{Group}' taken from {User} by {Nickname}")]
     public static partial void GroupRevoked(this ILogger logger, string group, string user, string nickname);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Server settings changed by {Nickname}: {Changes}")]
+    [LoggerMessage(EventId = 107, EventName = "Audit:ServerSettingsChanged", Level = LogLevel.Information, Message = "Server settings changed by {Nickname}: {Changes}")]
     public static partial void ServerSettingsChanged(this ILogger logger, string nickname, string changes);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Server logo removed by {Nickname}")]
+    [LoggerMessage(EventId = 108, EventName = "Audit:ServerIconRemoved", Level = LogLevel.Information, Message = "Server logo removed by {Nickname}")]
     public static partial void ServerIconRemoved(this ILogger logger, string nickname);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Server logo changed by {Nickname} ({Kilobytes} KB)")]
+    [LoggerMessage(EventId = 109, EventName = "Audit:ServerIconChanged", Level = LogLevel.Information, Message = "Server logo changed by {Nickname} ({Kilobytes} KB)")]
     public static partial void ServerIconChanged(this ILogger logger, string nickname, int kilobytes);
 
     // Backups
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Backup {File} created by {Nickname}")]
+    [LoggerMessage(EventId = 110, EventName = "Audit:BackupCreated", Level = LogLevel.Information, Message = "Backup {File} created by {Nickname}")]
     public static partial void BackupCreated(this ILogger logger, string file, string nickname);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Backup creation refused ({Nickname}), backup limit reached: {Reason}")]
@@ -165,10 +165,10 @@ static partial class ServerLogLines
     [LoggerMessage(Level = LogLevel.Error, Message = "Creating a backup failed ({Nickname}): {Reason}")]
     public static partial void BackupCreateFailed(this ILogger logger, string nickname, string reason);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Backup {File} deleted by {Nickname}")]
+    [LoggerMessage(EventId = 111, EventName = "Audit:BackupDeleted", Level = LogLevel.Information, Message = "Backup {File} deleted by {Nickname}")]
     public static partial void BackupDeleted(this ILogger logger, string file, string nickname);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Backup {File} being downloaded by {Nickname}")]
+    [LoggerMessage(EventId = 112, EventName = "Audit:BackupDownloadStarted", Level = LogLevel.Information, Message = "Backup {File} being downloaded by {Nickname}")]
     public static partial void BackupDownloadStarted(this ILogger logger, string file, string nickname);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Backup upload from {Nickname} refused: larger than {Megabytes} MB")]
@@ -183,7 +183,7 @@ static partial class ServerLogLines
     [LoggerMessage(Level = LogLevel.Warning, Message = "Uploaded backup is invalid ({Nickname}): {Reason}")]
     public static partial void UploadedBackupInvalid(this ILogger logger, string nickname, string reason);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Backup {File} uploaded by {Nickname}")]
+    [LoggerMessage(EventId = 113, EventName = "Audit:BackupUploaded", Level = LogLevel.Information, Message = "Backup {File} uploaded by {Nickname}")]
     public static partial void BackupUploaded(this ILogger logger, string file, string nickname);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Backup {File} is invalid ({Nickname}): {Reason}")]
@@ -195,25 +195,33 @@ static partial class ServerLogLines
     [LoggerMessage(Level = LogLevel.Error, Message = "Safety backup failed, no restore ({Nickname}): {Reason}")]
     public static partial void SafetyBackupFailed(this ILogger logger, string nickname, string reason);
 
-    [LoggerMessage(Level = LogLevel.Information,
+    [LoggerMessage(EventId = 114, EventName = "Audit:RestoreStarted", Level = LogLevel.Information,
         Message = "Backup {File} being restored by {Nickname} (data version {DataVersion}, server version {ServerVersion}), safety backup {SafetyBackup}")]
     public static partial void RestoreStarted(this ILogger logger, string file, string nickname, int dataVersion, string serverVersion, string safetyBackup);
 
     // Channels and chat
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Channel '{Channel}' created by {Nickname}")]
+    [LoggerMessage(EventId = 115, EventName = "Audit:ChannelCreated", Level = LogLevel.Information, Message = "Channel '{Channel}' created by {Nickname}")]
     public static partial void ChannelCreated(this ILogger logger, string channel, string nickname);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Separator created by {Nickname}")]
+    [LoggerMessage(EventId = 116, EventName = "Audit:SeparatorCreated", Level = LogLevel.Information, Message = "Separator created by {Nickname}")]
     public static partial void SeparatorCreated(this ILogger logger, string nickname);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Channel '{Channel}' deleted by {Nickname}")]
+    [LoggerMessage(EventId = 117, EventName = "Audit:ChannelDeleted", Level = LogLevel.Information, Message = "Channel '{Channel}' deleted by {Nickname}")]
     public static partial void ChannelDeleted(this ILogger logger, string channel, string nickname);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Separator deleted by {Nickname}")]
+    [LoggerMessage(EventId = 118, EventName = "Audit:SeparatorDeleted", Level = LogLevel.Information, Message = "Separator deleted by {Nickname}")]
     public static partial void SeparatorDeleted(this ILogger logger, string nickname);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Channels reordered by {Nickname}: {Order}")]
+    /// <summary>Package 165: the server's copy of a channel's change (the channel log has its own line), for the audit log.</summary>
+    [LoggerMessage(EventId = 119, EventName = "Audit:ChannelChanged", Level = LogLevel.Information, Message = "Channel '{Channel}' changed by {Nickname}: {Changes}")]
+    public static partial void ChannelChanged(this ILogger logger, string channel, string nickname, string changes);
+
+    /// <summary>Package 165: the server's copy of a move (the channel logs have their own lines), for the audit log.</summary>
+    [LoggerMessage(EventId = 120, EventName = "Audit:UserMoved", Level = LogLevel.Information, Message = "{User} moved from '{From}' to '{To}' by {Nickname}")]
+    public static partial void UserMoved(this ILogger logger, string user, string from, string to, string nickname);
+
+    [LoggerMessage(EventId = 121, EventName = "Audit:ChannelsReordered", Level = LogLevel.Information, Message = "Channels reordered by {Nickname}: {Order}")]
     public static partial void ChannelsReordered(this ILogger logger, string nickname, string order);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Wrong channel password from {Nickname} for '{Channel}' (attempt {Attempt})")]
@@ -222,7 +230,7 @@ static partial class ServerLogLines
     [LoggerMessage(Level = LogLevel.Warning, Message = "Wrong channel password from {Nickname} for '{Channel}' (attempt {Attempt}), blocked for {Minutes:0} minutes")]
     public static partial void WrongChannelPasswordBlocked(this ILogger logger, string nickname, string channel, int attempt, double minutes);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Links changed by {Nickname}: {Added} set, {Removed} removed")]
+    [LoggerMessage(EventId = 122, EventName = "Audit:LinksChanged", Level = LogLevel.Information, Message = "Links changed by {Nickname}: {Added} set, {Removed} removed")]
     public static partial void LinksChanged(this ILogger logger, string nickname, int added, int removed);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Chat from {Nickname}: {Text}")]
@@ -242,20 +250,20 @@ static partial class ServerLogLines
 
     // Moderation
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} was kicked by {Moderator}: {Reason}")]
+    [LoggerMessage(EventId = 123, EventName = "Audit:Kicked", Level = LogLevel.Information, Message = "{Nickname} was kicked by {Moderator}: {Reason}")]
     public static partial void Kicked(this ILogger logger, string nickname, string moderator, string reason);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "User data of {User} deleted by {Nickname} ({Fingerprint}, {Bans} bans)")]
+    [LoggerMessage(EventId = 124, EventName = "Audit:UserDataDeleted", Level = LogLevel.Information, Message = "User data of {User} deleted by {Nickname} ({Fingerprint}, {Bans} bans)")]
     public static partial void UserDataDeleted(this ILogger logger, string user, string nickname, string fingerprint, int bans);
 
     /// <summary>Duration is "for N minutes" or "permanently"; details are empty, or " with IP" and " (offline)".</summary>
-    [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} was banned by {Moderator} {Duration}{Details}: {Reason}")]
+    [LoggerMessage(EventId = 125, EventName = "Audit:Banned", Level = LogLevel.Information, Message = "{Nickname} was banned by {Moderator} {Duration}{Details}: {Reason}")]
     public static partial void Banned(this ILogger logger, string nickname, string moderator, string duration, string details, string reason);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Ban of {Nickname} lifted by {Moderator}")]
+    [LoggerMessage(EventId = 126, EventName = "Audit:Unbanned", Level = LogLevel.Information, Message = "Ban of {Nickname} lifted by {Moderator}")]
     public static partial void Unbanned(this ILogger logger, string nickname, string moderator);
 
     /// <summary>Change is "server-muted" or "server-unmuted"; offline is empty, or " (offline)".</summary>
-    [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} {Change} by {Moderator}{Offline}")]
+    [LoggerMessage(EventId = 127, EventName = "Audit:ServerMuteChanged", Level = LogLevel.Information, Message = "{Nickname} {Change} by {Moderator}{Offline}")]
     public static partial void ServerMuteChanged(this ILogger logger, string nickname, string change, string moderator, string offline);
 }

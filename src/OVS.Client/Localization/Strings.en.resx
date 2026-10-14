@@ -684,4 +684,11 @@
   <data name="Quick_Server" xml:space="preserve"><value>Server</value></data>
   <data name="Ui_CopyFingerprint" xml:space="preserve"><value>Copy fingerprint</value></data>
   <data name="Ui_Copied" xml:space="preserve"><value>Copied</value></data>
+  <data name="Ui_AuditLog" xml:space="preserve"><value>Audit log</value></data>
+  <data name="Audit_Everyone" xml:space="preserve"><value>Everyone</value></data>
+  <data name="Audit_Person" xml:space="preserve"><value>Person</value></data>
+  <data name="Audit_Search" xml:space="preserve"><value>Search actions</value></data>
+  <data name="Audit_Hint" xml:space="preserve"><value>Every change to groups, channels, members, bans and server settings, with who, what and when. Kept as long as the logs.</value></data>
+  <data name="Audit_None" xml:space="preserve"><value>No entries found.</value></data>
+  <data name="Audit_Partial" xml:space="preserve"><value>Only part of the entries: the search found too many or took too long.</value></data>
 </root>

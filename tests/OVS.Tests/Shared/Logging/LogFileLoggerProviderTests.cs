@@ -1,6 +1,8 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
+using OVS.Server.Logging;
 using OVS.Shared.Logging;
+using OVS.Shared.Permissions;
 using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Shared.Logging;
@@ -28,6 +30,34 @@ public sealed class LogFileLoggerProviderTests() : TempDirectoryTest("ovs-provid
 
         Assert.Equal($"{Stamp} Server startet{Environment.NewLine}", Text("server", FileName));
         Assert.Equal([$"{Stamp} Server startet"], console);
+    }
+
+    /// <summary>
+    /// Package 165: an administrative line carries the audit marker and its actor (the moderator of a moderation line)
+    /// after the time stamp, readable back with <see cref="AuditLine.Parse"/>; every other line is written as before.
+    /// </summary>
+    [Fact]
+    public void AuditEvent_MarkerAdded_OtherLinesUnchanged()
+    {
+        using var provider = Provider();
+        var server = provider.CreateLogger(LogFileLoggerProvider.ServerCategory);
+        const string Actor = "chef \"der\" Große [1]";
+        server.GroupCreated("Team", Actor, Permission.Speak);
+        server.Kicked("anna", "mod", "Spam");
+        server.Connected("anna", "fp", System.Net.IPAddress.Loopback);
+        #pragma warning disable CA1848 // the test writes through the plain ILogger extension on purpose
+        server.LogInformation("Server startet");
+        #pragma warning restore CA1848
+
+        var lines = Text("server", FileName).Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal($"{Stamp} [audit] \"chef \\\"der\\\" Große [1]\" Group 'Team' created by {Actor} (Speak)", lines[0]);
+        Assert.Equal(new AuditLine(Stamp, Actor, $"Group 'Team' created by {Actor} (Speak)"), AuditLine.Parse(lines[0]));
+        Assert.Equal(new AuditLine(Stamp, "mod", "anna was kicked by mod: Spam"), AuditLine.Parse(lines[1])); // the moderator acted
+        Assert.Equal($"{Stamp} anna connected (fp, 127.0.0.1)", lines[2]);
+        Assert.Equal($"{Stamp} Server startet", lines[3]);
+        Assert.Null(AuditLine.Parse(lines[2]));
+        Assert.Null(AuditLine.Parse($"{Stamp} [audit] \"cut"));
+        Assert.Equal(lines, console);
     }
 
     /// <summary>Package 143 (A153): a line logged with an exception carries its text and stack trace, still on one line.</summary>

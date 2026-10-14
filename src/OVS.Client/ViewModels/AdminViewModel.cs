@@ -30,6 +30,7 @@ internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
         Transfer = server.NewAdminTransfer();
         BackupCard = new BackupCardViewModel(server, Transfer, this.dialogs.BackupCard);
         Logs = new LogsViewModel(server, Transfer);
+        AuditLog = new AuditLogViewModel(server); // Package 165
         GroupList = new GroupListViewModel(server, ConfirmLeaveAsync);
         Places = [GroupList.Place, Links.Place, ServerSettings.Place];
         // Package 157: every edit of a place's values tells the save bar
@@ -57,6 +58,7 @@ internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
             new(FollowServer: ServerSettings.FollowServer),
             new(BackupCard.RefreshAsync, BackupCard.FollowServer, BackupCard.Detach),
             new(Logs.RefreshAsync, Logs.FollowServer, Logs.Detach),
+            new(AuditLog.RefreshAsync, Detach: AuditLog.Detach),
         ];
     }
 
@@ -76,6 +78,10 @@ internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
     public bool ShowMembersGroup => ShowUsers || ShowBans;
     /// <summary>Package 154: the group title VERWALTUNG shows with the logs or the backups page.</summary>
     public bool ShowManageGroup => ShowLogs || ShowBackups;
+    /// <summary>Package 165: the audit log shows (LogsView).</summary>
+    public bool ShowAuditLog => AuditLog.ShowAuditLog;
+    /// <summary>Package 165: the audit log page.</summary>
+    public AuditLogViewModel AuditLog { get; }
     /// <summary>Package 154: the server whose logo and name the page header shows.</summary>
     public ServerViewModel Server => server;
     /// <summary>The server tab shows its settings card.</summary>
@@ -143,6 +149,7 @@ internal sealed partial class AdminViewModel : ObservableObject, IPageViewModel
         OnPropertyChanged(nameof(ShowServerSettings));
         OnPropertyChanged(nameof(ShowBackups));
         OnPropertyChanged(nameof(ShowLogs));
+        OnPropertyChanged(nameof(ShowAuditLog));
     }
 
     // ---- Package 157: the save bar of the shown page ----

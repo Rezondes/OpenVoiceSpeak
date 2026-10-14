@@ -284,7 +284,7 @@ public class LogsViewModelTests
         Assert.True(logs.Searching.IsBusy);
         Assert.False(logs.SearchCommand.CanExecute(null));
         logs.SearchCommand.Execute(null); // e.g. Enter in the box: ignored meanwhile
-        var search = Assert.Single(sent.OfType<SearchLogs>());
+        var search = Assert.Single(sent.OfType<SearchLogs>(), searchLogs => searchLogs.Query != "[audit]"); // Package 165: the audit page searches too
 
         logs.Apply(new LogSearchResult(search.RequestId, [new LogHit(ServerFile.Id, 3, "Zeile 3 FEHLER")], false, false));
         Assert.False(logs.Searching.IsBusy);

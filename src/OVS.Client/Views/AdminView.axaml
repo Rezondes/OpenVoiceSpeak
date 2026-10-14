@@ -6,6 +6,7 @@
              xmlns:anim="using:OVS.Client.Animations"
              xmlns:conv="using:OVS.Client.Converters"
              xmlns:lay="using:OVS.Client.Layout"
+             xmlns:log="using:OVS.Shared.Logging"
              x:Class="OVS.Client.Views.AdminView"
              x:DataType="vm:AdminViewModel">
   <UserControl.Resources>
@@ -933,6 +934,56 @@
                 </Panel>
               </Border>
             </Grid>
+          </DockPanel>
+        </TabItem>
+
+        <!-- Package 165: who changed what, from the server log's audit lines, newest first -->
+        <TabItem x:Name="AuditTab" Header="{x:Static l:Strings.Ui_AuditLog}" IsVisible="{Binding ShowAuditLog}">
+          <DockPanel DataContext="{Binding AuditLog}" x:DataType="vm:AuditLogViewModel">
+            <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
+              <DockPanel>
+                <!-- Package 154: reloads only this list -->
+                <Button Name="RefreshAuditButton" DockPanel.Dock="Right" Classes="icon" Margin="8,0,0,0" Command="{Binding RefreshCommand}"
+                        ToolTip.Tip="{x:Static l:Strings.Ui_Refresh}" AutomationProperties.Name="{x:Static l:Strings.Ui_Refresh}">
+                  <PathIcon Classes="sync sm" Data="{StaticResource Icon.ArrowSync}" />
+                </Button>
+                <TextBox x:Name="AuditSearch" Text="{Binding SearchText}" Watermark="{x:Static l:Strings.Audit_Search}"
+                         AutomationProperties.Name="{x:Static l:Strings.Audit_Search}" />
+              </DockPanel>
+              <ComboBox x:Name="AuditPerson" ItemsSource="{Binding People}" SelectedItem="{Binding SelectedPerson}" MinWidth="160"
+                        AutomationProperties.Name="{x:Static l:Strings.Audit_Person}" />
+              <TextBlock Classes="caption" Text="{x:Static l:Strings.Audit_Hint}" TextWrapping="Wrap" />
+              <TextBlock Classes="caption warning" Text="{Binding Note}" TextWrapping="Wrap" IsVisible="{Binding Note, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <ContentControl Content="{Binding Loading}" ContentTemplate="{StaticResource ListRefresh}" IsVisible="{Binding Loading.HasState}" />
+            </StackPanel>
+            <Border Classes="card" Padding="6">
+              <Panel>
+                <ContentControl Name="AuditLoadState" Content="{Binding Loading}" ContentTemplate="{StaticResource ListLoad}" />
+                <TextBlock Classes="muted" Text="{x:Static l:Strings.Audit_None}" TextWrapping="Wrap" TextAlignment="Center"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8" IsVisible="{Binding HasNoRows}" />
+                <ListBox anim:ItemMotion.Enter="True" x:Name="AuditRows" ItemsSource="{Binding Rows}" Background="Transparent">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="log:AuditLine">
+                      <StackPanel Spacing="2">
+                        <WrapPanel ItemSpacing="8">
+                          <TextBlock Text="{Binding Actor}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                          <TextBlock Classes="caption" Text="{Binding Time}" VerticalAlignment="Center" />
+                        </WrapPanel>
+                        <!-- Package 160: a line can hold a fingerprint -->
+                        <TextBlock Classes="body" TextWrapping="Wrap">
+                          <TextBlock.Text>
+                            <MultiBinding Converter="{x:Static conv:PrivacyConverters.FreeText}">
+                              <Binding Path="Action" />
+                              <Binding Path="(conv:PrivacyConverters.Hide)" RelativeSource="{RelativeSource Self}" />
+                            </MultiBinding>
+                          </TextBlock.Text>
+                        </TextBlock>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Panel>
+            </Border>
           </DockPanel>
         </TabItem>
 
