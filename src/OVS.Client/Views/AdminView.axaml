@@ -431,14 +431,14 @@
                                              VerticalAlignment="Center" ToolTip.Tip="{Binding Fingerprint}" />
                                 </WrapPanel>
                                 <WrapPanel ItemSpacing="4" LineSpacing="4">
-                                  <Border Classes="chip danger" IsVisible="{Binding IsBanned}"><TextBlock Text="{x:Static l:Strings.Ui_StatusBanned}" /></Border>
-                                  <Border Classes="chip warning" IsVisible="{Binding IsServerMuted}"><TextBlock Text="{x:Static l:Strings.Ui_ServerMutedChip}" /></Border>
+                                  <Border Classes="tag danger" IsVisible="{Binding IsBanned}"><TextBlock Text="{x:Static l:Strings.Ui_StatusBanned}" /></Border>
+                                  <Border Classes="tag warning" IsVisible="{Binding IsServerMuted}"><TextBlock Text="{x:Static l:Strings.Ui_ServerMutedChip}" /></Border>
                                   <ItemsControl ItemsSource="{Binding GroupNames}">
                                     <ItemsControl.ItemsPanel>
                                       <ItemsPanelTemplate><WrapPanel ItemSpacing="4" LineSpacing="4" /></ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
-                                      <DataTemplate x:DataType="x:String"><Border Classes="chip"><TextBlock Text="{Binding}" /></Border></DataTemplate>
+                                      <DataTemplate x:DataType="x:String"><Border Classes="tag"><TextBlock Text="{Binding}" /></Border></DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                   </ItemsControl>
                                 </WrapPanel>
