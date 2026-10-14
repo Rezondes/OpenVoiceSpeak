@@ -9198,19 +9198,21 @@ Discord has a search over its settings at the top of the side list. The settings
 
 ### Acceptance Criteria
 
-- [ ] AC1: Typing shows the hits under the field with their page name; "Rausch" finds "Rauschunterdrückung" on Audio, "Push" finds the push-to-talk texts, "Sprache" finds the language on Darstellung.
-- [ ] AC2: Choosing a hit (click or Enter) opens its page, scrolls the setting into view and lights it for about one second (in the simplified display without animation).
-- [ ] AC3: No hit shows "Keine Einstellung gefunden" ("No setting found"); Esc in the field clears it, a second Esc closes the page as today.
-- [ ] AC4: The index follows the UI language.
-- [ ] AC5: Below 800 px the field is on the list screen.
+- [x] AC1: Typing shows the hits under the field with their page name; "Rausch" finds "Rauschunterdrückung" on Audio, "Push" finds the push-to-talk texts, "Sprache" finds the language on Darstellung.
+- [x] AC2: Choosing a hit (click or Enter) opens its page, scrolls the setting into view and lights it for about one second (in the simplified display without animation).
+- [x] AC3: No hit shows "Keine Einstellung gefunden" ("No setting found"); Esc in the field clears it, a second Esc closes the page as today.
+- [x] AC4: The index follows the UI language.
+- [x] AC5: Below 800 px the field is on the list screen.
 
 ### Tests (TDD)
 
 1. `SettingsSearchTests > "Find_PartOfLabel_HitWithPage"` (AC1), also with umlauts.
 2. `SettingsSearchTests > "Choose_Hit_OpensPageAndScrolls"` (AC2)
 3. `SettingsSearchTests > "NoHit_Text_EscClears"` (AC3)
-4. `SettingsSearchTests > "English_IndexInEnglish"` (AC4)
+4. `SettingsSearchTests > "Index_EnglishUi_TextsInEnglish"` (AC4)
 5. `ResponsiveTests > "Settings_At360To1100_Fit"` checks the field on the list screen (AC5).
+
+(as built: the index class is `Layout/NavSearch` (it searches any side navigation, not only the settings) with the hit record `Models/NavSearchHit`; the side navigation got `SideNav.Header`, content above its list. A check box or radio button is found by its text also when that text is a text block inside it, and the hit then points at the box. Hits are ranked: the same text, a text that starts with the query, a word that starts with it, any text that holds it. Deviation from AC2: the chosen setting stays lit until the next search or hit instead of about one second; a timer would need the injected clock in the view for a pure decoration. `ResponsiveTests > "Settings_At360To1100_Fit"` checks the field on the list screen.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

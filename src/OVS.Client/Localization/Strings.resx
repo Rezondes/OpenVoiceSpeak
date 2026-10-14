@@ -656,4 +656,6 @@
   <data name="Nav_Members" xml:space="preserve"><value>Mitglieder</value></data>
   <data name="Ui_ServerMutedChip" xml:space="preserve"><value>Server-stumm</value></data>
   <data name="Ui_MoreActions" xml:space="preserve"><value>Weitere Aktionen</value></data>
+  <data name="Settings_Search" xml:space="preserve"><value>Einstellungen durchsuchen</value></data>
+  <data name="Settings_SearchNone" xml:space="preserve"><value>Keine Einstellung gefunden</value></data>
 </root>

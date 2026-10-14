@@ -22,6 +22,15 @@ internal static class SideNav
     public static readonly AttachedProperty<bool> ListDetailProperty =
         AvaloniaProperty.RegisterAttached<TabControl, bool>("ListDetail", typeof(SideNav));
 
+    /// <summary>Package 158: content shown above the list of pages (the settings search).</summary>
+    public static readonly AttachedProperty<object?> HeaderProperty =
+        AvaloniaProperty.RegisterAttached<TabControl, object?>("Header", typeof(SideNav));
+
+    /// <summary>Gets the content above the list.</summary>
+    public static object? GetHeader(TabControl tabs) => tabs.GetValue(HeaderProperty);
+    /// <summary>Sets the content above the list.</summary>
+    public static void SetHeader(TabControl tabs, object? value) => tabs.SetValue(HeaderProperty, value);
+
     /// <summary>Gets whether the tab control switches between list and page.</summary>
     public static bool GetListDetail(TabControl tabs) => tabs.GetValue(ListDetailProperty);
     /// <summary>Sets whether the tab control switches between list and page.</summary>

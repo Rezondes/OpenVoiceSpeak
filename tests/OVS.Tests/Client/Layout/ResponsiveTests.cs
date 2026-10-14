@@ -359,6 +359,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         var main = OpenSettings(width);
         var page = main.GetVisualDescendants().OfType<SettingsView>().Single();
         LayoutAssert.FitsHorizontally(main); // the list of pages, shown first when stacked
+        Assert.True(page.FindControl<TextBox>("SettingsSearchBox")!.IsEffectivelyVisible); // Package 158: the search above the list
         ((SettingsViewModel)page.DataContext!).CheckForUpdates = !((SettingsViewModel)page.DataContext!).CheckForUpdates; // a change: the bar shows
         // Package 152: every page in turn, each scrolled through
         foreach (var settingsPage in SettingsPages.All(page))

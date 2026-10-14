@@ -6,7 +6,8 @@
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:l="using:OVS.Client.Localization">
+        xmlns:l="using:OVS.Client.Localization"
+        xmlns:lay="using:OVS.Client.Layout">
 
   <!-- ===== Width steps (Package 68, A93): classes set on the window by Responsive ===== -->
   <!-- Only below 700 px window width, e.g. the button that opens the sidebar drawer -->
@@ -460,12 +461,18 @@
         <Grid ColumnDefinitions="Auto,*">
           <Border Name="PART_Nav" Width="232" Background="{DynamicResource Ovs.Sidebar}"
                   BorderBrush="{DynamicResource Ovs.Border}" BorderThickness="0,0,1,0">
-            <ScrollViewer Name="PART_TabStrip" HorizontalScrollBarVisibility="Disabled">
-              <!-- the padding on a border: FluentTheme sets the presenter's own margin by placement -->
-              <Border Padding="12,12,12,16">
-                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
-              </Border>
-            </ScrollViewer>
+            <DockPanel>
+              <!-- Package 158: what the page puts above its list (the settings search) -->
+              <ContentPresenter Name="PART_NavHeader" DockPanel.Dock="Top" Margin="12,12,12,0"
+                                Content="{Binding (lay:SideNav.Header), RelativeSource={RelativeSource TemplatedParent}}"
+                                IsVisible="{Binding (lay:SideNav.Header), RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <ScrollViewer Name="PART_TabStrip" HorizontalScrollBarVisibility="Disabled">
+                <!-- the padding on a border: FluentTheme sets the presenter's own margin by placement -->
+                <Border Padding="12,12,12,16">
+                  <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+                </Border>
+              </ScrollViewer>
+            </DockPanel>
           </Border>
           <DockPanel Name="PART_Page" Grid.Column="1">
             <DockPanel Name="PART_PageTitle" DockPanel.Dock="Top" Margin="24,16,24,0">
@@ -524,6 +531,13 @@
   <Style Selector="Window.narrow Border.unsavedBar">
     <Setter Property="Margin" Value="8,0,8,8" />
     <Setter Property="Padding" Value="12,8" />
+  </Style>
+  <!-- Package 158: a setting chosen in the search is lit for a moment -->
+  <Style Selector="TextBlock.searchHit">
+    <Setter Property="Background" Value="{DynamicResource Ovs.AccentSurface}" />
+  </Style>
+  <Style Selector=":is(TemplatedControl).searchHit">
+    <Setter Property="TemplatedControl.Background" Value="{DynamicResource Ovs.AccentSurface}" />
   </Style>
   <!-- One page in the list: a row that is lit while chosen -->
   <Style Selector="TabControl.sideNav TabItem">

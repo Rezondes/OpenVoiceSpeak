@@ -31,6 +31,23 @@
     <!-- Pages listed on the left as in Discord (SideNav); stacked below 640 px: the list, then the chosen page -->
     <TabControl x:Name="Sections" Classes="sideNav" SelectedIndex="1" anim:PageMotion.Tabs="True"
                 lay:Responsive.StackBelow="640" lay:SideNav.ListDetail="True">
+      <!-- Package 158: the search over every setting's text, above the list -->
+      <lay:SideNav.Header>
+        <StackPanel Spacing="6">
+          <TextBox x:Name="SettingsSearchBox" Watermark="{x:Static l:Strings.Settings_Search}" AutomationProperties.Name="{x:Static l:Strings.Settings_Search}" />
+          <TextBlock x:Name="SettingsSearchNone" Classes="caption" Text="{x:Static l:Strings.Settings_SearchNone}" IsVisible="False" TextWrapping="Wrap" />
+          <ListBox x:Name="SettingsSearchHits" IsVisible="False" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="m:NavSearchHit">
+                <StackPanel>
+                  <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="caption" Text="{Binding PageName}" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+      </lay:SideNav.Header>
       <TabItem Classes="navGroup" Header="{x:Static l:Strings.Nav_VoiceGroup}" />
       <TabItem x:Name="AudioPage" Header="{x:Static l:Strings.Nav_Audio}">
         <ScrollViewer anim:PageMotion.Reveal="True">
