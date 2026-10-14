@@ -38,7 +38,7 @@
 >
 > **Packages 143 to 150 (error ID and observability):** the request "find a user's error in the server log, and optionally send the server's telemetry to a backend" was cut at the user's request: 143 (error ID) comes first and works without any backend; 144 puts the server's loggers into the run's container; 145 adds OpenTelemetry, strictly opt-in through `OTEL_EXPORTER_OTLP_ENDPOINT`; 146 (traces), 147 (metrics) and 148 (server log over OTLP) build on it; 149 adds compose examples for Grafana LGTM, the Aspire Dashboard, Jaeger and Seq; 150 (Elastic, OpenSearch, Netdata) followed after 149 at the user's request. The client exports nothing (the user's decision, A161). 143 and 144 can start at once; 146 needs 143 and 145; 147, 148 and 149 need 145.
 >
-> **Packages 151 to 170 (settings and administration like Discord, and the features found on the way):** 151 to 157 change only the client's UI for features that exist (the user's condition); 158 to 164 are client-only features, 165 to 170 need the server, in that order (the user's decision). 151 (side navigation) comes first; 152 (settings pages) and 154 (administration) build on it and can run in parallel; 153 needs 152, 155 needs 154, 156 needs 155, 157 needs 153 and 154. 158 to 162 need 152; 163 and 164 can start at once. 165, 167 and 169 need 154; 166, 168 and 170 can start at once. Packages 166 to 169 each raise the protocol version by one, so they are built one after the other. Dropped at the user's request: per-user volume (exists since Package 51), rights per channel, friends and blocking, invite links with expiry, profile status text and bio.
+> **Packages 151 to 170 (settings and administration like Discord, and the features found on the way):** 151 to 157 change only the client's UI for features that exist (the user's condition); 158 to 164 are client-only features, 165 to 170 need the server, in that order (the user's decision). 151 (side navigation) comes first; 152 (settings pages) and 154 (administration) build on it and can run in parallel; 153 needs 152, 155 needs 154, 156 needs 155, 157 needs 153 and 154. 158 to 162 need 152; 163 and 164 can start at once. 165, 167 and 169 need 154; 166, 168 and 170 can start at once. Packages 166 to 169 each raise the protocol version by one, so they are built one after the other. 171 (taking over Discord's audio settings) came later at the user's request and needs 152 and 153. Dropped at the user's request: per-user volume (exists since Package 51), rights per channel, friends and blocking, invite links with expiry, profile status text and bio.
 
 ## Überblick
 
@@ -211,6 +211,7 @@
 | 168 | Profile picture per server | Every user can set a profile picture per server, stored only after the server proves it is a real PNG of bounded size. | - |
 | 169 | AFK channel | An idle user is moved after X minutes into the server's AFK channel, where no voice is relayed. | 154 |
 | 170 | Server link | A web link opens OVS with the connect dialog filled in, or shows the download. | - |
+| 171 | Take over Discord's audio settings | A button on the Audio page reads Discord's audio settings and shows each change as before and after, all checked by default, and takes over the checked ones. | 152, 153 |
 
 ## Annahmen
 
@@ -398,6 +399,9 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A171 AFK defaults (Package 169).** Off (0 minutes) for existing and new servers, the default channel as the AFK channel until chosen; idle means no voice packet, chat message, channel change or self-state change; no voice is relayed from the AFK channel (the user's decisions).
 - **A172 Protocol registration (Package 170).** `HKCU\Software\Classes\ovs` for the current user, written at every start when missing or pointing elsewhere; no installer, no admin rights.
 - **A173 One client per user (Package 170).** A second start hands its `ovs://` argument over a named pipe of the current Windows user to the running client and ends; without an argument a second start behaves as today.
+- **A174 Where Discord keeps its audio settings (Package 171).** Assumed in the local storage of its Electron web view (`%APPDATA%\discord\Local Storage\leveldb`, LevelDB with JSON values); the first step of the package checks this on a real installation and writes down the keys. The format is undocumented, so the import is best effort and leaves out what it does not recognise.
+- **A175 Fluxer (Package 171).** The user asked about Discord and Fluxer; the button is named after Discord (the user's words) and reads Fluxer's desktop app too when its folder exists, by the same reader.
+- **A176 Snappy (Package 171).** LevelDB tables compress their blocks with Snappy; reading them needs a Snappy decoder, a new package (a small managed one), named in the commit.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -9806,3 +9810,59 @@ Test command: `dotnet test OpenVoiceSpeak.slnx` and `npm test` in `website/`
 ### Out of Scope
 
 - Invite links with expiry and limits; other systems than Windows
+
+---
+
+## Package 171: Take over Discord's audio settings
+
+**Goal:** A button "Aus Discord übernehmen" on the Audio page reads the audio settings of the Discord desktop app on this PC and shows every change it would make as before and after, each checked by default, so the user takes over exactly the checked ones.
+
+**Dependencies:** Package 152 (and Package 153 for the bar the taken values show in)
+
+**Affected files:**
+- `src/OVS.Client/Settings/DiscordAudioImport.cs` (new): finds the Discord desktop app's local storage (`%APPDATA%\discord\Local Storage\leveldb`, also the PTB and Canary folders) and reads its audio values into `ImportedAudio` (A174); Fluxer's desktop app the same way when its folder exists (A175)
+- `src/OVS.Client/Settings/LevelDbReader.cs` (new): reads the key and value pairs of the `.log` and `.ldb` files of a LevelDB folder, read only, from a copy of the files so a running Discord is not disturbed; the Snappy blocks through the package of A176
+- `src/OVS.Client/Models/ImportedAudio.cs`, `src/OVS.Client/Models/ImportChange.cs` (new): the values found, and one proposed change (setting, before, after, checked)
+- `src/OVS.Client/Settings/ImportMapping.cs` (new): maps Discord's values to OVS's (devices by name, volumes and the threshold onto OVS's scales, push-to-talk or voice activation, automatic sensitivity, noise suppression, echo cancellation, automatic gain, the push-to-talk key and its release delay); a value OVS cannot hold is left out
+- `src/OVS.Client/Dialogs/ImportDialog.cs` (new): the overlay with one row per change (name, before, after, a check box, checked by default), "Übernehmen" and "Abbrechen", in the window's overlay (A20)
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (change): `ImportFromDiscordCommand`: reads, asks through the dialog, sets the checked values on the page (they show in the unsaved-changes bar and are previewed; nothing is saved until "Speichern")
+- `src/OVS.Client/Views/SettingsView.axaml` (change): the button on the Audio page
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change)
+- `tests/OVS.Tests/Client/Settings/DiscordAudioImportTests.cs`, `ImportMappingTests.cs`, `LevelDbReaderTests.cs` (new) with small LevelDB fixtures under `tests/OVS.Tests/TestSupport/Fixtures/discord/`; `tests/OVS.Tests/Client/Dialogs/ImportDialogTests.cs` (new); `tests/OVS.Tests/TestSupport/DialogCaseTable.cs` (change)
+
+### Context
+
+Users come from Discord or Fluxer and have their microphone, sensitivity and keys set up there. Both desktop apps are Electron apps and keep their audio settings in the local storage of their web view, a LevelDB folder with JSON values (A174, to be verified on a real installation as the first step). The format is not documented and may change with any update, so the import is best effort: what it does not recognise it leaves out, and it never changes anything without the user's check (the user's decision: a modal with before and after, every change checked by default, single ones can be unchecked).
+
+### Acceptance Criteria
+
+- [ ] AC1: The Audio page has a button "Aus Discord übernehmen" ("Take over from Discord"); without a Discord (or Fluxer) installation it is off with a tooltip that says none was found.
+- [ ] AC2: A click reads the settings and shows a dialog with one row per setting that would change: its name, the value now, the value from Discord, and a check box that is checked; settings that are equal or that OVS cannot hold do not show.
+- [ ] AC3: Unchecking a row keeps that setting as it is; "Übernehmen" sets exactly the checked ones on the page (previewed at once, shown in the unsaved-changes bar, saved only with "Speichern"); "Abbrechen" changes nothing.
+- [ ] AC4: With nothing to change the dialog says so ("Alles schon gleich" / "Nothing to change") instead of an empty list.
+- [ ] AC5: A storage it cannot read (locked, damaged, an unknown format) shows "Konnte die Einstellungen von Discord nicht lesen" with the reason in the client log, and changes nothing; the import never writes into Discord's folder.
+- [ ] AC6: Devices are matched by their name; a Discord device not present here is left out with the note "Gerät nicht gefunden".
+- [ ] AC7: The dialog and its rows fit from 360 px in both languages and work by keyboard (Space toggles a row, Enter takes over).
+
+### Tests (TDD)
+
+1. `LevelDbReaderTests > "Read_LogAndTable_ReturnsLatestValuePerKey"`, `"Read_DamagedBlock_SkippedNotThrown"`, `"Read_LockedFolder_ReadsFromACopy"` (AC5)
+2. `DiscordAudioImportTests > "Read_Fixture_AudioValuesFound"`, `"Read_NoInstallation_NoneFound"`, `"Read_UnknownFormat_ReasonReported"` (AC1, AC5)
+3. `ImportMappingTests > "Map_EveryValue_OntoOvsScales"`, `"Map_EqualValues_NoChange"`, `"Map_UnknownDevice_LeftOutWithNote"`, `"Map_UnsupportedValue_LeftOut"` (AC2, AC6)
+4. `ImportDialogTests > "Rows_Shown_AllCheckedByDefault"`, `"Uncheck_Row_ThatSettingKept"`, `"Nothing_ToChange_SaysSo"`, `"Keyboard_SpaceAndEnter_ToggleAndTakeOver"` (AC2, AC3, AC4, AC7)
+5. `SettingsTests > "ImportFromDiscord_Checked_SetOnPageNotSaved"` and `"ImportFromDiscord_Cancelled_NothingChanges"` (AC3)
+6. `ResponsiveTests > "ImportDialog_At360_Fits"` (AC7)
+7. Manual check (A174): a real Discord installation on Windows 11, before and after an update of Discord.
+
+Test command: `dotnet test OpenVoiceSpeak.slnx`
+
+### Steps
+
+1. Look at a real Discord's local storage and write down the keys and the value shapes (A174); make the fixtures from it, without personal data.
+2. Tests 1, 2 (red), the reader and the import.
+3. Test 3 (red), the mapping.
+4. Tests 4, 5, 6 (red), the dialog and the button.
+
+### Out of Scope
+
+- Writing settings into Discord or Fluxer, importing from the web apps, keybinds other than push-to-talk, per-user volumes and anything outside audio
