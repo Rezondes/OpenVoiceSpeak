@@ -29,7 +29,7 @@ public sealed class ClientFileFixtureTests() : TempDirectoryTest("ovs-fixture-",
     }
 
     /// <summary>The keys of settings added after the fixtures were written (they are never regenerated), saved with their defaults.</summary>
-    static readonly string[] AddedSinceFixture = ["\"streamerMode\": false,"];
+    static readonly string[] AddedSinceFixture = ["\"streamerMode\": false,", "\"compact\": false,", "\"chatTextScale\": 100,"];
 
     /// <summary>
     /// Saving the current version's file again writes it byte for byte: no key added (but those of

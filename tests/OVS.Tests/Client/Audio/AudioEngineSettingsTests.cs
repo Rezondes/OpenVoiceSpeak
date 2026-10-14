@@ -45,6 +45,7 @@ public class AudioEngineSettingsTests
         nameof(ClientSettings.CheckForUpdates), nameof(ClientSettings.SoundsEnabled), nameof(ClientSettings.SoundVolume),
         nameof(ClientSettings.Sounds), nameof(ClientSettings.UserVolumes), nameof(ClientSettings.BackgroundOpacity),
         nameof(ClientSettings.BlurBackground), nameof(ClientSettings.Display), nameof(ClientSettings.StreamerMode),
+        nameof(ClientSettings.Compact), nameof(ClientSettings.ChatTextScale),
     ];
 
     public static TheoryData<string> CaptureSettingNames => new(CaptureReadouts.Keys);

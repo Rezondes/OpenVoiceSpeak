@@ -54,6 +54,8 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
     [ObservableProperty] double backgroundOpacityPercent;
     [ObservableProperty] bool blurBackground;
     [ObservableProperty] bool streamerMode; // Package 160
+    [ObservableProperty] bool compact; // Package 161
+    [ObservableProperty] double chatTextScale;
     [ObservableProperty] bool noiseSuppression;
     [ObservableProperty] bool autoGain;
     [ObservableProperty] bool echoCancellation; // Package 140
@@ -103,6 +105,8 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         backgroundOpacityPercent = current.BackgroundOpacity * 100f;
         blurBackground = current.BlurBackground;
         streamerMode = current.StreamerMode;
+        compact = current.Compact;
+        chatTextScale = current.ChatTextScale;
         SoundRows = Enum.GetValues<SoundEvent>().Select(soundEvent => new SoundRowViewModel(soundEvent, current.SoundFor(soundEvent), this)).ToList();
         soundVolumePercent = current.SoundVolume * 100f;
         opened = MarkUntouched(); // Package 114: what the page shows before anyone touched it
@@ -237,6 +241,8 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
 
     partial void OnBlurBackgroundChanged(bool value) => Preview();
     partial void OnStreamerModeChanged(bool value) => Preview(); // Package 160: the chip and the hidden values follow at once
+    partial void OnCompactChanged(bool value) => Preview(); // Package 161: the tree and the chat follow at once
+    partial void OnChatTextScaleChanged(double value) => Preview();
 
     partial void OnNoiseSuppressionChanged(bool value) => Preview(); // Package 123: heard at once, also in the self test
 
@@ -471,6 +477,8 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         BackgroundOpacityPercent = values.BackgroundOpacity * 100f;
         BlurBackground = values.BlurBackground;
         StreamerMode = values.StreamerMode;
+        Compact = values.Compact;
+        ChatTextScale = values.ChatTextScale;
         foreach (var row in SoundRows) row.Restore(values.SoundFor(row.Event));
         SoundVolumePercent = values.SoundVolume * 100f;
         Preview();
@@ -554,6 +562,8 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         BackgroundOpacity = (float)(BackgroundOpacityPercent / 100),
         BlurBackground = BlurBackground,
         StreamerMode = StreamerMode,
+        Compact = Compact,
+        ChatTextScale = (int)Math.Round(ChatTextScale),
         Display = SelectedDisplay.Value,
         Sounds = SoundRows.Select(soundRow => (soundRow.Event, Setting: soundRow.ToSetting())).Where(sound => !sound.Setting.IsDefaultFor(sound.Event)).ToDictionary(sound => sound.Event, sound => sound.Setting),
     }.Clamp();

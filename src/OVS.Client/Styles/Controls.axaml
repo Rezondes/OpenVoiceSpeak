@@ -9,6 +9,12 @@
         xmlns:l="using:OVS.Client.Localization"
         xmlns:lay="using:OVS.Client.Layout">
 
+  <Styles.Resources>
+    <!-- Package 161: the chat's text at 100 %, scaled by the window (MainWindow.ApplyChatLook) -->
+    <x:Double x:Key="Ovs.ChatFontSize">14</x:Double>
+    <x:Double x:Key="Ovs.ChatLineHeight">21</x:Double>
+  </Styles.Resources>
+
   <!-- ===== Width steps (Package 68, A93): classes set on the window by Responsive ===== -->
   <!-- Only below 700 px window width, e.g. the button that opens the sidebar drawer -->
   <Style Selector="Window:not(.compact) :is(Control).compactOnly">
@@ -189,6 +195,26 @@
   </Style>
   <Style Selector="Border.row:pointerover">
     <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+  </Style>
+  <!-- Package 161: user rows and their avatars; compact mode makes channel rows 28 px and user rows 24 px -->
+  <Style Selector="Border.row.userRow">
+    <Setter Property="Padding" Value="6,3" />
+  </Style>
+  <Style Selector="Border.avatar.treeAvatar">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+  </Style>
+  <Style Selector="Window.compactRows Border.row.channelRow">
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="Height" Value="28" />
+  </Style>
+  <Style Selector="Window.compactRows Border.row.userRow">
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="Height" Value="24" />
+  </Style>
+  <Style Selector="Window.compactRows Border.avatar.treeAvatar">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
   </Style>
   <Style Selector="Border.row.current">
     <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceSelected}" />
@@ -958,6 +984,28 @@
   <Style Selector="Window.narrow StackPanel.chatComposer">
     <Setter Property="Margin" Value="12,8,12,12" />
   </Style>
+  <!-- Package 161: the gap between chat entries; compact mode tightens it and the bubbles -->
+  <Style Selector="StackPanel.chatEntries">
+    <Setter Property="Spacing" Value="10" />
+  </Style>
+  <Style Selector="Border.avatar.chatAvatar">
+    <Setter Property="Height" Value="32" />
+  </Style>
+  <Style Selector="Window.compactRows StackPanel.chatEntries">
+    <Setter Property="Spacing" Value="4" />
+  </Style>
+  <Style Selector="Window.compactRows Border.bubble">
+    <Setter Property="Padding" Value="10,4" />
+  </Style>
+  <Style Selector="Window.compactRows Panel.continued">
+    <Setter Property="Margin" Value="0,-4,0,0" />
+  </Style>
+  <Style Selector="Window.compactRows Panel.continued StackPanel.authorLine">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Window.compactRows Panel.continued Border.avatar.chatAvatar">
+    <Setter Property="Height" Value="0" />
+  </Style>
   <Style Selector="ItemsControl.chatHistory">
     <Setter Property="Margin" Value="20,12" />
   </Style>
@@ -971,9 +1019,10 @@
   <Style Selector="Window.compact StackPanel.startScreen">
     <Setter Property="Margin" Value="16" />
   </Style>
+  <!-- Package 161: the chat's text size; the window sets both for the chosen scale -->
   <Style Selector="SelectableTextBlock.message">
-    <Setter Property="FontSize" Value="14" />
-    <Setter Property="LineHeight" Value="21" />
+    <Setter Property="FontSize" Value="{DynamicResource Ovs.ChatFontSize}" />
+    <Setter Property="LineHeight" Value="{DynamicResource Ovs.ChatLineHeight}" />
     <Setter Property="TextWrapping" Value="Wrap" />
     <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
   </Style>

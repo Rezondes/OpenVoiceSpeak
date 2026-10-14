@@ -9,6 +9,7 @@
         xmlns:anim="using:OVS.Client.Animations"
         xmlns:conv="using:OVS.Client.Converters"
         conv:PrivacyConverters.Hide="{Binding StreamerMode}"
+        Classes.compactRows="{Binding Compact}"
         x:Class="OVS.Client.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="{x:Static l:Strings.App_Name}" Width="1100" Height="700" MinWidth="360" MinHeight="480"
@@ -187,7 +188,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ChannelViewModel">
                   <StackPanel Margin="0,0,0,4">
-                    <Border Classes="row" Classes.current="{Binding IsCurrent}" DoubleTapped="OnChannelDoubleTapped"
+                    <Border Classes="row channelRow" Classes.current="{Binding IsCurrent}" DoubleTapped="OnChannelDoubleTapped"
                             ToolTip.Tip="{Binding Tooltip}">
                       <Border.ContextMenu>
                         <ContextMenu>
@@ -252,7 +253,7 @@
                     <ItemsControl anim:ItemMotion.Enter="True" anim:ItemMotion.Flash="True" anim:ItemMotion.Flip="True" anim:ItemMotion.Fly="True" ItemsSource="{Binding Users}" Margin="18,2,0,0">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:UserViewModel">
-                          <Border Classes="row" Padding="6,3" ToolTip.Tip="{Binding GroupTip}">
+                          <Border Classes="row userRow" ToolTip.Tip="{Binding GroupTip}">
                             <Border.ContextMenu>
                               <ContextMenu>
                                 <!-- Package 51: this person's volume for me; the menu stays open while dragging -->
@@ -327,7 +328,7 @@
                                           ToolTip.Tip="{x:Static l:Strings.Ui_Muted}" />
                               </StackPanel>
                               <Border Classes="ring" Classes.speaking="{Binding IsSpeaking}" Classes.link="{Binding IsSpeakingViaLink}">
-                                <Border Classes="avatar" Width="24" Height="24" Background="{Binding Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
+                                <Border Classes="avatar treeAvatar" Background="{Binding Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
                                   <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="11" />
                                 </Border>
                               </Border>

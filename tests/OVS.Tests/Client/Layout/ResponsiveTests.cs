@@ -929,6 +929,73 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         return 0;
     });
 
+    // ---- Package 161: compact mode and the chat's text size ----
+
+    static void SetLook(MainWindow main, bool compact, int chatTextScale)
+    {
+        var viewModel = (MainViewModel)main.DataContext!;
+        var settings = viewModel.Settings;
+        settings.Compact = compact;
+        settings.ChatTextScale = chatTextScale;
+        viewModel.ApplySettings(settings);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>Two messages of one sender and a long one of another, in "Allgemein".</summary>
+    static void AddMessages(ServerViewModel server)
+    {
+        foreach (var text in new[] { "Erste Nachricht", "Gleich danach", string.Join(" ", Enumerable.Repeat("Eine recht lange Nachricht, die umbrechen muss.", 12)) })
+            server.Apply(new OVS.Shared.Protocol.Messages.Chat.ChatMessage(OVS.Shared.Protocol.Messages.Chat.ChatTarget.Server, text.Length > 20 ? 4u : 3u,
+                text.Length > 20 ? "Mitspieler4" : "Mitspieler3", null, null, text, DateTimeOffset.Now));
+    }
+
+    static List<Border> TreeRows(MainWindow main, string kind) =>
+        main.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains(kind) && border.IsEffectivelyVisible).ToList();
+
+    [AvaloniaFact]
+    public void Rows_CompactMode_Tighter()
+    {
+        var server = FakeServers.Crowded();
+        var main = Open(1100, server);
+        AddMessages(server);
+        Dispatcher.UIThread.RunJobs();
+        var channelHeight = TreeRows(main, "channelRow")[0].Bounds.Height;
+        var userHeight = TreeRows(main, "userRow")[0].Bounds.Height;
+        var history = main.GetVisualDescendants().OfType<ChatView>().Single().FindControl<ItemsControl>("History")!;
+        StackPanel AuthorLine(int index) => history.GetVisualDescendants().OfType<StackPanel>().Where(panel => panel.Classes.Contains("authorLine")).ElementAt(index);
+        Assert.True(AuthorLine(1).IsEffectivelyVisible); // without compact every message keeps its name
+
+        SetLook(main, compact: true, chatTextScale: 100);
+        Assert.Contains("compactRows", main.Classes);
+        Assert.All(TreeRows(main, "channelRow"), row => Assert.Equal(28, row.Bounds.Height, 1));
+        Assert.All(TreeRows(main, "userRow"), row => Assert.Equal(24, row.Bounds.Height, 1));
+        Assert.True(channelHeight > 28 && userHeight > 24, $"vorher {channelHeight} und {userHeight}");
+        var avatar = TreeRows(main, "userRow")[0].GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("treeAvatar"));
+        Assert.Equal(18, avatar.Bounds.Height, 1); // the initials stay readable
+        Assert.True(AuthorLine(0).IsEffectivelyVisible);
+        Assert.False(AuthorLine(1).IsEffectivelyVisible); // the same sender right after: joined to the message above
+        Assert.True(AuthorLine(2).IsEffectivelyVisible);
+        main.Close();
+    }
+
+    [AvaloniaTheory]
+    [InlineData(360)]
+    [InlineData(1100)]
+    public void ChatScale130_Compact_Fits(double width)
+    {
+        var server = FakeServers.Crowded();
+        var main = Open(width, server);
+        AddMessages(server);
+        SetLook(main, compact: true, chatTextScale: 130);
+        var chat = main.GetVisualDescendants().OfType<ChatView>().Single();
+        var message = chat.GetVisualDescendants().OfType<SelectableTextBlock>().First(text => text.Classes.Contains("message") && text.IsEffectivelyVisible);
+        Assert.Equal(14 * 1.3, message.FontSize, 2);
+        Assert.Equal(21 * 1.3, message.LineHeight, 2);
+        LayoutAssert.FitsHorizontally(chat);
+        Assert.All(TreeRows(main, "channelRow"), row => Assert.Equal(28, row.Bounds.Height, 1)); // only the chat's text grows, the rows keep their size
+        main.Close();
+    }
+
     /// <summary>Package 98 (AC7): the waiting states outside the administration: busy rows, a sent and a failed message, a busy dialog and settings.</summary>
     [AvaloniaTheory]
     [InlineData(360, "de-DE")]

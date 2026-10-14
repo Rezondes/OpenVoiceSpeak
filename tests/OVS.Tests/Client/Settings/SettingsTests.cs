@@ -245,6 +245,17 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         Assert.Equal(2f, new ClientSettings { OutputVolume = 5 }.Clamp().OutputVolume); // Package 55: up to 200 %
     }
 
+    /// <summary>Package 161: the chat's text size stays between 90 and 130 %, also from a file written by hand.</summary>
+    [Fact]
+    public void ChatTextScale_OutOfRange_Clamped()
+    {
+        Assert.Equal(100, new ClientSettings().ChatTextScale);
+        Assert.Equal(90, new ClientSettings { ChatTextScale = 10 }.Clamp().ChatTextScale);
+        Assert.Equal(130, new ClientSettings { ChatTextScale = 500 }.Clamp().ChatTextScale);
+        File.WriteAllText(Path.Combine(dir, ClientSettings.FileName), "{ \"chatTextScale\": 200 }");
+        Assert.Equal(130, ClientSettings.Load(dir, out _).ChatTextScale);
+    }
+
     /// <summary>Package 55: the volume goes up to 200 %, 100 % by default.</summary>
     [Fact]
     public void OutputVolume_UpTo200_RoundTripsClamped()

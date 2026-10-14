@@ -176,6 +176,12 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>Package 160: the saved streamer mode; the window hides private values while it is on.</summary>
     public bool StreamerMode => Settings.StreamerMode;
+
+    /// <summary>Package 161: the saved or previewed compact mode; the window tightens the tree and the chat.</summary>
+    public bool Compact => Settings.Compact;
+
+    /// <summary>Package 161: the chat's text size in percent.</summary>
+    public int ChatTextScale => Settings.ChatTextScale;
     /// <summary>The client's log.</summary>
     public ClientLog Log { get; }
     /// <summary>The client's one clock: the reconnect, the hints and the statistics, and each connection's view model and voice.</summary>
@@ -240,6 +246,8 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Settings = settings.Clamp();
         Appearance = BackgroundAppearance.From(Settings);
         OnPropertyChanged(nameof(StreamerMode)); // Package 160
+        OnPropertyChanged(nameof(Compact)); // Package 161
+        OnPropertyChanged(nameof(ChatTextScale));
         Settings.Save(storageDir);
         soundLibrary.CleanUp(Settings); // own tones nobody points to any more
         Keys.Bindings = Settings.KeyBindings.ToList();

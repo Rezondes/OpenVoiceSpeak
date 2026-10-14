@@ -137,6 +137,12 @@ internal sealed class ClientSettings : IJsonOnDeserializing
     /// <summary>Package 160: IP addresses, full fingerprints and server addresses are hidden everywhere in the client.</summary>
     public bool StreamerMode { get; set; }
 
+    /// <summary>Package 161: tighter rows in the channel tree and the chat.</summary>
+    public bool Compact { get; set; }
+
+    /// <summary>Package 161: the chat's text size in percent, 90 to 130.</summary>
+    public int ChatTextScale { get; set; } = 100;
+
     /// <summary>Package 99 (A114): today's plain look by default, or the animated display. A file from before has no key and loads simplified.</summary>
     public DisplayMode Display { get; set; } = DisplayMode.Simplified;
 
@@ -151,6 +157,7 @@ internal sealed class ClientSettings : IJsonOnDeserializing
         foreach (var (fingerprint, volume) in UserVolumes.ToList()) SetVolume(fingerprint, volume);
         VadThresholdDb = Math.Clamp(VadThresholdDb, -60f, -10f);
         PttReleaseDelayMs = Math.Clamp(PttReleaseDelayMs, 0, 2000);
+        ChatTextScale = Math.Clamp(ChatTextScale, 90, 130);
         return this;
     }
 

@@ -47,6 +47,8 @@ public sealed class SettingsRoundTripTests
         BlurBackground = true,
         Display = DisplayMode.Animated,
         StreamerMode = true,
+        Compact = true,
+        ChatTextScale = 120,
     };
 
     static SettingsViewModel Page(ClientSettings settings) =>
@@ -81,6 +83,8 @@ public sealed class SettingsRoundTripTests
         ["background opacity"] = new(page => page.BackgroundOpacityPercent = 50, previewed => previewed.BackgroundOpacity == 0.5f),
         ["blur"] = new(page => page.BlurBackground = true, previewed => previewed.BlurBackground),
         ["streamer mode"] = new(page => page.StreamerMode = true, previewed => previewed.StreamerMode),
+        ["compact"] = new(page => page.Compact = true, previewed => previewed.Compact),
+        ["chat text size"] = new(page => page.ChatTextScale = 125, previewed => previewed.ChatTextScale == 125),
         ["noise suppression"] = new(page => page.NoiseSuppression = false, previewed => !previewed.NoiseSuppression),
         ["auto gain"] = new(page => page.AutoGain = false, previewed => !previewed.AutoGain),
         ["echo cancellation"] = new(page => page.EchoCancellation = false, previewed => !previewed.EchoCancellation),

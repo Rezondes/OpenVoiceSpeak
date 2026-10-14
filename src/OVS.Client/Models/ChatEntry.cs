@@ -15,6 +15,9 @@ namespace OVS.Client.Models;
 /// <param name="Notice">The kind of a system notice.</param>
 internal sealed record ChatEntry(DateTime Time, string Text, string? From = null, bool IsOwn = false, NoticeKind? Notice = null, OutgoingChatMessageViewModel? Sending = null)
 {
+    /// <summary>Package 161: a message right after one of the same sender within a few minutes (compact mode joins them).</summary>
+    public bool ContinuesPrevious { get; init; }
+
     /// <summary>The time as shown.</summary>
     public string TimeText => Formats.ClockTime(Time);
     /// <summary>The entry is someone's message.</summary>

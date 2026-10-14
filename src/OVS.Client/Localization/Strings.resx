@@ -664,4 +664,7 @@
   <data name="Settings_StreamerMode" xml:space="preserve"><value>Streamer-Modus</value></data>
   <data name="Settings_StreamerModeHint" xml:space="preserve"><value>Verbirgt IP-Adressen, Fingerprints und Serveradressen, zum Beispiel beim Streamen.</value></data>
   <data name="KeyAction_ToggleStreamerMode" xml:space="preserve"><value>Streamer-Modus umschalten</value></data>
+  <data name="Settings_Compact" xml:space="preserve"><value>Kompakt</value></data>
+  <data name="Settings_CompactHint" xml:space="preserve"><value>Engere Zeilen in der Channel-Liste und im Chat.</value></data>
+  <data name="Settings_ChatTextScale" xml:space="preserve"><value>Textgröße im Chat</value></data>
 </root>

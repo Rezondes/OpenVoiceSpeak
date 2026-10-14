@@ -21,6 +21,10 @@ namespace OVS.Client.Views;
 /// <summary>The client's one window: every page and dialog shows inside it.</summary>
 internal partial class MainWindow : Window
 {
+    // Package 161: the chat's text at 100 % (the defaults in Controls.axaml)
+    const double ChatFontSize = 14;
+    const double ChatLineHeight = 21;
+
     /// <summary>The window; its view model is set by App.</summary>
     public MainWindow()
     {
@@ -137,6 +141,16 @@ internal partial class MainWindow : Window
         }
         OnServerChanged();
         ApplyDisplay();
+        ApplyChatLook();
+    }
+
+    /// <summary>Package 161: the chat's text size, also while it is only previewed on the settings page.</summary>
+    void ApplyChatLook()
+    {
+        if (watchedVm is null) return;
+        double scale = watchedVm.ChatTextScale / 100.0;
+        Resources["Ovs.ChatFontSize"] = ChatFontSize * scale;
+        Resources["Ovs.ChatLineHeight"] = ChatLineHeight * scale;
     }
 
     /// <summary>Package 99: the chosen display, also while it is only previewed on the settings page.</summary>
@@ -208,6 +222,7 @@ internal partial class MainWindow : Window
             ApplyDisplay();
         }
         else if (args.PropertyName == nameof(MainViewModel.Appearance)) ApplyDisplay();
+        else if (args.PropertyName == nameof(MainViewModel.ChatTextScale)) ApplyChatLook();
         else if (args.PropertyName is nameof(MainViewModel.TalkHint) or nameof(MainViewModel.HasNoPttBinding)) QueueFitSidebar(); // Package 113
     }
 

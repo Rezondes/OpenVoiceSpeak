@@ -9345,17 +9345,19 @@ Fluxer and Discord offer a compact message display; the tree rows here are 32 px
 
 ### Acceptance Criteria
 
-- [ ] AC1: With "Kompakt" the user rows of the tree are 24 px and the channel rows 28 px, chat messages have less padding and no gap between messages of the same sender; avatars stay readable.
-- [ ] AC2: The chat text size goes from 90 to 130 % in steps of 5, previewed at once; values outside are clamped on load.
-- [ ] AC3: Both are saved and survive a restart; Reset (Package 153) puts them back.
-- [ ] AC4: Compact and 130 % fit from 360 px.
+- [x] AC1: With "Kompakt" the user rows of the tree are 24 px and the channel rows 28 px, chat messages have less padding and no gap between messages of the same sender; avatars stay readable.
+- [x] AC2: The chat text size goes from 90 to 130 % in steps of 5, previewed at once; values outside are clamped on load.
+- [x] AC3: Both are saved and survive a restart; Reset (Package 153) puts them back.
+- [x] AC4: Compact and 130 % fit from 360 px.
 
 ### Tests (TDD)
 
 1. `SettingsTests > "ChatTextScale_OutOfRange_Clamped"` (AC2)
-2. `ResponsiveTests > "Compact_RowsTighter"` (AC1)
+2. `ResponsiveTests > "Rows_CompactMode_Tighter"` (AC1)
 3. `ResponsiveTests > "ChatScale130_Compact_Fits"` (AC4)
 4. `SettingsRoundTripTests` gets both values (AC3).
+
+(as built: the window class `compactRows` is bound to `MainViewModel.Compact`; the channel and user rows carry the classes `channelRow` and `userRow` and the tree avatar `treeAvatar` (24 px, 18 px in compact mode). A chat message right after one of the same sender within 5 minutes gets `ChatEntry.ContinuesPrevious` from `ChatTabViewModel.Add`; in compact mode it shows without avatar and name and closes up to the message above. The chat's text size works through the resources `Ovs.ChatFontSize` and `Ovs.ChatLineHeight`, which `MainWindow.ApplyChatLook` scales. The fixtures stay frozen, so `ClientFileFixtureTests` lists the keys added since.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

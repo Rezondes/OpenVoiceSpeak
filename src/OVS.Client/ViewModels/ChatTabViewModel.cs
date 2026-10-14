@@ -11,6 +11,7 @@ namespace OVS.Client.ViewModels;
 internal sealed partial class ChatTabViewModel(ChatTabKind kind, string title, string? partner = null) : ObservableObject
 {
     const int MaxEntries = 500;
+    static readonly TimeSpan JoinedWithin = TimeSpan.FromMinutes(5); // Package 161
 
     [ObservableProperty] string title = title;
     [ObservableProperty]
@@ -43,6 +44,9 @@ internal sealed partial class ChatTabViewModel(ChatTabKind kind, string title, s
 
     internal void Add(ChatEntry entry, bool countUnread)
     {
+        if (entry.IsMessage && Entries.Count > 0 && Entries[^1] is { IsMessage: true } previous && previous.From == entry.From
+            && previous.IsOwn == entry.IsOwn && entry.Time - previous.Time < JoinedWithin)
+            entry = entry with { ContinuesPrevious = true };
         Entries.Add(entry);
         while (Entries.Count > MaxEntries) Entries.RemoveAt(0);
         if (countUnread) Unread++;

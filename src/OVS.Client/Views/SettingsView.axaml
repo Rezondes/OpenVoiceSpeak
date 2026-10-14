@@ -368,6 +368,15 @@
                   <!-- Package 160: hides IP addresses, fingerprints and server addresses, as Discord does -->
                   <CheckBox Content="{x:Static l:Strings.Settings_StreamerMode}" IsChecked="{Binding StreamerMode}" Margin="0,10,0,0" />
                   <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Settings_StreamerModeHint}" />
+                  <!-- Package 161: tighter rows, and only the chat's text grows or shrinks -->
+                  <CheckBox Content="{x:Static l:Strings.Settings_Compact}" IsChecked="{Binding Compact}" Margin="0,10,0,0" />
+                  <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Settings_CompactHint}" />
+                  <DockPanel Margin="0,10,0,0">
+                    <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding ChatTextScale, StringFormat='{}{0:0} %'}" />
+                    <TextBlock Classes="label" Text="{x:Static l:Strings.Settings_ChatTextScale}" />
+                  </DockPanel>
+                  <Slider x:Name="ChatTextScaleSlider" Minimum="90" Maximum="130" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="10"
+                          Value="{Binding ChatTextScale}" AutomationProperties.Name="{x:Static l:Strings.Settings_ChatTextScale}" />
                 </StackPanel>
               </Border>
             </StackPanel>
