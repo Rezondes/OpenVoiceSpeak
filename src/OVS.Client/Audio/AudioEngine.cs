@@ -170,6 +170,7 @@ internal sealed class AudioEngine : IDisposable
         set
         {
             selfTest = value;
+            Mixer.SetFlags(deafened, value); // Package 176: the native mixer silences the voices itself
             DevicesChanged();
         }
     }
@@ -243,6 +244,7 @@ internal sealed class AudioEngine : IDisposable
         capture.Bitrate = () => EncoderBitrate; // Package 132
         capture.LossHint = () => EncoderLossHint; // Package 135
         ApplyCaptureSettings(capture, Current);
+        capture.FarEndSource = Mixer; // Package 176
         capture.FrameEncoded += OnFrameEncoded;
         capture.Level += OnLevel;
     }
@@ -266,6 +268,7 @@ internal sealed class AudioEngine : IDisposable
         set
         {
             deafened = value;
+            Mixer.SetFlags(value, selfTest); // Package 176: the native mixer silences the voices itself
             if (value) Mixer.Clear();
         }
     }

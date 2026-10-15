@@ -355,7 +355,7 @@ public sealed class EngineSyncTests : IDisposable
 
         sync.SyncMembers();
 
-        Assert.Null(engine.Mixer.BufferOf(7));
+        Assert.Null(engine.Mixer.BufferIdOf(7));
     }
 
     [Fact]
@@ -367,7 +367,7 @@ public sealed class EngineSyncTests : IDisposable
 
         sync.SyncMembers();
 
-        Assert.NotNull(engine.Mixer.BufferOf(8));
+        Assert.NotNull(engine.Mixer.BufferIdOf(8));
     }
 
     [Fact]
@@ -379,7 +379,7 @@ public sealed class EngineSyncTests : IDisposable
 
         sync.SyncMembers();
 
-        Assert.NotNull(engine.Mixer.BufferOf(AudioEngine.SelfTestSpeaker));
+        Assert.NotNull(engine.Mixer.BufferIdOf(AudioEngine.SelfTestSpeaker));
     }
 
     [Fact]
@@ -402,7 +402,7 @@ public sealed class EngineSyncTests : IDisposable
 
         sync.SyncMembers();
 
-        Assert.Equal((1, true), (sync.GainTableBuilds, engine.Mixer.BufferOf(7) is not null));
+        Assert.Equal((1, true), (sync.GainTableBuilds, engine.Mixer.BufferIdOf(7) is not null));
     }
 
     [Fact]

@@ -3,8 +3,9 @@
 //! only by the render thread, so its lock never waits.
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, OnceLock};
 
+use super::mixer::Mixer;
 use super::ring::{Ring, CHANNELS};
 use super::sounds::{sounds, SoundMixer, SoundStarter};
 
@@ -18,23 +19,36 @@ pub struct Playout {
     starter: SoundStarter,
     mixer: Mutex<SoundMixer>,
     played: AtomicU64, // device frames rendered so far
+    mixer_attached: OnceLock<Arc<Mixer>>, // Package 176: once attached, the voices come from the mixer instead of the ring
 }
 
 impl Playout {
     /// An empty playout with a ring of [`RING_FRAMES`].
     pub fn new() -> Playout {
         let (starter, mixer) = sounds();
-        Playout { ring: Ring::new(RING_FRAMES), starter, mixer: Mutex::new(mixer), played: AtomicU64::new(0) }
+        Playout { ring: Ring::new(RING_FRAMES), starter, mixer: Mutex::new(mixer), played: AtomicU64::new(0), mixer_attached: OnceLock::new() }
     }
 
     /// Device thread: fills `out` (interleaved stereo) with the next frames and the sounds on top.
     pub fn render(&self, out: &mut [f32]) {
-        self.ring.read(out);
+        let voices = self.mixer_attached.get();
+        match voices {
+            Some(voices) => voices.render(out),
+            None => self.ring.read(out),
+        }
         let first = self.played.load(Ordering::Relaxed);
         if let Ok(mut mixer) = self.mixer.try_lock() {
             mixer.mix(out, first);
         }
         self.played.store(first + (out.len() / CHANNELS) as u64, Ordering::Release);
+        if let Some(voices) = voices {
+            voices.write_far_end(out);
+        }
+    }
+
+    /// Package 176: from now on the voices come from `mixer` (rendered here, on the device thread); false when one is attached already.
+    pub fn attach(&self, mixer: Arc<Mixer>) -> bool {
+        self.mixer_attached.set(mixer).is_ok()
     }
 
     /// Client thread: starts loaded sound `id` with the next frame the client writes, `offset` samples in.

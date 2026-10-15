@@ -40,5 +40,8 @@ internal sealed class FakeSpeaker(TimeSpan capacity, Action<Exception>? failed =
         lock (Played) Played.Add(new PlayedSound(samples, gain, offset, restart));
     }
 
+    /// <summary>Package 176: it never mixes the voices itself; the playback loop writes them.</summary>
+    public bool AttachMixer(OVS.Client.Audio.Playback.VoiceMixer mixer) => false;
+
     public void Dispose() => Disposed = true;
 }

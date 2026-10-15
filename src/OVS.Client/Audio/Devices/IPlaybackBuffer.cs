@@ -28,5 +28,11 @@ internal interface IPlaybackBuffer : IDisposable
 
     /// <summary>Package 174: starts <paramref name="samples"/> (mono) at <paramref name="gain"/> with the next frame written, <paramref name="offset"/> samples in; <paramref name="restart"/> stops the same samples first.</summary>
     void PlaySound(float[] samples, float gain, int offset, bool restart);
+
+    /// <summary>
+    /// Package 176: the speaker plays the voices of <paramref name="mixer"/> itself, mixed where the device asks for them;
+    /// false when it cannot (the tests' fake), and the playback loop then mixes and writes the frames as before.
+    /// </summary>
+    bool AttachMixer(Playback.VoiceMixer mixer);
 }
 

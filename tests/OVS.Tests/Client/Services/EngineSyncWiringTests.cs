@@ -152,7 +152,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
 
         server.Apply(new UserLeft(2));
 
-        Assert.Null(mainViewModel.Audio.Mixer.BufferOf(2));
+        Assert.Null(mainViewModel.Audio.Mixer.BufferIdOf(2));
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
 
         server.Apply(new UserLeft(2));
 
-        Assert.NotNull(mainViewModel.Audio.Mixer.BufferOf(1));
+        Assert.NotNull(mainViewModel.Audio.Mixer.BufferIdOf(1));
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public sealed class EngineSyncWiringTests() : TempDirectoryTest("ovs-engine-sync
 
         FakeServers.SetOwnRightsAndGroups(server, Permission.All, [WellKnownGroups.Admin]); // any state change that is no member change
 
-        Assert.NotNull(mainViewModel.Audio.Mixer.BufferOf(99));
+        Assert.NotNull(mainViewModel.Audio.Mixer.BufferIdOf(99));
     }
 
     [Fact]

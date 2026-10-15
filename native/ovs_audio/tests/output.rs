@@ -139,3 +139,50 @@ fn twenty_speakers_steady_state_allocate_nothing() {
 
     assert_eq!(allocations() - before, 0);
 }
+
+#[test]
+fn twenty_speakers_sounds_limiter_allocate_nothing() {
+    use ovs_audio::core::jitter::MAX_PACKET;
+    use ovs_audio::core::mixer::{Mixer, Packet};
+    let mixer = std::sync::Arc::new(Mixer::new());
+    let playout = Playout::new();
+    playout.attach(mixer.clone());
+    ovs_audio::core::sounds::load(7_002, &[0.9; 9_600]);
+    let packet = |speaker: u32, seq: u32| {
+        let mut packet = Packet {
+            speaker,
+            seq,
+            via_link: false,
+            arrival_ms: f64::from(seq) * 20.0,
+            length: 3,
+            data: [0; MAX_PACKET],
+            copy_length: None,
+            copy: [0; MAX_PACKET],
+        };
+        packet.data[..3].copy_from_slice(&[0x08, 0x00, 0x00]);
+        packet
+    };
+    let mut out = vec![0f32; 2 * 480];
+    for seq in 0..3 {
+        for speaker in 1..=20 {
+            mixer.push(packet(speaker, seq));
+        }
+    }
+    for _ in 0..4 {
+        playout.render(&mut out);
+    }
+    let before = allocations();
+
+    for seq in 3..203u32 {
+        for speaker in 1..=20 {
+            mixer.push(packet(speaker, seq));
+        }
+        if seq % 50 == 0 {
+            playout.play_sound(7_002, 1.0, 0, false);
+        }
+        playout.render(&mut out);
+        playout.render(&mut out);
+    }
+
+    assert_eq!(allocations() - before, 0);
+}

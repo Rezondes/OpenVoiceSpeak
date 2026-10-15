@@ -14,7 +14,8 @@ pub const UNDERRUN_WINDOW_FRAMES: u64 = 4_800;
 
 /// A single-producer, single-consumer ring of stereo `f32` frames.
 pub struct Ring {
-    samples: Box<[AtomicU32]>, // f32 bits, CHANNELS per frame
+    samples: Box<[AtomicU32]>, // f32 bits, channels per frame
+    channels: usize,
     capacity: u64,             // in frames
     written: AtomicU64,        // frames written since the start
     read: AtomicU64,           // frames read since the start
@@ -23,10 +24,16 @@ pub struct Ring {
 }
 
 impl Ring {
-    /// A ring that holds `capacity` frames.
+    /// A ring that holds `capacity` stereo frames.
     pub fn new(capacity: usize) -> Ring {
+        Ring::with_channels(capacity, CHANNELS)
+    }
+
+    /// Package 176: a ring of `channels` samples per frame (1 for the echo canceller's mono far end).
+    pub fn with_channels(capacity: usize, channels: usize) -> Ring {
         Ring {
-            samples: (0..capacity * CHANNELS).map(|_| AtomicU32::new(0)).collect(),
+            samples: (0..capacity * channels).map(|_| AtomicU32::new(0)).collect(),
+            channels,
             capacity: capacity as u64,
             written: AtomicU64::new(0),
             read: AtomicU64::new(0),
@@ -35,16 +42,17 @@ impl Ring {
         }
     }
 
-    /// Producer: appends the frames of `samples` (interleaved stereo); returns how many fitted, the rest is discarded.
+    /// Producer: appends the frames of `samples` (interleaved); returns how many fitted, the rest is discarded.
     pub fn write(&self, samples: &[f32]) -> usize {
-        let frames = (samples.len() / CHANNELS) as u64;
+        let channels = self.channels;
+        let frames = (samples.len() / channels) as u64;
         let written = self.written.load(Ordering::Relaxed);
         let free = self.capacity - (written - self.read.load(Ordering::Acquire));
         let count = frames.min(free);
         for frame in 0..count {
-            let slot = (((written + frame) % self.capacity) as usize) * CHANNELS;
-            for channel in 0..CHANNELS {
-                self.samples[slot + channel].store(samples[frame as usize * CHANNELS + channel].to_bits(), Ordering::Relaxed);
+            let slot = (((written + frame) % self.capacity) as usize) * channels;
+            for channel in 0..channels {
+                self.samples[slot + channel].store(samples[frame as usize * channels + channel].to_bits(), Ordering::Relaxed);
             }
         }
         self.written.store(written + count, Ordering::Release);
@@ -57,20 +65,21 @@ impl Ring {
         count as usize
     }
 
-    /// Consumer: fills `out` (interleaved stereo) with the oldest frames, and with silence where none are left.
+    /// Consumer: fills `out` (interleaved) with the oldest frames, and with silence where none are left.
     pub fn read(&self, out: &mut [f32]) {
-        let frames = (out.len() / CHANNELS) as u64;
+        let channels = self.channels;
+        let frames = (out.len() / channels) as u64;
         let read = self.read.load(Ordering::Relaxed);
         let written = self.written.load(Ordering::Acquire);
         let count = frames.min(written - read);
         for frame in 0..count {
-            let slot = (((read + frame) % self.capacity) as usize) * CHANNELS;
-            for channel in 0..CHANNELS {
-                out[frame as usize * CHANNELS + channel] = f32::from_bits(self.samples[slot + channel].load(Ordering::Relaxed));
+            let slot = (((read + frame) % self.capacity) as usize) * channels;
+            for channel in 0..channels {
+                out[frame as usize * channels + channel] = f32::from_bits(self.samples[slot + channel].load(Ordering::Relaxed));
             }
         }
         self.read.store(read + count, Ordering::Release);
-        out[(count as usize) * CHANNELS..].fill(0.0);
+        out[(count as usize) * channels..].fill(0.0);
         let short = frames - count;
         if short > 0 && written > 0 {
             let gap = self.gap.load(Ordering::Relaxed);

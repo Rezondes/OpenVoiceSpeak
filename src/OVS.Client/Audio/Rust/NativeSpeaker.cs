@@ -102,6 +102,20 @@ internal sealed unsafe class NativeSpeaker : IPlaybackBuffer
         }
     }
 
+    /// <inheritdoc/>
+    public bool AttachMixer(Playback.VoiceMixer mixer)
+    {
+        if (mixer.Handle == 0 || !Enter()) return false;
+        try
+        {
+            return native.SpeakerAttachMixer(speaker, mixer.Handle) != 0;
+        }
+        finally
+        {
+            Leave();
+        }
+    }
+
     /// <summary>The native id of <paramref name="samples"/>, loading them into the library the first time.</summary>
     uint SoundIdOf(float[] samples)
     {

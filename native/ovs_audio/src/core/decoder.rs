@@ -2,7 +2,7 @@
 //! comes out the same on both sides). An empty or a 1-byte packet (DTX in other senders) and a broken one are
 //! concealed (PLC), as `VoiceDecoder` did; nothing here allocates after creation.
 
-use audiopus_sys::{opus_decode_float, opus_decoder_create, opus_decoder_destroy, OpusDecoder};
+use audiopus_sys::{opus_decode_float, opus_decoder_create, opus_decoder_ctl, opus_decoder_destroy, OpusDecoder, OPUS_RESET_STATE};
 
 /// Samples per channel of one 20 ms frame at 48 kHz.
 pub const FRAME_SAMPLES: usize = 960;
@@ -33,6 +33,12 @@ impl Decoder {
         let state = unsafe { opus_decoder_create(48_000, 2, &mut error) };
         assert!(!state.is_null() && error == 0, "opus_decoder_create failed: {error}");
         Decoder { state, pcm: [0.0; STEREO_FRAME_SAMPLES] }
+    }
+
+    /// Package 176: back to a fresh decoder's state, without allocating.
+    pub fn reset(&mut self) {
+        // SAFETY: the state is live; the reset request takes no argument
+        unsafe { opus_decoder_ctl(self.state, OPUS_RESET_STATE) };
     }
 
     /// Decodes `packet` into the frame; an empty, 1-byte or broken packet is concealed.

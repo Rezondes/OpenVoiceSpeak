@@ -7,7 +7,7 @@ param([switch]$PrintHash)
 
 $ErrorActionPreference = 'Stop'
 $Rust = '1.98.1'
-$Expected = '6eebf2ea9cb773a69797ddbdb8f85f5ede3fa9a17981c28feace94bf4d7c7eb2'
+$Expected = '52d920cebb29c1641dd8864e3aebdd67dafe3251bddc998710180877d9d3dd50'
 $Here = $PSScriptRoot
 $Root = (Resolve-Path (Join-Path $Here '..\..')).Path
 $Out = Join-Path $Root 'src\OVS.Client\runtimes\win-x64\native\ovs_audio.dll'

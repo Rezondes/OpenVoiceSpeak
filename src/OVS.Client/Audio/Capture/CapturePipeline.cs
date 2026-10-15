@@ -2,6 +2,7 @@ using System.Diagnostics;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using OVS.Client.Audio.Codec;
+using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Transmit;
 using OVS.Shared.Protocol;
@@ -89,6 +90,21 @@ internal sealed class CapturePipeline : IDisposable
 
     /// <summary>Package 140 (A149): WebRTC's echo canceller, owned by the pipeline; null when the native library is missing.</summary>
     public EchoCanceller? Canceller { get; set; }
+    /// <summary>
+    /// Package 176: the mixer whose native speaker plays the voices and sounds; its far end reaches the echo canceller
+    /// here, on the capture thread, before each frame. Without one (no native speaker) the playback loop renders it.
+    /// </summary>
+    internal VoiceMixer? FarEndSource { get; set; }
+
+    readonly float[] farEndBlocks = new float[AudioFormat.FrameSamples * 10]; // Package 176: up to 200 ms per frame
+
+    void TakeFarEnd(EchoCanceller canceller)
+    {
+        if (FarEndSource is not { } source) return;
+        int count;
+        while ((count = source.ReadFarEnd(farEndBlocks)) > 0) canceller.Render(farEndBlocks.AsSpan(0, count));
+    }
+
     /// <summary>Echo cancellation is on.</summary>
     public bool EchoCancellation { get; set; }
 
@@ -199,7 +215,11 @@ internal sealed class CapturePipeline : IDisposable
                 var frame = frames.Frame;
                 // Package 142 (A151): music mode applies none of the voice filters, whatever their switches say.
                 // Package 140: first, on the raw microphone, before the gain's soft clip makes the echo path nonlinear
-                if (EchoCancellation && !music) Canceller?.Process(frame);
+                if (EchoCancellation && !music && Canceller is { } canceller)
+                {
+                    TakeFarEnd(canceller); // Package 176: what a native speaker played since the last frame
+                    canceller.Process(frame);
+                }
                 ApplyGain(frame, Gain);
                 // Package 123: before the voice activation, so it, the level meter and the self test hear the cleaned signal
                 float? voiceProbability = NoiseSuppression && !music ? Suppressor?.Process(frame) : null;

@@ -619,22 +619,22 @@ public class ReceivePathTests
         var mixer = new VoiceMixer();
         for (uint number = 0; number < 3; number++) mixer.Push(1, number, Frame(number), false);
         for (int index = 0; index < 3; index++) Assert.Single(mixer.Tick().Active);
-        var buffer = mixer.BufferOf(1);
+        var buffer = mixer.BufferIdOf(1);
         Assert.NotNull(buffer);
         for (int index = 0; index < 100; index++) mixer.Tick(); // two seconds without a word
         Assert.Empty(mixer.Tick().Active);
         for (uint number = 3; number < 6; number++) mixer.Push(1, number, Frame(number), false);
-        Assert.Same(buffer, mixer.BufferOf(1));
+        Assert.Equal(buffer, mixer.BufferIdOf(1));
         Assert.Single(mixer.Tick().Active);
 
         for (int index = 0; index < VoiceMixer.IdleTicksUntilRemoved + 10; index++) mixer.Tick();
-        Assert.Null(mixer.BufferOf(1));
+        Assert.Null(mixer.BufferIdOf(1));
 
         mixer.Push(2, 0, Frame(0), false);
         mixer.Push(3, 0, Frame(0), false);
         mixer.RemoveLeft(id => id == 3); // 2 left the server
-        Assert.Null(mixer.BufferOf(2));
-        Assert.NotNull(mixer.BufferOf(3));
+        Assert.Null(mixer.BufferIdOf(2));
+        Assert.NotNull(mixer.BufferIdOf(3));
     }
 
     /// <summary>Package 124: connected with nobody talking, the playback loop does not mix; a voice wakes it at once.</summary>

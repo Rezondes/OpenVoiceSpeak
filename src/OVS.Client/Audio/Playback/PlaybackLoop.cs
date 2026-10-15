@@ -42,6 +42,8 @@ internal sealed class PlaybackLoop
     readonly SpeakerReportThrottle speakerReports = new();
     readonly float[] farEnd = new float[AudioFormat.FrameSamples]; // Package 142: playback thread only
     readonly float[] heard = new float[AudioFormat.StereoFrameSamples]; // Package 174: voices and tones, while the speaker plays the tones itself
+    IPlaybackBuffer? attachedTo; // Package 176: the speaker the mixer was offered to (playback thread only)
+    bool mixedBySpeaker; // Package 176: that speaker mixes the voices itself
     long mixes;
 
     /// <param name="gate">The engine's lock over the devices; the speaker closes under it.</param>
@@ -120,16 +122,24 @@ internal sealed class PlaybackLoop
                 continue;
             }
             var buffer = devices.Speaker;
-            if (buffer is null)
+            if (buffer is not null && !ReferenceEquals(buffer, attachedTo))
             {
-                // No speaker: keep mixing on our own clock and throw the audio away.
+                attachedTo = buffer;
+                mixedBySpeaker = buffer.AttachMixer(mixer); // Package 176: a native speaker mixes the voices on its render thread
+            }
+            if (buffer is null || mixedBySpeaker)
+            {
+                // No speaker: keep mixing on our own clock and throw the audio away. Package 176: a speaker that mixes
+                // itself: follow it on the same clock (the tones' ends, who speaks, the level), writing nothing.
+                buffer?.PollFailure();
                 if (clock.Elapsed < AudioFormat.FrameDuration * ticks)
                 {
                     wake.WaitOne(5); // clock: real time, new work or the stop wakes it at once
                     continue;
                 }
                 ticks++;
-                Mix();
+                if (buffer is null) Mix();
+                else Follow(buffer);
                 continue;
             }
             buffer.PollFailure(); // Package 173: a device that stopped is reported once, also while the full buffer keeps the loop waiting
@@ -144,6 +154,20 @@ internal sealed class PlaybackLoop
             buffer.AddSamples(frame);
             ticks = (long)(clock.Elapsed / AudioFormat.FrameDuration);
         }
+    }
+
+    /// <summary>
+    /// Package 176: one frame's turn beside a speaker that mixes the voices itself: hands it the new tones, advances them
+    /// (so the loop knows when they end), and reports who it heard and the level from what its render thread mixed.
+    /// </summary>
+    void Follow(IPlaybackBuffer speaker)
+    {
+        sounds.HandOver(speaker);
+        Array.Clear(heard);
+        sounds.MixInto(heard);
+        var heardNow = mixer.ReadActive();
+        LastOutputLevelDb = mixer.LastLevelDb;
+        if (speakerReports.Next(heardNow) is { } report) SpeakersChanged?.Invoke(report);
     }
 
     /// <summary>Not needed any more and nothing left: closes the speaker once the last frames played, and ends the thread.</summary>

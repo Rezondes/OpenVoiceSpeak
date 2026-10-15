@@ -95,6 +95,10 @@ impl PacketMap {
         }
     }
 
+    fn clear(&mut self) {
+        self.used = [false; MAX_FRAMES + 1];
+    }
+
     fn remove_below(&mut self, seq: u32) {
         for slot in 0..self.used.len() {
             if self.used[slot] && self.seqs[slot] < seq {
@@ -165,6 +169,23 @@ impl JitterBuffer {
             max_transit: f64::NAN,
             stats: JitterStats::default(),
         }
+    }
+
+    /// Package 176: back to empty for another speaker, keeping its memory (the mixer's pool reuses it).
+    pub fn reset(&mut self) {
+        self.frames.clear();
+        self.copies.clear();
+        self.decoder.reset();
+        self.started = false;
+        self.playing = false;
+        self.next = 0;
+        self.waited = 0;
+        self.underruns = 0;
+        self.last_transit = f64::NAN;
+        self.last_arrival = f64::NEG_INFINITY;
+        self.resumed = false;
+        self.max_transit = f64::NAN;
+        self.stats = JitterStats::default();
     }
 
     /// Package 134 (A143): frames a talk spurt waits for, from the measured jitter or lateness.

@@ -3,6 +3,8 @@
 
 pub mod decoder;
 pub mod jitter;
+pub mod limiter;
+pub mod mixer;
 pub mod playout;
 pub mod ring;
 pub mod sounds;

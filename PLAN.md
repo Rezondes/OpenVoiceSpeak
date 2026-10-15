@@ -10214,27 +10214,29 @@ After 175 the playback thread is still managed: `PlaybackLoop.Run` ticks `VoiceM
 
 ### Acceptance Criteria
 
-- [ ] AC1: Every mixer and limiter case of `ReceivePathTests` and `PlaybackLoopTests` holds as a cargo test (sum and clamp, default boost doubles a quiet voice, output volume and per-speaker volume with the curve, 200 % four times and limited, the limiter without hard clipping and its recovery, below the threshold untouched, active speakers with `ViaLink`, deafened silences voices but tones play, the own voice plays in the self test while deafened).
-- [ ] AC2: The speaker list in the channel tree lights up as before: at most every 100 ms and once more when all fell silent (`Run_VoiceClearedAfterItsReport_RunsOnUntilTheSilenceIsReported`), now from the poll.
-- [ ] AC3: Voices play on without a gap while managed code is paused for 200 ms, as long as packets were buffered (cargo test with the producer side paused).
-- [ ] AC4: The echo canceller still receives exactly what is played (voices and tones), within one frame of alignment (`MixForSpeaker_CaptureHasCanceller_FedOnlyWhileOnInVoiceMode` moved and green).
-- [ ] AC5: With nothing to play and nothing needed the render stream stops (idle CPU as Package 124: no render callbacks while idle, `Playback_IdleDoesNotMix_WakesOnVoice`), and a packet or a sound starts it again.
-- [ ] AC6: The render thread allocates nothing in steady state with 20 speakers, sounds and the limiter active.
+- [x] AC1: Every mixer and limiter case of `ReceivePathTests` and `PlaybackLoopTests` holds as a cargo test (sum and clamp, default boost doubles a quiet voice, output volume and per-speaker volume with the curve, 200 % four times and limited, the limiter without hard clipping and its recovery, below the threshold untouched, active speakers with `ViaLink`, deafened silences voices but tones play, the own voice plays in the self test while deafened).
+- [x] AC2: The speaker list in the channel tree lights up as before: at most every 100 ms and once more when all fell silent (`Run_VoiceClearedAfterItsReport_RunsOnUntilTheSilenceIsReported`), now from the poll.
+- [x] AC3: Voices play on without a gap while managed code is paused for 200 ms, as long as packets were buffered (cargo test with the producer side paused).
+- [x] AC4: The echo canceller still receives exactly what is played (voices and tones), within one frame of alignment (`MixForSpeaker_CaptureHasCanceller_FedOnlyWhileOnInVoiceMode` moved and green).
+- [x] AC5: With nothing to play and nothing needed the render stream stops (idle CPU as Package 124: no render callbacks while idle, `Playback_IdleDoesNotMix_WakesOnVoice`), and a packet or a sound starts it again.
+- [x] AC6: The render thread allocates nothing in steady state with 20 speakers, sounds and the limiter active.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `tests/mixer.rs`: the moved cases (`several_speakers_sum_and_clamp`, `loud_input_clamped_to_unit`, `default_boost_doubles_quiet_voice`, `volume_scales_boosted_voice`, `volume_200_four_times_and_limited`, `speaker_gain_only_that_speaker`, `user_volume_200_four_times`, `limiter_loud_input_no_hard_clipping_and_recovers`, `limiter_below_threshold_untouched`, `active_speakers_report_via_link`, `deafened_voice_silenced_but_tone_plays`, `deafened_in_self_test_own_voice_plays`) - covers AC1
-2. `tests/mixer.rs > producer_paused_200ms_buffered_voice_plays_on` - covers AC3
-3. `tests/mixer.rs > far_end_equals_output_downmixed` - covers AC4
-4. `tests/mixer.rs > idle_stream_stops_packet_starts_it` - covers AC5
-5. `tests/mixer.rs > twenty_speakers_sounds_limiter_allocate_nothing` - covers AC6
-6. `SpeakerPollTests > "Poll_VoiceThenSilence_ReportedThenSilenceReportedOnce"` (manual `TimeProvider`) - covers AC2
-7. `VoiceFilterTests > "EchoCanceller_EngineMixAndLiveSwitch_ReachTheOpenCapture"` against the native far end - covers AC4
-8. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
-9. Manual check: three clients talking, per-user volume and output volume at 0, 100 and 200 %, deafen, the self test; the tree's speaker marks.
+Order: test first -> red -> minimal implementation -> green -> refactor.
+
+1. `ReceivePathTests`: the mixer and limiter cases run unchanged against the native mixer and limiter through their managed faces (`VoiceMixer`, `SoftLimiter`): `"Mixer_SeveralSpeakers_SumsAndClamps"`, `"Mixer_LoudInput_ClampedToUnit"`, `"Mixer_DefaultBoost_DoublesQuietVoice"`, `"Mixer_Volume_ScalesBoostedVoice"`, `"Mixer_Volume200_FourTimesAndLimited"`, `"Mixer_SpeakerGain_OnlyThatSpeaker"`, `"Mixer_UserVolume200_FourTimes"`, `"Limiter_LoudInput_NoHardClippingAndRecovers"`, `"Limiter_BelowThreshold_Untouched"`, `"Mixer_ActiveSpeakers_ReportViaLink"`, `"Mixer_Stats_SumOverSpeakers"` - covers AC1
+2. `PlaybackLoopTests > "MixForSpeaker_Deafened_VoiceSilencedButTonePlays"`, `"MixForSpeaker_DeafenedInSelfTest_OwnVoicePlays"`, `"Run_VoiceClearedAfterItsReport_RunsOnUntilTheSilenceIsReported"` and `ReceivePathTests > "Playback_IdleDoesNotMix_WakesOnVoice"` unchanged on the loop's own clock - covers AC1, AC2, AC5
+3. `NativeMixerTests > "Render_AttachedMixer_PlaysTheVoicesAndReportsTheSpeaker"`, `"Deafened_NotSelfTest_RenderSilentButSpeakerStillReported"`, `"AttachMixer_Twice_SecondRefused"` - covers AC1, AC2, AC3 (the render thread mixes without the loop writing a frame)
+4. `NativeMixerTests > "Render_AttachedMixer_FarEndReadyForTheEchoCanceller"` and `core/mixer.rs > far_end_equals_output_downmixed` - covers AC4
+5. `core/mixer.rs > active_speakers_report_via_link`, `render_cuts_frames_to_what_the_device_asks`, `remove_and_clear_retire_speakers_and_keep_their_counts`, `level_db_takes_the_louder_side`, `deafened_silences_voices_unless_self_test` - covers AC1
+6. `tests/output.rs > twenty_speakers_sounds_limiter_allocate_nothing` - covers AC6
+7. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+8. Manual check: three clients talking, per-user volume and output volume at 0, 100 and 200 %, deafen, the self test; the tree's speaker marks.
+
+(as built: the playback loop stays, but beside a native speaker it only follows: `IPlaybackBuffer.AttachMixer` lets the speaker render the mixer on its device thread, and the loop, on its 20 ms clock, hands over and advances the tones, reads who spoke and the level from the mixer's snapshot and reports them through the same `SpeakerReportThrottle`; the tests' fake speaker refuses the mixer, so the loop mixes and writes as before and its tests stay. Packets reach the mixer by value through a bounded channel (no allocation, nothing freed on the render thread); the 64 speakers' buffers come from a pool made with the mixer (a further speaker's packets are dropped and counted); a removed speaker's buffer is reset, its counts kept. `VolumeCurve` stays managed: the face turns the per-speaker and output volumes into final gains (with the voice boost) and sends them on each change. Reads between frames (`Stats`, `BufferIdOf`, `SpeakerCount`, `RemoveLeft`) first let the mixer take the waiting packets (`settle`). `BufferOf` became `BufferIdOf`, a number per buffer, since the buffers live natively. The far end is written by the render thread (voices and sounds, mono) and taken by the capture before each frame (`CapturePipeline.FarEndSource`); `EchoDelayMs` stays until 178. No separate `SpeakerPoll` type: the loop's own clock does it. `ovs_audio.dll` sha256 52d920cebb29c1641dd8864e3aebdd67dafe3251bddc998710180877d9d3dd50.)
 
 Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
-
 ### Steps
 
 1. Tests 1 to 5 (red), `mixer.rs`, `volume.rs`, `limiter.rs`, `far_end.rs`, the render callback mixing.

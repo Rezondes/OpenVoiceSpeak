@@ -209,3 +209,18 @@ pub unsafe extern "C" fn ovs_audio_speaker_sounds_playing(speaker: *const Speake
     // SAFETY: the caller's guarantee
     guard(0, || unsafe { (&*speaker).playout.sounds_playing() as u32 })
 }
+
+/// Package 176: from now on the speaker plays the voices of `mixer`, mixed on its render thread; 1 when attached.
+///
+/// # Safety
+/// `speaker` is open; `mixer` is a live mixer (the speaker keeps its own reference).
+#[no_mangle]
+pub unsafe extern "C" fn ovs_audio_speaker_attach_mixer(speaker: *const Speaker, mixer: *const crate::core::mixer::Mixer) -> u8 {
+    guard(0, || {
+        // SAFETY: the caller's guarantee; the count is raised so both the client and the speaker own a reference
+        unsafe {
+            std::sync::Arc::increment_strong_count(mixer);
+            u8::from((&*speaker).playout.attach(std::sync::Arc::from_raw(mixer)))
+        }
+    })
+}
