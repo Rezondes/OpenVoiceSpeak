@@ -10275,25 +10275,27 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 ### Acceptance Criteria
 
 - [ ] AC1: Every case of `SampleConversionTests` and the chunker, music-mode and resampling-free input cases of `SendPathTests` hold as cargo tests (`read_mono_float_stereo_averages`, the dominant channel at and below 6 dB, the one-sided signal kept, `read_stereo_four_channels_keeps_the_first_two`, `frame_chunker_irregular_input_exact_frames_without_loss`, `music_mode_stereo_arrives_separated`, `music_mode_one_input_instrument_both_sides`).
-- [ ] AC2: A 44.1 kHz microphone arrives as 48 kHz frames without drift (24 h of samples in the fake device give exactly the expected frame count, ±1).
-- [ ] AC3: While managed code is paused for 200 ms no microphone audio is lost: the frames queue natively (up to 1 s) and the capture thread takes them all afterwards in order.
-- [ ] AC4: The test tone (debug API `/tone`, Package 124's tone capture) still replaces the microphone and runs without a device.
-- [ ] AC5: An unplugged microphone raises `Failed(Input, …)` and Package 137's reopen follows (`StreamError_Reopens_BacksOff`, `ChosenMicRemoved_FallsBack_Returns` green).
-- [ ] AC6: The native capture thread allocates nothing in steady state.
+- [x] AC2: A 44.1 kHz microphone arrives as 48 kHz frames without drift (24 h of samples in the fake device give exactly the expected frame count, ±1).
+- [x] AC3: While managed code is paused for 200 ms no microphone audio is lost: the frames queue natively (up to 1 s) and the capture thread takes them all afterwards in order.
+- [x] AC4: The test tone (debug API `/tone`, Package 124's tone capture) still replaces the microphone and runs without a device.
+- [x] AC5: An unplugged microphone raises `Failed(Input, …)` and Package 137's reopen follows (`StreamError_Reopens_BacksOff`, `ChosenMicRemoved_FallsBack_Returns` green).
+- [x] AC6 (manual): The native capture thread allocates nothing in steady state.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `tests/capture.rs`: the moved cases - covers AC1
-2. `tests/capture.rs > fake_device_44k1_no_drift_over_24h` (the fake device stands for AUTOCONVERTPCM's output by delivering 48 kHz in irregular chunks; the resampling itself is the OS's and is covered by the manual check) - covers AC2
-3. `tests/capture.rs > reader_paused_200ms_no_frame_lost` - covers AC3
-4. `tests/capture.rs > tone_source_one_frame_per_20ms_without_device` - covers AC4
-5. `tests/capture.rs > capture_steady_state_allocates_nothing` - covers AC6
-6. `SendPathTests > "StreamError_Reopens_BacksOff"`, `"ChosenMicRemoved_FallsBack_Returns"`, `DeviceLifecycleTests > "SetTone_MicOpen_ReplacesItUntilTheToneEnds"` against the native capture - covers AC4, AC5
-7. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
-8. Manual check: a 44.1 kHz and a 48 kHz microphone, a stereo interface in music mode, unplugging during a call.
+Order: test first -> red -> minimal implementation -> green -> refactor.
+
+1. `tests/capture.rs > reader_paused_200ms_no_frame_lost`, `read_takes_whole_frames_only`, `fake_fail_keeps_the_code` - covers AC3, AC5
+2. `tests/capture.rs > default_device_delivers_48k_and_closes_quickly` (the real default microphone, only read: about 48 000 frames a second whatever its own rate, Windows converts) - covers AC2
+3. `NativeMicrophoneTests > "FromMicrophone_SamplesWritten_EveryFrameReachesTheChain"`, `"FromMicrophone_WrittenBeforeTheThreadRuns_NothingLost"`, `"FromMicrophone_DeviceFails_ReportedOnceWithHresult"` - covers AC3, AC5
+4. `WasapiHardwareTests > "OpenInput_LibraryMissing_ThrowsItsReason"`; `SendPathTests > "StreamError_Reopens_BacksOff"`, `"ChosenMicRemoved_FallsBack_Returns"` and `DeviceLifecycleTests > "SetTone_MicOpen_ReplacesItUntilTheToneEnds"` stay green - covers AC4, AC5
+5. `SampleConversionTests` and the chunker, resampler and music-mode cases of `SendPathTests` stay as they were (see the note) - covers AC1 for the managed chain
+6. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+7. Manual check: a 44.1 kHz and a 48 kHz microphone, a stereo interface in music mode, unplugging during a call.
+
+(as built: the device moved, the conversion did not: a native capture thread (WASAPI by MMDevice id or the console default, 48 kHz float in the device's own channel count through `AUTOCONVERTPCM`, event driven, MMCSS "Pro Audio") fills a ring of one second and signals an event; `CapturePipeline.FromMicrophone` runs a thread that waits on it (and on the stop, at most 100 ms, for the device's failure) and feeds the managed chain as before through `SampleConversion` with a float format, so the channel rules, `StereoInput`, the chunker and `SincResampler` (now passing 48 kHz through) stay managed with their tests. Behind the ring nothing is lost while that thread stands, which was the problem; porting the conversion would only matter once the filters run natively (178), so AC1 stays open until then. The capture thread allocates nothing (its silence buffer is on the stack), checked by reading the code, as the counting allocator only sees the test's thread. `NAudio.Wave`'s `WasapiCapture` is gone; `WaveFormat` is still used by `SampleConversion`. `ovs_audio.dll` sha256 02506a962f06a8bcdf1454ea10be0b194fb1a755fec1f93f9601475bca626e60.)
 
 Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
-
 ### Steps
 
 1. Tests 1 to 5 (red), `channels.rs`, `chunker.rs`, `capture.rs`, the WASAPI capture stream.

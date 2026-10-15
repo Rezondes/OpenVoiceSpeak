@@ -104,6 +104,25 @@ internal sealed unsafe class NativeAudio
     /// <summary>ovs_audio_speaker_attach_mixer: lets the speaker play the voices of a mixer; 1 when attached.</summary>
     internal delegate* unmanaged[Cdecl]<nint, nint, byte> SpeakerAttachMixer { get; private set; }
 
+    /// <summary>ovs_audio_mic_open: opens and starts a microphone by MMDevice id (null: the default); 0 with the HRESULT on failure (Package 177).</summary>
+    internal delegate* unmanaged[Cdecl]<char*, int*, nint> MicOpen { get; private set; }
+    /// <summary>ovs_audio_mic_open_fake: a microphone without a device, for tests.</summary>
+    internal delegate* unmanaged[Cdecl]<uint, nint> MicOpenFake { get; private set; }
+    /// <summary>ovs_audio_mic_close: stops the device and frees the microphone.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, void> MicClose { get; private set; }
+    /// <summary>ovs_audio_mic_channels: the samples per frame (the device's channels).</summary>
+    internal delegate* unmanaged[Cdecl]<nint, uint> MicChannels { get; private set; }
+    /// <summary>ovs_audio_mic_event: the event signalled after each round of the device.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, nint> MicEvent { get; private set; }
+    /// <summary>ovs_audio_mic_read: takes whole frames of interleaved samples; returns how many samples.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, float*, uint, uint> MicRead { get; private set; }
+    /// <summary>ovs_audio_mic_error: the HRESULT that ended the stream, 0 while it runs.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, int> MicError { get; private set; }
+    /// <summary>ovs_audio_mic_fake_write: queues samples on the fake microphone and signals its event.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, float*, uint, void> MicFakeWrite { get; private set; }
+    /// <summary>ovs_audio_mic_fake_fail: ends the fake microphone's stream with an HRESULT.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, int, void> MicFakeFail { get; private set; }
+
     /// <summary>The library of this name, loaded on the first call.</summary>
     public static NativeAudio Load(string library = Library) => Loaded.GetOrAdd(library, name => new Lazy<NativeAudio>(() => Open(name))).Value;
 
@@ -118,6 +137,7 @@ internal sealed unsafe class NativeAudio
             native.BindSpeaker(handle);
             native.BindVoice(handle);
             native.BindMixer(handle);
+            native.BindMicrophone(handle);
             return native;
         }
         #pragma warning disable CA1031 // missing, wrong architecture, a missing export: the client runs without audio (A180)
@@ -178,6 +198,20 @@ internal sealed unsafe class NativeAudio
         LimiterFree = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "ovs_audio_limiter_free");
         LimiterProcess = (delegate* unmanaged[Cdecl]<nint, float*, uint, float>)NativeLibrary.GetExport(handle, "ovs_audio_limiter_process");
         SpeakerAttachMixer = (delegate* unmanaged[Cdecl]<nint, nint, byte>)NativeLibrary.GetExport(handle, "ovs_audio_speaker_attach_mixer");
+    }
+
+    /// <summary>The microphone's exports (Package 177).</summary>
+    void BindMicrophone(nint handle)
+    {
+        MicOpen = (delegate* unmanaged[Cdecl]<char*, int*, nint>)NativeLibrary.GetExport(handle, "ovs_audio_mic_open");
+        MicOpenFake = (delegate* unmanaged[Cdecl]<uint, nint>)NativeLibrary.GetExport(handle, "ovs_audio_mic_open_fake");
+        MicClose = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "ovs_audio_mic_close");
+        MicChannels = (delegate* unmanaged[Cdecl]<nint, uint>)NativeLibrary.GetExport(handle, "ovs_audio_mic_channels");
+        MicEvent = (delegate* unmanaged[Cdecl]<nint, nint>)NativeLibrary.GetExport(handle, "ovs_audio_mic_event");
+        MicRead = (delegate* unmanaged[Cdecl]<nint, float*, uint, uint>)NativeLibrary.GetExport(handle, "ovs_audio_mic_read");
+        MicError = (delegate* unmanaged[Cdecl]<nint, int>)NativeLibrary.GetExport(handle, "ovs_audio_mic_error");
+        MicFakeWrite = (delegate* unmanaged[Cdecl]<nint, float*, uint, void>)NativeLibrary.GetExport(handle, "ovs_audio_mic_fake_write");
+        MicFakeFail = (delegate* unmanaged[Cdecl]<nint, int, void>)NativeLibrary.GetExport(handle, "ovs_audio_mic_fake_fail");
     }
 
     /// <summary>Null when the library's ABI version is this client's, else the reason with both versions.</summary>

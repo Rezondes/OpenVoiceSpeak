@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Processing;
+using OVS.Client.Audio.Rust;
 using OVS.Client.Audio.Transmit;
 using OVS.Shared.Protocol;
 
@@ -27,7 +27,8 @@ internal sealed class CapturePipeline : IDisposable
     bool sending;
     SincResampler? resampler;
     int resamplerRate, channels = 1;
-    WasapiCapture? capture;
+    NativeMicrophone? microphone; // Package 177
+    Thread? microphoneThread;
     Thread? toneThread;
     volatile bool running = true;
     // set by Dispose: ends the tone thread's wait for its next frame at once (never disposed: a late wait may still read it)
@@ -40,28 +41,50 @@ internal sealed class CapturePipeline : IDisposable
     /// <summary>The microphone's buffer in WASAPI (its latency); part of the echo canceller's delay hint.</summary>
     internal const int MicBufferMs = 20;
 
-    /// <param name="failed">Package 137: the device stopped with an error (unplugged, invalidated); any thread, must not block.</param>
-    /// <param name="device">The microphone, null for the default one.</param>
-    internal static CapturePipeline FromDevice(MMDevice? device, Action<Exception>? failed = null)
+    /// <summary>
+    /// Package 177: the native microphone's samples (48 kHz float, the device's channels) go through the capture chain on
+    /// a thread of its own, which waits for the device's rounds; the native ring holds a second, so nothing is lost
+    /// while that thread stands.
+    /// </summary>
+    /// <param name="microphone">The opened microphone; the pipeline owns it.</param>
+    /// <param name="failed">Package 137: the device stopped with an error (unplugged, invalidated); told once, must not block.</param>
+    internal static CapturePipeline FromMicrophone(NativeMicrophone microphone, Action<Exception>? failed = null)
     {
-        var pipeline = new CapturePipeline();
-        // Event driven with a 20 ms buffer: the default polls a 100 ms buffer and adds up to 50 ms latency.
-        var capture = new WasapiCapture(device ?? WasapiCapture.GetDefaultCaptureDevice(), useEventSync: true, audioBufferMillisecondsLength: MicBufferMs);
-        float[] samples = []; // reused: only the capture thread touches it
-        var sides = new StereoInput(); // Package 142: one per opened device
-        capture.DataAvailable += (_, args) =>
-        {
-            var format = capture.WaveFormat;
-            if (pipeline.Music && format.Channels >= 2) // Package 142: without the downmix; a mono device stays mono
-                pipeline.Feed(SampleConversion.ReadStereo(args.Buffer, args.BytesRecorded, format, ref samples, sides), format.SampleRate, 2);
-            else pipeline.Feed(SampleConversion.ReadMono(args.Buffer, args.BytesRecorded, format, ref samples), format.SampleRate);
-        };
-        capture.RecordingStopped += (_, args) =>
-        {
-            if (args.Exception is { } error) failed?.Invoke(error); // a stop of our own (Dispose) carries none
-        };
-        pipeline.capture = capture;
+        var pipeline = new CapturePipeline { microphone = microphone };
+        pipeline.microphoneThread = new Thread(() => pipeline.MicrophoneLoop(microphone, failed)) { IsBackground = true, Name = "Microphone" };
         return pipeline;
+    }
+
+    // Package 177 (A181): how often the waiting microphone thread looks whether the device stopped
+    static readonly TimeSpan FailurePollInterval = TimeSpan.FromMilliseconds(100);
+
+    void MicrophoneLoop(NativeMicrophone source, Action<Exception>? failed)
+    {
+        var format = WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, source.Channels);
+        var raw = new float[AudioFormat.SampleRate / 10 * source.Channels]; // up to 100 ms per read
+        var bytes = new byte[raw.Length * sizeof(float)];
+        float[] samples = []; // reused: only this thread touches it
+        var sides = new StereoInput(); // Package 142: one per opened device
+        WaitHandle[] wakes = [source.Ready, toneStop.WaitHandle];
+        bool reported = false;
+        while (running)
+        {
+            WaitHandle.WaitAny(wakes, FailurePollInterval); // clock: real time, new samples or the stop wake it at once
+            if (!running) return;
+            if (!reported && source.ErrorCode is not 0 and var code)
+            {
+                reported = true;
+                failed?.Invoke(new Exceptions.AudioDeviceException($"the microphone stopped (HRESULT 0x{code:X8})", code));
+            }
+            int count;
+            while ((count = source.Read(raw)) > 0)
+            {
+                Buffer.BlockCopy(raw, 0, bytes, 0, count * sizeof(float));
+                if (Music && format.Channels >= 2) // Package 142: without the downmix; a mono device stays mono
+                    Feed(SampleConversion.ReadStereo(bytes, count * sizeof(float), format, ref samples, sides), format.SampleRate, 2);
+                else Feed(SampleConversion.ReadMono(bytes, count * sizeof(float), format, ref samples), format.SampleRate);
+            }
+        }
     }
 
     /// <summary>Package 142: the music encoder once music was sent (tests see it is one and the same).</summary>
@@ -159,7 +182,7 @@ internal sealed class CapturePipeline : IDisposable
     /// <summary>Starts the microphone.</summary>
     public void Start()
     {
-        capture?.StartRecording();
+        microphoneThread?.Start();
         toneThread?.Start();
     }
 
@@ -290,11 +313,8 @@ internal sealed class CapturePipeline : IDisposable
         IsDisposed = true;
         running = false;
         toneStop.Set();
-        if (capture is not null)
-        {
-            capture.StopRecording();
-            capture.Dispose();
-        }
+        if (microphoneThread is { IsAlive: true }) microphoneThread.Join(200); // clock: real time, bounded for a slow frame (the wait itself ends at once)
+        microphone?.Dispose();
         if (toneThread is { IsAlive: true }) toneThread.Join(200); // clock: real time, bounded for a slow frame (the wait itself ends at once); one never started (fed by hand) cannot be joined
         lock (gate) // a late frame on the capture thread must not reach the freed native state
         {

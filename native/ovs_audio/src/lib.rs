@@ -8,6 +8,8 @@
 
 pub mod core;
 pub mod device;
+#[cfg(windows)]
+pub mod microphone;
 pub mod speaker;
 pub mod voice;
 

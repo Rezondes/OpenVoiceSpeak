@@ -75,8 +75,13 @@ sealed class WasapiHardware(string audioLibrary = NativeAudio.Library) : IAudioH
         }
     }
 
-    public CapturePipeline OpenInput(string? deviceId, List<string> warnings) =>
-        CapturePipeline.FromDevice(Open(deviceId, AudioDirection.Input, warnings), exception => Failed?.Invoke(AudioDirection.Input, exception));
+    /// <summary>Package 177: the native library's microphone on the chosen device, or on the default one with the fallback warning.</summary>
+    public CapturePipeline OpenInput(string? deviceId, List<string> warnings)
+    {
+        using var device = Open(deviceId, AudioDirection.Input, warnings);
+        var microphone = NativeMicrophone.Open(NativeAudio.Load(audioLibrary), device?.ID);
+        return CapturePipeline.FromMicrophone(microphone, error => Failed?.Invoke(AudioDirection.Input, error));
+    }
 
     /// <summary>The speaker's own buffer in WASAPI (its latency); part of the echo canceller's delay hint.</summary>
     internal const int SpeakerBufferMs = 30;

@@ -20,4 +20,14 @@ public class WasapiHardwareTests
 
         Assert.Contains("ovs-no-such-audio", thrown.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void OpenInput_LibraryMissing_ThrowsItsReason()
+    {
+        var hardware = new WasapiHardware("ovs-no-such-audio");
+
+        var thrown = Assert.Throws<InvalidOperationException>(() => hardware.OpenInput(null, []));
+
+        Assert.Contains("ovs-no-such-audio", thrown.Message, StringComparison.Ordinal);
+    }
 }
