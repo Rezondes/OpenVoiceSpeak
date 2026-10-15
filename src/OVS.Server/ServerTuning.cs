@@ -18,6 +18,9 @@ internal static class ServerTuning
     /// <summary>The longest request id accepted.</summary>
     public const int MaxRequestIdLength = 64;
 
+    /// <summary>Package 169: how often idle sessions are looked for while the AFK move is on; a move comes at most this late.</summary>
+    public static readonly TimeSpan AfkCheckInterval = TimeSpan.FromSeconds(15);
+
     // ---- Costly requests, each kind with its own bucket per session ----
     /// <summary>Package 168: GetAvatar, at most 64 KB each; a connect asks for everyone's at once, so a burst of them.</summary>
     public const double AvatarsPerSecond = 5;

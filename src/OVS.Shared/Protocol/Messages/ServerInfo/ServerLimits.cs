@@ -6,4 +6,7 @@ namespace OVS.Shared.Protocol.Messages.ServerInfo;
 /// <param name="AutoRestartTime">Daily restart time in server local time, used while AutoRestart is on.</param>
 /// <param name="LogRotateDaily">True starts new log files every day, false one per start.</param>
 /// <param name="AutoRestart">True restarts the server every day at AutoRestartTime.</param>
-public sealed record ServerLimits(int MaxUsers, int LogDays, bool LogRotateDaily, bool AutoRestart, TimeOnly AutoRestartTime);
+/// <param name="AfkChannelId">Package 169: where idle users are moved; null is the default channel.</param>
+/// <param name="AfkMinutes">Package 169: 0 to <see cref="ProtocolLimits.AfkMinutesMax"/> minutes without voice and own action; 0 switches it off.</param>
+public sealed record ServerLimits(int MaxUsers, int LogDays, bool LogRotateDaily, bool AutoRestart, TimeOnly AutoRestartTime,
+    Guid? AfkChannelId = null, int AfkMinutes = 0);

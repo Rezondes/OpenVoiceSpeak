@@ -275,6 +275,10 @@ static partial class ServerLogLines
     [LoggerMessage(EventId = 128, EventName = "Audit:AvatarRemovedBy", Level = LogLevel.Information, Message = "Profile picture of {User} removed by {Nickname}")]
     public static partial void AvatarRemovedBy(this ILogger logger, string user, string nickname);
 
+    /// <summary>Package 169: an idle user was moved into the AFK channel.</summary>
+    [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} moved from '{From}' to the AFK channel '{To}' after {Minutes} idle minutes")]
+    public static partial void MovedToAfk(this ILogger logger, string nickname, string from, string to, int minutes);
+
     /// <summary>Package 166: a timed mute's time is over, also for an offline user.</summary>
     [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} no longer server-muted, the time is over")]
     public static partial void ServerMuteEnded(this ILogger logger, string nickname);

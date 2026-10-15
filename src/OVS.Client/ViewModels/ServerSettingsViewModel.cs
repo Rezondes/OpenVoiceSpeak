@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using OVS.Client.Collections;
 using OVS.Client.Localization;
 using OVS.Client.Models;
 using OVS.Shared.Permissions;
@@ -28,6 +29,12 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
     [ObservableProperty] bool logRotateDaily;
     [ObservableProperty] bool autoRestart;
     [ObservableProperty] TimeSpan? autoRestartTime;
+    /// <summary>Package 169: minutes without voice and own action before the move into the AFK channel; 0 is off.</summary>
+    [ObservableProperty] decimal? afkMinutes;
+    /// <summary>Package 169: the AFK channel's row; the default channel stands for "none chosen".</summary>
+    [ObservableProperty] ChannelViewModel? afkChannel;
+    /// <summary>Package 169: the voice channels in the tree's order, to choose the AFK channel from.</summary>
+    [ObservableProperty] IReadOnlyList<ChannelViewModel> afkChoices = [];
     /// <summary>Package 83: why the settings would be refused, null while they are fine.</summary>
     [ObservableProperty] string? error;
 
@@ -55,6 +62,7 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
     {
         HasPassword = server.Mirror.Settings.HasPassword;
         if (loadedLimits is null) LoadLimits(); // e.g. arriving with the ServerConfig right; later ones never overwrite edits
+        else ShowAfkChoices(AfkChannel?.Id ?? server.Mirror.DefaultChannelId); // Package 169: channels come and go
         if (!ReferenceEquals(server.Mirror.Settings, seenSettings)) // Package 114
         {
             seenSettings = server.Mirror.Settings;
@@ -66,9 +74,12 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
     static string NormName(string? text) => text?.Trim() ?? "";
     static string NormText(string? text) => (text ?? "").Replace("\r\n", "\n", StringComparison.Ordinal);
 
+    /// <remarks>Package 169: the AFK channel shown for "none chosen" (the default channel) stays none chosen.</remarks>
     ServerLimits EditedLimits(ServerLimits loaded) =>
         new((int)(MaxUsers ?? loaded.MaxUsers), (int)(LogDays ?? loaded.LogDays), LogRotateDaily, AutoRestart,
-            AutoRestartTime is { } restartTime ? TimeOnly.FromTimeSpan(restartTime) : loaded.AutoRestartTime);
+            AutoRestartTime is { } restartTime ? TimeOnly.FromTimeSpan(restartTime) : loaded.AutoRestartTime,
+            AfkChannel?.Id is { } chosen && chosen != (loaded.AfkChannelId ?? server.Mirror.DefaultChannelId) ? chosen : loaded.AfkChannelId,
+            (int)(AfkMinutes ?? loaded.AfkMinutes));
 
     /// <summary>The card differs from what its fields were loaded with.</summary>
     internal bool HasChanges =>
@@ -119,6 +130,16 @@ internal sealed partial class ServerSettingsViewModel : ObservableObject
         LogRotateDaily = limits.LogRotateDaily;
         AutoRestart = limits.AutoRestart;
         AutoRestartTime = limits.AutoRestartTime.ToTimeSpan();
+        AfkMinutes = limits.AfkMinutes;
+        ShowAfkChoices(limits.AfkChannelId ?? server.Mirror.DefaultChannelId);
+    }
+
+    /// <summary>Package 169: the voice channels now, with <paramref name="selected"/> chosen, or the default channel when it is gone.</summary>
+    void ShowAfkChoices(Guid selected)
+    {
+        var choices = server.Tree.Channels.Live().Where(channel => channel.IsVoice).ToList();
+        if (!choices.SequenceEqual(AfkChoices)) AfkChoices = choices; // a new list only for other channels, so the box keeps its choice
+        AfkChannel = choices.FirstOrDefault(channel => channel.Id == selected) ?? choices.FirstOrDefault(channel => channel.Id == server.Mirror.DefaultChannelId);
     }
 
     [RelayCommand]

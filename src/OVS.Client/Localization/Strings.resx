@@ -295,6 +295,10 @@
   <data name="Ui_AboveThreshold" xml:space="preserve"><value>über der Schwelle, würde senden</value></data>
   <data name="Ui_Admin" xml:space="preserve"><value>Verwaltung</value></data>
   <data name="Ui_AdminGroupFixed" xml:space="preserve"><value>Die Admin-Gruppe hat immer alle Rechte und ist nicht änderbar.</value></data>
+  <data name="Ui_AfkChannel" xml:space="preserve"><value>AFK-Channel</value></data>
+  <data name="Ui_AfkHint" xml:space="preserve"><value>Im AFK-Channel spricht niemand</value></data>
+  <data name="Ui_AfkMinutes" xml:space="preserve"><value>Nach so vielen Minuten ohne Sprache und eigene Aktion in den AFK-Channel verschieben (0 = aus)</value></data>
+  <data name="Ui_AfkTag" xml:space="preserve"><value>AFK</value></data>
   <data name="Ui_AllGroups" xml:space="preserve"><value>Alle Gruppen</value></data>
   <data name="Ui_AutoGain" xml:space="preserve"><value>Automatische Verstärkung</value></data>
   <data name="Ui_AutoGainHint" xml:space="preserve"><value>Empfohlen. Hebt ein leises Mikrofon langsam auf normale Sprechlautstärke an, ohne zu übersteuern.</value></data>

@@ -26,6 +26,10 @@ internal sealed class ServerSettings
     public bool AutoRestart { get; set; }
     /// <summary>Server local time.</summary>
     public TimeOnly AutoRestartTime { get; set; } = ServerConfig.DefaultRestartTime;
+    /// <summary>Package 169: where idle users are moved; null (also in older data) is the default channel.</summary>
+    public Guid? AfkChannelId { get; set; }
+    /// <summary>Package 169: minutes without voice and own action before the move; 0 (also in older data) switches it off.</summary>
+    public int AfkMinutes { get; set; }
 
     /// <summary>Package 69: takes the start values once, for a new server or on the update to data version 3.</summary>
     public void TakeStartValues(ServerConfig config)
@@ -38,7 +42,7 @@ internal sealed class ServerSettings
     }
 
     /// <summary>The editable limits as the protocol message carries them; a method, so it is not persisted.</summary>
-    public ServerLimits ToServerLimits() => new(MaxUsers, LogDays, LogRotateDaily, AutoRestart, AutoRestartTime);
+    public ServerLimits ToServerLimits() => new(MaxUsers, LogDays, LogRotateDaily, AutoRestart, AutoRestartTime, AfkChannelId, AfkMinutes);
 
     /// <summary>True when the server password is still the unsalted SHA-256 hex from before Package 91; a method, so it is not persisted.</summary>
     public bool HasLegacyHash() => StoredPassword?.IsLegacy() ?? false;

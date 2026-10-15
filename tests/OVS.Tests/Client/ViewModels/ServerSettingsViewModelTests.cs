@@ -420,5 +420,35 @@ public sealed class ServerSettingsViewModelTests
         Assert.False(rig.Card.Place.HasChanges());
     }
 
+    // ---- Package 169: the AFK channel ----
+
+    /// <summary>None chosen shows the lobby and stays none chosen; a chosen channel and the minutes are sent.</summary>
+    [Fact]
+    public void Save_AfkChannelAndMinutes_SendsTheChosenChannel()
+    {
+        var rig = Create(ReportedLimits);
+        Assert.Equal(["Lobby", "Raid"], rig.Card.AfkChoices.Select(channel => channel.Name));
+        Assert.Equal(FakeServers.Lobby, rig.Card.AfkChannel?.Id);
+        Assert.False(rig.Card.HasChanges);
+
+        rig.Card.AfkMinutes = 10;
+        rig.Card.SaveCommand.Execute(null);
+        Assert.Equal(ReportedLimits with { AfkMinutes = 10 }, Assert.IsType<UpdateServerSettings>(sent[^1]).Limits);
+        rig.Card.AfkChannel = rig.Card.AfkChoices[1];
+        rig.Card.SaveCommand.Execute(null);
+        Assert.Equal(ReportedLimits with { AfkChannelId = FakeServers.Raid, AfkMinutes = 10 }, Assert.IsType<UpdateServerSettings>(sent[^1]).Limits);
+    }
+
+    [Fact]
+    public void AfkChannel_Reported_RowShowsAfk()
+    {
+        var rig = Create(ReportedLimits);
+
+        ApplyServerSettings(rig, settings => settings with { AfkChannelId = FakeServers.Raid });
+
+        Assert.True(rig.Server.Tree.FindChannel(FakeServers.Raid)!.IsAfk);
+        Assert.False(rig.Server.Tree.FindChannel(FakeServers.Lobby)!.IsAfk);
+    }
+
     sealed record Rig(ServerSettingsViewModel Card, ServerViewModel Server);
 }

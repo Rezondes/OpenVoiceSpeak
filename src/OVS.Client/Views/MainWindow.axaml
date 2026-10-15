@@ -233,9 +233,14 @@
                         <ctl:BusySpinner DockPanel.Dock="Right" Margin="8,0,0,0" IsVisible="{Binding IsBusy}" />
                         <!-- Package 66: a muted channel shows the mute icon in front instead of the speaker -->
                         <Panel DockPanel.Dock="Left" Margin="0,0,8,0">
-                          <PathIcon anim:LiveMotion.Pop="True" Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding !IsMuted}" />
-                          <PathIcon anim:LiveMotion.Pop="True" Classes="warning channelIcon" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsMuted}"
-                                    ToolTip.Tip="{x:Static l:Strings.Dlg_MutedChannel}" />
+                          <Panel IsVisible="{Binding !IsAfk}">
+                            <PathIcon anim:LiveMotion.Pop="True" Classes="muted channelIcon" Data="{StaticResource Icon.Speaker}" IsVisible="{Binding !IsMuted}" />
+                            <PathIcon anim:LiveMotion.Pop="True" Classes="warning channelIcon" Data="{StaticResource Icon.MicOff}" IsVisible="{Binding IsMuted}"
+                                      ToolTip.Tip="{x:Static l:Strings.Dlg_MutedChannel}" />
+                          </Panel>
+                          <!-- Package 169: the AFK channel shows a moon instead, nobody is heard there -->
+                          <PathIcon anim:LiveMotion.Pop="True" Classes="muted channelIcon" Data="{StaticResource Icon.Moon}" IsVisible="{Binding IsAfk}"
+                                    ToolTip.Tip="{x:Static l:Strings.Ui_AfkHint}" />
                         </Panel>
                         <!-- Package 67: left-aligned, so home and link icon follow the name and the name trims when space runs out -->
                         <DockPanel HorizontalAlignment="Left">
@@ -245,6 +250,8 @@
                           <PathIcon anim:LiveMotion.Pop="True" DockPanel.Dock="Right" Classes="sm link" Data="{StaticResource Icon.Link}" IsVisible="{Binding IsLinked}"
                                     ToolTip.Tip="{Binding LinkedNames, StringFormat={x:Static l:Strings.Ui_LinkedWithFmt}}"
                                     Margin="6,0,0,0" VerticalAlignment="Center" />
+                          <TextBlock DockPanel.Dock="Right" Classes="caption" Text="{x:Static l:Strings.Ui_AfkTag}" IsVisible="{Binding IsAfk}"
+                                     ToolTip.Tip="{x:Static l:Strings.Ui_AfkHint}" Margin="6,0,0,0" VerticalAlignment="Center" />
                           <PathIcon DockPanel.Dock="Right" Classes="sm muted" Data="{StaticResource Icon.Home}" IsVisible="{Binding IsDefault}"
                                     ToolTip.Tip="{x:Static l:Strings.Ui_DefaultChannel}" Margin="6,0,0,0" VerticalAlignment="Center" />
                           <TextBlock Classes="channelName" Text="{Binding Name}" anim:LiveMotion.Fade="True" FontWeight="SemiBold" VerticalAlignment="Center"

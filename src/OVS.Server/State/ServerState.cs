@@ -85,6 +85,7 @@ internal sealed partial class ServerState
         logs.Update(data.Settings.LogDays, data.Settings.LogRotateDaily);
         HintIgnoredStartValues();
         EndMutes(); // Package 166: an end that passed while the server was down, and the timer of the next
+        ScheduleAfkCheck(); // Package 169
         if (!data.Users.Any(user => user.GroupIds.Contains(AdminGroupId)))
         {
             // The token is a secret: console only, never in a log file (files end up in backups).
@@ -395,7 +396,7 @@ internal sealed partial class ServerState
     /// <summary>Package 69: the limits only for those who may change them.</summary>
     ServerSettingsInfo SettingsInfo(Session to) =>
         new(data.Settings.Name, data.Settings.WelcomeText, data.Settings.StoredPassword is not null, icon.Hash,
-            to.Permissions.Has(Permission.ServerConfig) ? data.Settings.ToServerLimits() : null);
+            to.Permissions.Has(Permission.ServerConfig) ? data.Settings.ToServerLimits() : null, ActiveAfkChannel);
 
     void BroadcastSettings()
     {

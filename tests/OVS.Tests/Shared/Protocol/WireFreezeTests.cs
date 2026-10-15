@@ -113,8 +113,8 @@ public sealed class WireFreezeTests
         "LinkInfo: a, b",
         "LogFileInfo: channelId, channelName, id, kind, lastWrite, size, start",
         "LogHit: fileId, line, text",
-        "ServerLimits: autoRestart, autoRestartTime, logDays, logRotateDaily, maxUsers",
-        "ServerSettingsInfo: hasPassword, iconHash, limits, name, welcomeText",
+        "ServerLimits: afkChannelId, afkMinutes, autoRestart, autoRestartTime, logDays, logRotateDaily, maxUsers",
+        "ServerSettingsInfo: afkChannelId, hasPassword, iconHash, limits, name, welcomeText",
         "ServerSnapshot: channels, defaultChannelId, groups, links, settings, users",
         "UserInfo: avatar, canBeModeratedByMe, channelId, fingerprint, groupIds, nickname, permissions, selfDeafened, selfMuted, serverMuted, serverMutedUntil, sessionId",
     ];

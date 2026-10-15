@@ -172,6 +172,7 @@ internal sealed partial class ServerState
             }
             logs.Server.AllDisconnected(why, sessions.Count);
             muteEnd?.Dispose(); // Package 166: no mute ends after the close
+            afkCheck?.Dispose(); // Package 169
             saves.Close(force: sessions.Count > 0); // the running sessions' statistics, or what is still pending
             sessions.Clear();
             voiceSessions.Clear();

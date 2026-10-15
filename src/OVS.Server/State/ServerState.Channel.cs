@@ -44,6 +44,7 @@ internal sealed partial class ServerState
         ChannelLogger(request.ChannelId)?.JoinedFrom(session.Nickname, ChannelName(from));
         #pragma warning restore CA1873
         session.ChannelId = request.ChannelId;
+        session.LastActivity = time.GetUtcNow(); // Package 169
         BroadcastUser(session);
     }
 
@@ -258,8 +259,11 @@ internal sealed partial class ServerState
         if (channel.Kind == ChannelKind.Separator) logs.Server.SeparatorDeleted(session.Nickname);
         else logs.Server.ChannelDeleted(channel.Name, session.Nickname);
         data.Channels.Remove(channel);
+        bool wasAfk = data.Settings.AfkChannelId == channel.Id;
+        if (wasAfk) data.Settings.AfkChannelId = null; // Package 169: the default channel takes over
         saves.Persist();
         Broadcast(new ChannelRemoved(channel.Id));
+        if (wasAfk) BroadcastSettings();
     }
 
     void OnMoveUser(Session session, MoveUser request)
@@ -305,6 +309,7 @@ internal sealed partial class ServerState
 
     void OnSetSelfState(Session session, SetSelfState request)
     {
+        session.LastActivity = time.GetUtcNow(); // Package 169: an own action, also when nothing changes
         bool muted = request.Muted || request.Deafened;
         if (session.SelfDeafened == request.Deafened && session.SelfMuted == muted) return; // Package 86: no broadcast for a no-op
         session.SelfDeafened = request.Deafened;

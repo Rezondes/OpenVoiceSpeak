@@ -25,6 +25,8 @@ internal sealed partial class ChannelViewModel(ServerViewModel owner, Guid id) :
     [ObservableProperty] bool isDefault;
     /// <summary>Package 34: nobody in this channel is heard.</summary>
     [ObservableProperty] bool isMuted;
+    /// <summary>Package 169: the server's AFK channel, where idle users go and nobody is heard.</summary>
+    [ObservableProperty] bool isAfk;
     /// <summary>Package 35: 0 = unlimited.</summary>
     public int MaxUsers => Slots.MaxUsers;
     /// <summary>Package 132 (A141): kbps its senders encode with; 0 for a separator.</summary>

@@ -52,6 +52,7 @@ internal sealed partial class ServerState
             return;
         }
         session.ChatMessages++; // Package 70
+        session.LastActivity = time.GetUtcNow(); // Package 169
 
         var message = new ChatMessage(request.Target, session.Id, session.Nickname, request.Target == ChatTarget.Channel ? session.ChannelId : null,
             to?.Id, text, time.GetUtcNow());

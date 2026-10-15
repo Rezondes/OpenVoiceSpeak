@@ -30,12 +30,12 @@ public class ServerDataTests
         var settings = new ServerSettings
         {
             StoredPassword = StoredPassword.FromStored(new string('A', 64)), MaxUsers = 42, LogDays = 14, LogRotateDaily = false,
-            AutoRestart = true, AutoRestartTime = new TimeOnly(4, 30),
+            AutoRestart = true, AutoRestartTime = new TimeOnly(4, 30), AfkChannelId = Guid.NewGuid(), AfkMinutes = 5,
         };
 
         var keys = JsonDocument.Parse(JsonSerializer.Serialize(settings, ProtocolJson.Indented)).RootElement.EnumerateObject().Select(jsonProperty => jsonProperty.Name);
 
-        Assert.Equal(["name", "welcomeText", "passwordHash", "maxUsers", "logDays", "logRotateDaily", "autoRestart", "autoRestartTime"], keys);
+        Assert.Equal(["name", "welcomeText", "passwordHash", "maxUsers", "logDays", "logRotateDaily", "autoRestart", "autoRestartTime", "afkChannelId", "afkMinutes"], keys);
     }
 
     [Fact]

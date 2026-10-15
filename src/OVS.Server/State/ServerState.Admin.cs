@@ -209,6 +209,11 @@ internal sealed partial class ServerState
         }
         if (PasswordTooLong(session, request, request.Password)) return; // Package 83: "" still removes it
         if (request.Limits is { } serverLimits && Refuse(session, request, ServerLimitsRule.Check(serverLimits))) return;
+        if (request.Limits?.AfkChannelId is { } afkId && (FindChannel(afkId) is not { } afkChannel || !ChannelAccess.IsJoinable(afkChannel.Kind)))
+        {
+            Fail(session, request, ReasonCodes.InvalidValue, "AFK channel: no such voice channel."); // Package 169
+            return;
+        }
         var changes = new List<string>();
         if (data.Settings.Name != name) changes.Add($"name '{data.Settings.Name}' -> '{name}'");
         if (data.Settings.WelcomeText != welcome) changes.Add("welcome text changed");
@@ -230,6 +235,11 @@ internal sealed partial class ServerState
             data.Settings.LogRotateDaily = limits.LogRotateDaily;
             data.Settings.AutoRestart = limits.AutoRestart;
             data.Settings.AutoRestartTime = limits.AutoRestartTime;
+            if (old.AfkChannelId != limits.AfkChannelId || old.AfkMinutes != limits.AfkMinutes) // Package 169
+                changes.Add(limits.AfkMinutes > 0 ? $"AFK after {limits.AfkMinutes} minutes into '{ChannelName(limits.AfkChannelId ?? data.DefaultChannelId)}'" : "AFK move off");
+            data.Settings.AfkChannelId = limits.AfkChannelId;
+            data.Settings.AfkMinutes = limits.AfkMinutes;
+            ScheduleAfkCheck();
             logs.Update(limits.LogDays, limits.LogRotateDaily);
         }
         saves.Persist();

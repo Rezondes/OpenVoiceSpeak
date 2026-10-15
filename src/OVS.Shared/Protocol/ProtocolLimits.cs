@@ -28,6 +28,8 @@ public static class ProtocolLimits
     public const int MaxUsersMin = 1, MaxUsersMax = 100_000;
     /// <summary>The longest log retention in days; 0 keeps every log file.</summary>
     public const int LogDaysMax = 3650;
+    /// <summary>Package 169: the longest idle time before the move into the AFK channel, one day.</summary>
+    public const int AfkMinutesMax = 1440;
     /// <summary>Raw bytes per backup chunk; as base64 it fits the 1 MiB frame (Package 75, A91).</summary>
     public const int BackupChunkBytes = 512 * 1024;
     /// <summary>The largest backup upload (Package 75, A91).</summary>

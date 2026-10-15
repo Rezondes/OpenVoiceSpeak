@@ -178,6 +178,22 @@
                                 IsEnabled="{Binding AutoRestart}" HorizontalAlignment="Left"
                                 AutomationProperties.Name="{x:Static l:Strings.Ui_AutoRestartTime}" />
                   </StackPanel>
+                  <!-- Package 169: idle users go into the AFK channel, where nobody is heard -->
+                  <StackPanel Spacing="4">
+                    <TextBlock Classes="label" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AfkChannel}" />
+                    <ComboBox x:Name="AfkChannelInput" ItemsSource="{Binding AfkChoices}" SelectedItem="{Binding AfkChannel}" MinWidth="200"
+                              AutomationProperties.Name="{x:Static l:Strings.Ui_AfkChannel}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ChannelViewModel">
+                          <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AfkMinutes}" />
+                    <NumericUpDown x:Name="AfkMinutesInput" Value="{Binding AfkMinutes}" Minimum="0" Maximum="1440" Increment="1" FormatString="0"
+                                   Width="160" HorizontalAlignment="Left" AutomationProperties.Name="{x:Static l:Strings.Ui_AfkMinutes}" />
+                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Ui_AfkHint}" />
+                  </StackPanel>
                 </StackPanel>
                 <TextBlock Classes="danger" Text="{Binding Error}" TextWrapping="Wrap"
                            IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />

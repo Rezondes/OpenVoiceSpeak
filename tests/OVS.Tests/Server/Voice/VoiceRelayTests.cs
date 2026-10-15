@@ -6,6 +6,7 @@ using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Links;
 using OVS.Shared.Protocol.Messages.Moderation;
+using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
 using OVS.Shared.Protocol.Messages.VoiceRelay;
 using OVS.Shared.Voice;
@@ -174,6 +175,23 @@ public sealed class VoiceRelayTests : IAsyncLifetime
         await first.SendAsync(new EditChannel(other, "Other", "", 1, IsMuted: true));
         await third.WaitForAsync<ChannelUpdated>(channelUpdated => channelUpdated.Channel.Id == other && channelUpdated.Channel.IsMuted);
         Assert.NotNull(await SendUntilHeardAsync(va, vc, VoiceHeader.TargetLinked));
+    }
+
+    /// <summary>Package 169: nobody is heard in the AFK channel (here the lobby); with the AFK move off again the lobby is heard.</summary>
+    [Fact]
+    public async Task Voice_InAfkChannel_NothingRelayed()
+    {
+        var limits = first.Welcome.Snapshot.Settings.Limits!;
+        await first.SendAsync(new UpdateServerSettings("Testserver", "", null, limits with { AfkMinutes = 60 }));
+        await second.WaitForAsync<ServerSettingsChanged>(changed => changed.Settings.AfkChannelId == first.Welcome.Snapshot.DefaultChannelId);
+        await va.HelloAsync();
+        await vb.HelloAsync();
+        await va.SendAsync(PacketType.Voice, Opus);
+        Assert.Null(await vb.ReceiveVoiceAsync(400));
+
+        await first.SendAsync(new UpdateServerSettings("Testserver", "", null, limits));
+        await second.WaitForAsync<ServerSettingsChanged>(changed => changed.Settings.AfkChannelId is null);
+        Assert.NotNull(await SendUntilHeardAsync(va, vb));
     }
 
     [Fact]

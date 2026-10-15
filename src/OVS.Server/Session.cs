@@ -54,6 +54,8 @@ internal sealed class Session(uint id, string fingerprint, string nickname, IPAd
     public Permission Permissions { get; set; }
     /// <summary>The user's groups.</summary>
     public IReadOnlyList<Guid> GroupIds { get; set; } = [];
+    /// <summary>Package 169: the last voice packet, chat message, channel change or self-state change; idle since then.</summary>
+    public DateTimeOffset LastActivity { get; set; } = time.GetUtcNow();
     /// <summary>Package 75: the backup upload in progress (one per session).</summary>
     public BackupUpload? Upload { get; set; }
 

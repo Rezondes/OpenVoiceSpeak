@@ -5,4 +5,6 @@ namespace OVS.Shared.Protocol.Messages.ServerInfo;
 /// <param name="Name">The server's name.</param>
 /// <param name="WelcomeText">Shown to everyone on connect.</param>
 /// <param name="HasPassword">Connecting needs the server password.</param>
-public sealed record ServerSettingsInfo(string Name, string WelcomeText, bool HasPassword, string? IconHash = null, ServerLimits? Limits = null);
+/// <param name="AfkChannelId">Package 169: the AFK channel for everyone, where nobody is heard; null while the AFK move is off.</param>
+public sealed record ServerSettingsInfo(string Name, string WelcomeText, bool HasPassword, string? IconHash = null, ServerLimits? Limits = null,
+    Guid? AfkChannelId = null);

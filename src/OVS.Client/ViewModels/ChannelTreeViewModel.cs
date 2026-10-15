@@ -90,6 +90,7 @@ internal sealed class ChannelTreeViewModel
             if (!channelVms.TryGetValue(channelInfo.Id, out var channel)) channelVms[channelInfo.Id] = channel = new ChannelViewModel(owner, channelInfo.Id);
             var linked = Mirror.LinkedChannels(channelInfo.Id).Select(id => Mirror.Channels.GetValueOrDefault(id)?.Name).OfType<string>().Order().ToList();
             channel.Update(channelInfo, linked, channelInfo.Id == Mirror.DefaultChannelId, self?.ChannelId == channelInfo.Id, owner.SelfPermissions);
+            channel.IsAfk = channelInfo.Id == Mirror.Settings.AfkChannelId; // Package 169
             channel.UpdateLock(channelInfo, groups, self?.GroupIds ?? []);
 
             ShowUsers(channel, channelInfo, byChannel[channelInfo.Id], userInfo =>

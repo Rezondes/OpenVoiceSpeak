@@ -6,6 +6,7 @@ using OVS.Shared.Identity;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Groups;
 using OVS.Shared.Protocol.Messages.Moderation;
@@ -403,6 +404,53 @@ public class AdminCommandTests
         await using var testClient = await TestClient.ConnectAsync(server, identity: guest);
         await client.SendAsync(new AssignGroup(guest.Fingerprint, PermissionRules.AdminGroupId));
         Assert.NotNull((await testClient.WaitForAsync<ServerSettingsChanged>()).Settings.Limits);
+    }
+
+    // ---- Package 169: the AFK channel ----
+
+    [Fact]
+    public async Task Afk_RangeAndChannel_Checked()
+    {
+        var admin = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
+        await using var testClient = await TestClient.ConnectAsync(server);
+        var limits = client.Welcome.Snapshot.Settings.Limits!;
+        Assert.Equal((null, 0), (limits.AfkChannelId, limits.AfkMinutes)); // default: the lobby, off
+        Assert.Null(testClient.Welcome.Snapshot.Settings.AfkChannelId);
+        await client.SendAsync(new CreateChannel("", "", Kind: ChannelKind.Separator));
+        var separator = (await client.WaitForAsync<ChannelAdded>()).Channel.Id;
+        await client.SendAsync(new CreateChannel("Pause", ""));
+        var pause = (await client.WaitForAsync<ChannelAdded>()).Channel.Id;
+
+        foreach (var (id, refused) in new[] { ("1", limits with { AfkMinutes = -1 }), ("2", limits with { AfkMinutes = 1441 }),
+                     ("3", limits with { AfkChannelId = Guid.NewGuid(), AfkMinutes = 5 }), ("4", limits with { AfkChannelId = separator, AfkMinutes = 5 }) })
+        {
+            await client.SendAsync(new UpdateServerSettings("Testserver", "", null, refused) { RequestId = id });
+            Assert.Equal(ReasonCodes.InvalidValue, (await client.ErrorAsync(id)).Code);
+        }
+        await client.SendAsync(new UpdateServerSettings("Testserver", "", null, limits with { AfkChannelId = pause, AfkMinutes = 1440 }));
+        Assert.Equal(pause, (await testClient.WaitForAsync<ServerSettingsChanged>()).Settings.AfkChannelId);
+        var saved = new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException()).Settings;
+        Assert.Equal((pause, 1440), (saved.AfkChannelId, saved.AfkMinutes));
+    }
+
+    [Fact]
+    public async Task AfkChannel_Deleted_FallsBackToDefault()
+    {
+        var admin = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
+        await using var client = await TestClient.ConnectAsync(server, identity: admin);
+        await using var testClient = await TestClient.ConnectAsync(server);
+        await client.SendAsync(new CreateChannel("Pause", ""));
+        var pause = (await client.WaitForAsync<ChannelAdded>()).Channel.Id;
+        await client.SendAsync(new UpdateServerSettings("Testserver", "", null, client.Welcome.Snapshot.Settings.Limits! with { AfkChannelId = pause, AfkMinutes = 10 }));
+        Assert.Equal(pause, (await testClient.WaitForAsync<ServerSettingsChanged>()).Settings.AfkChannelId);
+
+        await client.SendAsync(new DeleteChannel(pause));
+        Assert.Equal(client.Welcome.Snapshot.DefaultChannelId, (await testClient.WaitForAsync<ServerSettingsChanged>()).Settings.AfkChannelId);
+        var limits = (await client.WaitForAsync<ServerSettingsChanged>(changed => changed.Settings.Limits?.AfkChannelId is null)).Settings.Limits!;
+        Assert.Equal(10, limits.AfkMinutes); // still on, now in the lobby
     }
 
     [Fact]

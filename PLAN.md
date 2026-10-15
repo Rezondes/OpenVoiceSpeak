@@ -9759,20 +9759,22 @@ There is no idle detection. The server sees voice packets and requests, not the 
 
 ### Acceptance Criteria
 
-- [ ] AC1: On "Betrieb" the admin chooses the AFK channel (default: the lobby) and the minutes (0 to 1440, default 0 = off); the server refuses anything else.
-- [ ] AC2: With minutes > 0, a session that sent no voice packet, no chat message, no channel change and no self-state change for that long is moved into the AFK channel; the move is broadcast like a moderator's move and logged.
-- [ ] AC3: Muted or deafened sessions are moved the same way; a session already in the AFK channel is left alone.
-- [ ] AC4: No voice is relayed from the AFK channel; the client shows the channel as AFK with the hint "Im AFK-Channel spricht niemand" ("Nobody speaks in the AFK channel").
-- [ ] AC5: Deleting the AFK channel falls back to the default channel; old data loads with the default channel and 0.
-- [ ] AC6: The protocol version is raised.
+- [x] AC1: On "Betrieb" the admin chooses the AFK channel (default: the lobby) and the minutes (0 to 1440, default 0 = off); the server refuses anything else.
+- [x] AC2: With minutes > 0, a session that sent no voice packet, no chat message, no channel change and no self-state change for that long is moved into the AFK channel; the move is broadcast like a moderator's move and logged.
+- [x] AC3: Muted or deafened sessions are moved the same way; a session already in the AFK channel is left alone.
+- [x] AC4: No voice is relayed from the AFK channel; the client shows the channel as AFK with the hint "Im AFK-Channel spricht niemand" ("Nobody speaks in the AFK channel").
+- [x] AC5: Deleting the AFK channel falls back to the default channel; old data loads with the default channel and 0.
+- [x] AC6: The protocol version is raised.
 
 ### Tests (TDD)
 
 1. `AdminCommandTests > "Afk_RangeAndChannel_Checked"` (AC1)
-2. `AfkWatchTests > "Idle_ForMinutes_Moved"`, `"Voice_ResetsIdle"`, `"Muted_StillMoved"`, `"Off_NeverMoves"`, `"InAfk_LeftAlone"` (AC2, AC3), on the manual clock.
-3. `VoiceRelayTests > "AfkChannel_NothingRelayed"` (AC4)
-4. `AdminCommandTests > "AfkChannelDeleted_FallsBackToDefault"` and `PersistedFixtureTests` loading old data (AC5)
+2. `AfkWatchTests > "Idle_ForMinutes_Moved"`, `"Voice_WhileIdle_ResetsIdle"`, `"Session_MutedAndIdle_StillMoved"`, `"AfkMove_Off_NeverMoves"`, `"Session_InAfkChannel_LeftAlone"` (AC2, AC3), on the manual clock.
+3. `VoiceRelayTests > "Voice_InAfkChannel_NothingRelayed"` (AC4)
+4. `AdminCommandTests > "AfkChannel_Deleted_FallsBackToDefault"` and `PersistedFixtureTests` loading old data (AC5)
 5. `WireFreezeTests`, `SmokeTests` (AC6)
+
+(as built: no `AfkWatch` class; the check is `ServerState.Afk.cs`, a timer of the injected clock every 15 s (`ServerTuning.AfkCheckInterval`, the same way as the timed mutes of Package 166), running only while the minutes are above 0. `ServerLimits` carries the chosen channel (null = the default channel) and the minutes for those with ServerConfig; `ServerSettingsInfo.AfkChannelId` tells everyone the AFK channel in use (null while off), so every client shows the moon and "AFK". The AFK channel is silent only while the move is on, so the lobby as default AFK channel is heard while it is off. Every SetSelfState counts as an own action, also one that changes nothing. Deleting the AFK channel clears the choice and sends the settings again. Old data loads with null and 0 (the existing `PersistedFixtureTests` compare every value). The AFK tests are in `Server/State/AfkWatchTests.cs`; the client tests in `ServerSettingsViewModelTests`. Several test names got a third part (RL601). The protocol version is 20.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 
