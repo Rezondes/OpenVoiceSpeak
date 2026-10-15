@@ -17,7 +17,7 @@ internal interface IAudioHardware
 
     /// <summary>A device that cannot open throws; the engine reports it to the user.</summary>
     /// <returns>The buffer the playback loop fills, playing already; disposing it stops the device.</returns>
-    PlaybackBuffer OpenOutput(string? deviceId, List<string> warnings);
+    IPlaybackBuffer OpenOutput(string? deviceId, List<string> warnings);
 
     /// <summary>
     /// Package 137 (A146): the id of the device that would open now for this choice: the chosen device if active, else

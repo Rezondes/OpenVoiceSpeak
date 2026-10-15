@@ -25,6 +25,9 @@ internal sealed class PlaybackLoop
     static readonly TimeSpan TargetBuffer = TimeSpan.FromMilliseconds(TargetBufferMs);
 
     // What the speaker device itself still holds after its buffer ran empty: its own buffer, plus 10 ms of margin.
+    // Package 173 (A181): how often a waiting loop asks the native speaker whether its device stopped
+    static readonly TimeSpan FailurePollInterval = TimeSpan.FromMilliseconds(100);
+
     static readonly TimeSpan DeviceLatency = TimeSpan.FromMilliseconds(WasapiHardware.SpeakerBufferMs + 10);
 
     readonly object gate; // the engine's: the devices and settings
@@ -98,7 +101,6 @@ internal sealed class PlaybackLoop
     void Run()
     {
         devices.OpenSpeakerAndReport();
-        var bytes = new byte[AudioFormat.StereoFrameSamples * sizeof(float)];
         var clock = Stopwatch.StartNew(); // clock: real time
         long ticks = 0;
         while (!stopped)
@@ -110,7 +112,8 @@ internal sealed class PlaybackLoop
                     if (TryEnd()) return;
                     continue; // something came up meanwhile: look again instead of waiting for a wake that may not come
                 }
-                wake.WaitOne(); // a voice, a tone, the self test or the end wakes it
+                devices.Speaker?.PollFailure(); // Package 173 (A181): a device that stopped while nothing played is reported too
+                wake.WaitOne(FailurePollInterval); // clock: real time; a voice, a tone, the self test or the end wakes it at once
                 clock.Restart(); // the own clock starts anew: the first frame at once, no catching up on the pause
                 ticks = 0;
                 continue;
@@ -128,14 +131,14 @@ internal sealed class PlaybackLoop
                 Mix();
                 continue;
             }
+            buffer.PollFailure(); // Package 173: a device that stopped is reported once, also while the full buffer keeps the loop waiting
             if (buffer.BufferedDuration >= TargetBuffer)
             {
                 wake.WaitOne(5); // clock: real time, new work or the stop wakes it at once
                 continue;
             }
             var frame = MixForSpeaker();
-            Buffer.BlockCopy(frame, 0, bytes, 0, bytes.Length);
-            buffer.AddSamples(bytes, 0, bytes.Length);
+            buffer.AddSamples(frame);
             ticks = (long)(clock.Elapsed / AudioFormat.FrameDuration);
         }
     }

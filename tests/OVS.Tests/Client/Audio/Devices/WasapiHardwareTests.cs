@@ -10,4 +10,14 @@ public class WasapiHardwareTests
     [InlineData(AudioDirection.Output, DataFlow.Render)]
     public void ToDataFlow_EachDirection_MapsToWindowsFlow(AudioDirection direction, DataFlow expected) =>
         Assert.Equal(expected, WasapiHardware.ToDataFlow(direction));
+
+    [Fact]
+    public void OpenOutput_LibraryMissing_ThrowsItsReasonAndOpensNothing()
+    {
+        var hardware = new WasapiHardware("ovs-no-such-audio");
+
+        var thrown = Assert.Throws<InvalidOperationException>(() => hardware.OpenOutput(null, []));
+
+        Assert.Contains("ovs-no-such-audio", thrown.Message, StringComparison.Ordinal);
+    }
 }

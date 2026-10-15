@@ -7,19 +7,22 @@
 #![allow(linker_messages)]
 
 pub mod core;
+pub mod device;
+pub mod speaker;
 
 use std::any::Any;
 use std::cell::RefCell;
-use std::panic::{catch_unwind, UnwindSafe};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 thread_local! {
     /// The last error of an export on this thread, read by [`ovs_audio_last_error`] right after the failing call.
     static LAST_ERROR: RefCell<String> = const { RefCell::new(String::new()) };
 }
 
-/// Runs an export's body; a panic returns `failed` and leaves its message as the thread's last error.
-pub fn guard<T>(failed: T, body: impl FnOnce() -> T + UnwindSafe) -> T {
-    match catch_unwind(body) {
+/// Runs an export's body; a panic returns `failed` and leaves its message as the thread's last error. The body is taken
+/// as unwind safe: after a panic the export reports the failure and the client stops using what it touched.
+pub fn guard<T>(failed: T, body: impl FnOnce() -> T) -> T {
+    match catch_unwind(AssertUnwindSafe(body)) {
         Ok(value) => value,
         Err(panic) => {
             set_last_error(format!("panic: {}", panic_text(panic.as_ref())));

@@ -23,7 +23,7 @@ internal sealed class DeviceLifecycle
     readonly ITimer? settle; // Package 137: the reopen after device changes, once they have been quiet
     bool running = true; // under gate
     string? inputId, outputId; // the chosen devices, null for "Standard"; under gate
-    volatile PlaybackBuffer? speaker; // the open speaker
+    volatile IPlaybackBuffer? speaker; // the open speaker
     readonly Endpoint micEndpoint, speakerEndpoint; // Package 137, under gate (but StreamError)
     bool deviceReopen; // Package 137, under gate: the open running is the one after a device change
 
@@ -197,7 +197,7 @@ internal sealed class DeviceLifecycle
     }
 
     /// <summary>The open speaker, or null; the playback thread reads it per frame.</summary>
-    internal PlaybackBuffer? Speaker => speaker;
+    internal IPlaybackBuffer? Speaker => speaker;
 
     /// <summary>The speaker is open, or the playback thread runs and needs it. Under gate.</summary>
     bool SpeakerInUse

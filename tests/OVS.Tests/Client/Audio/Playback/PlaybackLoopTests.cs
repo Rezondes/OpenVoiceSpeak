@@ -93,6 +93,23 @@ public sealed class PlaybackLoopTests : IDisposable
     }
 
     [Fact]
+    public async Task Run_SpeakerFailsWhileIdle_FailedRaisedOnce()
+    {
+        var failures = 0;
+        hardware.Failed += (direction, _) =>
+        {
+            if (direction == AudioDirection.Output) Interlocked.Increment(ref failures);
+        };
+        needed = true;
+        loop.Kick();
+        await AsyncWait.UntilAsync(() => hardware.Counts.SpeakersOpen == 1);
+
+        hardware.FailOpenSpeaker();
+
+        await AsyncWait.UntilAsync(() => Volatile.Read(ref failures) == 1);
+        await AsyncWait.AssertStaysFalseAsync(() => Volatile.Read(ref failures) > 1, TimeSpan.FromMilliseconds(300), "the loop reports a failure once");
+    }
+    [Fact]
     public async Task Wake_NoLongerNeeded_ClosesTheSpeakerAndEnds()
     {
         needed = true;

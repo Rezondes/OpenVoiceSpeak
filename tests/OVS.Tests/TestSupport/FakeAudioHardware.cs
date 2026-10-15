@@ -14,7 +14,7 @@ internal sealed class FakeAudioHardware : IAudioHardware
 #pragma warning restore CA1001
 {
     readonly List<(string Device, CapturePipeline Capture)> captures = [];
-    readonly List<(string Device, FakeOutput Output)> outputs = [];
+    readonly List<(string Device, FakeSpeaker Output)> outputs = [];
     readonly List<string?> captureIds = [];
     Action? changed;
     Action<AudioDirection, Exception>? failed;
@@ -64,6 +64,19 @@ internal sealed class FakeAudioHardware : IAudioHardware
         Action? handler;
         lock (captures) handler = changed;
         handler?.Invoke();
+    }
+
+    /// <summary>Package 173: the open speaker's device stops with an error; the playback loop reports it on its next poll.</summary>
+    public void FailOpenSpeaker()
+    {
+        lock (outputs) outputs.Single(output => !output.Output.Disposed).Output.Fail();
+    }
+
+    void RaiseFailed(AudioDirection direction, Exception error)
+    {
+        Action<AudioDirection, Exception>? handler;
+        lock (captures) handler = failed;
+        handler?.Invoke(direction, error);
     }
 
     /// <summary>Package 137: as an open device's stream stopping with an error; only an open stream can break.</summary>
@@ -128,14 +141,14 @@ internal sealed class FakeAudioHardware : IAudioHardware
         return capture;
     }
 
-    public PlaybackBuffer OpenOutput(string? deviceId, List<string> warnings)
+    public IPlaybackBuffer OpenOutput(string? deviceId, List<string> warnings)
     {
         OpenGate.Wait(TimeSpan.FromSeconds(10));
         var device = Resolve(deviceId, AudioDirection.Output, warnings) ?? throw new InvalidOperationException("no speaker");
         if (StartFails) throw new InvalidOperationException("device cannot start");
-        var output = new FakeOutput();
+        var output = new FakeSpeaker(SpeakerBuffer, error => RaiseFailed(AudioDirection.Output, error));
         lock (outputs) outputs.Add((device, output));
-        return new PlaybackBuffer(SpeakerBuffer, output);
+        return output;
     }
 
     /// <summary>
@@ -171,9 +184,4 @@ internal sealed class FakeAudioHardware : IAudioHardware
         }
     }
 
-    sealed class FakeOutput : IDisposable
-    {
-        public volatile bool Disposed;
-        public void Dispose() => Disposed = true;
-    }
 }

@@ -9,7 +9,19 @@ description = "OpenVoiceSpeak's native audio engine (Package 172): a platform-ne
 # cdylib for the client, rlib for the integration tests
 crate-type = ["cdylib", "rlib"]
 
-[dependencies]
+[target.'cfg(windows)'.dependencies]
+# Package 173 (A177): WASAPI directly, to open by MMDevice id and let Windows convert the rate (AUTOCONVERTPCM)
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Media_Audio",
+    "Win32_Media_KernelStreaming",
+    "Win32_Media_Multimedia",
+    "Win32_Security",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Threading",
+    "Win32_System_Variant",
+] }
 
 [profile.release]
 # panics unwind so that every export can catch them (lib.rs guard); none may cross into C#

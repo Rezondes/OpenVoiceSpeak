@@ -1,13 +1,14 @@
 using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
-using NAudio.Wave;
 using OVS.Client.Audio.Capture;
+using OVS.Client.Audio.Rust;
 using OVS.Client.Localization;
 
 namespace OVS.Client.Audio.Devices;
 
 /// <summary>The real microphones and speakers (WASAPI).</summary>
-sealed class WasapiHardware : IAudioHardware
+/// <param name="audioLibrary">Package 173: the native audio library's name (tests give a missing one).</param>
+sealed class WasapiHardware(string audioLibrary = NativeAudio.Library) : IAudioHardware
 {
     readonly object watcherGate = new();
     Action? changed;
@@ -80,30 +81,14 @@ sealed class WasapiHardware : IAudioHardware
     /// <summary>The speaker's own buffer in WASAPI (its latency); part of the echo canceller's delay hint.</summary>
     internal const int SpeakerBufferMs = 30;
 
-    public PlaybackBuffer OpenOutput(string? deviceId, List<string> warnings)
+    /// <summary>
+    /// Package 173: the native library's speaker (<see cref="NativeSpeaker"/>) on the chosen device, or on the default
+    /// one with the fallback warning; without the library it cannot open (A180: no managed fallback).
+    /// </summary>
+    public IPlaybackBuffer OpenOutput(string? deviceId, List<string> warnings)
     {
-        var device = Open(deviceId, AudioDirection.Output, warnings);
-        var output = device is null
-            #pragma warning disable CA2000 // handed to the PlaybackBuffer, which disposes it; the catch below disposes it when the set-up fails
-            ? new WasapiOut(AudioClientShareMode.Shared, SpeakerBufferMs)
-            #pragma warning restore CA2000
-            : new WasapiOut(device, AudioClientShareMode.Shared, true, SpeakerBufferMs);
-        output.PlaybackStopped += (_, args) =>
-        {
-            if (args.Exception is { } error) Failed?.Invoke(AudioDirection.Output, error); // Package 137: a stop of our own carries none
-        };
-        try
-        {
-            var playback = new PlaybackBuffer(TimeSpan.FromSeconds(1), output); // disposing it stops the device
-            output.Init(playback.Source);
-            output.Play();
-            return playback;
-        }
-        catch
-        {
-            output.Dispose();
-            throw;
-        }
+        using var device = Open(deviceId, AudioDirection.Output, warnings);
+        return NativeSpeaker.Open(NativeAudio.Load(audioLibrary), device?.ID, error => Failed?.Invoke(AudioDirection.Output, error));
     }
 
     /// <summary>

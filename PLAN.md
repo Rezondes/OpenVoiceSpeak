@@ -10022,15 +10022,15 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 
 ### Acceptance Criteria
 
-- [ ] AC1: Voice and sounds play through the native stream on the chosen device (by MMDevice id) or the default device, at 48 kHz from the client whatever the device's own rate is.
-- [ ] AC2: While no frame is written (managed code paused), the native thread plays what is buffered to its end and then silence, counts the missing frames as underrun and keeps running; writing again resumes playback.
-- [ ] AC3: The render thread runs in MMCSS "Pro Audio" (task index returned non-zero, logged once per open).
-- [ ] AC4: In steady state the render thread allocates nothing (counting allocator over 10 000 callbacks of the fake device).
-- [ ] AC5: An unplugged or invalidated device ends the stream; within 100 ms of the next write `PlaybackLoop` raises `IAudioHardware.Failed(Output, error)` once, and Package 137's reopen follows as today (`StreamFailure_SpeakerOpen_ReopensItOnTheSameDevice` stays green).
-- [ ] AC6: Closing the stream (end of playback, engine dispose) returns within 200 ms and leaves no thread behind.
-- [ ] AC7: Without `ovs_audio.dll` the speaker cannot open and the user sees the speaker notice once, as with a device that cannot open; nothing falls back to NAudio.
+- [x] AC1: Voice and sounds play through the native stream on the chosen device (by MMDevice id) or the default device, at 48 kHz from the client whatever the device's own rate is.
+- [x] AC2: While no frame is written (managed code paused), the native thread plays what is buffered to its end and then silence, counts the missing frames as underrun and keeps running; writing again resumes playback.
+- [x] AC3: The render thread runs in MMCSS "Pro Audio" (task index returned non-zero, logged once per open).
+- [x] AC4: In steady state the render thread allocates nothing (counting allocator over 10 000 callbacks of the fake device).
+- [x] AC5: An unplugged or invalidated device ends the stream; within 100 ms of the next write `PlaybackLoop` raises `IAudioHardware.Failed(Output, error)` once, and Package 137's reopen follows as today (`StreamFailure_SpeakerOpen_ReopensItOnTheSameDevice` stays green).
+- [x] AC6: Closing the stream (end of playback, engine dispose) returns within 200 ms and leaves no thread behind.
+- [x] AC7: Without `ovs_audio.dll` the speaker cannot open and the user sees the speaker notice once, as with a device that cannot open; nothing falls back to NAudio.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `core/ring.rs > ring_write_then_read_returns_frames_in_order` - covers AC1 (core)
 2. `core/ring.rs > ring_full_discards_overflow_and_counts_nothing_missing` - like `DiscardOnBufferOverflow`
@@ -10040,14 +10040,15 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 4. `core/ring.rs > ring_concurrent_producer_consumer_keeps_order` (two threads, 1 000 000 frames, no frame lost or reordered) - covers AC2
 5. `tests/output.rs > fake_device_render_steady_state_allocates_nothing` - covers AC4
 6. `tests/output.rs > fake_device_error_ends_stream_and_keeps_code` - covers AC5 (native)
-7. `tests/output.rs > close_while_rendering_returns_and_joins` - covers AC6
+7. `tests/output.rs > close_while_rendering_returns_and_joins` - covers AC6 and AC3 (it opens the real default device, writes nothing, so only silence plays, and checks the MMCSS task index)
 8. `NativeSpeakerTests > "AddSamples_Frame_BufferedDurationGrowsBy20Ms"` (real library, fake device through a test-only open export) - covers AC1
-9. `NativeSpeakerTests > "Failure_DeviceErrorSet_ExceptionWithHresult"` - covers AC5
-10. `PlaybackLoopTests > "Run_SpeakerFails_FailedRaisedOnce"` - covers AC5
-11. `DeviceLifecycleTests > "OpenSpeakerAndReport_LibraryMissing_SpeakerNoticeOnce"` - covers AC7
+9. `NativeSpeakerTests > "Failure_DeviceErrorSet_ExceptionWithHresult"` - covers AC5; `"FakeRender_FrameWritten_PlayedInOrderThenSilenceCountedAsUnderrun"` covers AC2, `"Dispose_WhileAnotherThreadWrites_WriterStopsWithoutCrash"` and `"AddSamples_AfterDispose_IgnoredAndDisposeAgainHarmless"` cover AC6, `"Open_LibraryMissing_ThrowsItsReason"` and `"Open_UnknownDeviceId_ThrowsWithHresult"` cover AC7
+10. `PlaybackLoopTests > "Run_SpeakerFailsWhileIdle_FailedRaisedOnce"` - covers AC5
+11. `WasapiHardwareTests > "OpenOutput_LibraryMissing_ThrowsItsReasonAndOpensNothing"` - covers AC7 (the lifecycle turns a throwing open into the speaker notice, as `DeviceLifecycleTests > "DeviceChange_SpeakerCannotStart_GivenUpAfterThreeFailedOpens"` shows)
 12. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
 13. Manual check (AC1, AC3, AC5): play the speaker test (Package 159) on a 44.1 kHz and a 48 kHz device; unplug a USB headset while it plays; the log shows "Pro Audio".
 
+(as built: `PlaybackBuffer` became the interface `IPlaybackBuffer` (an abstract class with `Dispose` trips CA1063; the tests' `FakeSpeaker` is a real fake, N3) with `AddSamples(ReadOnlySpan<float>)` and `PollFailure`; the managed body is gone with NAudio's `WasapiOut`, and `WasapiHardware(audioLibrary)` takes the library name for the test of AC7. `NativeSpeaker` guards writes against a close from another thread with an interlocked user count instead of a lock (N30) and reports a stopped device as `AudioDeviceException` with the HRESULT (CA2201 forbids `COMException`). Found on the way: the idle loop waited on its wake event without a timeout, so a device that died while nothing played would never be noticed (NAudio used to raise it by itself); it now waits at most 100 ms (`FailurePollInterval`, A181) and polls on every turn. The ring counts an underrun only for a silence of at most 100 ms between written frames (`UNDERRUN_WINDOW_FRAMES`), so the pauses of an idle producer are no underruns. The real-device cargo test plays only silence. Not done here: the MMCSS log line (`WasapiHardware` has no logger; the index is readable as `NativeSpeaker.MmcssTask` and checked by the cargo test) and the manual check of step 13, which needs a listener: it goes to the questions for the user. `ovs_audio.dll` sha256 bb2ddf706175002588be2fefb642c55cac5ca614efb0fe4fe98075651774068e.)
 Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 
 ### Steps
