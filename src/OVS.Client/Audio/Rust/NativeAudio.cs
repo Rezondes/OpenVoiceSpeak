@@ -56,6 +56,22 @@ internal sealed unsafe class NativeAudio
     internal delegate* unmanaged[Cdecl]<nint, uint, float, ulong, byte, byte> SpeakerPlaySound { get; private init; }
     /// <summary>ovs_audio_speaker_sounds_playing: the sounds playing or waiting to start.</summary>
     internal delegate* unmanaged[Cdecl]<nint, uint> SpeakerSoundsPlaying { get; private init; }
+    /// <summary>ovs_audio_jitter_create: a new, empty jitter buffer with its decoder (Package 175).</summary>
+    internal delegate* unmanaged[Cdecl]<nint> JitterCreate { get; private init; }
+    /// <summary>ovs_audio_jitter_free: frees a jitter buffer.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, void> JitterFree { get; private init; }
+    /// <summary>ovs_audio_jitter_push: takes a frame and the copy of the one before it (null when none).</summary>
+    internal delegate* unmanaged[Cdecl]<nint, uint, byte*, uint, byte, double, byte*, uint, void> JitterPush { get; private init; }
+    /// <summary>ovs_audio_jitter_pull: the next 20 ms of interleaved stereo; 0 while buffering or idle.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, float*, byte> JitterPull { get; private init; }
+    /// <summary>ovs_audio_jitter_stats: the buffer's counts and measures.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, NativeJitterStats*, void> JitterStats { get; private init; }
+    /// <summary>ovs_audio_decoder_create: a new Opus decoder (48 kHz, stereo out).</summary>
+    internal delegate* unmanaged[Cdecl]<nint> DecoderCreate { get; private init; }
+    /// <summary>ovs_audio_decoder_free: frees a decoder.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, void> DecoderFree { get; private init; }
+    /// <summary>ovs_audio_decoder_decode: decodes (or with FEC rebuilds the frame before) a packet into a stereo frame.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, byte*, uint, byte, float*, void> DecoderDecode { get; private init; }
 
     /// <summary>The library of this name, loaded on the first call.</summary>
     public static NativeAudio Load(string library = Library) => Loaded.GetOrAdd(library, name => new Lazy<NativeAudio>(() => Open(name))).Value;
@@ -83,6 +99,14 @@ internal sealed unsafe class NativeAudio
                 SoundLoad = (delegate* unmanaged[Cdecl]<uint, float*, uint, void>)NativeLibrary.GetExport(handle, "ovs_audio_sound_load"),
                 SpeakerPlaySound = (delegate* unmanaged[Cdecl]<nint, uint, float, ulong, byte, byte>)NativeLibrary.GetExport(handle, "ovs_audio_speaker_play_sound"),
                 SpeakerSoundsPlaying = (delegate* unmanaged[Cdecl]<nint, uint>)NativeLibrary.GetExport(handle, "ovs_audio_speaker_sounds_playing"),
+                JitterCreate = (delegate* unmanaged[Cdecl]<nint>)NativeLibrary.GetExport(handle, "ovs_audio_jitter_create"),
+                JitterFree = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "ovs_audio_jitter_free"),
+                JitterPush = (delegate* unmanaged[Cdecl]<nint, uint, byte*, uint, byte, double, byte*, uint, void>)NativeLibrary.GetExport(handle, "ovs_audio_jitter_push"),
+                JitterPull = (delegate* unmanaged[Cdecl]<nint, float*, byte>)NativeLibrary.GetExport(handle, "ovs_audio_jitter_pull"),
+                JitterStats = (delegate* unmanaged[Cdecl]<nint, NativeJitterStats*, void>)NativeLibrary.GetExport(handle, "ovs_audio_jitter_stats"),
+                DecoderCreate = (delegate* unmanaged[Cdecl]<nint>)NativeLibrary.GetExport(handle, "ovs_audio_decoder_create"),
+                DecoderFree = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "ovs_audio_decoder_free"),
+                DecoderDecode = (delegate* unmanaged[Cdecl]<nint, byte*, uint, byte, float*, void>)NativeLibrary.GetExport(handle, "ovs_audio_decoder_decode"),
             };
         }
         #pragma warning disable CA1031 // missing, wrong architecture, a missing export: the client runs without audio (A180)

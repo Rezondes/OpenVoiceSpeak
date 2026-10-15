@@ -10155,23 +10155,27 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 
 ### Acceptance Criteria
 
-- [ ] AC1: Every buffer and decoder case of `ReceivePathTests` holds as a cargo test with the same inputs and the same expected values (start delay, reordering, gaps with PLC, FEC closer than concealment, late packets dropped, talk pause rebuffering, overflow capped at 10, the RFC 3550 jitter, cushion growing and shrinking, copies never duplicating, the 1-byte packet concealed, a mono speaker on both sides).
-- [ ] AC2: `EncodeDecode_Sine_PreservesEnergy` holds with libopus on both sides (the encode side through a test-only libopus encoder in the cargo test).
-- [ ] AC3: The connection details show the same figures as before (`Mixer_Stats_SumOverSpeakers` green), read from the native counters.
-- [ ] AC4: Push and pull allocate nothing in steady state (counting allocator), also with 20 speakers.
-- [ ] AC5: A speaker's buffer and decoder are kept over pauses and dropped after 3000 idle ticks or when the speaker left (`Decoder_SpeakerPauses_Kept`).
+- [x] AC1: Every buffer and decoder case of `ReceivePathTests` holds as a cargo test with the same inputs and the same expected values (start delay, reordering, gaps with PLC, FEC closer than concealment, late packets dropped, talk pause rebuffering, overflow capped at 10, the RFC 3550 jitter, cushion growing and shrinking, copies never duplicating, the 1-byte packet concealed, a mono speaker on both sides).
+- [x] AC2: `EncodeDecode_Sine_PreservesEnergy` holds with libopus on both sides (the encode side through a test-only libopus encoder in the cargo test).
+- [x] AC3: The connection details show the same figures as before (`Mixer_Stats_SumOverSpeakers` green), read from the native counters.
+- [x] AC4: Push and pull allocate nothing in steady state (counting allocator), also with 20 speakers.
+- [x] AC5: A speaker's buffer and decoder are kept over pauses and dropped after 3000 idle ticks or when the speaker left (`Decoder_SpeakerPauses_Kept`).
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `tests/receive.rs`: one test per moved case, named after it in snake case (`pull_below_start_delay_returns_none`, `out_of_order_within_delay_played_in_order`, `gap_produces_plc_frame_then_continues`, `gap_rebuilt_from_fec_closer_than_concealment`, `push_late_packet_dropped`, `buffer_talk_pause_rebuffers_and_continues_at_same_seq`, `buffer_overflow_capped_at_10`, `jitter_arrival_times_estimated_per_rfc3550`, `loss_talk_pause_not_counted`, `jitter_short_pause_no_sample`, `spurt_gap_close_or_far_counted_only_when_close`, `cushion_no_jitter_two`, `cushion_grows_with_jitter_fewer_concealed`, `cushion_shrinks_next_spurt_capped`, `buffer_jitter_calms_inside_spurt_nothing_dropped`, `cushion_grows_with_stalls_no_gaps_next_spurt`, `cushion_long_silence_halved`, `decode_one_byte_packet_concealed`, `lost_frame_played_from_copy_fewer_concealed`, `copy_gap_or_arrived_frame_never_replaces_or_duplicates`, `encode_decode_sine_preserves_energy`, `stereo_mono_speaker_both_sides`) - covers AC1, AC2
-2. `tests/receive.rs > twenty_speakers_steady_state_allocate_nothing` - covers AC4
-3. `tests/receive.rs > speaker_idle_3000_ticks_removed_left_removed_at_once` - covers AC5
-4. `ReceivePathTests > "Mixer_Stats_SumOverSpeakers"`, `"Mixer_NoArrivalGiven_StampsEachPushInRealTime"` (now stamped natively), `"Decoder_SpeakerPauses_Kept"` against the native buffer - covers AC3, AC5
-5. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
-6. Manual check: two clients on the local server, talk with 10 % loss simulated by the debug API's request route if available, else on a lossy Wi-Fi; the connection details show loss, rebuilt and concealed frames.
+Order: test first -> red -> minimal implementation -> green -> refactor.
+
+1. `ReceivePathTests`: every case runs unchanged against the native buffer and decoder through their managed faces (`JitterBuffer`, `VoiceDecoder`), so all 38 cases and their asserts stay the proof of the port: `"Pull_BelowStartDelay_ReturnsNull"`, `"Buffer_ShortSpurt_PlaysAfterWaiting"`, `"OutOfOrder_WithinDelay_PlayedInOrder"`, `"Gap_ProducesPlcFrame_ThenContinues"`, `"Gap_RebuiltFromFec_CloserThanConcealment"`, `"Push_LatePacket_Dropped"`, `"Buffer_TalkPause_RebuffersAndContinuesAtSameSeq"`, `"Buffer_Overflow_CappedAt10"`, `"Jitter_ArrivalTimes_EstimatedPerRfc3550"`, `"Loss_TalkPause_NotCounted"`, `"Jitter_ShortPause_NoSample"`, `"SpurtGap_CloseOrFar_CountedOnlyWhenClose"`, `"Cushion_NoJitter_Two"`, `"Cushion_GrowsWithJitter_FewerConcealed"`, `"Cushion_ShrinksNextSpurt_Capped"`, `"Buffer_JitterCalmsInsideSpurt_NothingDropped"`, `"Cushion_GrowsWithStalls_NoGapsNextSpurt"`, `"Cushion_LongSilence_Halved"`, `"Decode_OneBytePacket_Concealed"`, `"LostFrame_PlayedFromCopy_FewerConcealed"`, `"Copy_GapOrArrivedFrame_NeverReplacesOrDuplicates"`, `"EncodeDecode_Sine_PreservesEnergy"`, `"Stereo_MonoSpeakerBothSides_Limited"` - covers AC1, AC2
+2. `ReceivePathTests > "Mixer_Stats_SumOverSpeakers"`, `"Mixer_NoArrivalGiven_StampsEachPushInRealTime"`, `"Decoder_SpeakerPauses_Kept"` - covers AC3, AC5
+3. `core/jitter.rs > pull_below_start_delay_returns_none`, `buffer_overflow_capped_at_10`, `push_duplicate_neither_counted_nor_stored`, `talk_pause_rebuffers_after_two_underruns`; `core/decoder.rs > decode_one_byte_packet_concealed`, `broken_packet_concealed_not_panicking`, `may_carry_fec_only_speech_coder_packets` - covers AC1 (the core without the client)
+4. `tests/output.rs > twenty_speakers_steady_state_allocate_nothing` - covers AC4
+5. `IdleCostTests > "Engine_SteadyState_AllocatesNothing"` now demands no managed allocation for a mixer tick and a decode (with Concentus it only held them to Concentus' own 28 KB a frame) - covers AC4
+6. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+7. Manual check: two clients on the local server, talk with 10 % loss simulated by the debug API's request route if available, else on a lossy Wi-Fi; the connection details show loss, rebuilt and concealed frames.
+
+(as built: the buffer and decoder cases stay C# tests that now exercise the native code through the unchanged managed faces, instead of being ported to cargo one by one; this keeps every assert of `ReceivePathTests` as it was and proves the port on the same inputs. The packets live in eleven fixed slots per buffer, so a push or pull allocates nothing; the copies of Package 136 get eleven slots as well, the oldest giving way when they are full (they were unbounded). The arrival is still stamped in C# (`VoiceMixer.Push`), the idle removal stays in the managed mixer until 176. `VoiceMixer.Push` drops a packet when the library is unusable (A180). libopus is 1.3.1 from `audiopus_sys` 0.2.2; `build.ps1` takes CMake from PATH or from the Visual Studio build tools (vswhere) and checks no CMake version, the two clean builds gave the same hash. Test command for cargo outside the folder: set `CMAKE` when no cmake is on PATH. `ovs_audio.dll` sha256 6eebf2ea9cb773a69797ddbdb8f85f5ede3fa9a17981c28feace94bf4d7c7eb2.)
 
 Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
-
 ### Steps
 
 1. `audiopus_sys` building statically with the pinned CMake; `build.ps1` checks it.

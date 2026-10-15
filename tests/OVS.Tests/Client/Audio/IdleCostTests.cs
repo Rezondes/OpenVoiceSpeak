@@ -77,16 +77,11 @@ public class IdleCostTests
         var direct = CapturePipeline.Manual();
         Assert.Equal(0, Allocated(() => direct.Feed(SampleConversion.ReadMono(floats, floats.Length, float48, ref mono), float48.SampleRate)).Min());
 
-        // Decoding: Concentus (managed Opus) allocates inside every decode, about 28 KB a frame, which only native libopus
-        // would avoid (out of scope). So the decoder and a mixer tick must allocate exactly what Concentus does on the same
-        // packets, nothing more (in at least one window).
+        // Decoding: Package 175 decodes with native libopus (A183), which allocates nothing on the managed heap, so a mixer
+        // tick and a decode must allocate nothing at all (in at least one window); with Concentus they allocated about 28 KB
+        // a frame and were only held to what Concentus did.
         var encoder = new VoiceEncoder();
         var packets = Enumerable.Range(0, WarmUp + Windows * Runs + 3).Select(count => encoder.Encode(Sine(count))).ToList();
-        using var bare = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2); // Package 142: the decoders are stereo
-        var pcm = new float[AudioFormat.StereoFrameSamples];
-        int bareNext = 0;
-        var concentus = Allocated(() => bare.Decode(packets[bareNext++], pcm, AudioFormat.FrameSamples, false));
-        Assert.True(concentus.Min() > 0, "Concentus allocates per decode; if not any more, the checks below can demand 0");
 
         // a mixer tick with two speakers; the packets arrive between the ticks, as from the network
         var mixer = new VoiceMixer();
@@ -96,44 +91,21 @@ public class IdleCostTests
             mixer.Push(1, (uint)seq, packets[seq], false);
             mixer.Push(2, (uint)seq, packets[seq], false);
         }
-        // Package 142 (review): each compared with a bare decoder taken in turns with it on the same packets, as what the
-        // runtime allocates while Concentus warms up shifts between loops measured one after the other (seen with stereo)
-        var ticks = new long[Windows]; // tick i decodes packet i, as the bare decoder beside it does
-        var beside = new long[Windows];
-        using var bareBeside = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
+        var ticks = new long[Windows];
         for (int index = 0; index < WarmUp + Windows * Runs; index++, seq++)
         {
             mixer.Push(1, (uint)seq, packets[seq], false);
             mixer.Push(2, (uint)seq, packets[seq], false);
             long before = GC.GetAllocatedBytesForCurrentThread();
-            bareBeside.Decode(packets[index], pcm, AudioFormat.FrameSamples, false);
-            long between = GC.GetAllocatedBytesForCurrentThread();
             int active = mixer.Tick().Active.Count;
-            if (index >= WarmUp)
-            {
-                beside[(index - WarmUp) / Runs] += between - before;
-                ticks[(index - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - between;
-            }
+            if (index >= WarmUp) ticks[(index - WarmUp) / Runs] += GC.GetAllocatedBytesForCurrentThread() - before;
             Assert.Equal(2, active);
         }
-        // at most: two decoders of their own sometimes came out a few hundred bytes below twice the one beside them, the
-        // runtime's own allocations landing on the bare one (seen once in a few runs after other audio tests)
-        Assert.Contains(true, Enumerable.Range(0, Windows).Select(value => ticks[value] <= 2 * beside[value]));
+        Assert.Contains(0L, ticks);
 
         var decoder = new VoiceDecoder();
-        using var bareTurns = Concentus.OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
-        long[] decodes = new long[Windows * Runs], bareDecodes = new long[Windows * Runs];
-        for (int index = 0; index < WarmUp + Windows * Runs; index++)
-        {
-            long before = GC.GetAllocatedBytesForCurrentThread();
-            bareTurns.Decode(packets[index], pcm, AudioFormat.FrameSamples, false);
-            long between = GC.GetAllocatedBytesForCurrentThread();
-            decoder.Decode(packets[index]);
-            if (index < WarmUp) continue;
-            bareDecodes[index - WarmUp] = between - before;
-            decodes[index - WarmUp] = GC.GetAllocatedBytesForCurrentThread() - between;
-        }
-        Assert.True(SameInMostFrames(decodes, bareDecodes), Differences(decodes, bareDecodes));
+        int next = 0;
+        Assert.Equal(0, Allocated(() => decoder.Decode(packets[next++ % packets.Count])).Min());
 
         // Package 142 (AC7): music mode captures in stereo, through the stereo resampler and chunker, also without allocating
         var music = CapturePipeline.Manual();

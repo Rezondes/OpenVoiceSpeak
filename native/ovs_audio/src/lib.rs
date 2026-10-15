@@ -9,6 +9,7 @@
 pub mod core;
 pub mod device;
 pub mod speaker;
+pub mod voice;
 
 use std::any::Any;
 use std::cell::RefCell;

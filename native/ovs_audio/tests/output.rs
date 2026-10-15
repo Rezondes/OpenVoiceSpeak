@@ -117,3 +117,25 @@ fn sounds_steady_state_allocate_nothing() {
 
     assert_eq!(allocations() - before, 0);
 }
+
+#[test]
+fn twenty_speakers_steady_state_allocate_nothing() {
+    let packet = [0x08u8, 0x00, 0x00];
+    let mut buffers: Vec<ovs_audio::core::jitter::JitterBuffer> = (0..20).map(|_| ovs_audio::core::jitter::JitterBuffer::new()).collect();
+    for (speaker, buffer) in buffers.iter_mut().enumerate() {
+        for seq in 0..3 {
+            buffer.push(seq, &packet, false, f64::from(seq) * 20.0 + speaker as f64, None);
+        }
+        let _ = buffer.pull();
+    }
+    let before = allocations();
+
+    for seq in 3..503u32 {
+        for buffer in &mut buffers {
+            buffer.push(seq, &packet, false, f64::from(seq) * 20.0, Some(&packet));
+            let _ = buffer.pull();
+        }
+    }
+
+    assert_eq!(allocations() - before, 0);
+}

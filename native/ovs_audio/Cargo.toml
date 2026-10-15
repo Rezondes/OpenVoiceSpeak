@@ -9,6 +9,10 @@ description = "OpenVoiceSpeak's native audio engine (Package 172): a platform-ne
 # cdylib for the client, rlib for the integration tests
 crate-type = ["cdylib", "rlib"]
 
+[dependencies]
+# Package 175 (A183): libopus, built from its bundled sources with CMake and linked statically
+audiopus_sys = { version = "0.2.2", features = ["static"] }
+
 [target.'cfg(windows)'.dependencies]
 # Package 173 (A177): WASAPI directly, to open by MMDevice id and let Windows convert the rate (AUTOCONVERTPCM)
 windows = { version = "0.61", features = [

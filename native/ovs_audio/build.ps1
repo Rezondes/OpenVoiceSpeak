@@ -7,7 +7,7 @@ param([switch]$PrintHash)
 
 $ErrorActionPreference = 'Stop'
 $Rust = '1.98.1'
-$Expected = '90399b62227f5f1c28ddc8974805a630af626ba174233e266284c6103b49dd6b'
+$Expected = '6eebf2ea9cb773a69797ddbdb8f85f5ede3fa9a17981c28feace94bf4d7c7eb2'
 $Here = $PSScriptRoot
 $Root = (Resolve-Path (Join-Path $Here '..\..')).Path
 $Out = Join-Path $Root 'src\OVS.Client\runtimes\win-x64\native\ovs_audio.dll'
@@ -15,6 +15,12 @@ $Out = Join-Path $Root 'src\OVS.Client\runtimes\win-x64\native\ovs_audio.dll'
 function Run { & $args[0] $args[1..($args.Count - 1)]; if ($LASTEXITCODE) { throw "failed: $args" } }
 
 $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
+# Package 175: libopus builds with CMake; without one on PATH take the one of the Visual Studio build tools
+if (-not $env:CMAKE -and -not (Get-Command cmake -ErrorAction SilentlyContinue)) {
+    $VsWhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    $env:CMAKE = & $VsWhere -latest -products * -find 'Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe' | Select-Object -First 1
+    if (-not $env:CMAKE) { throw 'CMake not found: install it or the Visual Studio build tools with "C++ CMake tools"' }
+}
 Push-Location $Here # rustup picks the toolchain of rust-toolchain.toml in this folder
 try {
     $Found = (& rustc --version) -split ' ' | Select-Object -Index 1

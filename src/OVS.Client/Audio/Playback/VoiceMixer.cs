@@ -48,6 +48,7 @@ internal sealed class VoiceMixer
     /// <param name="viaLink">It came in over a link.</param>
     public void Push(uint speakerId, uint seq, byte[] opus, bool viaLink, double? arrivalMs = null, byte[]? copy = null)
     {
+        if (!JitterBuffer.Available) return; // Package 175 (A180): without the native library nothing plays
         double at = arrivalMs ?? ReadArrivalMs();
         lock (gate)
         {

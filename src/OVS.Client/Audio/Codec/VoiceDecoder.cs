@@ -1,15 +1,20 @@
-using Concentus;
+using OVS.Client.Audio.Rust;
 
 namespace OVS.Client.Audio.Codec;
 
 /// <summary>
 /// Package 142 (A151): always decodes to stereo. An Opus packet carries its channel count, so a mono packet (every voice
-/// mode sender) comes out the same on both sides, and music in stereo needs no change in the protocol.
+/// mode sender) comes out the same on both sides, and music in stereo needs no change in the protocol. Package 175: libopus
+/// in the native library (A183); a 1-byte or broken packet is concealed there.
 /// </summary>
-internal sealed class VoiceDecoder
+internal sealed unsafe class VoiceDecoder
 {
-    readonly IOpusDecoder decoder = OpusCodecFactory.CreateDecoder(AudioFormat.SampleRate, 2);
+    readonly NativeAudio native = NativeAudio.Load();
+    readonly NativeObjectHandle decoder;
     readonly float[] pcm = new float[AudioFormat.StereoFrameSamples];
+
+    /// <summary>A new decoder; throws when the native library is unusable (A180).</summary>
+    public VoiceDecoder() => decoder = NativeObjectHandle.Create(native, native.DecoderCreate, native.DecoderFree);
 
     /// <summary>An empty packet asks Opus to conceal a lost frame (PLC).</summary>
     /// <returns>20 ms of interleaved stereo PCM in a buffer reused by the next call (Package 124: nothing allocated per frame).</returns>
@@ -27,17 +32,9 @@ internal sealed class VoiceDecoder
 
     float[] Decode(ReadOnlySpan<byte> packet, bool fec)
     {
-        // Package 124: a 1-byte frame (DTX in other Opus senders) means "nothing to play" like a lost one, but Concentus
-        // throws on it; that and a broken packet from anyone must not end the playback thread: both are concealed.
-        if (packet.Length <= 1) packet = default;
-        try
-        {
-            decoder.Decode(packet, pcm, AudioFormat.FrameSamples, fec && !packet.IsEmpty);
-        }
-        catch (OpusException)
-        {
-            decoder.Decode(default, pcm, AudioFormat.FrameSamples, false);
-        }
+        fixed (byte* data = packet)
+        fixed (float* frame = pcm)
+            native.DecoderDecode(decoder.Pointer, data, (uint)packet.Length, fec ? (byte)1 : (byte)0, frame);
         return pcm;
     }
 }
