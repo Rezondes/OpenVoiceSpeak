@@ -1,0 +1,18 @@
+[package]
+name = "ovs_audio"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "OpenVoiceSpeak's native audio engine (Package 172): a platform-neutral core and the device layers"
+
+[lib]
+# cdylib for the client, rlib for the integration tests
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+
+[profile.release]
+# panics unwind so that every export can catch them (lib.rs guard); none may cross into C#
+panic = "unwind"
+codegen-units = 1
+lto = true

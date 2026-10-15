@@ -33,6 +33,13 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      # Package 172: the native audio library's own tests, with the toolchain of its rust-toolchain.toml
+      - name: Native audio library (cargo test, clippy)
+        working-directory: native/ovs_audio
+        run: |
+          rustup toolchain install
+          cargo test --locked
+          cargo clippy --all-targets --locked -- -D warnings
       - run: dotnet test
 
   website:

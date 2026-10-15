@@ -1,0 +1,5 @@
+# Package 172 (A178): the one Rust version the library is built and tested with; build.ps1 checks it too
+[toolchain]
+channel = "1.98.1"
+components = ["clippy", "rustfmt"]
+targets = ["x86_64-pc-windows-msvc"]

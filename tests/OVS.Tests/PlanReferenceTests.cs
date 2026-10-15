@@ -222,6 +222,32 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
         Assert.False(Resolves(new PlanReference(1, 1, null, null, "CODING-RULES.md", "no such text in the rules", [])));
 
     [Fact]
+    public void Resolves_RustFileAndTest_True() =>
+        Assert.True(Resolves(Assert.Single(Parse("1. `tests/abi.rs > abi_version_is_one` (AC1)"))));
+
+    [Fact]
+    public void Resolves_RustTestMissing_False() =>
+        Assert.False(Resolves(Assert.Single(Parse("1. `tests/abi.rs > no_such_test_here`"))));
+
+    [Fact]
+    public void Parse_BareRustName_TakesTheLastNamedRsFile()
+    {
+        var references = Parse("1. `core/ring.rs > ring_first_case` and `ring_second_case`\n2. `ring_third_case` (AC2)");
+
+        Assert.Equal(["core/ring.rs > ring_first_case", "core/ring.rs > ring_second_case", "core/ring.rs > ring_third_case"], references.Select(reference => reference.Target));
+        Assert.Equal([2], references[2].AcceptanceCriteria);
+    }
+
+    [Fact]
+    public void Parse_CargoCommand_IsNoReference()
+    {
+        var parse = PlanReference.Parse("## Package 5: X\n\n### Tests (TDD)\nTest command: `cargo test --manifest-path native/ovs_audio/Cargo.toml`");
+
+        Assert.Empty(parse.References);
+        Assert.Empty(parse.Ignored);
+    }
+
+    [Fact]
     public void Problems_StaleUncoveredEntry_Reported()
     {
         var resolving = CreateReference("PlanReferenceTests", nameof(Problems_StaleUncoveredEntry_Reported));
@@ -241,11 +267,23 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     /// </summary>
     static bool Resolves(PlanReference reference, Dictionary<string, HashSet<string>> testMethods, string root) => reference switch
     {
+        { IsRust: true } => RustTestExists(reference.File!, reference.Method!, root),
         { File: { } file } => File.Exists(Path.Combine(root, file)) && File.ReadAllText(Path.Combine(root, file)).Contains(reference.Text!, StringComparison.Ordinal),
         { Class: null } => testMethods.Values.Any(methods => methods.Contains(reference.Method!)),
         { Method: null } => testMethods.ContainsKey(reference.Class),
         _ => testMethods.TryGetValue(reference.Class, out var methods) && methods.Contains(reference.Method),
     };
+
+    /// <summary>Package 172: a <c>#[test] fn name</c> in a source file of native/ovs_audio whose path ends with <paramref name="file"/>.</summary>
+    static bool RustTestExists(string file, string name, string root)
+    {
+        var crate = Path.Combine(root, "native", "ovs_audio");
+        var test = new System.Text.RegularExpressions.Regex($@"#\[test\]\s*(?:#\[[^\]]*\]\s*)*fn {name}\(");
+        return Directory.Exists(crate) && Directory.EnumerateFiles(crate, "*.rs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}target{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Where(path => path.Replace('\\', '/').EndsWith("/" + file, StringComparison.Ordinal))
+            .Any(path => test.IsMatch(File.ReadAllText(path)));
+    }
 
     /// <summary>
     /// One line per reference that does not resolve and is not on <paramref name="uncovered"/>, and per entry of

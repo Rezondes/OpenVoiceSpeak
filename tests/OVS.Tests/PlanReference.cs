@@ -19,6 +19,8 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
     static readonly Regex ClassAlone = new(@"^(?<class>\w+Tests)(?:\.cs)?$");
     static readonly Regex Dotted = new(@"^(?<class>\w+Tests)\.(?<method>\w+)$");
     static readonly Regex QuotedMethodAlone = new(@"^(?:\[Theory\] )?""(?<method>\w*_\w*)""$");
+    static readonly Regex RustFileAndTest = new(@"^(?<file>[\w\-]+(?:/[\w\-]+)*\.rs) > (?<method>[a-z][a-z0-9_]*)$"); // Package 172
+    static readonly Regex RustTestAlone = new(@"^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$");
     static readonly Regex LooksLikeTest = new(@"\w_\w|Tests\b");
     static readonly Regex CriteriaList = new($@"AC\d+(?:{CriteriaConnector}AC\d+)*");
     static readonly Regex CriteriaPart = new($@"(?:^|{CriteriaConnector})AC(\d+)");
@@ -26,7 +28,9 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
     /// <summary>
     /// Every reference in the <c>### Tests</c> sections of the <c>## Package N</c> chapters of <paramref name="plan"/>,
     /// and the spans there that look like a reference (a name with an underscore or ending in Tests) but are no form the
-    /// parser knows, with their line (test commands, <c>dotnet ...</c>, are not counted). Lines starting with "(" (after
+    /// parser knows, with their line (test commands, <c>dotnet ...</c> and <c>cargo ...</c>, are not counted). Package 172:
+    /// <c>file.rs > name</c> is a test of the native library, and a bare snake-case name takes the <c>.rs</c> file named
+    /// last, by the same context rule as a method takes its class. Lines starting with "(" (after
     /// indentation) are notes, such as "(as built: ...)", and not read. A method without a class takes the class named
     /// before it on its line, else the class last named on a top-level line of its section (a header or a numbered item;
     /// a bullet below a header does not change it), if any. A test named right after "ersetzt" or "replaces" is the
@@ -64,7 +68,8 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
                 if (line[..span.Index].EndsWith("ersetzt ", StringComparison.Ordinal) || line[..span.Index].EndsWith("replaces ", StringComparison.Ordinal)) continue;
                 if (Read(text, ref lineContext) is not { } target)
                 {
-                    if (LooksLikeTest.IsMatch(text) && !text.StartsWith("dotnet ", StringComparison.Ordinal)) ignored.Add((index + 1, text));
+                    if (LooksLikeTest.IsMatch(text) && !text.StartsWith("dotnet ", StringComparison.Ordinal) && !text.StartsWith("cargo ", StringComparison.Ordinal))
+                        ignored.Add((index + 1, text));
                     continue;
                 }
                 references.Add(new(package!.Value, index + 1, target.Class, target.Method, target.File, target.Text,
@@ -83,6 +88,8 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
         if (ClassAlone.Match(span) is { Success: true } alone) return new(context = alone.Groups["class"].Value, null, null, null);
         if (Dotted.Match(span) is { Success: true } dotted) return new(context = dotted.Groups["class"].Value, dotted.Groups["method"].Value, null, null);
         if (QuotedMethodAlone.Match(span) is { Success: true } bare) return new(context, bare.Groups["method"].Value, null, null);
+        if (RustFileAndTest.Match(span) is { Success: true } rust) return new(null, rust.Groups["method"].Value, context = rust.Groups["file"].Value, null);
+        if (RustTestAlone.IsMatch(span) && context is { } file && file.EndsWith(".rs", StringComparison.Ordinal)) return new(null, span, file, null);
         return null;
     }
 
@@ -104,7 +111,10 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
 
     /// <summary>What is referenced, in the PLAN.md form: <c>Class > "Method"</c>, <c>"Method"</c>, <c>Class</c> or <c>file > "text"</c>.</summary>
     public string Target =>
-        File is not null ? $"{File} > \"{Text}\"" : Method is null ? Class! : Class is null ? $"\"{Method}\"" : $"{Class} > \"{Method}\"";
+        IsRust ? $"{File} > {Method}" : File is not null ? $"{File} > \"{Text}\"" :Method is null ? Class! : Class is null ? $"\"{Method}\"" : $"{Class} > \"{Method}\"";
+
+    /// <summary>Package 172: a test of the native library, <c>file.rs > name</c>, the file under native/ovs_audio.</summary>
+    public bool IsRust => File is not null && File.EndsWith(".rs", StringComparison.Ordinal);
 
     public override string ToString() => $"PLAN.md:{Line} (Package {Package}): {Target}";
 

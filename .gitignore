@@ -494,3 +494,6 @@ publish/
 
 # /brag launch video output
 brag-output*/
+
+# Package 172: cargo's build output of the native audio library
+native/ovs_audio/target/

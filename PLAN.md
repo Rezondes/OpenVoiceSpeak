@@ -9938,13 +9938,13 @@ Test command: `dotnet test OpenVoiceSpeak.slnx`
 - `native/ovs_audio/src/core/mod.rs` (new): the platform-neutral core, no `windows` import allowed (a test checks the sources)
 - `native/ovs_audio/src/device/mod.rs` (new): the traits `Output` and `Input` (open by id or default, start, stop, error as code, a callback into the core that never leaves native code), `device/fake.rs` (test device driven by hand), `device/wasapi.rs` (stub that only enumerates the default render endpoint in this package)
 - `native/ovs_audio/tests/` (new): `abi.rs`, `core_has_no_os.rs`, `alloc_counter.rs` (the counting global allocator of A182, used by later packages)
-- `src/OVS.Client/Audio/Native/NativeAudio.cs` (new): loads `ovs_audio` by hand like `EchoCanceller.Load`, checks `ovs_audio_abi_version`, keeps the function pointers; a missing library or another ABI version yields `Error` (A180)
+- `src/OVS.Client/Audio/Rust/NativeAudio.cs` (new): loads `ovs_audio` by hand like `EchoCanceller.Load`, checks `ovs_audio_abi_version`, keeps the function pointers; a missing library or another ABI version yields `Error` (A180)
 - `src/OVS.Client/OVS.Client.csproj` (change): `runtimes\win-x64\native\ovs_audio.dll` copied like `ovs_aec.dll`
 - `src/OVS.Client/runtimes/win-x64/native/ovs_audio.dll` (new, built by `build.ps1`)
 - `.github/workflows/release.yml` (change): in the windows-latest test job, before `dotnet test`: `rustup toolchain install` from `rust-toolchain.toml` and `cargo test --manifest-path native/ovs_audio/Cargo.toml --locked`
-- `CODING-RULES-OVS.md` (change): folder `Audio/Native/` in the client layout; the native rules (A180 to A182: C ABI, `ovs_audio_` prefix, no call back into .NET, no allocation on audio threads, `catch_unwind` on every export)
+- `CODING-RULES-OVS.md` (change): folder `Audio/Rust/` in the client layout; the native rules (A180 to A182: C ABI, `ovs_audio_` prefix, no call back into .NET, no allocation on audio threads, `catch_unwind` on every export)
 - `THIRD-PARTY-NOTICES.md` (change): the `windows` crate (MIT or Apache-2.0)
-- `tests/OVS.Tests/Client/Audio/Native/NativeAudioTests.cs` (new)
+- `tests/OVS.Tests/Client/Audio/Rust/NativeAudioTests.cs` (new)
 - `tests/OVS.Tests/PlanReference.cs`, `PlanReferenceTests.cs` (change): native references in a Tests section resolve too: `file.rs > name` is a `fn name` with `#[test]` in that file under `native/ovs_audio/` (`src/` or `tests/`), a bare snake-case name takes the `.rs` file last named on its line or section (the context rule classes already have), and `cargo ...` spans are commands like `dotnet ...`
 
 ### Context
@@ -9953,15 +9953,15 @@ The client's audio runs on managed threads today: `PlaybackLoop` mixes on its ow
 
 ### Acceptance Criteria
 
-- [ ] AC1: `cargo test --manifest-path native/ovs_audio/Cargo.toml` passes on the developer's machine and in the CI test job.
-- [ ] AC2: `native/ovs_audio/build.ps1` with the pinned toolchain produces a DLL with the sha256 in `$Expected` twice in a row from a clean `target` folder, and refuses another Rust version with a clear message.
-- [ ] AC3: The client loads `ovs_audio.dll` from its folder and reads ABI version 1; `NativeAudio.Load` with a missing library or another ABI version returns an error instead of throwing, and the client logs it once.
-- [ ] AC4: A panic inside an export does not take the process down: the export returns its error code and `ovs_audio_last_error` names the panic.
-- [ ] AC5: The core module contains no OS call (`core/` imports neither `windows` nor `std::os`), checked by a test over the sources.
-- [ ] AC6: The published single-file client contains the DLL (`dotnet publish` as in `rebuild.ps1` and `release.yml`) and loads it.
-- [ ] AC7: `PlanReferenceTests.Plan_EveryTestReference_Resolves` resolves the native references of the Tests sections of 172 and later against the Rust test functions, and fails for a native reference that names no existing test.
+- [x] AC1 (manual): `cargo test --manifest-path native/ovs_audio/Cargo.toml` passes on the developer's machine and in the CI test job.
+- [x] AC2 (manual): `native/ovs_audio/build.ps1` with the pinned toolchain produces a DLL with the sha256 in `$Expected` twice in a row from a clean `target` folder, and refuses another Rust version with a clear message.
+- [x] AC3: The client loads `ovs_audio.dll` from its folder and reads ABI version 1; `NativeAudio.Load` with a missing library or another ABI version returns an error instead of throwing, and the client logs it once.
+- [x] AC4: A panic inside an export does not take the process down: the export returns its error code and `ovs_audio_last_error` names the panic.
+- [x] AC5: The core module contains no OS call (`core/` imports neither `windows` nor `std::os`), checked by a test over the sources.
+- [x] AC6 (manual): The published single-file client contains the DLL (`dotnet publish` as in `rebuild.ps1` and `release.yml`) and loads it.
+- [x] AC7: `PlanReferenceTests.Plan_EveryTestReference_Resolves` resolves the native references of the Tests sections of 172 and later against the Rust test functions, and fails for a native reference that names no existing test.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 Order: test first -> red -> minimal implementation -> green -> refactor.
 
@@ -9969,7 +9969,7 @@ Order: test first -> red -> minimal implementation -> green -> refactor.
    - Given: the library
    - Expected: the ABI version export returns 1
 2. `tests/abi.rs > export_panic_returns_error_and_names_it` - covers AC4
-   - Given: a test-only export that panics (`#[cfg(test)]` feature `panic-probe`)
+   - Given: a body that panics, run through the guard every export uses
    - Expected: it returns the error code, the last-error export contains the panic text, the test process lives on
 3. `tests/core_has_no_os.rs > core_sources_use_no_os_api` - covers AC5
    - Given: every file under `src/core/`
@@ -9980,6 +9980,7 @@ Order: test first -> red -> minimal implementation -> green -> refactor.
 7. `PlanReferenceTests > "Resolves_RustFileAndTest_True"`, `"Resolves_RustTestMissing_False"`, `"Parse_BareRustName_TakesTheLastNamedRsFile"`, `"Parse_CargoCommand_IsNoReference"` - covers AC7
 8. Manual check (AC2, AC6): `build.ps1` twice from a clean `target`, same hash; `rebuild.ps1 -SkipServer` and the client's log shows the library loaded.
 
+(as built: the crate holds only what this package uses; the `windows` dependency, the device traits with their fake and WASAPI layer, the counting allocator and the `windows` entry in the notices come with their first user in 173. The release profile keeps `panic = "unwind"` (with `abort` no export could catch a panic, AC4); the panic test runs a panicking body through the public `guard` instead of a test-only export, plus `last_error_small_buffer_returns_whole_length`. The machine's default toolchain is now 1.98.1 (`rustup default`), because `rust-toolchain.toml` only acts when cargo runs inside the folder, not with `--manifest-path` from the repository root (A178); the crate allows `linker_messages`, as Rust 1.98 shows link.exe's "creating library" note as a warning. `build.ps1` passes the remapped paths as `CARGO_ENCODED_RUSTFLAGS`, because the cargo home lies under a path with a space, and links with `/Brepro`; two builds from a clean `target` gave sha256 57c7cb0934d396516a9b60f7ad26ef0ded6b4408ec54b049bd0c72e2a89555f4. A published single file carries `ovs_audio.dll` next to `ovs_aec.dll` in its bundle. Nothing uses the library yet, so the log line of AC3 comes with the speaker in 173. The C# folder is `Audio/Rust/`, not `Audio/Native/`: a namespace segment `Native` would name the nested type `EchoCanceller.Native` (rule 8, RL081); the later packages use that folder.)
 Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 
 ### Steps
@@ -10008,12 +10009,12 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 - `native/ovs_audio/src/device/wasapi.rs` (change): render stream: `IMMDeviceEnumerator::GetDevice(id)` or the default render endpoint (console role, as `WasapiOut` does), shared mode, 48 kHz float stereo with `AUTOCONVERTPCM | SRC_DEFAULT_QUALITY | EVENTCALLBACK`, buffer `SpeakerBufferMs` (30 ms), own thread with COM (MTA), `AvSetMmThreadCharacteristicsW("Pro Audio")`, a stop event next to the WASAPI event (`WaitForMultipleObjects`); a failed call (e.g. `AUDCLNT_E_DEVICE_INVALIDATED`) ends the thread and is kept as HRESULT
 - `native/ovs_audio/src/lib.rs` (change): `ovs_audio_speaker_open(id_utf16, &error)`, `_write(frames, count)`, `_buffered_frames`, `_error`, `_underrun_frames`, `_close`
 - `src/OVS.Client/Audio/Devices/PlaybackBuffer.cs` (change): becomes abstract: `BufferedDuration`, `AddSamples(ReadOnlySpan<float> frame)`, `Dispose`, plus a polled `Failure` (Exception or null); the NAudio-backed body moves out
-- `src/OVS.Client/Audio/Native/NativeSpeaker.cs` (new): the `PlaybackBuffer` over `ovs_audio_speaker_*`; `Dispose` closes the stream
+- `src/OVS.Client/Audio/Rust/NativeSpeaker.cs` (new): the `PlaybackBuffer` over `ovs_audio_speaker_*`; `Dispose` closes the stream
 - `src/OVS.Client/Audio/Devices/WasapiHardware.cs` (change): `OpenOutput` opens a `NativeSpeaker`; with `NativeAudio` unavailable it throws like a device that cannot open (A180: no audio, no fallback); `Failed` is raised from the poll of AC5
 - `src/OVS.Client/Audio/Playback/PlaybackLoop.cs` (change): writes the float frame directly (no byte copy), checks `Failure` after each write and reports it once through the hardware's `Failed`
 - `src/OVS.Client/Audio/AudioEngine.cs` (change): `EchoDelayMs` stays (A187 comes in 178)
 - `tests/OVS.Tests/TestSupport/FakeAudioHardware.cs` (change): `FakeSpeaker : PlaybackBuffer` with today's behaviour (holds `SpeakerBuffer`, nothing plays it); `FakeOutput` merges into it
-- `tests/OVS.Tests/Client/Audio/Native/NativeSpeakerTests.cs` (new), `tests/OVS.Tests/Client/Audio/Playback/PlaybackLoopTests.cs` and `Devices/DeviceLifecycleTests.cs` (change only where `PlaybackBuffer` is constructed)
+- `tests/OVS.Tests/Client/Audio/Rust/NativeSpeakerTests.cs` (new), `tests/OVS.Tests/Client/Audio/Playback/PlaybackLoopTests.cs` and `Devices/DeviceLifecycleTests.cs` (change only where `PlaybackBuffer` is constructed)
 
 ### Context
 
@@ -10079,7 +10080,7 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 - `src/OVS.Client/Audio/AudioEngine.cs` (change): `Connecting` flag: while a connection is being made the playback thread runs (so the speaker opens during the handshake); `PlaybackNeeded` includes it
 - `src/OVS.Client/ViewModels/ConnectionViewModel.cs` (change): sets `Connecting` when a connect or reconnect starts and clears it when it ends (connected, failed or cancelled)
 - `native/ovs_audio/src/lib.rs`, `src/OVS.Client/Diagnostics/DebugApi.cs` (change): `/state` shows the native underrun counter (for the manual check of AC6)
-- `tests/OVS.Tests/Client/Audio/Sounds/SoundTests.cs`, `SoundPlayerTests.cs`, `Playback/PlaybackLoopTests.cs`, `ViewModels/ConnectionTests` or the reconnect tests (change), `Audio/Native/NativeSoundTests.cs` (new)
+- `tests/OVS.Tests/Client/Audio/Sounds/SoundTests.cs`, `SoundPlayerTests.cs`, `Playback/PlaybackLoopTests.cs`, `ViewModels/ConnectionTests` or the reconnect tests (change), `Audio/Rust/NativeSoundTests.cs` (new)
 
 ### Context
 
@@ -10431,7 +10432,7 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 - `src/OVS.Client/Audio/Devices/WasapiHardware.cs` (change): only listing, `FindCurrentDeviceId`, the watcher and the native opens
 - `src/OVS.Client/Diagnostics/DebugApi.cs` (change): `/state` audio figures from the native poll only
 - `THIRD-PARTY-NOTICES.md` (change): RNNoise's entry for `nnnoiseless`, WebRTC Audio Processing and Abseil now statically in `ovs_audio.dll`, the MinGW and libc++ entry removed if A185 used MSVC, libopus added (175), the `windows` crate (172)
-- `CODING-RULES-OVS.md` (change): the client layout without the deleted folders and classes; `Audio/Native/` described
+- `CODING-RULES-OVS.md` (change): the client layout without the deleted folders and classes; `Audio/Rust/` described
 - `README.md` or the build documentation (change): how to build `ovs_audio.dll`
 - `tests/OVS.Tests/` (change): tests of deleted classes removed (each moved assert already listed in 173 to 179)
 
