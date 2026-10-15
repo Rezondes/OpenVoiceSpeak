@@ -9646,21 +9646,23 @@ Groups have a name and rights (`GroupRecord`, `GroupInfo`), no colour. The users
 
 ### Acceptance Criteria
 
-- [ ] AC1: In "Gruppen und Rechte" a group gets a colour or none; the server refuses anything but `#RRGGBB` or null; old data loads with no colour.
-- [ ] AC2: A user's name in the tree, the chat and the member list has the colour of their highest coloured group (group order of Package 37); a colour too dark or too light for the theme is lifted to 4.5:1 contrast.
-- [ ] AC3: The member list shows the online users under one heading per group (with count), each user under their highest group only, then "Online" for users without a group heading; it follows joins, leaves and group changes.
-- [ ] AC4: A header button shows and hides the list, the choice is saved; under the compact width (Package 68) it is hidden.
-- [ ] AC5: The protocol version is raised.
-- [ ] AC6: A right click on a member opens the same menu as in the channel tree.
+- [x] AC1: In "Gruppen und Rechte" a group gets a colour or none; the server refuses anything but `#RRGGBB` or null; old data loads with no colour.
+- [x] AC2: A user's name in the tree, the chat and the member list has the colour of their highest coloured group (group order of Package 37); a colour too dark or too light for the theme is lifted to 4.5:1 contrast.
+- [x] AC3: The member list shows the online users under one heading per group (with count), each user under their highest group only, then "Online" for users without a group heading; it follows joins, leaves and group changes.
+- [x] AC4: A header button shows and hides the list, the choice is saved; under the compact width (Package 68) it is hidden.
+- [x] AC5: The protocol version is raised.
+- [x] AC6: A right click on a member opens the same menu as in the channel tree.
 
 ### Tests (TDD)
 
-1. `AdminCommandTests > "GroupColor_Valid_Stored_InvalidRefused"` (AC1)
+1. `AdminCommandTests > "GroupColor_ValidOrNot_StoredOrRefused"` (AC1)
 2. `AvatarConvertersTests > "NameColor_HighestColoredGroup_ContrastLifted"` (AC2)
 3. `MemberListViewModelTests > "Grouped_ByHighestGroup_FollowsChanges"` (AC3)
 4. `ResponsiveTests > "MemberList_Toggle_HiddenWhenCompact"` (AC4)
 5. `WireFreezeTests`, `SmokeTests` (AC5)
 6. `UiSmokeTests > "MemberList_RightClick_SameMenu"` (AC6)
+
+(as built: no new package: the group editor offers ten swatches, a "#RRGGBB" field with a preview and "Keine Farbe", which gives any colour without `Avalonia.Controls.ColorPicker` (A169 not needed). The colour is the value type `GroupColor` (Shared, red, green and blue): only a valid colour can exist, text becomes one through `GroupColor.TryParse`, and on the wire and in the data file it is the string "#RRGGBB", whose JSON reader refuses anything else, so a wrong colour is answered with InvalidValue before any handler (no `TextRules.IsColor`, no check in the handlers). It is written in capitals, only while set (older data stays as it was) and named in the change line. The admin group stays fixed (Package 76), so it gets no colour. `Models/NameColors.cs` picks the highest coloured group and blends a colour towards white or black until it keeps 4.5:1 on the theme's surface; the converter `AvatarConverters.NameBrush` reads the surface when the name is bound (a theme switch keeps the colours until then) and leaves the text's own colour for none. The member list (`MemberListView`, `MemberListViewModel`) uses the tree's own user items; a right click opens the tree row's menu at the pointer. Headings read "NAME (count)". The member list and its button show only from 1000 px window width (class `roomy`), so the sidebar keeps its room below; its rows are `memberRow`, not the tree's `row`. One test name got a third part (RL601). The protocol version is 18.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

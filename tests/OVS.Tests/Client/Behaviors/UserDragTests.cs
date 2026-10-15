@@ -50,7 +50,8 @@ public sealed class UserDragTests : TempDirectoryTest
     static bool Landed(Tree tree, string nickname)
     {
         // until the next layout the new row may not exist yet, the old one folds meanwhile
-        var rows = tree.Main.GetVisualDescendants().OfType<ContentPresenter>().Where(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname).ToList();
+        // the tree's rows, not the member list's (Package 167)
+        var rows = tree.Main.FindControl<ItemsControl>("ChannelItems")!.GetVisualDescendants().OfType<ContentPresenter>().Where(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname).ToList();
         return rows is [{ Opacity: 1 } row] && !row.Classes.Contains("entering") && !row.Classes.Contains("leaving");
     }
 

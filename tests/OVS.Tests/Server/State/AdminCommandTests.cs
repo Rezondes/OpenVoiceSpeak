@@ -604,5 +604,37 @@ public class AdminCommandTests
         Assert.Equal(ReasonCodes.PermissionDenied, (await client.ErrorAsync("o")).Code);
     }
 
+    /// <summary>Package 167: a group's colour is "#RRGGBB" or none, stored in capitals and kept over a restart; anything else is refused.</summary>
+    [Fact]
+    public async Task GroupColor_ValidOrNot_StoredOrRefused()
+    {
+        var admin = ClientIdentity.Create();
+        var server = await TestServer.StartAsync(TestServer.Grant(admin, "Admin"));
+        Guid team;
+        await using (var client = await TestClient.ConnectAsync(server, identity: admin))
+        {
+            Assert.All(client.Welcome.Snapshot.Groups, groupInfo => Assert.Null(groupInfo.Color)); // the groups made before have none
+            // a wrong colour cannot be made as a GroupColor; sent as JSON by another client it is refused before any handler
+            string[] wrongColors = ["\"red\"", "\"#12345\"", "\"#1234567\"", "\"#GG0000\"", "\"\"", "12"];
+            for (var index = 0; index < wrongColors.Length; index++)
+            {
+                await client.SendRawAsync($$"""{"type":"createGroup","requestId":"c{{index}}","name":"Falsch","permissions":1,"color":{{wrongColors[index]}}}""");
+                Assert.Equal(ReasonCodes.InvalidValue, (await client.ErrorAsync("c" + index)).Code);
+            }
+            await client.SendRawAsync("""{"type":"createGroup","requestId":"lower","name":"Team","permissions":1,"color":"#aa33ff"}""");
+            var created = (await client.WaitForAsync<GroupsChanged>(changed => changed.Groups.Any(groupInfo => groupInfo.Name == "Team"))).Groups.Single(groupInfo => groupInfo.Name == "Team");
+            team = created.Id;
+            Assert.Equal(new GroupColor(0xAA, 0x33, 0xFF), created.Color); // either case is read
+            await client.SendAsync(new UpdateGroup(team, "Team", Permission.Speak, new GroupColor(0, 0xFF, 0)));
+            await client.WaitForAsync<GroupsChanged>(changed => changed.Groups.Any(groupInfo => groupInfo.Color == new GroupColor(0, 0xFF, 0)));
+        }
+        server = await server.RestartAsync();
+        await using var _ = server;
+        await using var again = await TestClient.ConnectAsync(server, identity: admin);
+        Assert.Equal(new GroupColor(0, 0xFF, 0), again.Welcome.Snapshot.Groups.Single(groupInfo => groupInfo.Id == team).Color);
+        await again.SendAsync(new UpdateGroup(team, "Team", Permission.Speak));
+        await again.WaitForAsync<GroupsChanged>(changed => changed.Groups.Single(groupInfo => groupInfo.Id == team).Color is null); // no colour again
+    }
+
     sealed record GroupServerRig(TestServer Server, TestClient Admin, TestClient Mod, TestClient Guest);
 }

@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OVS.Client.ViewModels"
+             xmlns:m="using:OVS.Client.Models"
+             xmlns:conv="using:OVS.Client.Converters"
+             x:Class="OVS.Client.Views.MemberListView"
+             x:DataType="vm:MemberListViewModel">
+  <!-- Package 167: everyone online, one heading per group in the server's order; a right click opens the tree's user menu -->
+  <ScrollViewer Padding="10,12">
+    <ItemsControl x:Name="Sections" ItemsSource="{Binding Sections}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="m:MemberSection">
+          <StackPanel Spacing="2" Margin="0,0,0,12">
+            <TextBlock Classes="caption memberHeading" Text="{Binding Heading}" Margin="6,0,0,4" TextTrimming="CharacterEllipsis" />
+            <ItemsControl ItemsSource="{Binding Members}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:UserViewModel">
+                  <Border Classes="memberRow" ContextRequested="OnMemberContextRequested" ToolTip.Tip="{Binding GroupTip}">
+                    <DockPanel>
+                      <Border DockPanel.Dock="Left" Classes="avatar memberAvatar" Width="24" Height="24" Margin="0,0,8,0"
+                              Background="{Binding Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
+                        <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="11" />
+                      </Border>
+                      <TextBlock Classes="userName" Text="{Binding Nickname}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                 Foreground="{Binding NameColor, Converter={x:Static conv:AvatarConverters.NameBrush}}"
+                                 FontWeight="{Binding IsSelf, Converter={x:Static conv:AvatarConverters.SelfWeight}}" />
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </ScrollViewer>
+</UserControl>

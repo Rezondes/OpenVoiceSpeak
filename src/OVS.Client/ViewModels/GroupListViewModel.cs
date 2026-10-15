@@ -89,10 +89,10 @@ internal sealed partial class GroupListViewModel : ObservableObject
     /// </summary>
     GroupEditViewModel Rebuilt(GroupEditViewModel? old, GroupInfo serverGroup)
     {
-        var fresh = new GroupEditViewModel(serverGroup.Id, serverGroup.Name, serverGroup.Permissions, Actor);
+        var fresh = new GroupEditViewModel(serverGroup.Id, serverGroup.Name, serverGroup.Permissions, Actor, serverGroup.Color);
         if (old is not { HasChanges: true }) return fresh;
         if (old.BuiltFor != Actor || old.IsReadOnly != fresh.IsReadOnly || old.CanDelete != fresh.CanDelete) return fresh.CarryEdits(old);
-        old.Follow(serverGroup.Name, serverGroup.Permissions);
+        old.Follow(serverGroup.Name, serverGroup.Permissions, serverGroup.Color);
         return old;
     }
 
@@ -171,10 +171,11 @@ internal sealed partial class GroupListViewModel : ObservableObject
     PendingActionViewModel? SendGroup(GroupEditViewModel group)
     {
         if (group.IsReadOnly) return null;
-        GroupError = TextRules.NormalizeName(group.Name, ProtocolLimits.MaxGroupNameLength) is null ? Strings.Dlg_NameInvalid : null; // Package 83
+        GroupError = TextRules.NormalizeName(group.Name, ProtocolLimits.MaxGroupNameLength) is null ? Strings.Dlg_NameInvalid // Package 83
+            : !group.IsColorValid ? Strings.Group_ColorInvalid : null; // Package 167
         if (GroupError is not null || GroupSave.IsRunning) return null;
         // Package 98: busy until the server's groups arrive; a refused group stays for correcting
-        return server.SendConfirmed(group.Id is { } id ? new UpdateGroup(id, group.Name, group.Permissions) : new CreateGroup(group.Name, group.Permissions),
+        return server.SendConfirmed(group.Id is { } id ? new UpdateGroup(id, group.Name, group.Permissions, group.ColorToSend) : new CreateGroup(group.Name, group.Permissions, group.ColorToSend),
             answer => answer is GroupsChanged, GroupSave, notify: false);
     }
 

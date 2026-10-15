@@ -152,6 +152,9 @@ internal sealed class ClientSettings : IJsonOnDeserializing
     /// <summary>Package 162: a user joining the own channel notifies.</summary>
     public bool NotifyJoin { get; set; }
 
+    /// <summary>Package 167: the member list shows beside the chat.</summary>
+    public bool ShowMemberList { get; set; } = true;
+
     /// <summary>Package 99 (A114): today's plain look by default, or the animated display. A file from before has no key and loads simplified.</summary>
     public DisplayMode Display { get; set; } = DisplayMode.Simplified;
 

@@ -28,6 +28,10 @@ internal sealed partial class UserViewModel(ServerViewModel owner, uint sessionI
     [NotifyPropertyChangedFor(nameof(CanAdjustVolume))]
     bool isSelf;
     [ObservableProperty] bool serverMuted;
+    /// <summary>Package 167: the colour of the highest coloured group, null for none.</summary>
+    [ObservableProperty] GroupColor? nameColor;
+    /// <summary>Package 167: the user's groups, for the member list.</summary>
+    public IReadOnlyList<Guid> GroupIds { get; private set; } = [];
     /// <summary>Package 166: "Vom Server stummgeschaltet", with the end of a timed mute.</summary>
     [ObservableProperty] string serverMutedText = Strings.Ui_ServerMuted;
     [ObservableProperty] bool isDeafened;
@@ -108,6 +112,8 @@ internal sealed partial class UserViewModel(ServerViewModel owner, uint sessionI
         IsDeafened = info.SelfDeafened;
         // Deafened implies muted and a server mute has its own icon, so the plain mic-off icon only shows for a mute on its own.
         IsSelfMutedOnly = info.SelfMuted && !info.SelfDeafened && !info.ServerMuted;
+        NameColor = NameColors.For(info.GroupIds, serverGroups); // Package 167
+        GroupIds = info.GroupIds;
         GroupNames = string.Join(", ", serverGroups.Where(groupInfo => info.GroupIds.Contains(groupInfo.Id)).Select(groupInfo => groupInfo.Name)); // in the server's group order (Package 37)
         StatusText = info switch
         {

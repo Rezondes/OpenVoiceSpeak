@@ -21,6 +21,9 @@ internal static class Responsive
     /// <summary>The drawer leaves this much of the window uncovered, so a click beside it closes it.</summary>
     public const double DrawerGap = 48;
 
+    /// <summary>Package 167: from this window width on the member list has room beside the chat (class <c>roomy</c>).</summary>
+    public const double MemberListFrom = 1000;
+
     /// <summary>True when the window is narrow enough for the sidebar to become a drawer.</summary>
     public static bool IsCompact(double windowWidth) => windowWidth < CompactBelow;
 
@@ -33,6 +36,7 @@ internal static class Responsive
     {
         window.Classes.Set("compact", IsCompact(windowWidth));
         window.Classes.Set("narrow", mainWidth < NarrowBelow);
+        window.Classes.Set("roomy", windowWidth >= MemberListFrom);
     }
 
     /// <summary>

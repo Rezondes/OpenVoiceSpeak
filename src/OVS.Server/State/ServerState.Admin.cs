@@ -51,7 +51,7 @@ internal sealed partial class ServerState
             return;
         }
         var permissions = request.Permissions & Permission.All;
-        data.Groups.Add(new GroupRecord(Guid.NewGuid(), name, permissions));
+        data.Groups.Add(new GroupRecord(Guid.NewGuid(), name, permissions, request.Color)); // Package 167: GroupColor is valid by its type
         saves.Persist();
         logs.Server.GroupCreated(name, session.Nickname, permissions);
         BroadcastGroups(); // Package 92: per recipient
@@ -102,7 +102,9 @@ internal sealed partial class ServerState
         var changes = new List<string>();
         if (group.Name != name) changes.Add($"name '{group.Name}' -> '{name}'");
         if (group.Permissions != permissions) changes.Add($"permissions {group.Permissions} -> {permissions}");
-        data.Groups[data.Groups.IndexOf(group)] = group with { Name = name, Permissions = permissions };
+        var color = request.Color; // Package 167: valid by its type
+        if (group.Color != color) changes.Add($"colour {group.Color?.ToString() ?? "none"} -> {color?.ToString() ?? "none"}");
+        data.Groups[data.Groups.IndexOf(group)] = group with { Name = name, Permissions = permissions, Color = color };
         saves.Persist();
         #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used
         if (changes.Count > 0) logs.Server.GroupChanged(group.Name, session.Nickname, string.Join(", ", changes));

@@ -434,6 +434,27 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Close();
     }
 
+    /// <summary>Package 167: a right click on a member opens the same menu as the user's row in the channel tree.</summary>
+    [AvaloniaFact]
+    public void MemberList_RightClick_SameMenu()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action(), server: FakeServers.Crowded());
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 800 };
+        main.Show();
+        Dispatcher.UIThread.RunJobs();
+        var member = main.FindControl<MemberListView>("MemberList")!.GetVisualDescendants().OfType<Border>()
+            .First(border => border.Classes.Contains("memberRow") && border.DataContext is UserViewModel { IsSelf: false });
+        var user = (UserViewModel)member.DataContext!;
+        var treeRow = main.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("userRow") && border.DataContext == user);
+
+        member.RaiseEvent(new ContextRequestedEventArgs());
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(treeRow.ContextMenu!.IsOpen); // the tree's own menu, with the same entries and the same user
+        Assert.Same(user, treeRow.ContextMenu.DataContext);
+        treeRow.ContextMenu.Close();
+        main.Close();
+    }
+
     /// <summary>Package 163: Ctrl+K opens the quick switcher with the focus in its field, Esc closes it.</summary>
     [AvaloniaFact]
     public void CtrlK_Pressed_OpensAndEscCloses()

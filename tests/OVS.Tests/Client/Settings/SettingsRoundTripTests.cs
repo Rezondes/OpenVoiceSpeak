@@ -52,6 +52,7 @@ public sealed class SettingsRoundTripTests
         NotifyPrivate = false,
         NotifyMention = false,
         NotifyJoin = true,
+        ShowMemberList = false,
     };
 
     static SettingsViewModel Page(ClientSettings settings) =>

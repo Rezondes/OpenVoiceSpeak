@@ -184,6 +184,21 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>Package 161: the chat's text size in percent.</summary>
     public int ChatTextScale => Settings.ChatTextScale;
+
+    /// <summary>Package 167: the member list shows beside the chat (the header's button, saved).</summary>
+    public bool ShowMemberList => Settings.ShowMemberList;
+
+    /// <summary>Package 167: the member list of the shown server, null without one.</summary>
+    [ObservableProperty] MemberListViewModel? memberList;
+
+    /// <summary>Package 167: the header's button shows or hides the member list and saves the choice.</summary>
+    [RelayCommand]
+    void ToggleMemberList()
+    {
+        Settings.ShowMemberList = !Settings.ShowMemberList;
+        Settings.Save(storageDir);
+        OnPropertyChanged(nameof(ShowMemberList));
+    }
     /// <summary>The client's log.</summary>
     public ClientLog Log { get; }
     /// <summary>The client's one clock: the reconnect, the hints and the statistics, and each connection's view model and voice.</summary>
@@ -250,6 +265,7 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         OnPropertyChanged(nameof(StreamerMode)); // Package 160
         OnPropertyChanged(nameof(Compact)); // Package 161
         OnPropertyChanged(nameof(ChatTextScale));
+        OnPropertyChanged(nameof(ShowMemberList)); // Package 167
         Settings.Save(storageDir);
         soundLibrary.CleanUp(Settings); // own tones nobody points to any more
         Keys.Bindings = Settings.KeyBindings.ToList();
@@ -292,6 +308,8 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
             newValue.SelfState.HoldMuteAsync(Keys.MuteHeld); // Package 125: connected with the key held; its release then unmutes
         }
         Chat = newValue is null ? null : new ChatViewModel(newValue, Notices.Reverse());
+        MemberList?.Detach(); // Package 167
+        MemberList = newValue is null ? null : new MemberListViewModel(newValue);
         EngineSync.SyncConnection();
     }
 

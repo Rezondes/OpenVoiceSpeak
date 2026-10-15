@@ -996,6 +996,33 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         main.Close();
     }
 
+    /// <summary>Package 167: the header's button shows and hides the member list and saves it; under the compact width neither shows.</summary>
+    [AvaloniaFact]
+    public void MemberList_Toggle_HiddenWhenCompact()
+    {
+        var main = Open(1100, FakeServers.Crowded());
+        var host = main.FindControl<Panel>("MemberListHost")!;
+        var toggle = main.FindControl<Button>("MemberListToggle")!;
+        var list = main.FindControl<MemberListView>("MemberList")!;
+        Assert.True(list.IsEffectivelyVisible);
+        Assert.True(toggle.IsEffectivelyVisible);
+        Assert.Contains(list.GetVisualDescendants().OfType<TextBlock>(), text => text.Text?.StartsWith("Mitspieler", StringComparison.Ordinal) == true);
+
+        Click(main, toggle);
+        Assert.False(list.IsEffectivelyVisible);
+        Assert.False(ClientSettings.Load(dir, out _).ShowMemberList);
+        Click(main, toggle);
+        Assert.True(list.IsEffectivelyVisible);
+        Assert.True(ClientSettings.Load(dir, out _).ShowMemberList);
+
+        Resize(main, 960); // below 1000 px the sidebar keeps its room
+        Assert.DoesNotContain("roomy", main.Classes);
+        Assert.False(host.IsEffectivelyVisible);
+        Assert.False(toggle.IsEffectivelyVisible);
+        LayoutAssert.FitsHorizontally(main);
+        main.Close();
+    }
+
     /// <summary>Package 163: the quick switcher's card at the narrowest width, with nothing found too.</summary>
     [AvaloniaFact]
     public void QuickSwitcher_At360_Fits()

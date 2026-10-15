@@ -550,6 +550,7 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
         SettingsVersion = basis.SettingsVersion, // Package 127: a newer client's higher version survives a save
         Bookmarks = basis.Bookmarks,
         UserVolumes = basis.UserVolumes,
+        ShowMemberList = basis.ShowMemberList, // Package 167: the header's button sets it, not the page
         InputDeviceId = SelectedInput?.Id, // null for a moment while a new device list replaces the items
         OutputDeviceId = SelectedOutput?.Id,
         InputGain = (float)(InputGainPercent / 100),

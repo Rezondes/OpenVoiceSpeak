@@ -699,4 +699,10 @@
   <data name="Mute_Minutes" xml:space="preserve"><value>Minuten</value></data>
   <data name="Mute_Confirm" xml:space="preserve"><value>Stummschalten</value></data>
   <data name="Mute_Hint" xml:space="preserve"><value>Die Stummschaltung endet nach der Dauer von selbst, auch wenn der Nutzer offline ist. Chatten bleibt erlaubt.</value></data>
+  <data name="Group_Color" xml:space="preserve"><value>Farbe der Namen</value></data>
+  <data name="Group_NoColor" xml:space="preserve"><value>Keine Farbe</value></data>
+  <data name="Group_ColorInvalid" xml:space="preserve"><value>Eine Farbe wird als #RRGGBB geschrieben, zum Beispiel #3498DB.</value></data>
+  <data name="Members_Online" xml:space="preserve"><value>Online</value></data>
+  <data name="Members_Toggle" xml:space="preserve"><value>Mitgliederliste ein- oder ausblenden</value></data>
+  <data name="Group_ColorWatermark" xml:space="preserve"><value>#RRGGBB</value></data>
 </root>

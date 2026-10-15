@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
@@ -160,6 +161,19 @@ internal partial class MainWindow : Window
         if (await QuickSwitcherDialog.ShowAsync(Overlay, switcher) is not { } hit) return;
         drawer.Set(false);
         await switcher.ChooseAsync(hit);
+    }
+
+    /// <summary>
+    /// Package 167: opens the channel tree's menu of <paramref name="user"/> for a click on <paramref name="target"/>; false when
+    /// the row has none. The menu belongs to the tree's row and opens at the pointer, so it shows where the member was clicked.
+    /// </summary>
+    internal bool OpenUserMenu(UserViewModel user, Control target)
+    {
+        var row = ChannelItems.GetVisualDescendants().OfType<Border>().FirstOrDefault(border => border.Classes.Contains("userRow") && border.DataContext == user);
+        if (row?.ContextMenu is not { } menu || !target.IsEffectivelyVisible) return false;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(row);
+        return true;
     }
 
     void OnChannelDoubleTapped(object? sender, TappedEventArgs args)

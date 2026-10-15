@@ -333,7 +333,8 @@
                                 </Border>
                               </Border>
                               <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Nickname}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ovs.Text}"
+                                <TextBlock Classes="userName" Text="{Binding Nickname}" TextTrimming="CharacterEllipsis"
+                                           Foreground="{Binding NameColor, Converter={x:Static conv:AvatarConverters.NameBrush}}"
                                            FontWeight="{Binding IsSelf, Converter={x:Static conv:AvatarConverters.SelfWeight}}" />
                                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_You}" IsVisible="{Binding IsSelf}" VerticalAlignment="Center" />
                               </StackPanel>
@@ -435,6 +436,11 @@
                     <TextBlock Classes="wideOnly" Text="{Binding Connection.PingText}" />
                   </StackPanel>
                 </Border>
+                <!-- Package 167: shows or hides the member list -->
+                <Button x:Name="MemberListToggle" Classes="icon memberToggle" Classes.active="{Binding ShowMemberList}" Command="{Binding ToggleMemberListCommand}"
+                        ToolTip.Tip="{x:Static l:Strings.Members_Toggle}" AutomationProperties.Name="{x:Static l:Strings.Members_Toggle}">
+                  <PathIcon Data="{StaticResource Icon.People}" />
+                </Button>
                 <Button Classes="subtle" Command="{Binding PageFlow.OpenAdminCommand}" IsVisible="{Binding Server.CanAdminister, FallbackValue=False}"
                         ToolTip.Tip="{x:Static l:Strings.Ui_AdminMenu}" AutomationProperties.Name="{x:Static l:Strings.Ui_AdminMenu}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
@@ -479,6 +485,12 @@
             </StackPanel>
           </Border>
 
+          <!-- Package 167: the member list on the right of the chat; the header's button hides it, under the compact width it never shows -->
+          <Panel x:Name="MemberListHost" DockPanel.Dock="Right" Classes="memberList">
+            <Border Width="220" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource Ovs.Border}" IsVisible="{Binding ShowMemberList}">
+              <v:MemberListView x:Name="MemberList" DataContext="{Binding MemberList}" />
+            </Border>
+          </Panel>
           <v:ChatView DataContext="{Binding Chat}" />
         </DockPanel>
       </Panel>

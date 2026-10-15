@@ -225,8 +225,9 @@ public sealed class ItemMotionTests : TempDirectoryTest
         return main;
     }
 
+    /// <summary>The user's container in the channel tree (Package 167: the member list shows the same user again).</summary>
     static ContentPresenter UserContainer(MainWindow main, string nickname) =>
-        main.GetVisualDescendants().OfType<ContentPresenter>().Single(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname);
+        main.FindControl<ItemsControl>("ChannelItems")!.GetVisualDescendants().OfType<ContentPresenter>().Single(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname);
 
     [AvaloniaFact]
     public void User_Joins_SlidesInAndFlashes()
@@ -421,7 +422,7 @@ public sealed class ItemMotionTests : TempDirectoryTest
 
     /// <summary>The row of a user in the list they came into (not the one folding away in the old channel).</summary>
     static ContentPresenter Arrived(MainWindow main, string nickname) =>
-        main.GetVisualDescendants().OfType<ContentPresenter>().Single(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname && !contentPresenter.Classes.Contains("leaving"));
+        main.FindControl<ItemsControl>("ChannelItems")!.GetVisualDescendants().OfType<ContentPresenter>().Single(contentPresenter => contentPresenter.DataContext is UserViewModel user && user.Nickname == nickname && !contentPresenter.Classes.Contains("leaving"));
 
     /// <summary>Follows a flying ghost until it lands; returns where it was last seen (overlay coordinates).</summary>
     static double LastTop(Border ghost, out double first)

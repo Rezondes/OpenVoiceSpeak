@@ -402,7 +402,7 @@ internal sealed partial class ServerState
     List<GroupInfo> GroupInfos(Session to)
     {
         bool view = to.Permissions.Has(Permission.GroupsView);
-        return data.Groups.Select(groupRecord => new GroupInfo(groupRecord.Id, groupRecord.Name, view ? groupRecord.Permissions : Permission.None, CanAssign(to.Permissions, groupRecord))).ToList();
+        return data.Groups.Select(groupRecord => new GroupInfo(groupRecord.Id, groupRecord.Name, view ? groupRecord.Permissions : Permission.None, CanAssign(to.Permissions, groupRecord), groupRecord.Color)).ToList();
     }
 
     void BroadcastGroups()

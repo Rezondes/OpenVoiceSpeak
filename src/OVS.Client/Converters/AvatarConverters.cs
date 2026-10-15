@@ -1,7 +1,10 @@
+using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Media.Imaging;
+using OVS.Client.Models;
+using OVS.Shared.Protocol.Messages.Groups;
 
 namespace OVS.Client.Converters;
 
@@ -24,6 +27,22 @@ internal static class AvatarConverters
     /// <summary>Bold for the own user's name.</summary>
     public static readonly IValueConverter SelfWeight =
         new FuncValueConverter<bool, FontWeight>(isSelf => isSelf ? FontWeight.SemiBold : FontWeight.Normal);
+
+    /// <summary>
+    /// Package 167: a name's colour (that of its highest coloured group) as a brush readable on the theme's surface; none
+    /// leaves the text's own colour.
+    /// </summary>
+    // ponytail: the surface is read when the name is bound; a theme switch keeps the lifted colours until the name binds again
+    public static readonly IValueConverter NameBrush = new FuncValueConverter<GroupColor?, object?>(groupColor =>
+        groupColor is { } color ? new ImmutableSolidColorBrush(NameColors.Readable(Color.FromRgb(color.Red, color.Green, color.Blue), Surface())) : AvaloniaProperty.UnsetValue);
+
+    /// <summary>Package 167: a group colour as it is, for the swatches and the editor's preview; none is transparent.</summary>
+    public static readonly IValueConverter ColorBrush = new FuncValueConverter<GroupColor?, IBrush>(groupColor =>
+        groupColor is { } color ? new ImmutableSolidColorBrush(Color.FromRgb(color.Red, color.Green, color.Blue)) : Brushes.Transparent);
+
+    static Color Surface() =>
+        Application.Current is { } app && app.TryGetResource("Ovs.Surface", app.ActualThemeVariant, out var value) && value is ISolidColorBrush brush
+            ? brush.Color : Colors.White;
 
     /// <summary>A server logo (PNG bytes) as image; null stays null so the letter badge shows instead.</summary>
     public static readonly IValueConverter PngToBitmap =

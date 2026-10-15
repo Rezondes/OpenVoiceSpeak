@@ -104,7 +104,10 @@ internal sealed partial class ChatViewModel : ObservableObject
 
     void OnChat(ChatMessage chatMessage)
     {
-        var entry = new ChatEntry(chatMessage.SentAt.LocalDateTime, chatMessage.Text, chatMessage.FromNickname, chatMessage.FromSessionId == server.Mirror.SelfId);
+        var entry = new ChatEntry(chatMessage.SentAt.LocalDateTime, chatMessage.Text, chatMessage.FromNickname, chatMessage.FromSessionId == server.Mirror.SelfId)
+        {
+            NameColor = server.Mirror.Users.GetValueOrDefault(chatMessage.FromSessionId) is { } sender ? NameColors.For(sender.GroupIds, server.Mirror.Groups) : null, // Package 167
+        };
         var tab = chatMessage.Target switch
         {
             ChatTarget.Server => General,

@@ -421,6 +421,7 @@ public sealed class DebugApiTests : IAsyncLifetime
             "server.defaultChannelId",
             "server.groups",
             "server.groups[].assignableByMe",
+            "server.groups[].color",
             "server.groups[].id",
             "server.groups[].name",
             "server.groups[].permissions",

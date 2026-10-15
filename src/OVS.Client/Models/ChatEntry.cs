@@ -1,5 +1,6 @@
 using OVS.Client.Localization;
 using OVS.Client.ViewModels;
+using OVS.Shared.Protocol.Messages.Groups;
 
 namespace OVS.Client.Models;
 
@@ -15,6 +16,9 @@ namespace OVS.Client.Models;
 /// <param name="Notice">The kind of a system notice.</param>
 internal sealed record ChatEntry(DateTime Time, string Text, string? From = null, bool IsOwn = false, NoticeKind? Notice = null, OutgoingChatMessageViewModel? Sending = null)
 {
+    /// <summary>Package 167: the colour of the sender's highest coloured group, null for none.</summary>
+    public GroupColor? NameColor { get; init; }
+
     /// <summary>Package 161: a message right after one of the same sender within a few minutes (compact mode joins them).</summary>
     public bool ContinuesPrevious { get; init; }
 

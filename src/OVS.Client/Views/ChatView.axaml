@@ -91,7 +91,7 @@
                   </Border>
                   <StackPanel Margin="12,0,0,0" Spacing="4">
                     <StackPanel Classes="authorLine" Orientation="Horizontal" Spacing="8">
-                      <TextBlock Classes="author" Text="{Binding From}" />
+                      <TextBlock Classes="author" Text="{Binding From}" Foreground="{Binding NameColor, Converter={x:Static conv:AvatarConverters.NameBrush}}" />
                       <TextBlock Classes="caption" Text="{Binding TimeText}" VerticalAlignment="Center" />
                     </StackPanel>
                     <Border Classes="bubble" HorizontalAlignment="Left">

@@ -216,6 +216,36 @@
     <Setter Property="Width" Value="18" />
     <Setter Property="Height" Value="18" />
   </Style>
+  <!-- Package 167: the member list and its button only where the window has room for them beside the tree and the chat -->
+  <Style Selector="Window:not(.roomy) Panel.memberList">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Window:not(.roomy) Button.memberToggle">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <!-- Package 167: a member's row looks like a user row of the tree (it is no tree row, so the tree's own lookups stay unique) -->
+  <Style Selector="Border.memberRow">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="6,3" />
+  </Style>
+  <Style Selector="Border.memberRow:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceHover}" />
+  </Style>
+  <Style Selector="TextBlock.memberHeading">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <!-- Package 167: a user's name in the theme's text colour unless a group gives it one -->
+  <Style Selector="TextBlock.userName">
+    <Setter Property="Foreground" Value="{DynamicResource Ovs.Text}" />
+  </Style>
+  <Style Selector="Button.swatch">
+    <Setter Property="Padding" Value="2" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
   <Style Selector="Border.row.current">
     <Setter Property="Background" Value="{DynamicResource Ovs.SurfaceSelected}" />
   </Style>
