@@ -74,7 +74,7 @@ public sealed class KnownUserViewModelTests
         Assert.All(names, name => Assert.NotNull(typeof(KnownUserViewModel).GetProperty(name + "Command")));
     }
 
-    /// <summary>Package 166: a timed mute shows its end on the card, and in the channel tree today as the time of day.</summary>
+    /// <summary>Package 166: a timed mute shows its end on the card (the tree's text: FormatsTests.Moment_TodayOnlyTime_OtherDayWithDate).</summary>
     [Fact]
     public void Muted_WithEnd_TextShowsTime()
     {
@@ -86,11 +86,5 @@ public sealed class KnownUserViewModelTests
         Assert.Equal(OVS.Client.Localization.TextFormat.Of(OVS.Client.Localization.Strings.Ui_ServerMutedUntil,
             end.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture)), timed.ServerMutedText);
         Assert.Equal(OVS.Client.Localization.Strings.Ui_ServerMuted, Card(new KnownUserInfo("fpA", "anna", [], ServerMuted: true)).ServerMutedText);
-
-        // the tree's text: only the time on the same day, with the date otherwise
-        var morning = new DateTimeOffset(2026, 10, 15, 9, 0, 0, TimeSpan.Zero);
-        Assert.Equal("14:05", OVS.Client.Localization.Formats.Moment(end, morning));
-        Assert.Contains("14:05", OVS.Client.Localization.Formats.Moment(end, morning.AddDays(-1)), StringComparison.Ordinal);
-        Assert.NotEqual("14:05", OVS.Client.Localization.Formats.Moment(end, morning.AddDays(-1)));
     }
 }

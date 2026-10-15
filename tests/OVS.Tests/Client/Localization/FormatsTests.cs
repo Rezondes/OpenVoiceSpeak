@@ -83,4 +83,18 @@ public class FormatsTests
             foreach (var culture in new[] { "de-DE", "en-US" })
                 Assert.Equal(text, In(culture, () => Formats.ClockTime(time)));
     }
+
+    /// <summary>Package 166: a moment today shows only its time of day in every language, any other day with its date as the language writes it.</summary>
+    [Fact]
+    public void Moment_TodayOnlyTime_OtherDayWithDate()
+    {
+        var end = new DateTimeOffset(2026, 10, 15, 14, 5, 0, TimeSpan.Zero);
+        var morning = new DateTimeOffset(2026, 10, 15, 9, 0, 0, TimeSpan.Zero);
+        foreach (var culture in new[] { "de-DE", "en-US" })
+            Assert.Equal("14:05", In(culture, () => Formats.Moment(end, morning)));
+
+        Assert.Equal("15.10.2026 14:05", In("de-DE", () => Formats.Moment(end, morning.AddDays(-1))));
+        // the space before "PM" differs between ICU versions, so only the start is fixed
+        Assert.StartsWith("10/15/2026 2:05", In("en-US", () => Formats.Moment(end, morning.AddDays(-1))), StringComparison.Ordinal);
+    }
 }
