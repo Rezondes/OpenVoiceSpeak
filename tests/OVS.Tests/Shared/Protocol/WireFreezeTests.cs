@@ -21,6 +21,7 @@ public sealed class WireFreezeTests
     static readonly string[] Messages =
     [
         "assignGroup: fingerprint, groupId, requestId",
+        "avatar: hash, pngBase64, requestId",
         "backupChunk: dataBase64, fileName, isLast, offset, requestId, totalSize",
         "backupList: backups, offset, requestId, total",
         "backupUploaded: backup, requestId",
@@ -48,6 +49,7 @@ public sealed class WireFreezeTests
         "downloadLogChunk: downloadId, offset, requestId",
         "editChannel: allowedGroupIds, bitrate, channelId, description, isMuted, maxUsers, name, order, password, requestId",
         "error: code, detail, errorId, requestId",
+        "getAvatar: hash, requestId",
         "getServerIcon: requestId",
         "groupsChanged: groups",
         "joinChannel: channelId, password, requestId",
@@ -76,6 +78,7 @@ public sealed class WireFreezeTests
         "sendChat: requestId, target, text, toSessionId",
         "serverIcon: hash, pngBase64, requestId",
         "serverSettingsChanged: settings",
+        "setAvatar: fingerprint, pngBase64, requestId",
         "setChannelLinks: add, remove, requestId",
         "setSelfState: deafened, muted, requestId",
         "setServerIcon: pngBase64, requestId",
@@ -100,19 +103,20 @@ public sealed class WireFreezeTests
     /// <summary>Record carried by a message: its JSON property names, sorted.</summary>
     static readonly string[] Records =
     [
+        "AvatarHash: ",
         "BackupInfo: createdAt, fileName, serverVersion, size",
         "BanInfo: blockedAttempts, createdAt, createdBy, createdByFingerprint, durationMinutes, expiresAt, fingerprint, id, ip, lastAttempt, lastAttemptIp, liftedAt, liftedBy, nickname, reason",
         "ChannelInfo: allowedGroupIds, bitrate, description, hasPassword, id, isMuted, kind, maxUsers, name, order",
         "GroupColor: ", // Package 167: written as the string "#RRGGBB", no properties
         "GroupInfo: assignableByMe, color, id, name, permissions",
-        "KnownUserInfo: bans, canBeModeratedByMe, chatMessages, fingerprint, firstSeen, groupIds, isOnline, lastIp, lastLogin, lastNickname, loginCount, onlineTime, previousNicknames, serverMuted, serverMutedUntil, sessionId, speechTime",
+        "KnownUserInfo: avatar, bans, canBeModeratedByMe, chatMessages, fingerprint, firstSeen, groupIds, isOnline, lastIp, lastLogin, lastNickname, loginCount, onlineTime, previousNicknames, serverMuted, serverMutedUntil, sessionId, speechTime",
         "LinkInfo: a, b",
         "LogFileInfo: channelId, channelName, id, kind, lastWrite, size, start",
         "LogHit: fileId, line, text",
         "ServerLimits: autoRestart, autoRestartTime, logDays, logRotateDaily, maxUsers",
         "ServerSettingsInfo: hasPassword, iconHash, limits, name, welcomeText",
         "ServerSnapshot: channels, defaultChannelId, groups, links, settings, users",
-        "UserInfo: canBeModeratedByMe, channelId, fingerprint, groupIds, nickname, permissions, selfDeafened, selfMuted, serverMuted, serverMutedUntil, sessionId",
+        "UserInfo: avatar, canBeModeratedByMe, channelId, fingerprint, groupIds, nickname, permissions, selfDeafened, selfMuted, serverMuted, serverMutedUntil, sessionId",
     ];
 
     static readonly string[] CodeValues =

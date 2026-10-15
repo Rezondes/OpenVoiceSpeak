@@ -435,9 +435,13 @@
                           <Button Classes="memberHeader" Command="{Binding ToggleExpandedCommand}" AutomationProperties.Name="{Binding Nickname}">
                             <DockPanel>
                               <Panel DockPanel.Dock="Left" VerticalAlignment="Top" Width="32" Height="32">
-                                <Border Classes="avatar" Width="32" Height="32"
+                                <Border Classes="avatar" Width="32" Height="32" ClipToBounds="True"
                                         Background="{Binding Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
-                                  <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="13" />
+                                  <Panel>
+                                    <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="13" />
+                                    <Image Classes="avatarPicture" Source="{Binding AvatarPng, Converter={x:Static conv:AvatarConverters.PngToBitmap}}"
+                                           IsVisible="{Binding AvatarPng, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                  </Panel>
                                 </Border>
                                 <Ellipse Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-2,-2"
                                          Fill="{DynamicResource Ovs.Speaking}" Stroke="{DynamicResource Ovs.Surface}" StrokeThickness="2"

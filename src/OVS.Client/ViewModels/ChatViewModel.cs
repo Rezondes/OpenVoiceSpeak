@@ -107,6 +107,7 @@ internal sealed partial class ChatViewModel : ObservableObject
         var entry = new ChatEntry(chatMessage.SentAt.LocalDateTime, chatMessage.Text, chatMessage.FromNickname, chatMessage.FromSessionId == server.Mirror.SelfId)
         {
             NameColor = server.Mirror.Users.GetValueOrDefault(chatMessage.FromSessionId) is { } sender ? NameColors.For(sender.GroupIds, server.Mirror.Groups) : null, // Package 167
+            Sender = server.Tree.FindUser(chatMessage.FromSessionId), // Package 168: the picture beside the message
         };
         var tab = chatMessage.Target switch
         {

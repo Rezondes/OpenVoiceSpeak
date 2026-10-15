@@ -43,6 +43,8 @@ internal static class RequestSamples
         [typeof(UpdateServerSettings)] = () => new UpdateServerSettings("Testserver", "", null),
         [typeof(SetServerIcon)] = () => new SetServerIcon(null),
         [typeof(GetServerIcon)] = () => new GetServerIcon(),
+        [typeof(SetAvatar)] = () => new SetAvatar(null),
+        [typeof(GetAvatar)] = () => new GetAvatar(AvatarHash.Of([1])),
         [typeof(KickSession)] = () => new KickSession(999, "weg"),
         [typeof(BanSession)] = () => new BanSession(999, "weg", 60, false),
         [typeof(Unban)] = () => new Unban(Unknown),

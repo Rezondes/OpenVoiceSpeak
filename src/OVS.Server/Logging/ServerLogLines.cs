@@ -263,6 +263,18 @@ static partial class ServerLogLines
     [LoggerMessage(EventId = 126, EventName = "Audit:Unbanned", Level = LogLevel.Information, Message = "Ban of {Nickname} lifted by {Moderator}")]
     public static partial void Unbanned(this ILogger logger, string nickname, string moderator);
 
+    /// <summary>Package 168: a user set the own profile picture.</summary>
+    [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} set a profile picture")]
+    public static partial void AvatarChanged(this ILogger logger, string nickname);
+
+    /// <summary>Package 168: a user removed the own profile picture.</summary>
+    [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} removed the own profile picture")]
+    public static partial void AvatarRemoved(this ILogger logger, string nickname);
+
+    /// <summary>Package 168: an administrator removed another user's profile picture.</summary>
+    [LoggerMessage(EventId = 128, EventName = "Audit:AvatarRemovedBy", Level = LogLevel.Information, Message = "Profile picture of {User} removed by {Nickname}")]
+    public static partial void AvatarRemovedBy(this ILogger logger, string user, string nickname);
+
     /// <summary>Package 166: a timed mute's time is over, also for an offline user.</summary>
     [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} no longer server-muted, the time is over")]
     public static partial void ServerMuteEnded(this ILogger logger, string nickname);

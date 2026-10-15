@@ -705,4 +705,9 @@
   <data name="Members_Online" xml:space="preserve"><value>Online</value></data>
   <data name="Members_Toggle" xml:space="preserve"><value>Mitgliederliste ein- oder ausblenden</value></data>
   <data name="Group_ColorWatermark" xml:space="preserve"><value>#RRGGBB</value></data>
+  <data name="Avatar_TooBig" xml:space="preserve"><value>Das Bild ist größer als 2 MB.</value></data>
+  <data name="Avatar_Format" xml:space="preserve"><value>Nur PNG, JPG, GIF oder WebP.</value></data>
+  <data name="Avatar_Change" xml:space="preserve"><value>Profilbild ändern</value></data>
+  <data name="Avatar_Remove" xml:space="preserve"><value>Profilbild entfernen</value></data>
+  <data name="Avatar_Files" xml:space="preserve"><value>Bilder</value></data>
 </root>

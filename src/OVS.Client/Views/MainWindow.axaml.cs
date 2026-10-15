@@ -17,6 +17,8 @@ using OVS.Client.Models;
 using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
+using Avalonia.Platform.Storage;
+using OVS.Client.Localization;
 
 namespace OVS.Client.Views;
 
@@ -174,6 +176,22 @@ internal partial class MainWindow : Window
         menu.Placement = PlacementMode.Pointer;
         menu.Open(row);
         return true;
+    }
+
+    /// <summary>Package 168: "Profilbild ändern" on the own row: a picture file, made into the 128 px PNG, sent to the server.</summary>
+    async void OnChangeAvatar(object? sender, RoutedEventArgs args)
+    {
+        if (Vm.Server is not { } server || StorageProvider is not { } storage) return;
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = Strings.Avatar_Change,
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType(Strings.Avatar_Files) { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"] }],
+        });
+        if (files.Count == 0 || files[0].TryGetLocalPath() is not { } path) return;
+        var (png, error) = AvatarImport.Prepare(path);
+        if (png is null) server.ShowNotice(error ?? Strings.Icon_Unreadable);
+        else server.SetAvatar(png);
     }
 
     void OnChannelDoubleTapped(object? sender, TappedEventArgs args)

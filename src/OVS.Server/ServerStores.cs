@@ -14,6 +14,7 @@ internal sealed class ServerStores
         DataDir = dataDir;
         DataStore = new DataStore(Path.Combine(dataDir, DataStore.FileName));
         IconStore = new ServerIconStore(dataDir);
+        AvatarStore = new AvatarStore(dataDir); // Package 168
         BackupStore = new BackupStore(dataDir, time);
         UploadFolder = new UploadFolder(BackupStore.Folder);
         LogReader = new LogReader(dataDir, time);
@@ -26,6 +27,8 @@ internal sealed class ServerStores
     public DataStore DataStore { get; }
     /// <summary>The server logo.</summary>
     public ServerIconStore IconStore { get; }
+    /// <summary>Package 168: the users' profile pictures.</summary>
+    public AvatarStore AvatarStore { get; }
     /// <summary>The backups folder.</summary>
     public BackupStore BackupStore { get; }
     /// <summary>The unfinished uploads inside the backups folder.</summary>

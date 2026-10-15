@@ -9702,22 +9702,24 @@ The server logo (Package 30: `ServerIconFormat`, `IconImport`, `ServerIconStore`
 
 ### Acceptance Criteria
 
-- [ ] AC1: A user picks PNG, JPG, GIF or WebP up to 2 MB; the client uploads a 128 px square PNG without metadata; an animated file is stored as its first frame.
-- [ ] AC2: The server stores only a PNG that passes `AvatarFormat.Validate`; a renamed executable, a PNG with a text chunk, a wrong CRC, bytes after `IEND`, data that inflates to more or less than the header promises, more than 64 KB or other sides than 128 px are refused with `InvalidValue`, and nothing is written.
-- [ ] AC3: The file name on the server comes from the fingerprint's hex only; no client text reaches a path.
-- [ ] AC4: Other clients get the hash in `UserInfo` and fetch the picture once per hash; it shows in the tree, the chat, the member list and the administration; without one the letter stays.
-- [ ] AC5: The own picture is set and removed through a right click on the own row ("Profilbild ändern", "Profilbild entfernen"); an admin with `UsersManage` can remove anyone's.
-- [ ] AC6: Uploads are throttled like the logo; backups contain the pictures and restore them.
-- [ ] AC7: The protocol version is raised.
+- [x] AC1: A user picks PNG, JPG, GIF or WebP up to 2 MB; the client uploads a 128 px square PNG without metadata; an animated file is stored as its first frame.
+- [x] AC2: The server stores only a PNG that passes `AvatarFormat.Validate`; a renamed executable, a PNG with a text chunk, a wrong CRC, bytes after `IEND`, data that inflates to more or less than the header promises, more than 64 KB or other sides than 128 px are refused with `InvalidValue`, and nothing is written.
+- [x] AC3: The file name on the server comes from the fingerprint's hex only; no client text reaches a path.
+- [x] AC4: Other clients get the hash in `UserInfo` and fetch the picture once per hash; it shows in the tree, the chat, the member list and the administration; without one the letter stays.
+- [x] AC5: The own picture is set and removed through a right click on the own row ("Profilbild ändern", "Profilbild entfernen"); an admin with `UsersManage` can remove anyone's.
+- [x] AC6: Uploads are throttled like the logo; backups contain the pictures and restore them.
+- [x] AC7: The protocol version is raised.
 
 ### Tests (TDD)
 
-1. `AvatarFormatTests` (AC2): `"Valid_128Png_Accepted"`, `"Executable_Renamed_Refused"`, `"TextChunk_Refused"`, `"BadCrc_Refused"`, `"TrailingBytes_Refused"`, `"InflatedSizeMismatch_Refused"`, `"TooLarge_Refused"`, `"WrongSides_Refused"`, `"DeflateBomb_StopsAtExpectedSize"`.
-2. `AvatarStoreTests > "Name_FromFingerprintOnly"` and `"Write_Atomic"` (AC3)
-3. `AvatarImportTests > "JpgGifWebp_ToSquarePng128_NoMetadata"` and `"Animated_FirstFrame"` (AC1)
-4. `AvatarCommandTests > "Set_BroadcastsHash_Get_ReturnsBytes"`, `"OtherUser_RemoveNeedsUsersManage"` (AC4, AC5), `"Set_Throttled"` (AC6)
+1. `AvatarFormatTests` (AC2): `"Valid_128Png_Accepted"`, `"Executable_Renamed_Refused"`, `"Png_TextChunk_Refused"`, `"Chunk_BadCrc_Refused"`, `"Png_TrailingBytes_Refused"`, `"Pixels_SizeMismatch_Refused"`, `"Png_TooLarge_Refused"`, `"Png_WrongSides_Refused"`, `"DeflateBomb_Huge_StopsAtExpectedSize"`.
+2. `AvatarStoreTests > "Name_AnyText_FromFingerprintOnly"` and `"Write_Picture_Atomic"` (AC3)
+3. `AvatarImportTests > "JpgGifWebp_ToSquarePng128_NoMetadata"` and `"Animated_Gif_FirstFrame"` (AC1)
+4. `AvatarCommandTests > "Set_OwnPicture_BroadcastsHashAndServes"`, `"OtherUser_Remove_NeedsUserDelete"` (AC4, AC5), `"Set_TwiceQuickly_Throttled"` (AC6)
 5. `BackupTests > "Backup_ContainsAvatars_Restored"` (AC6)
 6. `WireFreezeTests` (AC7)
+
+(as built: the hash is the value type `AvatarHash` (32 lower-case hex characters, refused otherwise when read). `AvatarFormat.Encode` writes the client's upload (IHDR, one IDAT, IEND) next to `Validate`, so client and server share the one format; `AvatarImport` scales, cuts the middle square and hands the pixels to it. Removing another user's picture needs `UserDelete` (there is no right `UsersManage`) and the rank rule, and writes an audit line; deleting a user's data removes the picture as well. The client keeps the pictures of a connection in memory (`AvatarPictures`), asks once per hash and takes only a picture that passes the check and matches its hash; there is no disk cache. Chat messages show the sender's picture while the sender is on the server. Several test names got a third part (RL601). The protocol version is 19.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

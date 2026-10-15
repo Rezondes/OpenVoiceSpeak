@@ -19,6 +19,7 @@ namespace OVS.Shared.Protocol.Messages.Users;
 /// <param name="Bans">Package 71: the active bans on this fingerprint.</param>
 /// <param name="ServerMuted">Package 85: the stored server mute, applied on every login.</param>
 /// <param name="ServerMutedUntil">Package 166: when a timed server mute ends by itself; null while it lasts until lifted.</param>
+/// <param name="Avatar">Package 168: the hash of the user's profile picture on this server, null for none.</param>
 /// <param name="CanBeModeratedByMe">Package 92: the requester may act on this user (A102), as the server checks it.</param>
 public sealed record KnownUserInfo(string Fingerprint, string LastNickname, IReadOnlyList<Guid> GroupIds,
     DateTimeOffset FirstSeen = default, DateTimeOffset? LastLogin = null, int LoginCount = 0, TimeSpan OnlineTime = default,
@@ -26,4 +27,5 @@ public sealed record KnownUserInfo(string Fingerprint, string LastNickname, IRea
     bool IsOnline = false, uint? SessionId = null, IReadOnlyList<BanInfo>? Bans = null,
     bool ServerMuted = false,
     bool CanBeModeratedByMe = false,
-    DateTimeOffset? ServerMutedUntil = null);
+    DateTimeOffset? ServerMutedUntil = null,
+    AvatarHash? Avatar = null);

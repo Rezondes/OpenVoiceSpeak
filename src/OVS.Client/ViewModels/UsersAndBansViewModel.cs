@@ -67,6 +67,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
         this.dialogs = dialogs ?? new UsersAndBansDialogs();
         UsersLoad = server.NewPending();
         BansLoad = server.NewPending();
+        server.Pictures.Arrived += OnPictureArrived; // Package 168
         userRefresh = new("u", () => !detached && ShowUsers, id => SendRoutedAsync(new ListUsers(), id, UsersLoad), server.Time);
         banRefresh = new("b", () => !detached && ShowBans, id => SendRoutedAsync(new ListBans(), id, BansLoad), server.Time);
         // Package 97: a list that never came no longer blocks the next request ("Aktualisieren" retries)
@@ -123,6 +124,12 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
 
     /// <summary>Package 71: the known users that pass search and filters, in the chosen order.</summary>
     internal ObservableCollection<KnownUserViewModel> Users { get; } = [];
+
+    /// <summary>Package 168: a picture asked for by a card arrived.</summary>
+    void OnPictureArrived(OVS.Shared.Protocol.AvatarHash hash, byte[] png)
+    {
+        foreach (var card in Users.Where(card => card.Info.Avatar == hash)) card.AvatarPng = png;
+    }
     internal IReadOnlyList<Choice<UserStatusFilter>> StatusFilters { get; }
     internal ObservableCollection<Choice<Guid?>> GroupFilters { get; } = [];
     internal IReadOnlyList<Choice<UserSortOrder>> SortOrders { get; }
@@ -162,6 +169,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     /// </summary>
     internal void Detach()
     {
+        server.Pictures.Arrived -= OnPictureArrived;
         // ponytail: every list request keeps its route until here (a list refresh at most once a second); drop a list
         // round's route once a newer round is complete if pages ever stay open for days
         detached = true;
@@ -262,7 +270,10 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
                 canDelete: Actor.Has(Permission.UserDelete) && weaker && !isLastAdmin,
                 canLiftMute: Actor.Has(Permission.UserMute) && weaker && user.ServerMuted, // Package 85
                 isExpanded: expandedUsers.Contains(user.Fingerprint), // Package 155: an open row stays open when the list comes again
-                expandedChanged: expanded => { if (expanded) expandedUsers.Add(user.Fingerprint); else expandedUsers.Remove(user.Fingerprint); });
+                expandedChanged: expanded => { if (expanded) expandedUsers.Add(user.Fingerprint); else expandedUsers.Remove(user.Fingerprint); })
+            {
+                AvatarPng = server.Pictures.Png(user.Avatar), // Package 168
+            };
         }).ToList();
         var visible = all.Where(card => card.Matches(search) && (filterGroupId is null || card.Info.GroupIds.Contains(filterGroupId.Value)) && status switch
         {

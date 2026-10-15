@@ -101,9 +101,13 @@
             <Border x:Name="SelfRing" Classes="ring" Classes.speaking="{Binding Server.Self.IsSpeaking, FallbackValue=False}"
                     Classes.link="{Binding Server.Self.IsSpeakingViaLink, FallbackValue=False}" VerticalAlignment="Center"
                     IsVisible="{Binding IsConnected}">
-              <Border Classes="avatar" Width="30" Height="30"
+              <Border Classes="avatar" Width="30" Height="30" ClipToBounds="True"
                       Background="{Binding Server.Self.Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}, FallbackValue={x:Null}}">
-                <TextBlock Text="{Binding Server.Self.Nickname, Converter={x:Static conv:AvatarConverters.Initials}, FallbackValue='?'}" FontSize="13" />
+                <Panel>
+                  <TextBlock Text="{Binding Server.Self.Nickname, Converter={x:Static conv:AvatarConverters.Initials}, FallbackValue='?'}" FontSize="13" />
+                  <Image Classes="avatarPicture" Source="{Binding Server.Self.AvatarPng, Converter={x:Static conv:AvatarConverters.PngToBitmap}, FallbackValue={x:Null}}"
+                         IsVisible="{Binding Server.Self.AvatarPng, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}" />
+                </Panel>
               </Border>
             </Border>
             <StackPanel x:Name="SelfTexts" Margin="8,0,4,0" VerticalAlignment="Center">
@@ -274,6 +278,13 @@
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.ArrowSync}" Classes="sm" /></MenuItem.Icon>
                                 </MenuItem>
                                 <Separator IsVisible="{Binding CanAdjustVolume}" />
+                                <!-- Package 168: the own picture, and an administrator removes another's -->
+                                <MenuItem Header="{x:Static l:Strings.Avatar_Change}" Click="OnChangeAvatar" IsVisible="{Binding IsSelf}">
+                                  <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Edit}" Classes="sm" /></MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="{x:Static l:Strings.Avatar_Remove}" Command="{Binding RemoveAvatarCommand}" IsVisible="{Binding CanRemoveAvatar}">
+                                  <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Delete}" Classes="sm" /></MenuItem.Icon>
+                                </MenuItem>
                                 <MenuItem Header="{x:Static l:Strings.Ui_PrivateMessage}" Command="{Binding MessageCommand}" IsVisible="{Binding CanMessage}">
                                   <MenuItem.Icon><PathIcon Data="{StaticResource Icon.Chat}" Classes="sm" /></MenuItem.Icon>
                                 </MenuItem>
@@ -328,8 +339,13 @@
                                           ToolTip.Tip="{x:Static l:Strings.Ui_Muted}" />
                               </StackPanel>
                               <Border Classes="ring" Classes.speaking="{Binding IsSpeaking}" Classes.link="{Binding IsSpeakingViaLink}">
-                                <Border Classes="avatar treeAvatar" Background="{Binding Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
-                                  <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="11" />
+                                <Border Classes="avatar treeAvatar" ClipToBounds="True" Background="{Binding Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
+                                  <Panel>
+                                    <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="11" />
+                                    <!-- Package 168: the picture over the letter where one is set -->
+                                    <Image Classes="avatarPicture" Source="{Binding AvatarPng, Converter={x:Static conv:AvatarConverters.PngToBitmap}}"
+                                           IsVisible="{Binding AvatarPng, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                  </Panel>
                                 </Border>
                               </Border>
                               <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" VerticalAlignment="Center">

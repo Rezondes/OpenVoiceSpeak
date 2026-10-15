@@ -16,6 +16,9 @@ namespace OVS.Client.Models;
 /// <param name="Notice">The kind of a system notice.</param>
 internal sealed record ChatEntry(DateTime Time, string Text, string? From = null, bool IsOwn = false, NoticeKind? Notice = null, OutgoingChatMessageViewModel? Sending = null)
 {
+    /// <summary>Package 168: the sender's row while they are on the server, for the picture; null for oneself or someone gone.</summary>
+    public UserViewModel? Sender { get; init; }
+
     /// <summary>Package 167: the colour of the sender's highest coloured group, null for none.</summary>
     public GroupColor? NameColor { get; init; }
 

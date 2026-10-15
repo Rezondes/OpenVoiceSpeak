@@ -52,8 +52,13 @@ internal sealed partial class ServerViewModel : ObservableObject
         this.time = time;
         Dialogs = dialogs ?? new ServerDialogs();
         ChatFeed = new ChatFeed(RequestSound);
+        Pictures = new AvatarPictures(request => SendAsync(request)); // Package 168: before the tree, its rows ask for theirs
         Leave = new LeaveTimer(time, () => Post);
         Tree = new ChannelTreeViewModel(this, RequestSound);
+        Pictures.Arrived += (hash, png) =>
+        {
+            foreach (var user in Tree.Users.Where(user => user.AvatarHash == hash)) user.AvatarPng = png;
+        };
         SelfState = new SelfStateViewModel(request => SendAsync(request), RequestSound);
         Rebuild();
     }
@@ -116,6 +121,13 @@ internal sealed partial class ServerViewModel : ObservableObject
 
     /// <summary>Package 162: someone else came into the own channel (their nickname).</summary>
     public event Action<string>? JoinedOwnChannel;
+
+    /// <summary>Package 168: the profile pictures of this server by hash.</summary>
+    internal AvatarPictures Pictures { get; }
+
+    /// <summary>Package 168: sets (a PNG) or removes (null) the own picture, or with a fingerprint removes another user's.</summary>
+    internal void SetAvatar(byte[]? png, string? fingerprint = null) =>
+        _ = SendAsync(new SetAvatar(png is null ? null : Convert.ToBase64String(png), fingerprint));
 
     /// <summary>"Privatnachricht" in a user's context menu; the chat opens the tab.</summary>
     public event Action<UserViewModel>? PrivateChatRequested;
@@ -189,6 +201,9 @@ internal sealed partial class ServerViewModel : ObservableObject
                 break;
             case ServerIcon icon:
                 IconReceived?.Invoke(icon);
+                return;
+            case Avatar avatar: // Package 168
+                Pictures.Receive(avatar);
                 return;
             case ChatMessage chat:
                 ChatFeed.Receive(chat, Mirror.SelfId);

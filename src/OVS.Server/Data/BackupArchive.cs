@@ -30,6 +30,11 @@ internal static class BackupArchive
         Add(zip, ServerCertificate.FileName, File.ReadAllBytes(Path.Combine(dataDir, ServerCertificate.FileName)));
         var icon = Path.Combine(dataDir, ServerIconStore.FileName);
         if (File.Exists(icon)) Add(zip, ServerIconStore.FileName, File.ReadAllBytes(icon));
+        // Package 168: the profile pictures, each under the name the store gives it
+        var avatars = Path.Combine(dataDir, AvatarStore.FolderName);
+        if (!Directory.Exists(avatars)) return;
+        foreach (var file in Directory.EnumerateFiles(avatars, "*.png"))
+            if (AvatarStore.FileNameFor(Path.GetFileNameWithoutExtension(file)) is { } name) Add(zip, AvatarStore.FolderName + "/" + name, File.ReadAllBytes(file));
     }
 
     static void Add(ZipArchive zip, string name, byte[] bytes)
@@ -94,12 +99,31 @@ internal static class BackupArchive
             using (X509CertificateLoader.LoadPkcs12(cert, null)) { } // readable, or CryptographicException
             var icon = ReadEntry(zip, ServerIconStore.FileName);
             if (icon is not null && ServerIconFormat.Validate(icon) is { } why) throw new InvalidDataException($"logo invalid: {why}");
-            return new BackupContent(manifest, dataBytes, cert, icon);
+            return new BackupContent(manifest, dataBytes, cert, icon, ReadAvatars(zip));
         }
         catch (Exception exception) when (exception is not InvalidDataException) // Package 89: nothing unexpected gets past the check
         {
             throw new InvalidDataException(exception.Message, exception);
         }
+    }
+
+    /// <summary>
+    /// Package 168: the profile pictures, by fingerprint: only entries named "avatars/" plus a fingerprint plus ".png" are
+    /// read, each at most <see cref="AvatarFormat.MaxBytes"/> and checked like an upload; any other entry is left alone.
+    /// </summary>
+    static Dictionary<string, byte[]> ReadAvatars(ZipArchive zip)
+    {
+        var avatars = new Dictionary<string, byte[]>();
+        foreach (var entry in zip.Entries)
+        {
+            if (!entry.FullName.StartsWith(AvatarStore.FolderName + "/", StringComparison.Ordinal) || !entry.FullName.EndsWith(".png", StringComparison.Ordinal)) continue;
+            var fingerprint = entry.FullName[(AvatarStore.FolderName.Length + 1)..^4];
+            if (!AvatarStore.IsFingerprint(fingerprint)) continue;
+            var png = ReadEntry(zip, entry.FullName, AvatarFormat.MaxBytes)!;
+            if (AvatarFormat.Validate(png) is { } why) throw new InvalidDataException($"profile picture invalid: {why}");
+            avatars[fingerprint] = png;
+        }
+        return avatars;
     }
 
     /// <summary>Package 89 (A101): everything a start of the server relies on (<see cref="ServerData.FindProblem"/>), so a restored archive can never keep it from starting.</summary>

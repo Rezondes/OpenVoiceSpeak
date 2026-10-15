@@ -46,6 +46,7 @@ internal sealed partial class ServerState
         if (!Require(session, request, Permission.UserDelete) || !FindKnownTarget(session, request, request.Fingerprint, out var user, out var online, lastAdminFirst: true)) return;
         data.Users.Remove(user);
         int bans = data.Bans.RemoveAll(ban => ban.Fingerprint == user.Fingerprint); // Package 80: the history as well
+        if (Data.AvatarStore.IsFingerprint(user.Fingerprint)) avatars.Set(user.Fingerprint, null); // Package 168: the picture as well
         saves.Persist();
         logs.Server.UserDataDeleted(user.LastNickname, session.Nickname, user.Fingerprint[..Math.Min(12, user.Fingerprint.Length)], bans);
         if (online is not null) RemoveLocked(online, new Disconnected(ReasonCodes.UserDeleted));

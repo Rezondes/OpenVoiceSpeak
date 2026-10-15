@@ -35,6 +35,7 @@ internal sealed partial class ServerState
     readonly ServerConfig config;
     readonly DataStore store;
     readonly ServerIconStore icon;
+    readonly AvatarStore avatars; // Package 168
     readonly BackupStore backups; // Package 74
     readonly UploadFolder uploads; // Package 75
     readonly ServerData data;
@@ -70,6 +71,7 @@ internal sealed partial class ServerState
         this.logs = logs;
         store = stores.DataStore;
         icon = stores.IconStore;
+        avatars = stores.AvatarStore;
         backups = stores.BackupStore;
         uploads = stores.UploadFolder;
         logReader = stores.LogReader; // Package 81
@@ -159,6 +161,8 @@ internal sealed partial class ServerState
         Route<UpdateServerSettings>(static (state, session, request) => state.OnUpdateServerSettings(session, request)),
         Route<SetServerIcon>(static (state, session, request) => state.OnSetServerIcon(session, request)),
         Route<GetServerIcon>(static (state, session, request) => state.OnGetServerIcon(session, request)),
+        Route<SetAvatar>(static (state, session, request) => state.OnSetAvatar(session, request)), // Package 168
+        Route<GetAvatar>(static (state, session, request) => state.OnGetAvatar(session, request)),
         Route<KickSession>(static (state, session, request) => state.OnKickSession(session, request)),
         Route<BanSession>(static (state, session, request) => state.OnBanSession(session, request)),
         Route<Unban>(static (state, session, request) => state.OnUnban(session, request)),
@@ -380,9 +384,9 @@ internal sealed partial class ServerState
     static bool Moderates(Session actor, Session target) => actor.Permissions.CanModerate(actor.Fingerprint, target.Permissions, target.Fingerprint);
 
     /// <summary>Package 92 (A104): the own entry with its full rights; others without their rights, but with the recipient's flag.</summary>
-    static UserInfo Info(Session session, Session to) =>
+    UserInfo Info(Session session, Session to) =>
         new(session.Id, session.Fingerprint, session.Nickname, session.ChannelId, session.SelfMuted, session.SelfDeafened, session.ServerMuted,
-            session == to ? session.Permissions : Permission.None, session.GroupIds, Moderates(to, session), session.ServerMutedUntil);
+            session == to ? session.Permissions : Permission.None, session.GroupIds, Moderates(to, session), session.ServerMutedUntil, avatars.HashOf(session.Fingerprint));
 
     static ChannelInfo Info(ChannelRecord channel) =>
         new(channel.Id, channel.Name, channel.Description, channel.Order, channel.IsMuted, channel.MaxUsers, channel.AllowedGroupIds?.ToList(), channel.StoredPassword is not null, channel.Kind,

@@ -65,6 +65,8 @@ internal static class ProtocolLogText
                     ChatTarget.Channel => $"Chat in {DescribeChannel(chatMessage.ChannelId ?? Guid.Empty, mirror)} {chatMessage.FromNickname}: {chatMessage.Text}",
                     _ => $"Private {chatMessage.FromNickname} to {DescribeSession(chatMessage.ToSessionId ?? 0, mirror)}: {chatMessage.Text}",
                 };
+            case Avatar avatar:
+                return avatar.PngBase64 is null ? $"Profile picture {avatar.Hash} not found" : $"Profile picture {avatar.Hash} received ({Base64Text.Decoded(avatar.PngBase64.Length) / 1024} KB)";
             case ServerIcon serverIcon:
                 return serverIcon.PngBase64 is null ? "Server has no logo" : $"Server logo received ({Base64Text.Decoded(serverIcon.PngBase64.Length) / 1024} KB)";
             case Error { ErrorId: { } errorId } error:
@@ -122,6 +124,9 @@ internal static class ProtocolLogText
             RedeemAdminToken => "Redeem admin token",
             SetServerIcon setServerIcon => setServerIcon.PngBase64 is null ? "Remove server logo" : "Set server logo",
             GetServerIcon => "Request server logo",
+            SetAvatar { Fingerprint: { } other } => $"Remove the profile picture of {DescribePerson(other, mirror)}",
+            SetAvatar setAvatar => setAvatar.PngBase64 is null ? "Remove own profile picture" : "Set own profile picture",
+            GetAvatar getAvatar => $"Request profile picture {getAvatar.Hash}",
             SendChat sendChat => sendChat.Target switch
             {
                 ChatTarget.Server => "Chat to everyone",

@@ -8,6 +8,7 @@ using OVS.Client.Settings;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol.Messages.Groups;
 using OVS.Shared.Protocol.Messages.Users;
+using OVS.Shared.Protocol;
 
 namespace OVS.Client.ViewModels;
 
@@ -30,6 +31,12 @@ internal sealed partial class UserViewModel(ServerViewModel owner, uint sessionI
     [ObservableProperty] bool serverMuted;
     /// <summary>Package 167: the colour of the highest coloured group, null for none.</summary>
     [ObservableProperty] GroupColor? nameColor;
+    /// <summary>Package 168: the user's profile picture (a checked PNG), null while there is none or it is still coming.</summary>
+    [ObservableProperty] byte[]? avatarPng;
+    /// <summary>Package 168: "Profilbild entfernen": the own picture, or another's with UserDelete and the rank rule.</summary>
+    [ObservableProperty] bool canRemoveAvatar;
+    /// <summary>Package 168: the hash of the user's picture on this server, null for none.</summary>
+    public AvatarHash? AvatarHash { get; private set; }
     /// <summary>Package 167: the user's groups, for the member list.</summary>
     public IReadOnlyList<Guid> GroupIds { get; private set; } = [];
     /// <summary>Package 166: "Vom Server stummgeschaltet", with the end of a timed mute.</summary>
@@ -129,6 +136,9 @@ internal sealed partial class UserViewModel(ServerViewModel owner, uint sessionI
         CanMute = actor.Has(Permission.UserMute) && rank;
         CanKick = actor.Has(Permission.UserKick) && rank;
         CanBan = actor.Has(Permission.UserBan) && rank;
+        AvatarHash = info.Avatar; // Package 168
+        AvatarPng = owner.Pictures.Png(info.Avatar);
+        CanRemoveAvatar = info.Avatar is not null && (isSelf || (actor.Has(Permission.UserDelete) && rank));
         CanMessage = actor.Has(Permission.ChatPrivate) && !isSelf;
         // Package 119 (A128): the administration's rule; the rank also keeps the last admin's Admin group, an admin is never weaker
         var wanted = actor.Has(Permission.GroupsAssign) && rank
@@ -183,6 +193,10 @@ internal sealed partial class UserViewModel(ServerViewModel owner, uint sessionI
 
     [RelayCommand]
     void Message() => owner.RequestPrivateChat(this);
+
+    /// <summary>Package 168: removes the picture, the own or (as an administrator) this user's.</summary>
+    [RelayCommand]
+    void RemoveAvatar() => owner.SetAvatar(null, IsSelf ? null : Fingerprint);
 
     [RelayCommand]
     Task ToggleServerMuteAsync()

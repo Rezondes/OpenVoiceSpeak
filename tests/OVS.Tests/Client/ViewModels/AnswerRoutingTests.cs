@@ -145,6 +145,8 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         [nameof(ChannelAdded)] = ("a change every client gets; the creator's copy confirms its mark (SendConfirmed matches the id)",
             id => new ChannelAdded(new ChannelInfo(Guid.NewGuid(), "Neu", "", 9), id)),
         [nameof(ServerIcon)] = ("goes to IconReceived, which takes a logo only when it matches the current hash", id => new ServerIcon(id, null, null)),
+        [nameof(Avatar)] = ("goes to the server's pictures, which take one only when it passes the check and matches its hash",
+            id => new Avatar(id, AvatarHash.Of([1]), null)),
     };
 
     static IEnumerable<Type> AnswerTypes() => typeof(Message).Assembly.GetTypes()
@@ -240,6 +242,7 @@ public sealed class AnswerRoutingTests() : TempDirectoryTest("ovs-routing-", qui
         [typeof(DownloadLogChunk)] = [typeof(LogChunk)],
         [typeof(CreateChannel)] = [typeof(ChannelAdded)],
         [typeof(GetServerIcon)] = [typeof(ServerIcon)],
+        [typeof(GetAvatar)] = [typeof(Avatar)],
     };
 
     /// <summary>A request answered with a routed answer type must be decided for the page: an owner of its route, or a reason.</summary>

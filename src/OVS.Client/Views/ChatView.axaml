@@ -85,9 +85,14 @@
               <!-- Package 79: columns 75 %, 10 %, 15 %; under narrow the bubble may take 85 % (styles in Controls.axaml) -->
               <Grid IsVisible="{Binding IsOtherMessage}" ColumnDefinitions="15*,2*,3*">
                 <DockPanel Classes="otherMessage" HorizontalAlignment="Left">
-                  <Border DockPanel.Dock="Left" Classes="avatar chatAvatar" Width="32" VerticalAlignment="Top"
+                  <Border DockPanel.Dock="Left" Classes="avatar chatAvatar" Width="32" VerticalAlignment="Top" ClipToBounds="True"
                           Background="{Binding From, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
-                    <TextBlock Text="{Binding From, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="13" />
+                    <Panel>
+                      <TextBlock Text="{Binding From, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="13" />
+                      <!-- Package 168: the sender's picture while they are on the server -->
+                      <Image Classes="avatarPicture" Source="{Binding Sender.AvatarPng, Converter={x:Static conv:AvatarConverters.PngToBitmap}, FallbackValue={x:Null}}"
+                             IsVisible="{Binding Sender.AvatarPng, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}" />
+                    </Panel>
                   </Border>
                   <StackPanel Margin="12,0,0,0" Spacing="4">
                     <StackPanel Classes="authorLine" Orientation="Horizontal" Spacing="8">

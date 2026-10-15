@@ -59,6 +59,9 @@ internal sealed partial class KnownUserViewModel(KnownUserInfo info, bool isOnli
     /// <summary>Package 85: the stored server mute, applied again on every login.</summary>
     public bool IsServerMuted => Info.ServerMuted;
 
+    /// <summary>Package 168: the user's picture on the card, null while there is none or it is still coming.</summary>
+    [ObservableProperty] byte[]? avatarPng;
+
     /// <summary>Package 166: the mute banner's text, with the end of a timed mute.</summary>
     public string ServerMutedText => Info.ServerMutedUntil is { } until
         ? TextFormat.Of(Strings.Ui_ServerMutedUntil, until.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)) : Strings.Ui_ServerMuted;

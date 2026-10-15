@@ -13,7 +13,8 @@ namespace OVS.Shared.Protocol.Messages.Users;
 /// <param name="ServerMuted">A moderator muted the user at the server.</param>
 /// <param name="GroupIds">The user's groups.</param>
 /// <param name="ServerMutedUntil">Package 166: when a timed server mute ends by itself; null while it lasts until lifted.</param>
+/// <param name="Avatar">Package 168: the hash of the user's profile picture on this server, null for none.</param>
 public sealed record UserInfo(
     uint SessionId, string Fingerprint, string Nickname, Guid ChannelId,
     bool SelfMuted, bool SelfDeafened, bool ServerMuted,
-    Permission Permissions, IReadOnlyList<Guid> GroupIds, bool CanBeModeratedByMe = false, DateTimeOffset? ServerMutedUntil = null);
+    Permission Permissions, IReadOnlyList<Guid> GroupIds, bool CanBeModeratedByMe = false, DateTimeOffset? ServerMutedUntil = null, AvatarHash? Avatar = null);

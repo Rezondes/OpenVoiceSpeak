@@ -26,6 +26,7 @@ public sealed class AuditLineTests
     [
         typeof(JoinChannel), typeof(SetSelfState), typeof(SendChat), typeof(ListUsers), typeof(ListBans), typeof(GetServerIcon), typeof(ListBackups),
         typeof(ListLogs), typeof(ReadLog), typeof(SearchLogs), typeof(PrepareLogDownload), typeof(DownloadLogChunk),
+        typeof(GetAvatar), // Package 168: the own picture's SetAvatar writes a plain line, another's removal an audit line
     ];
 
     /// <summary>What the audit line of each administrative request says (the action, after the actor).</summary>
@@ -50,6 +51,7 @@ public sealed class AuditLineTests
         [typeof(SetServerIcon)] = "Server logo changed by chef",
         [typeof(SetSessionServerMute)] = "gast1 server-muted by chef",
         [typeof(SetKnownUserServerMute)] = "gast1 server-unmuted by chef",
+        [typeof(SetAvatar)] = "Profile picture of gast1 removed by chef",
         [typeof(KickSession)] = "gast1 was kicked by chef",
         [typeof(BanSession)] = "gast2 was banned by chef",
         [typeof(Unban)] = "Ban of gast2 lifted by chef",
@@ -111,6 +113,7 @@ public sealed class AuditLineTests
         await admin.SendAsync(new SetServerIcon(Convert.ToBase64String(TestImages.Encode(64, 64))));
         await admin.SendAsync(new SetSessionServerMute(gast1.Id, true));
         await admin.SendAsync(new SetKnownUserServerMute(gast1.Identity.Fingerprint, false));
+        await admin.SendAsync(new SetAvatar(null, gast1.Identity.Fingerprint)); // Package 168
         await admin.SendAsync(new KickSession(gast1.Id, "Spam"));
         await admin.SendAsync(new BanSession(gast2.Id, "Troll", 60, false));
         await admin.SendAsync(new ListBans { RequestId = "bans" });

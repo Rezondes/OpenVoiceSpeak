@@ -17,9 +17,13 @@
                 <DataTemplate x:DataType="vm:UserViewModel">
                   <Border Classes="memberRow" ContextRequested="OnMemberContextRequested" ToolTip.Tip="{Binding GroupTip}">
                     <DockPanel>
-                      <Border DockPanel.Dock="Left" Classes="avatar memberAvatar" Width="24" Height="24" Margin="0,0,8,0"
+                      <Border DockPanel.Dock="Left" Classes="avatar memberAvatar" Width="24" Height="24" Margin="0,0,8,0" ClipToBounds="True"
                               Background="{Binding Nickname, Converter={x:Static conv:AvatarConverters.AvatarBrush}}">
-                        <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="11" />
+                        <Panel>
+                          <TextBlock Text="{Binding Nickname, Converter={x:Static conv:AvatarConverters.Initials}}" FontSize="11" />
+                          <Image Classes="avatarPicture" Source="{Binding AvatarPng, Converter={x:Static conv:AvatarConverters.PngToBitmap}}"
+                                 IsVisible="{Binding AvatarPng, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        </Panel>
                       </Border>
                       <TextBlock Classes="userName" Text="{Binding Nickname}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                                  Foreground="{Binding NameColor, Converter={x:Static conv:AvatarConverters.NameBrush}}"

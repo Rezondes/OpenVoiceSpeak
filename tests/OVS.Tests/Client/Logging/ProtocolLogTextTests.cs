@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using OVS.Client.Logging;
 using OVS.Client.Net;
 using OVS.Shared.Permissions;
+using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Chat;
@@ -65,6 +66,8 @@ public sealed class ProtocolLogTextTests
         { new ChatMessage(ChatTarget.Private, 2, "bert", null, 1, "psst", default), "Private bert to ich: psst" },
         { new ServerIcon(null, null, null), "Server has no logo" },
         { new ServerIcon(null, "h", new string('A', 136536)), "Server logo received (100 KB)" },
+        { new Avatar(null, AvatarHash.Of([1, 2, 3]), null), $"Profile picture {AvatarHash.Of([1, 2, 3])} not found" },
+        { new Avatar(null, AvatarHash.Of([1, 2, 3]), new string('A', 13656)), $"Profile picture {AvatarHash.Of([1, 2, 3])} received (10 KB)" },
     };
 
     [Theory]

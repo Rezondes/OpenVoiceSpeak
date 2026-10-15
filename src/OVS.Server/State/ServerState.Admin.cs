@@ -188,7 +188,8 @@ internal sealed partial class ServerState
                 bans[user.Fingerprint].Select(ToInfo).ToList(), user.ServerMuted,
                 // Package 92: the rank rule judged here, so the client needs no rights of others
                 session.Permissions.CanModerate(session.Fingerprint, live?.Permissions ?? Effective(user.GroupIds, data.Groups), user.Fingerprint),
-                user.ServerMutedUntil); // Package 166
+                user.ServerMutedUntil, // Package 166
+                avatars.HashOf(user.Fingerprint)); // Package 168
         }).ToList(), offset, data.Users.Count));
     }
 

@@ -81,6 +81,31 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         Assert.Contains(server.Log, line => line.Contains($"Backup {info.FileName} created by chef", StringComparison.Ordinal));
     }
 
+    /// <summary>Package 168: a backup holds every profile picture under its fingerprint and a restore writes them back.</summary>
+    [Fact]
+    public async Task Backup_ContainsAvatars_Restored()
+    {
+        var (server, admin) = await StartWithAdminAsync();
+        await using var _ = server;
+        await using var client = admin;
+        var png = TestPng.Rgba();
+        await admin.SendAsync(new OVS.Shared.Protocol.Messages.Users.SetAvatar(Convert.ToBase64String(png)));
+        await admin.WaitForAsync<OVS.Shared.Protocol.Messages.Users.UserUpdated>(userUpdated => userUpdated.User.Avatar is not null);
+        await admin.SendAsync(new CreateBackup { RequestId = "b" });
+        var path = Path.Combine(server.DataDir, "backups", Assert.Single((await admin.WaitForAsync<BackupList>(backupList => backupList.RequestId == "b")).Backups).FileName);
+
+        var entry = $"avatars/{admin.Identity.Fingerprint}.png";
+        Assert.Equal(png, Entries(path)[entry]);
+        var content = BackupArchive.Read(path);
+        Assert.Equal(png, content.Avatars![admin.Identity.Fingerprint]);
+        var restored = Path.Combine(dir, "restored");
+        Directory.CreateDirectory(Path.Combine(restored, "avatars"));
+        await File.WriteAllBytesAsync(Path.Combine(restored, "avatars", new string('b', 64) + ".png"), png); // a picture made after the backup goes
+        content.ApplyTo(restored);
+        Assert.Equal([admin.Identity.Fingerprint + ".png"], Directory.GetFiles(Path.Combine(restored, "avatars")).Select(Path.GetFileName));
+        Assert.Equal(png, await File.ReadAllBytesAsync(Path.Combine(restored, entry)));
+    }
+
     [Fact]
     public async Task Create_RightAfterFirstConnect_ContainsUser()
     {

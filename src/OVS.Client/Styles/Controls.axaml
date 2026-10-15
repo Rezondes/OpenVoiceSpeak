@@ -282,6 +282,10 @@
   <Style Selector="Border.avatar">
     <Setter Property="CornerRadius" Value="99" />
   </Style>
+  <!-- Package 168: a profile picture fills its round avatar -->
+  <Style Selector="Image.avatarPicture">
+    <Setter Property="Stretch" Value="UniformToFill" />
+  </Style>
   <Style Selector="Border.avatar TextBlock">
     <Setter Property="Foreground" Value="#FFFFFF" />
     <Setter Property="FontWeight" Value="SemiBold" />

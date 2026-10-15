@@ -19,6 +19,10 @@ internal static class ServerTuning
     public const int MaxRequestIdLength = 64;
 
     // ---- Costly requests, each kind with its own bucket per session ----
+    /// <summary>Package 168: GetAvatar, at most 64 KB each; a connect asks for everyone's at once, so a burst of them.</summary>
+    public const double AvatarsPerSecond = 5;
+    /// <summary>Package 168: how many pictures one session may ask for at once.</summary>
+    public const double AvatarBurst = 60;
     /// <summary>GetServerIcon: one answer of up to ~700 KB per interval.</summary>
     public static readonly TimeSpan IconInterval = TimeSpan.FromSeconds(10);
     /// <summary>ListUsers, ListBans, ListLogs, ListBackups: 2 per second on average, a short burst for the admin page.</summary>

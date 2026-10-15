@@ -57,6 +57,9 @@ namespace OVS.Shared.Protocol.Messages;
 [JsonDerivedType(typeof(SetServerIcon), "setServerIcon")]
 [JsonDerivedType(typeof(GetServerIcon), "getServerIcon")]
 [JsonDerivedType(typeof(ServerIcon), "serverIcon")]
+[JsonDerivedType(typeof(SetAvatar), "setAvatar")] // Package 168
+[JsonDerivedType(typeof(GetAvatar), "getAvatar")]
+[JsonDerivedType(typeof(Avatar), "avatar")]
 // Backups (Package 74)
 [JsonDerivedType(typeof(ListBackups), "listBackups")]
 [JsonDerivedType(typeof(CreateBackup), "createBackup")]
