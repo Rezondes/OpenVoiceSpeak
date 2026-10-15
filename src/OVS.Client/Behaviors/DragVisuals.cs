@@ -1,5 +1,7 @@
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -25,6 +27,20 @@ internal static class DragVisuals
             Child = new Image { Source = Snapshot(source) },
         };
     }
+
+    /// <summary>The drop target of every drag: a dashed frame of <paramref name="source"/>'s size where it will land, hidden until placed.</summary>
+    internal static Rectangle Placeholder(Control source) => new()
+    {
+        Classes = { "dropPlaceholder" },
+        Width = source.Bounds.Width,
+        Height = source.Bounds.Height,
+        IsHitTestVisible = false,
+        IsVisible = false,
+    };
+
+    /// <summary>The margin change of an opening or closing gap, or none with reduced motion.</summary>
+    internal static Transitions? GapTransitions(bool reduced) =>
+        reduced ? null : [new ThicknessTransition { Property = Avalonia.Layout.Layoutable.MarginProperty, Duration = TimeSpan.FromMilliseconds(120) }];
 
     /// <summary>Keeps the point where the item was grabbed under the pointer.</summary>
     internal static void Follow(Border preview, PointerEventArgs args, Point grab)

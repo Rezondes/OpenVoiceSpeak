@@ -76,12 +76,23 @@ public sealed class UserDragTests : TempDirectoryTest
         Assert.Equal(anna.Bounds.Width, preview.Width, 1);
         Assert.True(anna.Opacity < 1); // dimmed where it is
         Assert.False(tree.Lit("Raid")); // her own channel is no target
+        Assert.False(tree.Placeholder?.IsVisible ?? false); // nor does it open
 
         var end = tree.Center(tree.ChannelRow("Lobby"));
         tree.Main.MouseMove(end, Tree.Held);
         Dispatcher.UIThread.RunJobs();
         Assert.True(tree.Lit("Lobby"));
         Assert.False(tree.Lit("Raid"));
+        // as in a reorder drag: a gap of the row's height below the block she lands in, the dashed frame in it
+        var lobby = tree.Block("Lobby");
+        MotionWait.Until(() => Math.Abs(lobby.Margin.Bottom - anna.Bounds.Height) < 0.5); // the gap slides open
+        Assert.InRange(lobby.Margin.Bottom, anna.Bounds.Height - 0.5, anna.Bounds.Height + 0.5);
+        var frame = tree.Placeholder!;
+        Assert.True(frame.IsVisible);
+        Assert.Equal((anna.Bounds.Width, anna.Bounds.Height), (frame.Width, frame.Height));
+        var blockBottom = lobby.TranslatePoint(new Point(0, lobby.Bounds.Height), tree.Main)!.Value.Y;
+        Assert.Equal(blockBottom, Canvas.GetTop(frame), 1);
+        Assert.Equal(anna.TranslatePoint(default, tree.Main)!.Value.X, Canvas.GetLeft(frame), 1); // indented like a user row
         Assert.Equal(end.Y, Canvas.GetTop(preview) + anna.Bounds.Height / 2, 1); // follows the pointer where it was grabbed
 
         // every flight picture put in the overlay from now on, not only one a frame finds there
@@ -90,6 +101,8 @@ public sealed class UserDragTests : TempDirectoryTest
         Release(tree, end);
         Assert.Equal(new MoveUser(2, FakeServers.Lobby), tree.Sent.OfType<MoveUser>().Single() with { RequestId = null });
         Assert.Null(tree.Preview);
+        Assert.Null(tree.Placeholder);
+        Assert.Equal(0, lobby.Margin.Bottom); // the gap closes
         Assert.False(tree.Lit("Lobby"));
         Assert.Equal(1, anna.Opacity);
 
@@ -116,6 +129,8 @@ public sealed class UserDragTests : TempDirectoryTest
         void AssertCleared()
         {
             Assert.Null(tree.Preview);
+            Assert.Null(tree.Placeholder);
+            Assert.Equal(0, tree.Block("Lobby").Margin.Bottom);
             Assert.False(tree.Lit("Lobby"));
             Assert.Equal(1, anna.Opacity);
         }
@@ -246,6 +261,17 @@ public sealed class UserDragTests : TempDirectoryTest
         public Border? Preview => Overlay.Children.OfType<Border>().SingleOrDefault(border => border.Classes.Contains("dragPreview"));
 
         public bool Lit(string channel) => ChannelRow(channel).Classes.Contains(UserDrag.TargetClass);
+
+        /// <summary>The dashed frame where the dragged row will land; null when no drag runs.</summary>
+        public Avalonia.Controls.Shapes.Rectangle? Placeholder =>
+            Overlay.Children.OfType<Avalonia.Controls.Shapes.Rectangle>().SingleOrDefault(rectangle => rectangle.Classes.Contains("dropPlaceholder"));
+
+        /// <summary>The tree's container of a channel: its row and its users.</summary>
+        public Control Block(string channel)
+        {
+            var items = Main.FindControl<ItemsControl>("ChannelItems")!;
+            return items.ContainerFromItem(Server.Tree.Channels.Single(item => item.Name == channel))!;
+        }
 
         /// <summary>Presses on the user's row and moves past the threshold onto the row of <paramref name="channel"/>.</summary>
         public Point Drag(string nickname, string channel)

@@ -78,20 +78,11 @@ internal sealed class ReorderDrag
         dragging = true;
         bool reduced = Motion.IsReduced(list); // reduced: the gap opens without sliding
         preview = DragVisuals.Lift(source);
-        // the drop target: a dashed frame of the item's size where it will land, below the lifted preview
-        placeholder = new Rectangle
-        {
-            Classes = { "dropPlaceholder" },
-            Width = source.Bounds.Width,
-            Height = source.Bounds.Height,
-            IsHitTestVisible = false,
-            IsVisible = false,
-        };
+        placeholder = DragVisuals.Placeholder(source); // below the lifted preview
         overlay.Children.Add(placeholder);
         overlay.Children.Add(preview);
         source.Opacity = DimmedOpacity;
-        foreach (var container in Containers())
-            container.Transitions = reduced ? null : [new ThicknessTransition { Property = Avalonia.Layout.Layoutable.MarginProperty, Duration = TimeSpan.FromMilliseconds(120) }];
+        foreach (var container in Containers()) container.Transitions = DragVisuals.GapTransitions(reduced);
         args.Pointer.Capture(list);
         top = TopLevel.GetTopLevel(list);
         top?.AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
