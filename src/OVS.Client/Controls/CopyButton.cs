@@ -21,6 +21,7 @@ internal sealed class CopyButton : Button
     public static readonly TimeSpan CopiedFor = TimeSpan.FromSeconds(2);
 
     int copies; // only the last copy's 2 s put the tooltip back
+    string label = Strings.Ui_CopyFingerprint;
 
     /// <summary>An icon button with the copy icon.</summary>
     public CopyButton()
@@ -30,8 +31,7 @@ internal sealed class CopyButton : Button
         icon.Classes.Add("sm");
         icon.Bind(PathIcon.DataProperty, icon.GetResourceObservable("Icon.Copy", value => value as Geometry));
         Content = icon;
-        ToolTip.SetTip(this, Strings.Ui_CopyFingerprint);
-        AutomationProperties.SetName(this, Strings.Ui_CopyFingerprint);
+        Label = label;
         IsVisible = false;
         Click += (_, _) => _ = CopyAsync();
     }
@@ -44,6 +44,18 @@ internal sealed class CopyButton : Button
     {
         get => GetValue(TextProperty);
         set => SetValue(TextProperty, value);
+    }
+
+    /// <summary>Package 170: what the button copies, as its tooltip and name; the fingerprint by default.</summary>
+    public string Label
+    {
+        get => label;
+        set
+        {
+            label = value;
+            ToolTip.SetTip(this, value);
+            AutomationProperties.SetName(this, value);
+        }
     }
 
     /// <summary>The clock of the 2 s; the tests set a manual one.</summary>
@@ -64,6 +76,6 @@ internal sealed class CopyButton : Button
         int copy = ++copies;
         ToolTip.SetTip(this, Strings.Ui_Copied);
         await Task.Delay(CopiedFor, Time);
-        if (copy == copies) ToolTip.SetTip(this, Strings.Ui_CopyFingerprint);
+        if (copy == copies) ToolTip.SetTip(this, label);
     }
 }

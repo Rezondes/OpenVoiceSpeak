@@ -34,6 +34,8 @@ internal sealed partial class ServerViewModel : ObservableObject
 
     [ObservableProperty] string serverName = "";
     [ObservableProperty] string welcomeText = "";
+    /// <summary>Package 170: the web link that opens OVS with this server's address; null for an address a link cannot carry.</summary>
+    [ObservableProperty] string? serverLink;
     [ObservableProperty] bool isAdmin;
     [ObservableProperty] ChannelViewModel? currentChannel;
     [ObservableProperty] UserViewModel? self;

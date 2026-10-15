@@ -181,6 +181,7 @@ public sealed class UpdateTests() : TempDirectoryTest("ovs-update-", quiet: fals
     {
         Assert.Equal(["--profile", "X", "--after-update", "42"], UpdateInstaller.RestartArgs(["--profile", "X"], 42));
         Assert.Equal(["--no-audio", "--after-update", "42"], UpdateInstaller.RestartArgs(["--after-update", "7", "--no-audio"], 42));
+        Assert.Equal(["--after-update", "42"], UpdateInstaller.RestartArgs(["ovs://host:7000"], 42)); // Package 170: the link was used already
     }
 
     [Fact]

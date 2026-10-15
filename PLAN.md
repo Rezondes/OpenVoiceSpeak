@@ -9813,19 +9813,21 @@ There are no invite links (dropped by the user); Steam's `steam://` links are th
 
 ### Acceptance Criteria
 
-- [ ] AC1: "Server-Link kopieren" ("Copy server link") puts `https://rezondes.github.io/OpenVoiceSpeak/?join=<host>:<port>` of the connected server on the clipboard (not offered in streamer mode, Package 160).
-- [ ] AC2: The page with `?join=` opens `ovs://<host>:<port>`; it shows host and port as text and the download button in case nothing happens; an invalid value shows the normal page.
-- [ ] AC3: At start the client registers `ovs://` for the current user, pointing at its own exe; a moved exe updates it.
-- [ ] AC4: `ovs://host:port` starts OVS with the connect dialog filled in (no password, no nickname from the link); with OVS running, its window comes to the front with the dialog and the second process ends.
-- [ ] AC5: `JoinLink` refuses anything but host and port (a path, a query, user info, more than 253 characters, a port outside 1 to 65535).
+- [x] AC1: "Server-Link kopieren" ("Copy server link") puts `https://rezondes.github.io/OpenVoiceSpeak/?join=<host>:<port>` of the connected server on the clipboard (not offered in streamer mode, Package 160).
+- [x] AC2: The page with `?join=` opens `ovs://<host>:<port>`; it shows host and port as text and the download button in case nothing happens; an invalid value shows the normal page.
+- [ ] AC3 (manual): At start the client registers `ovs://` for the current user, pointing at its own exe; a moved exe updates it. (open: built, needs the manual check of Test 5 on Windows)
+- [x] AC4: `ovs://host:port` starts OVS with the connect dialog filled in (no password, no nickname from the link); with OVS running, its window comes to the front with the dialog and the second process ends.
+- [x] AC5: `JoinLink` refuses anything but host and port (a path, a query, user info, more than 253 characters, a port outside 1 to 65535).
 
 ### Tests (TDD)
 
-1. `JoinLinkTests > "Parse_HostAndPort_Accepted"`, `"Parse_Ipv6InBrackets_Accepted"`, `"Parse_PathQueryUserInfo_Refused"`, `"Parse_PortOutOfRange_Refused"`, `"Build_WebLink"` (AC1, AC5)
+1. `JoinLinkTests > "Parse_HostAndPort_Accepted"`, `"Parse_Ipv6InBrackets_Accepted"`, `"Parse_PathQueryUserInfo_Refused"`, `"Parse_PortOutOfRange_Refused"`, `"Build_ServerAddress_WebLink"` (AC1, AC5)
 2. `SingleInstanceTests > "Second_HandsLinkOver_Ends"` (AC4)
-3. `ConnectionViewModelTests > "Link_OpensDialogFilled_NoConnect"` (AC4)
-4. `App.test.tsx > "join opens the protocol and shows host as text"` and `"invalid join shows the start page"` (AC2)
+3. `ConnectionBindingTests > "Link_OpensDialogFilled_NoConnect"` (AC4)
+4. `website/src/App.test.tsx > "join opens the protocol and shows host as text"` and `website/src/App.test.tsx > "invalid join shows the start page"` (AC2)
 5. Manual check (AC3): a fresh Windows user, the link from Chrome and Edge, with and without OVS running.
+
+(as built: `JoinLink` (Client/Net) is the value type of a link: only host and port, refused otherwise; it builds `ovs://` and the web link. `UrlProtocol` (Interop) writes HKCU\Software\Classes\ovs when the command differs; only the normal profile without --debug-api registers, so test and second profiles leave it alone. `SingleInstance` (Services) uses a named pipe per Windows user and profile folder (CurrentUserOnly, one line of at most 1024 characters); a second start with a link hands it over in `Program.Main` before the splash and ends, a start without a link behaves as before. The link reaches `MainWindow.OpenJoinLink`, which restores and activates the window and opens the connect dialog with the link's host and port (or the bookmark of that address) and the nickname of the first bookmark; it never connects, and while another dialog is open the link is dropped. Windows may only flash the taskbar button instead of raising the window of a running client (foreground lock). "Server-Link kopieren" is the copy button beside "Verbunden" in the server header (`CopyButton` got a `Label`), hidden in streamer mode and for an address a link cannot carry. A restart after an update drops the link argument. On the website `join.ts` reads `?join=` with the client's rules and `protocol.open` starts the link; the dialog test is in `ConnectionBindingTests` (a view test, the dialog is opened by the window). The manual check of Test 5 (fresh Windows user, Chrome and Edge, with and without OVS running) is still open.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx` and `npm test` in `website/`
 

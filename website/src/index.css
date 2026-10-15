@@ -104,6 +104,14 @@ section, main { scroll-margin-top: var(--header); }
   color: var(--muted); font-size: 0.875rem; font-variant-numeric: tabular-nums;
 }
 .hint { margin-top: 14px; color: var(--muted); font-size: 0.9375rem; }
+/* Package 170: "?join=" hands the server over to OVS, the download below in case nothing happens */
+.join {
+  max-width: 40rem; margin: 0 auto 40px; padding: 20px 24px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); box-shadow: var(--shadow);
+}
+.join-title { font-size: 1.25rem; font-weight: 600; }
+.join code { overflow-wrap: anywhere; }
+.join .hero-actions { margin-top: 16px; }
 .frame { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
 .hero-shot { max-width: 1000px; margin: 48px auto 0; }
 @media (min-width: 768px) { .hero { padding-block: 88px 48px; } }

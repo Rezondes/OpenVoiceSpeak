@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type Ref, type VideoHTMLAttributes } from 'react'
 import { icons, type IconName } from './icons'
 import { pickLanguage, storageKey, texts, type Lang } from './i18n'
+import { protocol, readJoin } from './join'
 
 const repo = 'https://github.com/Rezondes/OpenVoiceSpeak'
 export const downloadUrl = `${repo}/releases/latest/download/OVS.Client.exe`
@@ -223,6 +224,11 @@ export default function App() {
   const [lang, setLang] = useState<Lang>(() => pickLanguage(navigator.languages ?? [navigator.language], readStored()))
   const t = texts[lang]
   const version = import.meta.env.VITE_OVS_VERSION || 'dev'
+  const [join] = useState(() => readJoin(location.search))
+
+  useEffect(() => {
+    if (join) protocol.open(`ovs://${join}`) // once, at the start
+  }, [join])
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -264,6 +270,17 @@ export default function App() {
       <main id="main" tabIndex={-1}>
         <div className="hero">
           <div className="container">
+            {join && (
+              <div className="join" role="status">
+                <p className="join-title">{t.join.opening}</p>
+                <p>{t.join.server} <code>{join}</code></p>
+                <p className="hint">{t.join.missing}</p>
+                <div className="hero-actions">
+                  <a className="button" href={`ovs://${join}`}>{t.join.again}</a>
+                  <DownloadButton label={t.hero.cta} />
+                </div>
+              </div>
+            )}
             <h1>{t.hero.title}</h1>
             <p className="lead">{t.hero.lead}</p>
             <div className="hero-actions">

@@ -33,13 +33,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
         ["SettingsTests > \"ImportFromDiscord_Checked_SetOnPageNotSaved\""] = "planned in Package 171, written when it is built",
         ["SettingsTests > \"ImportFromDiscord_Cancelled_NothingChanges\""] = "planned in Package 171, written when it is built",
         ["ResponsiveTests > \"ImportDialog_At360_Fits\""] = "planned in Package 171, written when it is built",
-        ["JoinLinkTests > \"Parse_HostAndPort_Accepted\""] = "planned in Package 170, written when it is built",
-        ["JoinLinkTests > \"Parse_Ipv6InBrackets_Accepted\""] = "planned in Package 170, written when it is built",
-        ["JoinLinkTests > \"Parse_PathQueryUserInfo_Refused\""] = "planned in Package 170, written when it is built",
-        ["JoinLinkTests > \"Parse_PortOutOfRange_Refused\""] = "planned in Package 170, written when it is built",
-        ["JoinLinkTests > \"Build_WebLink\""] = "planned in Package 170, written when it is built",
-        ["SingleInstanceTests > \"Second_HandsLinkOver_Ends\""] = "planned in Package 170, written when it is built",
-        ["ConnectionViewModelTests > \"Link_OpensDialogFilled_NoConnect\""] = "planned in Package 170, written when it is built",
     };
 
     /// <summary>N20: checked criteria no test can check and without a manual marker, each with the reason.</summary>

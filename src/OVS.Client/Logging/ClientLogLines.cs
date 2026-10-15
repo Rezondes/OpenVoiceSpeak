@@ -28,6 +28,17 @@ static partial class ClientLogLines
     [LoggerMessage(Level = LogLevel.Error, Message = "Unobserved error: {Exception}")]
     public static partial void UnobservedError(this ILogger logger, string exception);
 
+    /// <summary>Package 170: ovs:// now points at this exe.</summary>
+    [LoggerMessage(Level = LogLevel.Information, Message = "Server links (ovs://) registered for {Exe}")]
+    public static partial void UrlProtocolRegistered(this ILogger logger, string exe);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Server links (ovs://) could not be registered: {Error}")]
+    public static partial void UrlProtocolFailed(this ILogger logger, string error);
+
+    /// <summary>Package 170: a server link came in, at start or from a second start.</summary>
+    [LoggerMessage(Level = LogLevel.Information, Message = "Server link received: {Address}")]
+    public static partial void JoinLinkReceived(this ILogger logger, string address);
+
     /// <summary>What the removal of the exe replaced by the last update did (UpdateInstaller.CleanupOldAsync).</summary>
     [LoggerMessage(Level = LogLevel.Information, Message = "{Result}")]
     public static partial void OldVersionCleanup(this ILogger logger, string result);

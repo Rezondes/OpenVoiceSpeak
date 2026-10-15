@@ -14,6 +14,7 @@ using OVS.Client.Controls;
 using OVS.Client.Dialogs;
 using OVS.Client.Layout;
 using OVS.Client.Models;
+using OVS.Client.Net;
 using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
@@ -114,10 +115,24 @@ internal partial class MainWindow : Window
 
     async void OnConnectClick(object? sender, RoutedEventArgs args) => await ConnectAsync(null);
 
-    async Task ConnectAsync(Bookmark? preselect)
+    /// <param name="link">Package 170: a server link fills in host and port.</param>
+    /// <param name="preselect">The bookmark filled in first.</param>
+    async Task ConnectAsync(Bookmark? preselect, JoinLink? link = null)
     {
         if (Vm.Connection.IsConnecting) return;
-        if (await ConnectDialog.ShowAsync(Overlay, Vm.Bookmarks.Saved, preselect) is { } choice) await Vm.Connection.ConnectAsync(choice);
+        if (await ConnectDialog.ShowAsync(Overlay, Vm.Bookmarks.Saved, preselect, link) is { } choice) await Vm.Connection.ConnectAsync(choice);
+    }
+
+    /// <summary>
+    /// Package 170: a server link brings the window to the front with the connect dialog filled in; it never connects by
+    /// itself. While another dialog is open the link is dropped, so no dialog covers an open question.
+    /// </summary>
+    internal void OpenJoinLink(JoinLink link)
+    {
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Show();
+        Activate();
+        if (!Overlay.IsOpen) _ = ConnectAsync(null, link);
     }
 
     // ---- Bookmarks in the sidebar (Package 40): a click connects right away ----

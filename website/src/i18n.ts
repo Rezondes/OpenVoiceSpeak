@@ -92,6 +92,12 @@ const de = {
     readme: 'Anleitung für Serverbetreiber',
     code: 'Befehle für den Server',
   },
+  join: {
+    opening: 'OpenVoiceSpeak wird geöffnet …',
+    server: 'Server',
+    missing: 'Nichts passiert? Dann ist OpenVoiceSpeak noch nicht installiert: Lade es herunter, starte es einmal und öffne den Link dann erneut.',
+    again: 'Erneut öffnen',
+  },
   footer: {
     source: 'Quellcode auf GitHub',
     releases: 'Alle Versionen',
@@ -187,6 +193,12 @@ const en: Texts = {
     text: 'You need a server that runs Docker. The operating system does not matter. Three commands and your server is running. Open port 7000 for TCP and UDP.',
     readme: 'Guide for server operators',
     code: 'Commands for the server',
+  },
+  join: {
+    opening: 'Opening OpenVoiceSpeak …',
+    server: 'Server',
+    missing: 'Nothing happens? Then OpenVoiceSpeak is not installed yet: download it, start it once and open the link again.',
+    again: 'Open again',
   },
   footer: {
     source: 'Source code on GitHub',

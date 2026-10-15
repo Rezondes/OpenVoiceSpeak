@@ -308,6 +308,7 @@
   <data name="Ui_BanReason" xml:space="preserve"><value>Reason: {0}</value></data>
   <data name="Ui_BanUser" xml:space="preserve"><value>Ban</value></data>
   <data name="Ui_ChatMessages" xml:space="preserve"><value>Chat messages</value></data>
+  <data name="Ui_CopyServerLink" xml:space="preserve"><value>Copy server link</value></data>
   <data name="Ui_CreateBackup" xml:space="preserve"><value>Create backup</value></data>
   <data name="Ui_DeleteUser" xml:space="preserve"><value>Delete user data</value></data>
   <data name="Ui_DurationDays" xml:space="preserve"><value>{0} d {1} h</value></data>

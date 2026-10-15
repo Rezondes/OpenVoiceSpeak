@@ -69,7 +69,7 @@ internal sealed class UpdateInstaller(HttpClient http, string exePath, Action<st
         while (enumerator.MoveNext())
         {
             if (enumerator.Current == ClientOptions.AfterUpdateArg) enumerator.MoveNext();
-            else args.Add(enumerator.Current);
+            else if (!JoinLink.TryParse(enumerator.Current, out _)) args.Add(enumerator.Current); // Package 170: the link was used already
         }
         args.AddRange([ClientOptions.AfterUpdateArg, pid.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
         return args;

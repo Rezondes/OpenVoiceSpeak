@@ -68,6 +68,9 @@
                 <Ellipse Classes="dot" Classes.online="{Binding IsConnected}" VerticalAlignment="Center" />
                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_Connected}" IsVisible="{Binding IsConnected}" />
                 <TextBlock Classes="caption" Text="{x:Static l:Strings.Status_NotConnected}" IsVisible="{Binding !IsConnected}" />
+                <!-- Package 170: the server's web link, which opens OVS with the address; hidden in streamer mode -->
+                <ctl:CopyButton x:Name="CopyServerLink" Text="{Binding Server.ServerLink, FallbackValue={x:Null}}"
+                                Label="{x:Static l:Strings.Ui_CopyServerLink}" VerticalAlignment="Center" />
               </StackPanel>
             </StackPanel>
           </DockPanel>

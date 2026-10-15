@@ -186,6 +186,7 @@ internal sealed partial class ConnectionViewModel : ObservableObject
             return conn.SendAsync(request);
         }, time, serverDialogs()) { Post = post }; // Package 97: the waiting marks' timers come back to the UI thread
         server.Notice += text => addNotice(text, NoticeKind.Error);
+        server.ServerLink = JoinLink.For(choice.Host, choice.Port)?.WebLink; // Package 170
         TrackServerIcon(server, choice.Host, choice.Port);
         server.PropertyChanged += OnServerPropertyChanged;
         server.SelfState.PropertyChanged += OnServerPropertyChanged; // the own mute and deafen live on the server's child (Step 27f)

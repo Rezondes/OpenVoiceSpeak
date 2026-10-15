@@ -2,6 +2,7 @@ using Avalonia;
 using OVS.Client.Localization;
 using OVS.Client.Logging;
 using OVS.Client.Net.Updates;
+using OVS.Client.Services;
 using OVS.Client.Settings;
 
 namespace OVS.Client;
@@ -23,8 +24,10 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        Splash.Show(); // first of all: the logo shows while everything below loads
         Options = ClientOptions.Parse(args);
+        // Package 170 (A173): a link while OVS runs goes to the running client, and this start ends before any window
+        if (Options.Join is { } join && SingleInstance.TryHandOver(SingleInstance.PipeNameFor(Options.ProfileDir), join.ProtocolLink, TimeSpan.FromSeconds(1))) return;
+        Splash.Show(); // the logo shows while everything below loads
         Log = new ClientLog(Options.ProfileDir, Time);
         // Package 63: a crash used to leave no trace at all; exceptions escaping the UI thread end up here too
         AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) =>

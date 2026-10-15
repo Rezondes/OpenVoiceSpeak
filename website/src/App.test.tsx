@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App, { downloadUrl } from './App'
+import { protocol, readJoin } from './join'
 import { storageKey, texts } from './i18n'
 
 beforeEach(() => {
@@ -15,6 +16,36 @@ afterEach(() => {
 })
 
 describe('App', () => {
+  it('join opens the protocol and shows host as text', () => {
+    const open = vi.spyOn(protocol, 'open').mockImplementation(() => {})
+    history.replaceState(null, '', '/?join=gilde.example.org:7000')
+    try {
+      render(<App />)
+    } finally {
+      history.replaceState(null, '', '/')
+    }
+    expect(open).toHaveBeenCalledExactlyOnceWith('ovs://gilde.example.org:7000')
+    expect(screen.getByRole('status').textContent).toContain('Opening OpenVoiceSpeak')
+    expect(screen.getByText('gilde.example.org:7000').tagName).toBe('CODE')
+    expect(screen.getByRole('link', { name: 'Open again' }).getAttribute('href')).toBe('ovs://gilde.example.org:7000')
+    expect(screen.getAllByRole('link', { name: /Download/ })).toHaveLength(4) // one more beside "Open again"
+  })
+
+  it('invalid join shows the start page', () => {
+    const open = vi.spyOn(protocol, 'open').mockImplementation(() => {})
+    history.replaceState(null, '', '/?join=%3Cimg%20src%3Dx%3E:7000')
+    try {
+      render(<App />)
+    } finally {
+      history.replaceState(null, '', '/')
+    }
+    expect(open).not.toHaveBeenCalled()
+    expect(screen.queryByRole('status')).toBeNull()
+    for (const bad of ['?join=host:0', '?join=host:65536', '?join=host/x:7000', '?join=user@host:7000', '?join=-host:7000', '?join=[1.2.3.4]:7000', '?join=host'])
+      expect(readJoin(bad), bad).toBeNull()
+    expect(readJoin('?join=[2001:db8::1]:7000')).toBe('[2001:db8::1]:7000')
+  })
+
   it('Hero shows version and direct download link', () => {
     vi.stubEnv('VITE_OVS_VERSION', '280926.0jof')
     render(<App />)

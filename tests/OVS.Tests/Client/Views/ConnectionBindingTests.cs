@@ -92,6 +92,58 @@ public sealed class ConnectionBindingTests() : TempDirectoryTest("ovs-connbind-"
         main.Close();
     }
 
+    // ---- Package 170: server links ----
+
+    static List<string?> Texts(MainWindow main) => main.Overlay.GetVisualDescendants().OfType<TextBox>().Select(box => box.Text).ToList();
+
+    [AvaloniaFact]
+    public void Link_OpensDialogFilled_NoConnect()
+    {
+        int connects = 0;
+        var main = Open(null, out var mainViewModel, connect: (_, _) =>
+        {
+            connects++;
+            return Task.FromException<OVS.Client.Net.ClientConnection>(new IOException("never"));
+        });
+        mainViewModel.Settings.Bookmarks.Add(new Bookmark(BookmarkName, "127.0.0.1", 4711, "anna"));
+        mainViewModel.Bookmarks.Refresh();
+
+        Assert.True(OVS.Client.Net.JoinLink.TryParse("ovs://gilde.example.org:7000", out var link));
+        main.OpenJoinLink(link);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(main.Overlay.IsOpen);
+        Assert.Contains("gilde.example.org", Texts(main));
+        Assert.Contains("anna", Texts(main)); // the nickname of the first bookmark, none from the link
+        Assert.Equal(7000m, main.Overlay.GetVisualDescendants().OfType<NumericUpDown>().Single().Value);
+        main.Overlay.Close();
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(OVS.Client.Net.JoinLink.TryParse("ovs://127.0.0.1:4711", out var known)); // the address of a bookmark: that bookmark
+        main.OpenJoinLink(known);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Contains("127.0.0.1", Texts(main));
+        main.Overlay.Close();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(0, connects);
+        main.Close();
+    }
+
+    [AvaloniaFact]
+    public void Header_ServerLinkKnown_CopyButtonCopiesIt()
+    {
+        var server = FakeServers.Admin();
+        var main = Open(server, out _);
+        var button = main.FindControl<OVS.Client.Controls.CopyButton>("CopyServerLink")!;
+        Assert.False(button.IsVisible); // no address that a link can carry
+
+        server.ServerLink = "https://rezondes.github.io/OpenVoiceSpeak/?join=gilde.example.org:7000";
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(button.IsVisible);
+        Assert.Equal((server.ServerLink, Strings.Ui_CopyServerLink), (button.Text, AutomationProperties.GetName(button)));
+        main.Close();
+    }
+
     const string BookmarkName = "Gilde";
 
     /// <summary>Clicks through <see cref="OverlayRig.Click"/> (the Click event reaches the handlers whether or not the button is enabled); tells whether a handler got it.</summary>

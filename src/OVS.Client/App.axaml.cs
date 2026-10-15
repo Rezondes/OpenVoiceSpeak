@@ -14,6 +14,7 @@ using OVS.Client.Interop;
 using OVS.Client.Logging;
 using OVS.Client.Net;
 using OVS.Client.Net.Updates;
+using OVS.Client.Services;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Client.Views;
@@ -106,10 +107,38 @@ internal partial class App : Application
             window.Opened += async (_, _) => await viewModel.Update.CheckAtStartAsync();
             window.Opened += (_, _) => window.RequestAnimationFrame(_ => Splash.Close()); // once the window has drawn itself
 
+            // Package 170: server links; registered only by the normal profile, so test and second profiles leave it alone
+            if (options.ProfileDir == ClientPaths.DefaultDirectory && options.DebugApiPort is null && OperatingSystem.IsWindows() && Environment.ProcessPath is { } own)
+            {
+                try
+                {
+                    if (UrlProtocol.Register(own)) log.UrlProtocolRegistered(own);
+                }
+                catch (Exception exception) when (exception is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+                {
+                    log.UrlProtocolFailed(exception.Message);
+                }
+            }
+            void OpenLink(JoinLink link)
+            {
+                log.JoinLinkReceived(link.Address);
+                window.OpenJoinLink(link);
+            }
+            #pragma warning disable CA2000 // cancelled and disposed when the app exits (desktop.Exit below)
+            var linkListener = new CancellationTokenSource();
+            #pragma warning restore CA2000
+            _ = SingleInstance.ListenAsync(SingleInstance.PipeNameFor(options.ProfileDir), line =>
+            {
+                if (JoinLink.TryParse(line, out var link)) Dispatcher.UIThread.Post(() => OpenLink(link));
+            }, linkListener.Token);
+            if (options.Join is { } startLink) window.Opened += (_, _) => OpenLink(startLink);
+
             desktop.MainWindow = window;
             desktop.Exit += (_, _) =>
             {
                 timer.Stop();
+                linkListener.Cancel();
+                linkListener.Dispose();
                 debugApi?.Dispose();
                 audioDebug?.Dispose();
                 // Off the UI thread: the disposal awaits background loops.
