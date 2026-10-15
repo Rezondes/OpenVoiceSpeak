@@ -93,6 +93,35 @@ public sealed class PlaybackLoopTests : IDisposable
     }
 
     [Fact]
+    public async Task Run_ToneStarted_HandedToTheSpeakerOnceBeforeItsFrame()
+    {
+        hardware.SpeakersPlaySounds = true;
+        needed = true;
+        loop.Kick();
+        await AsyncWait.UntilAsync(() => hardware.Counts.SpeakersOpen == 1);
+        var tone = Tone(3);
+
+        sounds.Add(tone, 0.5f);
+        loop.Kick();
+        await AsyncWait.UntilAsync(() => sounds.Count == 0);
+
+        var played = Assert.Single(hardware.OpenSpeaker.Played);
+        Assert.Equal((tone, 0.5f, 0, false), (played.Samples, played.Gain, played.Offset, played.Restart));
+    }
+
+    [Fact]
+    public void MixForSpeaker_SpeakerPlaysSounds_FrameHasVoiceOnlyAndTheToneAdvances()
+    {
+        sounds.Add(Tone(2), 1f);
+
+        var first = loop.MixForSpeaker(tonesPlayedBySpeaker: true);
+        Assert.All(first, sample => Assert.Equal(0f, sample));
+        loop.MixForSpeaker(tonesPlayedBySpeaker: true);
+
+        Assert.Equal(0, sounds.Count);
+    }
+
+    [Fact]
     public async Task Run_SpeakerFailsWhileIdle_FailedRaisedOnce()
     {
         var failures = 0;

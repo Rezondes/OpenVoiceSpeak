@@ -41,6 +41,7 @@ internal sealed class PlaybackLoop
     volatile bool stopped; // the playback thread's end
     readonly SpeakerReportThrottle speakerReports = new();
     readonly float[] farEnd = new float[AudioFormat.FrameSamples]; // Package 142: playback thread only
+    readonly float[] heard = new float[AudioFormat.StereoFrameSamples]; // Package 174: voices and tones, while the speaker plays the tones itself
     long mixes;
 
     /// <param name="gate">The engine's lock over the devices; the speaker closes under it.</param>
@@ -137,7 +138,9 @@ internal sealed class PlaybackLoop
                 wake.WaitOne(5); // clock: real time, new work or the stop wakes it at once
                 continue;
             }
-            var frame = MixForSpeaker();
+            bool tonesPlayedBySpeaker = buffer.PlaysSounds;
+            if (tonesPlayedBySpeaker) sounds.HandOver(buffer); // Package 174: they start with the frame written next
+            var frame = MixForSpeaker(tonesPlayedBySpeaker);
             buffer.AddSamples(frame);
             ticks = (long)(clock.Elapsed / AudioFormat.FrameDuration);
         }
@@ -165,24 +168,30 @@ internal sealed class PlaybackLoop
     /// through the speakers. Playback thread; internal so tests mix by hand. Package 142: the frame is stereo, the
     /// canceller hears it downmixed (a mono voice exactly as before); in music mode the capture does not use it.
     /// </summary>
-    internal float[] MixForSpeaker()
+    /// <param name="tonesPlayedBySpeaker">Package 174: the speaker mixes the tones itself, so the frame holds the voices only and the far end both.</param>
+    internal float[] MixForSpeaker(bool tonesPlayedBySpeaker = false)
     {
-        var frame = Mix();
+        var frame = Mix(tonesPlayedBySpeaker);
         if (devices.CaptureSource.Capture is { EchoCancellation: true, Music: false, Canceller: { } canceller })
         {
-            SampleConversion.Downmix(frame, farEnd);
+            SampleConversion.Downmix(tonesPlayedBySpeaker ? heard : frame, farEnd);
             canceller.Render(farEnd);
         }
         return frame;
     }
 
-    float[] Mix()
+    float[] Mix(bool tonesPlayedBySpeaker = false)
     {
         Interlocked.Increment(ref mixes);
         var (frame, active) = mixer.Tick();
         if (deafened() && !selfTest()) Array.Clear(frame); // in the self test only the own voice is in the mixer
         LastOutputLevelDb = VoiceActivityDetector.LevelDb(frame, 2); // voice only, before the tones; Package 142: the louder side
-        sounds.MixInto(frame);
+        if (tonesPlayedBySpeaker)
+        {
+            frame.CopyTo(heard, 0);
+            sounds.MixInto(heard); // Package 174: advances the tones the speaker plays, for the far end and their end
+        }
+        else sounds.MixInto(frame);
         if (speakerReports.Next(active) is { } report) SpeakersChanged?.Invoke(report);
         return frame;
     }

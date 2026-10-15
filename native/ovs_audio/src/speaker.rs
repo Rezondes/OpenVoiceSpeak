@@ -168,3 +168,44 @@ pub unsafe extern "C" fn ovs_audio_speaker_fake_fail(speaker: *const Speaker, er
     // SAFETY: the caller's guarantee
     guard((), || unsafe { (&*speaker).fake_error.store(error, Ordering::Release) })
 }
+
+/// Package 174: loads (or replaces) the mono samples of sound `id`, process-wide; a speaker plays it by id.
+///
+/// # Safety
+/// `samples` holds `count` floats.
+#[no_mangle]
+pub unsafe extern "C" fn ovs_audio_sound_load(id: u32, samples: *const f32, count: u32) {
+    // SAFETY: the caller's guarantee
+    guard((), || crate::core::sounds::load(id, unsafe { std::slice::from_raw_parts(samples, count as usize) }));
+}
+
+/// Package 174: starts loaded sound `id` at `gain` with the next frame written, `offset` samples in; `restart` (1)
+/// stops the same sound first. Returns 1 when it started, 0 when the sound is not loaded or too many are waiting.
+///
+/// # Safety
+/// `speaker` is open.
+#[no_mangle]
+pub unsafe extern "C" fn ovs_audio_speaker_play_sound(speaker: *const Speaker, id: u32, gain: f32, offset: u64, restart: u8) -> u8 {
+    // SAFETY: the caller's guarantee
+    guard(0, || u8::from(unsafe { (&*speaker).playout.play_sound(id, gain, offset, restart != 0) }))
+}
+
+/// Package 174: stops every sound of the speaker.
+///
+/// # Safety
+/// `speaker` is open.
+#[no_mangle]
+pub unsafe extern "C" fn ovs_audio_speaker_stop_sounds(speaker: *const Speaker) {
+    // SAFETY: the caller's guarantee
+    guard((), || unsafe { (&*speaker).playout.stop_sounds() });
+}
+
+/// Package 174: the sounds playing or waiting to start, as the render thread last saw them.
+///
+/// # Safety
+/// `speaker` is open.
+#[no_mangle]
+pub unsafe extern "C" fn ovs_audio_speaker_sounds_playing(speaker: *const Speaker) -> u32 {
+    // SAFETY: the caller's guarantee
+    guard(0, || unsafe { (&*speaker).playout.sounds_playing() as u32 })
+}

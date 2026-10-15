@@ -29,5 +29,16 @@ internal sealed class FakeSpeaker(TimeSpan capacity, Action<Exception>? failed =
     /// <summary>The device stops with an error, as unplugged.</summary>
     public void Fail() => failure = new InvalidOperationException("device invalidated");
 
+    /// <summary>Package 174: whether it plays the sounds itself, as the native speaker; then the tones handed over are recorded.</summary>
+    public bool PlaysSounds { get; init; }
+
+    /// <summary>Package 174: the tones handed over, in order.</summary>
+    public List<PlayedSound> Played { get; } = [];
+
+    public void PlaySound(float[] samples, float gain, int offset, bool restart)
+    {
+        lock (Played) Played.Add(new PlayedSound(samples, gain, offset, restart));
+    }
+
     public void Dispose() => Disposed = true;
 }

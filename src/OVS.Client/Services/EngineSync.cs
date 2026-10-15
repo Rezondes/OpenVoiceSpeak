@@ -80,6 +80,9 @@ internal sealed class EngineSync
         audio.Mixer.RemoveLeft(id => id == AudioEngine.SelfTestSpeaker || users.ContainsKey(id));
     }
 
+    /// <summary>Package 174: a connection is being made (or no longer), so the speaker is open before the "Verbunden" sound.</summary>
+    internal void SetConnecting(bool connecting) => audio.Connecting = connecting;
+
     /// <summary>The connection is gone: nobody is heard any more, so every speaker's decoder goes.</summary>
     internal void ClearSpeakers() => audio.Mixer.Clear();
 

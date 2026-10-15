@@ -152,6 +152,9 @@ internal sealed partial class ConnectionViewModel : ObservableObject
         #pragma warning restore CA1873
     }
 
+    /// <summary>Package 174: the speaker opens while a connect runs, so the "Verbunden" sound starts on an open device.</summary>
+    partial void OnIsConnectingChanged(bool value) => engineSync.SetConnecting(value);
+
     static bool IsNetworkFailure(Exception exception) =>
         exception is SocketException or IOException or AuthenticationException or OperationCanceledException or ProtocolException;
 

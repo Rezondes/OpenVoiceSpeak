@@ -31,7 +31,7 @@ internal sealed class AudioEngine : IDisposable
     readonly KeyPoller keys;
     readonly PlaybackLoop playbackLoop;
     readonly ConcurrentDictionary<uint, long> framesReceived = new();
-    volatile bool selfMuted = true, deafened, hasSpeakLinked, connected, channelMuted, selfTest, levelMeter, micWanted, voiceDetected;
+    volatile bool selfMuted = true, deafened, hasSpeakLinked, connected, connecting, channelMuted, selfTest, levelMeter, micWanted, voiceDetected;
     bool talkKeyHeld; // key thread only (Package 131)
     bool loopbackFrame; // capture thread only: the frame just decided goes to the own ears
     uint loopbackSeq;
@@ -110,6 +110,20 @@ internal sealed class AudioEngine : IDisposable
         }
     }
 
+    /// <summary>
+    /// Package 174: a connection is being made: the playback runs, so the speaker opens during the handshake and the
+    /// "Verbunden" sound plays on a device that is already open.
+    /// </summary>
+    public bool Connecting
+    {
+        get => connecting;
+        set
+        {
+            connecting = value;
+            DevicesChanged();
+        }
+    }
+
     /// <summary>Package 34: in a muted channel nobody would hear it, so nothing is sent.</summary>
     public bool ChannelMuted { get => channelMuted; set => channelMuted = value; }
 
@@ -175,7 +189,7 @@ internal sealed class AudioEngine : IDisposable
     bool MicNeeded => connected || selfTest || levelMeter;
 
     /// <summary>Package 124: the playback thread and speaker while connected and in the self test, else until the tones played.</summary>
-    bool PlaybackNeeded => connected || selfTest;
+    bool PlaybackNeeded => connected || connecting || selfTest;
 
     /// <summary>Package 124: a device opened in the background could not be used (the text for a notice).</summary>
     public event Action<string>? Warning;

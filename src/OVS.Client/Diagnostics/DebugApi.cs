@@ -2,6 +2,7 @@ using System.Globalization;
 using OVS.Client.Audio;
 using System.Net;
 using OVS.Client.Audio.Devices;
+using OVS.Client.Audio.Rust;
 using OVS.Client.Collections;
 using OVS.Client.Dialogs;
 using OVS.Client.Exceptions;
@@ -285,6 +286,7 @@ internal sealed class DebugApi : IDisposable
             },
             Notices = viewModel.Notices.Take(50).Select(notice => notice.ToString()).ToList(),
             Sounds = audio.Sounds.Recent.Select(soundEvent => soundEvent.ToString()).ToList(), // Package 47
+            SpeakerUnderrunFrames = (lifecycle.Speaker as NativeSpeaker)?.UnderrunFrames, // Package 174: gaps of the native speaker
             Server = server is null ? null : new
             {
                 server.ServerName,

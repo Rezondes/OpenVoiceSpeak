@@ -50,6 +50,12 @@ internal sealed unsafe class NativeAudio
     internal delegate* unmanaged[Cdecl]<nint, float*, uint, void> SpeakerFakeRender { get; private init; }
     /// <summary>ovs_audio_speaker_fake_fail: ends the fake speaker's stream with an HRESULT.</summary>
     internal delegate* unmanaged[Cdecl]<nint, int, void> SpeakerFakeFail { get; private init; }
+    /// <summary>ovs_audio_sound_load: loads (or replaces) a sound's mono samples by id, process-wide (Package 174).</summary>
+    internal delegate* unmanaged[Cdecl]<uint, float*, uint, void> SoundLoad { get; private init; }
+    /// <summary>ovs_audio_speaker_play_sound: starts a loaded sound with the next frame written; 1 when it started.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, uint, float, ulong, byte, byte> SpeakerPlaySound { get; private init; }
+    /// <summary>ovs_audio_speaker_sounds_playing: the sounds playing or waiting to start.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, uint> SpeakerSoundsPlaying { get; private init; }
 
     /// <summary>The library of this name, loaded on the first call.</summary>
     public static NativeAudio Load(string library = Library) => Loaded.GetOrAdd(library, name => new Lazy<NativeAudio>(() => Open(name))).Value;
@@ -74,6 +80,9 @@ internal sealed unsafe class NativeAudio
                 SpeakerMmcssTask = (delegate* unmanaged[Cdecl]<nint, uint>)NativeLibrary.GetExport(handle, "ovs_audio_speaker_mmcss_task"),
                 SpeakerFakeRender = (delegate* unmanaged[Cdecl]<nint, float*, uint, void>)NativeLibrary.GetExport(handle, "ovs_audio_speaker_fake_render"),
                 SpeakerFakeFail = (delegate* unmanaged[Cdecl]<nint, int, void>)NativeLibrary.GetExport(handle, "ovs_audio_speaker_fake_fail"),
+                SoundLoad = (delegate* unmanaged[Cdecl]<uint, float*, uint, void>)NativeLibrary.GetExport(handle, "ovs_audio_sound_load"),
+                SpeakerPlaySound = (delegate* unmanaged[Cdecl]<nint, uint, float, ulong, byte, byte>)NativeLibrary.GetExport(handle, "ovs_audio_speaker_play_sound"),
+                SpeakerSoundsPlaying = (delegate* unmanaged[Cdecl]<nint, uint>)NativeLibrary.GetExport(handle, "ovs_audio_speaker_sounds_playing"),
             };
         }
         #pragma warning disable CA1031 // missing, wrong architecture, a missing export: the client runs without audio (A180)

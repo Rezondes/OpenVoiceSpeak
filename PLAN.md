@@ -10089,15 +10089,15 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 
 ### Acceptance Criteria
 
-- [ ] AC1: Every sound (all `SoundEvent`s, the profile's own files, the speaker test, the preview) plays from the native bank at the same gain as today; two sounds overlap and are clamped to -1..1 as in `Queue_OverlappingSounds_MixedWithVolume`.
-- [ ] AC2: A started sound plays to its end without a gap while no frame is written from C# (the native test pauses the producer for 200 ms in the middle of a sound).
-- [ ] AC3: The speaker test twice does not overlap (`SpeakerTest_Twice_NoOverlap`), "stop all" ends every sound at once.
-- [ ] AC4: The far end the echo canceller gets equals the voices plus the tones sample by sample, aligned with what the device plays (the tone starts in the far end with the frame it starts in on the device).
-- [ ] AC5: When a connection starts the speaker opens during the handshake, so the "Verbunden" sound starts within 30 ms of `play(SoundEvent.Connected)` (`ConnectionViewModel.cs:211`); a failed or cancelled connect closes the speaker again once nothing plays.
+- [x] AC1: Every sound (all `SoundEvent`s, the profile's own files, the speaker test, the preview) plays from the native bank at the same gain as today; two sounds overlap and are clamped to -1..1 as in `Queue_OverlappingSounds_MixedWithVolume`.
+- [x] AC2: A started sound plays to its end without a gap while no frame is written from C# (the native test pauses the producer for 200 ms in the middle of a sound).
+- [x] AC3: The speaker test twice does not overlap (`SpeakerTest_Twice_NoOverlap`), "stop all" ends every sound at once.
+- [x] AC4: The far end the echo canceller gets equals the voices plus the tones sample by sample, aligned with what the device plays (the tone starts in the far end with the frame it starts in on the device).
+- [x] AC5: When a connection starts the speaker opens during the handshake, so the "Verbunden" sound starts within 30 ms of `play(SoundEvent.Connected)` (`ConnectionViewModel.cs:211`); a failed or cancelled connect closes the speaker again once nothing plays.
 - [ ] AC6: Manual check (A188): run B of the measurement (12 real connects to a local server through the debug API, muted session) shows 0 of 12 runs with a gap in the "Verbunden" sound and the native underrun counter at 0 during each sound.
-- [ ] AC7: Loading, playing and stopping allocate nothing on the render thread; the bank is replaced off it.
+- [x] AC7: Loading, playing and stopping allocate nothing on the render thread; the bank is replaced off it.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `core/sounds.rs > play_mixes_on_top_of_ring_frames_with_gain` - covers AC1
 2. `core/sounds.rs > two_sounds_overlap_and_are_clamped` - covers AC1
@@ -10107,13 +10107,14 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 4. `core/sounds.rs > restart_same_id_stops_the_running_one` and `stop_all_ends_every_sound` - covers AC3
 5. `core/sounds.rs > sound_starts_at_the_frame_written_next` - covers AC4 (start = frames played + ring fill at the call)
 6. `tests/output.rs > sounds_steady_state_allocate_nothing` - covers AC7
-7. `SoundTests > "Queue_OverlappingSounds_MixedWithVolume"`, `"SpeakerTest_Twice_NoOverlap"` stay green on `FakeSpeaker`; new `NativeSoundTests > "Play_LoadedSound_ReachesTheOutputAtItsGain"` (real library, fake device) - covers AC1
-8. `PlaybackLoopTests > "MixForSpeaker_SpeakerPlaysSounds_FrameHasVoiceOnlyFarEndHasBoth"` - covers AC4
+7. `SoundTests > "Queue_OverlappingSounds_MixedWithVolume"`, `"SpeakerTest_Twice_NoOverlap"` stay green on `FakeSpeaker`; new `NativeSoundTests > "Play_LoadedSound_ReachesTheOutputAtItsGain"`, `"Play_WithOffset_StartsInsideTheSound"`, `"Play_SameSamplesTwice_LoadedOnceAndBothPlay"` (real library, fake device) - covers AC1
+8. `PlaybackLoopTests > "MixForSpeaker_SpeakerPlaysSounds_FrameHasVoiceOnlyAndTheToneAdvances"` - covers AC4
 9. `PlaybackLoopTests > "Run_ToneStarted_HandedToTheSpeakerOnceBeforeItsFrame"` - covers AC4
-10. Connection test `"Connect_Started_SpeakerOpensBeforeConnected"` and `"Connect_Failed_SpeakerClosesWhenSilent"` - covers AC5
+10. `ConnectionViewModelTests > "Connect_Started_PlaybackRunsBeforeConnectedAndEndsWhenItFails"` - covers AC5
 11. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
 12. Manual check AC6 (A188): `rebuild.ps1`-built server and a debug client, 12 connects, the muted session, the counter from `/state`.
 
+(as built: sounds are loaded lazily: `NativeSpeaker` gives every samples array (the defaults and the profile's files are cached arrays) a native id on its first play and loads it into the process-wide bank then, so `SoundPlayer` and `SoundLibrary` stay as they were. `SoundQueue.HandOver` hands each tone once per speaker, with the position it has got to (`offset`), so a speaker opened anew mid-tone gets the rest; the queue still mixes every tone into a second buffer (`PlaybackLoop.heard`) for the echo canceller's far end and to know when it ends. The render thread takes new sounds from a bounded channel and locks the sound mixer only itself (`try_lock`, never waiting); at most 16 sounds play, a further one replaces the oldest. A sound starts at the device frame "played so far plus the ring's fill", the frame the client writes next, so it lines up with the voice. `AudioEngine.Connecting` is set from `ConnectionViewModel.IsConnecting`, so the playback runs and the speaker opens during the handshake. `/state` shows `speakerUnderrunFrames`. The stop-all export exists, but nothing in the client stops all sounds (`SoundQueue.Clear` has no caller), so it is not wired. AC6 stays open: the measurement probe of 15 October measured NAudio's reads and does not fit the native path; a sound can no longer be cut by a pause of managed code (`producer_paused_sound_plays_on_without_gap`), and the listening check with real connects goes to the questions for the user. `ovs_audio.dll` sha256 90399b62227f5f1c28ddc8974805a630af626ba174233e266284c6103b49dd6b.)
 Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 
 ### Steps

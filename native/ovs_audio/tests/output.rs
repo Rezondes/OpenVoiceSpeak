@@ -95,3 +95,25 @@ fn close_while_rendering_returns_and_joins() {
     assert_eq!(error, 0);
     assert_ne!(task, 0, "the render thread is not registered with MMCSS");
 }
+
+#[test]
+fn sounds_steady_state_allocate_nothing() {
+    ovs_audio::core::sounds::load(7_001, &[0.1; 4_800]);
+    let playout = Playout::new();
+    let frame = vec![0.25f32; 2 * 480];
+    let mut out = vec![0f32; 2 * 480];
+    playout.play_sound(7_001, 0.5, 0, false);
+    playout.ring.write(&frame);
+    playout.render(&mut out);
+    let before = allocations();
+
+    for turn in 0..10_000 {
+        if turn % 20 == 0 {
+            playout.play_sound(7_001, 0.5, 0, turn % 40 == 0);
+        }
+        playout.ring.write(&frame);
+        playout.render(&mut out);
+    }
+
+    assert_eq!(allocations() - before, 0);
+}

@@ -3,6 +3,7 @@
 
 pub mod playout;
 pub mod ring;
+pub mod sounds;
 
 /// The ABI version of the exports; the client refuses a library with another one (A180).
 pub const ABI_VERSION: u32 = 1;

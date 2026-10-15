@@ -66,6 +66,15 @@ internal sealed class FakeAudioHardware : IAudioHardware
         handler?.Invoke();
     }
 
+    /// <summary>Package 174: the speakers opened from now on play the sounds themselves, as the native one does.</summary>
+    public bool SpeakersPlaySounds { get; set; }
+
+    /// <summary>Package 174: the speaker open now.</summary>
+    public FakeSpeaker OpenSpeaker
+    {
+        get { lock (outputs) return outputs.Single(output => !output.Output.Disposed).Output; }
+    }
+
     /// <summary>Package 173: the open speaker's device stops with an error; the playback loop reports it on its next poll.</summary>
     public void FailOpenSpeaker()
     {
@@ -146,7 +155,7 @@ internal sealed class FakeAudioHardware : IAudioHardware
         OpenGate.Wait(TimeSpan.FromSeconds(10));
         var device = Resolve(deviceId, AudioDirection.Output, warnings) ?? throw new InvalidOperationException("no speaker");
         if (StartFails) throw new InvalidOperationException("device cannot start");
-        var output = new FakeSpeaker(SpeakerBuffer, error => RaiseFailed(AudioDirection.Output, error));
+        var output = new FakeSpeaker(SpeakerBuffer, error => RaiseFailed(AudioDirection.Output, error)) { PlaysSounds = SpeakersPlaySounds };
         lock (outputs) outputs.Add((device, output));
         return output;
     }

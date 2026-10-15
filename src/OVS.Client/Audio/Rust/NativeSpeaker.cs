@@ -1,4 +1,5 @@
 using OVS.Client.Exceptions;
+using System.Collections.Concurrent;
 using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Devices;
 
@@ -12,6 +13,10 @@ namespace OVS.Client.Audio.Rust;
 /// </summary>
 internal sealed unsafe class NativeSpeaker : IPlaybackBuffer
 {
+    // Package 174: the native id of every sound's samples, loaded into the library on its first play (the samples are cached arrays)
+    static readonly ConcurrentDictionary<float[], uint> SoundIds = new(ReferenceEqualityComparer.Instance);
+    static int lastSoundId;
+
     readonly NativeAudio native;
     readonly nint speaker;
     readonly Action<Exception>? failed;
@@ -60,6 +65,50 @@ internal sealed unsafe class NativeSpeaker : IPlaybackBuffer
                 Leave();
             }
         }
+    }
+
+    /// <inheritdoc/>
+    public bool PlaysSounds => true;
+
+    /// <summary>Package 174: sounds playing or waiting to start, as the render thread last saw them.</summary>
+    public int SoundsPlaying
+    {
+        get
+        {
+            if (!Enter()) return 0;
+            try
+            {
+                return (int)native.SpeakerSoundsPlaying(speaker);
+            }
+            finally
+            {
+                Leave();
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    public void PlaySound(float[] samples, float gain, int offset, bool restart)
+    {
+        uint id = SoundIdOf(samples);
+        if (!Enter()) return;
+        try
+        {
+            native.SpeakerPlaySound(speaker, id, gain, (ulong)offset, restart ? (byte)1 : (byte)0);
+        }
+        finally
+        {
+            Leave();
+        }
+    }
+
+    /// <summary>The native id of <paramref name="samples"/>, loading them into the library the first time.</summary>
+    uint SoundIdOf(float[] samples)
+    {
+        if (SoundIds.TryGetValue(samples, out var known)) return known;
+        uint id = (uint)Interlocked.Increment(ref lastSoundId);
+        fixed (float* data = samples) native.SoundLoad(id, data, (uint)samples.Length);
+        return SoundIds.GetOrAdd(samples, id);
     }
 
     /// <summary>Silent frames played inside the audio because none were written in time.</summary>

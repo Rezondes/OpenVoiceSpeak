@@ -169,6 +169,21 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
         Assert.False(await IsConnectingAsync());
     }
 
+    /// <summary>Package 174: the playback (and with a device the speaker) runs from the start of a connect, so the "Verbunden" sound plays on an open device.</summary>
+    [Fact]
+    public async Task Connect_Started_PlaybackRunsBeforeConnectedAndEndsWhenItFails()
+    {
+        var running = rig.Seam.HoldNext(failWith: ConnectSeam.CreateClosedPortError());
+        var connecting = rig.ConnectAsync(Offline);
+        await HangGuard.BoundAsync(running.Reached);
+
+        await AsyncWait.UntilAsync(() => rig.Audio.PlaybackRunning);
+
+        running.Release();
+        await HangGuard.BoundAsync(connecting);
+        await AsyncWait.UntilAsync(() => !rig.Audio.PlaybackRunning);
+    }
+
     // ---- ConnectAsync: what goes in ----
 
     [Theory]

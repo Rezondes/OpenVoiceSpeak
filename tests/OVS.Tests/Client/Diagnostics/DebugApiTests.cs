@@ -437,6 +437,7 @@ public sealed class DebugApiTests : IAsyncLifetime
             "server.serverName",
             "server.welcomeText",
             "sounds",
+            "speakerUnderrunFrames",
             "status",
             "transmitText",
             "voiceHint",

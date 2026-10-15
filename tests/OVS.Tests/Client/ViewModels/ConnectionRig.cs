@@ -55,6 +55,9 @@ sealed class ConnectionRig : IAsyncDisposable
 
     public ConnectionViewModel Connection { get; }
 
+    /// <summary>Package 174: the engine the connection drives (without devices, its playback loop still runs).</summary>
+    public AudioEngine Audio => audio;
+
     /// <summary>The clock of everything: the reconnect series, the server view models, the voice link and the connections.</summary>
     public ManualTimeProvider Time { get; }
 

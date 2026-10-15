@@ -19,4 +19,14 @@ internal interface IPlaybackBuffer : IDisposable
     /// stopped with an error (unplugged, invalidated); the playback thread asks on every turn, nothing calls back.
     /// </summary>
     void PollFailure();
+
+    /// <summary>
+    /// Package 174: the speaker mixes the sounds itself (the native one); the playback loop then hands each tone over
+    /// once and leaves it out of the frames it writes.
+    /// </summary>
+    bool PlaysSounds { get; }
+
+    /// <summary>Package 174: starts <paramref name="samples"/> (mono) at <paramref name="gain"/> with the next frame written, <paramref name="offset"/> samples in; <paramref name="restart"/> stops the same samples first.</summary>
+    void PlaySound(float[] samples, float gain, int offset, bool restart);
 }
+
