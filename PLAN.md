@@ -39,6 +39,8 @@
 > **Packages 143 to 150 (error ID and observability):** the request "find a user's error in the server log, and optionally send the server's telemetry to a backend" was cut at the user's request: 143 (error ID) comes first and works without any backend; 144 puts the server's loggers into the run's container; 145 adds OpenTelemetry, strictly opt-in through `OTEL_EXPORTER_OTLP_ENDPOINT`; 146 (traces), 147 (metrics) and 148 (server log over OTLP) build on it; 149 adds compose examples for Grafana LGTM, the Aspire Dashboard, Jaeger and Seq; 150 (Elastic, OpenSearch, Netdata) followed after 149 at the user's request. The client exports nothing (the user's decision, A161). 143 and 144 can start at once; 146 needs 143 and 145; 147, 148 and 149 need 145.
 >
 > **Packages 151 to 170 (settings and administration like Discord, and the features found on the way):** 151 to 157 change only the client's UI for features that exist (the user's condition); 158 to 164 are client-only features, 165 to 170 need the server, in that order (the user's decision). 151 (side navigation) comes first; 152 (settings pages) and 154 (administration) build on it and can run in parallel; 153 needs 152, 155 needs 154, 156 needs 155, 157 needs 153 and 154. 158 to 162 need 152; 163 and 164 can start at once. 165, 167 and 169 need 154; 166, 168 and 170 can start at once. Packages 166 to 169 each raise the protocol version by one, so they are built one after the other. 171 (taking over Discord's audio settings) came later at the user's request and needs 152 and 153. Dropped at the user's request: per-user volume (exists since Package 51), rights per channel, friends and blocking, invite links with expiry, profile status text and bio.
+>
+> **Packages 172 to 180 (native audio engine in Rust):** the measurement of 15 October 2026 (`MESSUNG-VERBUNDEN-STOCKEN.md`) found the stutter of the "Verbunden" sound: a garbage collection of about 50 ms stops the managed playback loop and NAudio's managed render thread, and 40 ms of buffer do not cover it. TeamSpeak, Discord and Fluxer all render audio on native threads. The audio path moves into one native Rust library in three stages, in the user's words: stage 1 output and sounds (172 to 174), stage 2 jitter buffer, decoding and mixing (175, 176), stage 3 the microphone path (177 to 179); 180 removes the old managed path. The order is strictly linear: each package builds on the one before and ends green and committable, the old managed path stays where the native one does not exist yet (A180). Later platforms (Linux, macOS, Android, iOS) come as own packages over cpal (A189) and are not planned here. Their test sections are headed "Planned tests (TDD)" so that `PlanReferenceTests` does not try to resolve tests that do not exist yet; each package renames its heading to "Tests (TDD)" when it is built, and 172 teaches the check to resolve the Rust tests (`file.rs > name`).
 
 ## Überblick
 
@@ -212,6 +214,15 @@
 | 169 | AFK channel | An idle user is moved after X minutes into the server's AFK channel, where no voice is relayed. | 154 |
 | 170 | Server link | A web link opens OVS with the connect dialog filled in, or shows the download. | - |
 | 171 | Take over Discord's audio settings | A button on the Audio page reads Discord's audio settings and shows each change as before and after, all checked by default, and takes over the checked ones. | 152, 153 |
+| 172 | Native audio library | A Rust library `ovs_audio` with a platform-neutral core and a Windows device layer builds reproducibly, is checked in, loads in the client and is tested by `cargo test` in CI. | - |
+| 173 | Native speaker output | The speaker plays from a native ring buffer on a native WASAPI thread (MMCSS "Pro Audio"), so a garbage collection no longer stops what is already buffered. | 172 |
+| 174 | Native sounds | Notification sounds are loaded once into the native library and mixed there, so a sound never stutters, and the speaker is open before the "Verbunden" sound plays. | 173 |
+| 175 | Native jitter buffer and Opus decoding | Received voice frames are buffered, decoded and concealed in Rust with libopus, with the same statistics, copies and cushion as today. | 174 |
+| 176 | Native mixer | The voices are mixed, scaled, limited and played entirely in Rust; C# only hands in packets and polls who speaks. | 175 |
+| 177 | Native microphone capture | The microphone is captured on a native WASAPI thread and turned into 20 ms frames in Rust with the same channel, gain and music-mode rules as today. | 176 |
+| 178 | Native capture filters | Echo cancellation (AEC3), noise suppression, automatic gain and the voice gate run in Rust on the capture thread. | 177 |
+| 179 | Native send decision and encoding | Rust decides per frame whether and where to send, encodes with libopus and hands finished packets to C# through an event, also in the self test and in music mode. | 178 |
+| 180 | Remove the managed audio path | The old managed audio path, NAudio's wave output and capture, Concentus and the separate native DLLs are gone, and the client has exactly one native audio library. | 179 |
 
 ## Annahmen
 
@@ -402,6 +413,19 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A174 Where Discord keeps its audio settings (Package 171).** Assumed in the local storage of its Electron web view (`%APPDATA%\discord\Local Storage\leveldb`, LevelDB with JSON values); the first step of the package checks this on a real installation and writes down the keys. The format is undocumented, so the import is best effort and leaves out what it does not recognise.
 - **A175 Fluxer (Package 171).** The user asked about Discord and Fluxer; the button is named after Discord (the user's words) and reads Fluxer's desktop app too when its folder exists, by the same reader.
 - **A176 Snappy (Package 171).** LevelDB tables compress their blocks with Snappy; reading them needs a Snappy decoder, a new package (a small managed one), named in the commit.
+- **A177 Core and device layer (Packages 172 to 180).** The user's decision: a platform-neutral Rust core (ring buffer, sounds, mixer, jitter buffer, Opus, DSP, send decision) without any OS call, fully testable by `cargo test` without a device, and a device layer behind a trait (`Output`, `Input`). Windows now: WASAPI directly through the `windows` crate (open by MMDevice id, `AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | SRC_DEFAULT_QUALITY`, event driven, MMCSS "Pro Audio"), because cpal neither lets Windows convert the sample rate nor opens devices by id (checked in cpal 0.15.3 and 0.17.1).
+- **A178 Toolchain (Package 172).** `native/ovs_audio/rust-toolchain.toml` pins Rust 1.98.1 (installed on the developer's machine; its default `stable` is still 1.69 and is updated with `rustup` as the first step). `build.ps1` checks `rustc --version` and fails on another version.
+- **A179 Build like ovs_aec (Package 172).** `native/ovs_audio/build.ps1` builds the release DLL from `Cargo.lock` with `--locked`, path prefixes trimmed (`--remap-path-prefix`), and replaces `src/OVS.Client/runtimes/win-x64/native/ovs_audio.dll` only when its sha256 is `$Expected`; an intended change updates `$Expected` and the hash in this plan, as for Package 140. Native build tools it needs (CMake for libopus in 175, the compiler for AEC3 in 178) are pinned and checked by version in the script. CI does not build the DLL; the test job in `.github/workflows/release.yml` (windows-latest) additionally runs `cargo test`.
+- **A180 One library, one ABI, no fallback (Packages 172 to 180).** Everything native lives in `ovs_audio.dll` (one library per platform later): C ABI, `cdecl`, every export prefixed `ovs_audio_`, `ovs_audio_abi_version()` checked on load. C# loads it by hand like `EchoCanceller` (`NativeLibrary.Load`, function pointers). The user's decision: no fallback onto the managed path; a missing or wrong library leaves the client without audio like `--no-audio`, with a notice and one log line. During 173 to 179 the managed parts not replaced yet keep running next to the native ones; 180 removes them.
+- **A181 No call back into .NET (Packages 172 to 180).** The user's decision: a native audio thread never calls managed code (it would block at the transition until a garbage collection ends). Finished packets signal an auto-reset Windows event that C# waits on; speakers, levels, statistics, device errors and underruns are polled by C# every 100 ms on the injected `TimeProvider`.
+- **A182 Nothing allocated on the audio threads (Packages 172 to 180).** In steady state the native render and capture threads allocate nothing (N30's rule, carried over to Rust). Checked by a test-only counting global allocator in the cargo tests; finished sounds are freed off the audio thread (returned through a queue and dropped on the next C# call).
+- **A183 Opus (Packages 175, 179).** The user's decision: libopus, statically linked through `audiopus_sys` (BSD-3, libopus 1.3 or newer, built with CMake). Concentus leaves the client in 180; the server does not use it.
+- **A184 Noise suppression (Package 178).** The user's decision: RNNoise through `nnnoiseless` (pure Rust, BSD-3) instead of `rnnoise.dll` from `YellowDogMan.RRNoise.NET`; `NoiseSuppressor.NoiseCutDb` (4 dB) and the voice probability for `AutoGain` (Package 127) keep their rules. The first step of 178 compares both on the fixtures of `VoiceFilterTests` (lowered noise within 1 dB of today).
+- **A185 AEC3 linked statically (Package 178).** Today `native/ovs_aec/build.ps1` builds AEC3 with zig's clang for `x86_64-windows-gnu` (libc++, MinGW runtime); those archives do not link into an MSVC Rust library. 178 first builds webrtc-audio-processing v2.1 for `x86_64-pc-windows-msvc` (meson with clang-cl or MSVC) and links it through a small C++ shim (today's `ovs_aec.cpp` API) via the `cc` crate. If that cannot be made to work, the alternative is the Rust target `x86_64-pc-windows-gnullvm` with zig as linker; that switch is a question for the user before 178 goes on.
+- **A186 Device listing stays (Packages 177, 180).** Listing devices, `FindCurrentDeviceId` and `DeviceWatcher` (Package 137) stay on `NAudio.CoreAudioApi` until the platform packages; 180 removes only NAudio's wave output and capture (`WasapiOut`, `WasapiCapture`, `BufferedWaveProvider`), so the NAudio package stays. `DeviceLifecycle` with its reopen rules stays in C# and opens and closes the native streams.
+- **A187 Echo delay (Package 178).** Once both ends are native, the echo delay hint comes from the real figures (ring fill plus `IAudioClient::GetStreamLatency` of both streams) instead of `AudioEngine.EchoDelayMs` (40 + 30 + 20 ms); AEC3's own estimator stays the authority.
+- **A188 Measurement (Package 174).** The probe of 15 October 2026 (`Diagnostics/PlaybackProbe.cs`, `PlaybackProbeRuns.cs`, the hooks in four audio files) was never committed. 174 adds a native underrun counter instead and repeats run B (real connect, 12 times) as a manual check, muted like the measurement (the process's audio session muted through `SimpleAudioVolume` before the stream starts).
+- **A189 Later platforms.** Linux, macOS, Android and iOS get their device layer over cpal in own packages later (own resampler, device ids, one library per target triple, Android through cargo-ndk); the core of 172 to 180 is written so that only the device layer changes.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -9898,3 +9922,549 @@ Test command: `dotnet test OpenVoiceSpeak.slnx`
 ### Out of Scope
 
 - Writing settings into Discord or Fluxer, importing from the web apps, keybinds other than push-to-talk, per-user volumes and anything outside audio
+
+---
+
+## Package 172: Native audio library
+
+**Goal:** A Rust library `ovs_audio` with a platform-neutral core and a Windows device layer builds reproducibly into a checked-in DLL, loads in the client with an ABI check, and is tested by `cargo test` locally and in CI.
+
+**Dependencies:** none
+
+**Affected files:**
+- `native/ovs_audio/Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml` (new): crate type `cdylib` plus `rlib` (for the tests), `panic = "abort"` in the release profile, dependencies only `windows` (0.61, features for Media_Audio, System_Com, System_Threading, Win32_Foundation) for now
+- `native/ovs_audio/build.ps1` (new): checks the Rust version (A178), `cargo build --release --locked` with trimmed paths, sha256 against `$Expected`, copies to `src/OVS.Client/runtimes/win-x64/native/ovs_audio.dll` (A179)
+- `native/ovs_audio/src/lib.rs` (new): the C ABI only (`ovs_audio_abi_version`, `ovs_audio_last_error`), every export wrapped in `catch_unwind` so a panic never crosses into C#
+- `native/ovs_audio/src/core/mod.rs` (new): the platform-neutral core, no `windows` import allowed (a test checks the sources)
+- `native/ovs_audio/src/device/mod.rs` (new): the traits `Output` and `Input` (open by id or default, start, stop, error as code, a callback into the core that never leaves native code), `device/fake.rs` (test device driven by hand), `device/wasapi.rs` (stub that only enumerates the default render endpoint in this package)
+- `native/ovs_audio/tests/` (new): `abi.rs`, `core_has_no_os.rs`, `alloc_counter.rs` (the counting global allocator of A182, used by later packages)
+- `src/OVS.Client/Audio/Native/NativeAudio.cs` (new): loads `ovs_audio` by hand like `EchoCanceller.Load`, checks `ovs_audio_abi_version`, keeps the function pointers; a missing library or another ABI version yields `Error` (A180)
+- `src/OVS.Client/OVS.Client.csproj` (change): `runtimes\win-x64\native\ovs_audio.dll` copied like `ovs_aec.dll`
+- `src/OVS.Client/runtimes/win-x64/native/ovs_audio.dll` (new, built by `build.ps1`)
+- `.github/workflows/release.yml` (change): in the windows-latest test job, before `dotnet test`: `rustup toolchain install` from `rust-toolchain.toml` and `cargo test --manifest-path native/ovs_audio/Cargo.toml --locked`
+- `CODING-RULES-OVS.md` (change): folder `Audio/Native/` in the client layout; the native rules (A180 to A182: C ABI, `ovs_audio_` prefix, no call back into .NET, no allocation on audio threads, `catch_unwind` on every export)
+- `THIRD-PARTY-NOTICES.md` (change): the `windows` crate (MIT or Apache-2.0)
+- `tests/OVS.Tests/Client/Audio/Native/NativeAudioTests.cs` (new)
+- `tests/OVS.Tests/PlanReference.cs`, `PlanReferenceTests.cs` (change): native references in a Tests section resolve too: `file.rs > name` is a `fn name` with `#[test]` in that file under `native/ovs_audio/` (`src/` or `tests/`), a bare snake-case name takes the `.rs` file last named on its line or section (the context rule classes already have), and `cargo ...` spans are commands like `dotnet ...`
+
+### Context
+
+The client's audio runs on managed threads today: `PlaybackLoop` mixes on its own thread and NAudio's `WasapiOut` pulls from `PlaybackBuffer` on a managed render thread; `CapturePipeline` gets NAudio's `WasapiCapture` callbacks. A garbage collection stops all of them (run B of the measurement: 49.5 ms pause, 10 ms of audio missing). This package lays the ground only: the crate, the build, the loader and the tests; nothing plays through it yet. The pattern follows `native/ovs_aec` (Package 140): a reproducible script, the DLL checked in, loaded by hand.
+
+### Acceptance Criteria
+
+- [ ] AC1: `cargo test --manifest-path native/ovs_audio/Cargo.toml` passes on the developer's machine and in the CI test job.
+- [ ] AC2: `native/ovs_audio/build.ps1` with the pinned toolchain produces a DLL with the sha256 in `$Expected` twice in a row from a clean `target` folder, and refuses another Rust version with a clear message.
+- [ ] AC3: The client loads `ovs_audio.dll` from its folder and reads ABI version 1; `NativeAudio.Load` with a missing library or another ABI version returns an error instead of throwing, and the client logs it once.
+- [ ] AC4: A panic inside an export does not take the process down: the export returns its error code and `ovs_audio_last_error` names the panic.
+- [ ] AC5: The core module contains no OS call (`core/` imports neither `windows` nor `std::os`), checked by a test over the sources.
+- [ ] AC6: The published single-file client contains the DLL (`dotnet publish` as in `rebuild.ps1` and `release.yml`) and loads it.
+- [ ] AC7: `PlanReferenceTests.Plan_EveryTestReference_Resolves` resolves the native references of the Tests sections of 172 and later against the Rust test functions, and fails for a native reference that names no existing test.
+
+### Planned tests (TDD)
+
+Order: test first -> red -> minimal implementation -> green -> refactor.
+
+1. `tests/abi.rs > abi_version_is_one` - covers AC3 (native side)
+   - Given: the library
+   - Expected: the ABI version export returns 1
+2. `tests/abi.rs > export_panic_returns_error_and_names_it` - covers AC4
+   - Given: a test-only export that panics (`#[cfg(test)]` feature `panic-probe`)
+   - Expected: it returns the error code, the last-error export contains the panic text, the test process lives on
+3. `tests/core_has_no_os.rs > core_sources_use_no_os_api` - covers AC5
+   - Given: every file under `src/core/`
+   - Expected: no `use windows`, no `std::os`
+4. `NativeAudioTests > "Load_LibraryPresent_ReadsAbiVersionOne"` - covers AC3
+5. `NativeAudioTests > "Load_LibraryMissing_ErrorNotThrown"` and `"Load_OtherAbiVersion_ErrorNamesBothVersions"` (a copy of the DLL is not needed: a test seam passes the version read) - covers AC3
+6. `NativeAudioTests > "Load_Twice_LoadedOnce"` (the `Lazy` cache like `EchoCanceller.Loaded`)
+7. `PlanReferenceTests > "Resolves_RustFileAndTest_True"`, `"Resolves_RustTestMissing_False"`, `"Parse_BareRustName_TakesTheLastNamedRsFile"`, `"Parse_CargoCommand_IsNoReference"` - covers AC7
+8. Manual check (AC2, AC6): `build.ps1` twice from a clean `target`, same hash; `rebuild.ps1 -SkipServer` and the client's log shows the library loaded.
+
+Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Update the machine's Rust (`rustup update`, then `rustup default 1.98.1` or the toolchain file); write `rust-toolchain.toml`.
+2. Tests 1 to 3 (red), the crate skeleton, `lib.rs` with `catch_unwind`, the core and device modules.
+3. `build.ps1`; build twice, write `$Expected` and the hash into this package's as-built note.
+4. Tests 4 to 6 (red), `NativeAudio`.
+5. csproj, CI step, notices, coding rules.
+
+### Out of Scope
+
+- Playing or capturing anything (173, 177)
+- Linux, macOS, Android, iOS (A189)
+
+---
+
+## Package 173: Native speaker output
+
+**Goal:** The speaker plays from a native ring buffer on a native WASAPI render thread registered with MMCSS "Pro Audio", so audio already buffered keeps playing through a garbage collection.
+
+**Dependencies:** Package 172
+
+**Affected files:**
+- `native/ovs_audio/src/core/ring.rs` (new): single-producer single-consumer ring of interleaved stereo `f32` frames (1 s like today's `BufferedWaveProvider`), overflow discarded like `DiscardOnBufferOverflow`, counters for frames written, played and missing (underrun)
+- `native/ovs_audio/src/device/wasapi.rs` (change): render stream: `IMMDeviceEnumerator::GetDevice(id)` or the default render endpoint (console role, as `WasapiOut` does), shared mode, 48 kHz float stereo with `AUTOCONVERTPCM | SRC_DEFAULT_QUALITY | EVENTCALLBACK`, buffer `SpeakerBufferMs` (30 ms), own thread with COM (MTA), `AvSetMmThreadCharacteristicsW("Pro Audio")`, a stop event next to the WASAPI event (`WaitForMultipleObjects`); a failed call (e.g. `AUDCLNT_E_DEVICE_INVALIDATED`) ends the thread and is kept as HRESULT
+- `native/ovs_audio/src/lib.rs` (change): `ovs_audio_speaker_open(id_utf16, &error)`, `_write(frames, count)`, `_buffered_frames`, `_error`, `_underrun_frames`, `_close`
+- `src/OVS.Client/Audio/Devices/PlaybackBuffer.cs` (change): becomes abstract: `BufferedDuration`, `AddSamples(ReadOnlySpan<float> frame)`, `Dispose`, plus a polled `Failure` (Exception or null); the NAudio-backed body moves out
+- `src/OVS.Client/Audio/Native/NativeSpeaker.cs` (new): the `PlaybackBuffer` over `ovs_audio_speaker_*`; `Dispose` closes the stream
+- `src/OVS.Client/Audio/Devices/WasapiHardware.cs` (change): `OpenOutput` opens a `NativeSpeaker`; with `NativeAudio` unavailable it throws like a device that cannot open (A180: no audio, no fallback); `Failed` is raised from the poll of AC5
+- `src/OVS.Client/Audio/Playback/PlaybackLoop.cs` (change): writes the float frame directly (no byte copy), checks `Failure` after each write and reports it once through the hardware's `Failed`
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): `EchoDelayMs` stays (A187 comes in 178)
+- `tests/OVS.Tests/TestSupport/FakeAudioHardware.cs` (change): `FakeSpeaker : PlaybackBuffer` with today's behaviour (holds `SpeakerBuffer`, nothing plays it); `FakeOutput` merges into it
+- `tests/OVS.Tests/Client/Audio/Native/NativeSpeakerTests.cs` (new), `tests/OVS.Tests/Client/Audio/Playback/PlaybackLoopTests.cs` and `Devices/DeviceLifecycleTests.cs` (change only where `PlaybackBuffer` is constructed)
+
+### Context
+
+`WasapiHardware.OpenOutput` builds a `WasapiOut` (30 ms) over `PlaybackBuffer`'s `BufferedWaveProvider`; `PlaybackLoop.Run` keeps it at `TargetBufferMs` (40 ms). In the measurement a 49.5 ms pause stopped both the loop and NAudio's render thread, so 40 ms buffered could not even play out. With a native render thread the buffered 40 ms plus the device's 30 ms play on while managed code stands. The mixing stays in C# for now (176 moves it), so a pause longer than the buffer still leaves a gap in the voice; sounds are made immune in 174.
+
+### Acceptance Criteria
+
+- [ ] AC1: Voice and sounds play through the native stream on the chosen device (by MMDevice id) or the default device, at 48 kHz from the client whatever the device's own rate is.
+- [ ] AC2: While no frame is written (managed code paused), the native thread plays what is buffered to its end and then silence, counts the missing frames as underrun and keeps running; writing again resumes playback.
+- [ ] AC3: The render thread runs in MMCSS "Pro Audio" (task index returned non-zero, logged once per open).
+- [ ] AC4: In steady state the render thread allocates nothing (counting allocator over 10 000 callbacks of the fake device).
+- [ ] AC5: An unplugged or invalidated device ends the stream; within 100 ms of the next write `PlaybackLoop` raises `IAudioHardware.Failed(Output, error)` once, and Package 137's reopen follows as today (`StreamFailure_SpeakerOpen_ReopensItOnTheSameDevice` stays green).
+- [ ] AC6: Closing the stream (end of playback, engine dispose) returns within 200 ms and leaves no thread behind.
+- [ ] AC7: Without `ovs_audio.dll` the speaker cannot open and the user sees the speaker notice once, as with a device that cannot open; nothing falls back to NAudio.
+
+### Planned tests (TDD)
+
+1. `core/ring.rs > ring_write_then_read_returns_frames_in_order` - covers AC1 (core)
+2. `core/ring.rs > ring_full_discards_overflow_and_counts_nothing_missing` - like `DiscardOnBufferOverflow`
+3. `core/ring.rs > ring_empty_read_fills_silence_and_counts_underrun` - covers AC2
+   - Given: 2 frames written, 5 frames read
+   - Expected: 2 frames of audio, 3 of silence, underrun counter 3 frames
+4. `core/ring.rs > ring_concurrent_producer_consumer_keeps_order` (two threads, 1 000 000 frames, no frame lost or reordered) - covers AC2
+5. `tests/output.rs > fake_device_render_steady_state_allocates_nothing` - covers AC4
+6. `tests/output.rs > fake_device_error_ends_stream_and_keeps_code` - covers AC5 (native)
+7. `tests/output.rs > close_while_rendering_returns_and_joins` - covers AC6
+8. `NativeSpeakerTests > "AddSamples_Frame_BufferedDurationGrowsBy20Ms"` (real library, fake device through a test-only open export) - covers AC1
+9. `NativeSpeakerTests > "Failure_DeviceErrorSet_ExceptionWithHresult"` - covers AC5
+10. `PlaybackLoopTests > "Run_SpeakerFails_FailedRaisedOnce"` - covers AC5
+11. `DeviceLifecycleTests > "OpenSpeakerAndReport_LibraryMissing_SpeakerNoticeOnce"` - covers AC7
+12. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+13. Manual check (AC1, AC3, AC5): play the speaker test (Package 159) on a 44.1 kHz and a 48 kHz device; unplug a USB headset while it plays; the log shows "Pro Audio".
+
+Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1 to 4 (red), `ring.rs`.
+2. Tests 5 to 7 (red), the WASAPI render stream and its fake.
+3. Tests 8 to 11 (red), `NativeSpeaker`, `PlaybackBuffer` abstract, `FakeSpeaker`, `WasapiHardware.OpenOutput`, the failure poll in `PlaybackLoop`.
+4. `build.ps1`, new `$Expected`; the allocation tests (N30); the manual check.
+
+### Out of Scope
+
+- Sounds mixed natively and the speaker opened before the connected sound (174)
+- Mixing the voices natively (176); a voice gap during a pause longer than the buffer stays until then
+
+---
+
+## Package 174: Native sounds
+
+**Goal:** Notification sounds are loaded once into the native library and mixed on the render thread, so a sound never stutters, and the speaker is already open when the "Verbunden" sound plays.
+
+**Dependencies:** Package 173
+
+**Affected files:**
+- `native/ovs_audio/src/core/sounds.rs` (new): the sound bank (id to mono `f32` samples, loaded once, replaced when the profile's sounds change) and the playing list (id, start in device frames, gain, position); mixed on top of the ring's frames on the render thread with the clamp of `SoundQueue.MixInto`; `restart` stops the same id first (Package 159), `stop_all` like `SoundQueue.Clear`
+- `native/ovs_audio/src/lib.rs` (change): `ovs_audio_sound_load(id, samples, count)`, `_sound_play(id, gain, restart)`, `_sound_stop_all`, `_sounds_playing`
+- `src/OVS.Client/Audio/Sounds/SoundQueue.cs` (change): keeps the tones for the echo canceller's far end and for `Count`, and marks each tone as handed to the speaker once
+- `src/OVS.Client/Audio/Sounds/SoundPlayer.cs`, `SoundLibrary.cs` (change): every sound's samples (`SoundSynth` defaults and the profile's own files of Package 48, the test tone of Package 159, the preview) loaded into the bank once per change, then played by id
+- `src/OVS.Client/Audio/Playback/PlaybackLoop.cs` (change): before writing a frame it hands the tones started since the last frame to the speaker (their start is the frame about to be written, so they line up with the voice); the frame it writes holds only the voices; the far end it gives the echo canceller is voices plus tones (a reused buffer, nothing allocated)
+- `src/OVS.Client/Audio/Devices/PlaybackBuffer.cs`, `Native/NativeSpeaker.cs` (change): `PlaysSounds` and `PlaySound(id, gain, restart)`; `FakeSpeaker` plays none, so in the tests the tones stay in the frame as today
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): `Connecting` flag: while a connection is being made the playback thread runs (so the speaker opens during the handshake); `PlaybackNeeded` includes it
+- `src/OVS.Client/ViewModels/ConnectionViewModel.cs` (change): sets `Connecting` when a connect or reconnect starts and clears it when it ends (connected, failed or cancelled)
+- `native/ovs_audio/src/lib.rs`, `src/OVS.Client/Diagnostics/DebugApi.cs` (change): `/state` shows the native underrun counter (for the manual check of AC6)
+- `tests/OVS.Tests/Client/Audio/Sounds/SoundTests.cs`, `SoundPlayerTests.cs`, `Playback/PlaybackLoopTests.cs`, `ViewModels/ConnectionTests` or the reconnect tests (change), `Audio/Native/NativeSoundTests.cs` (new)
+
+### Context
+
+`SoundQueue.MixInto` adds the tones into each frame `PlaybackLoop.Mix` produces, so a sound depends on managed code running every 20 ms. The measurement showed the sound being queued before the speaker had opened (`OpenSpeakerAndReport` took up to 120 ms cold, up to 80 ms of it waiting for `gate`), and a garbage collection of 49.5 ms cutting 10 ms out of it. Fluxer and Discord play sounds on a path of their own, independent of the voice buffer; Fluxer keeps its sound output open. Here the samples live natively once loaded, so a paused managed side cannot interrupt a sound that has started. The echo canceller (still C#, `EchoCanceller.Render` in `MixForSpeaker`) keeps getting exactly what is played: voices plus tones.
+
+### Acceptance Criteria
+
+- [ ] AC1: Every sound (all `SoundEvent`s, the profile's own files, the speaker test, the preview) plays from the native bank at the same gain as today; two sounds overlap and are clamped to -1..1 as in `Queue_OverlappingSounds_MixedWithVolume`.
+- [ ] AC2: A started sound plays to its end without a gap while no frame is written from C# (the native test pauses the producer for 200 ms in the middle of a sound).
+- [ ] AC3: The speaker test twice does not overlap (`SpeakerTest_Twice_NoOverlap`), "stop all" ends every sound at once.
+- [ ] AC4: The far end the echo canceller gets equals the voices plus the tones sample by sample, aligned with what the device plays (the tone starts in the far end with the frame it starts in on the device).
+- [ ] AC5: When a connection starts the speaker opens during the handshake, so the "Verbunden" sound starts within 30 ms of `play(SoundEvent.Connected)` (`ConnectionViewModel.cs:211`); a failed or cancelled connect closes the speaker again once nothing plays.
+- [ ] AC6: Manual check (A188): run B of the measurement (12 real connects to a local server through the debug API, muted session) shows 0 of 12 runs with a gap in the "Verbunden" sound and the native underrun counter at 0 during each sound.
+- [ ] AC7: Loading, playing and stopping allocate nothing on the render thread; the bank is replaced off it.
+
+### Planned tests (TDD)
+
+1. `core/sounds.rs > play_mixes_on_top_of_ring_frames_with_gain` - covers AC1
+2. `core/sounds.rs > two_sounds_overlap_and_are_clamped` - covers AC1
+3. `core/sounds.rs > producer_paused_sound_plays_on_without_gap` - covers AC2
+   - Given: a 500 ms sound started, the ring then left empty for 200 ms
+   - Expected: every sample of the sound appears in the output, the voice part is silence and counted as underrun
+4. `core/sounds.rs > restart_same_id_stops_the_running_one` and `stop_all_ends_every_sound` - covers AC3
+5. `core/sounds.rs > sound_starts_at_the_frame_written_next` - covers AC4 (start = frames played + ring fill at the call)
+6. `tests/output.rs > sounds_steady_state_allocate_nothing` - covers AC7
+7. `SoundTests > "Queue_OverlappingSounds_MixedWithVolume"`, `"SpeakerTest_Twice_NoOverlap"` stay green on `FakeSpeaker`; new `NativeSoundTests > "Play_LoadedSound_ReachesTheOutputAtItsGain"` (real library, fake device) - covers AC1
+8. `PlaybackLoopTests > "MixForSpeaker_SpeakerPlaysSounds_FrameHasVoiceOnlyFarEndHasBoth"` - covers AC4
+9. `PlaybackLoopTests > "Run_ToneStarted_HandedToTheSpeakerOnceBeforeItsFrame"` - covers AC4
+10. Connection test `"Connect_Started_SpeakerOpensBeforeConnected"` and `"Connect_Failed_SpeakerClosesWhenSilent"` - covers AC5
+11. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+12. Manual check AC6 (A188): `rebuild.ps1`-built server and a debug client, 12 connects, the muted session, the counter from `/state`.
+
+Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1 to 6 (red), `sounds.rs` and its exports.
+2. Tests 7 to 9 (red), the bank loading in `SoundPlayer`/`SoundLibrary`, the hand-over in `PlaybackLoop`, the far-end buffer.
+3. Test 10 (red), `AudioEngine.Connecting` and `ConnectionViewModel`.
+4. `build.ps1`, the allocation tests, the manual check; the result into `MESSUNG-VERBUNDEN-STOCKEN.md`'s successor note in this package's as-built text.
+
+### Out of Scope
+
+- Voice gaps during a pause longer than the voice buffer (176 moves the mixing)
+- Sounds while not connected through another stream (the speaker opens as today, A132)
+
+---
+
+## Package 175: Native jitter buffer and Opus decoding
+
+**Goal:** Received voice frames are buffered, decoded and concealed in Rust with libopus, with the same statistics, copies (Package 136) and cushion (Package 134) as today.
+
+**Dependencies:** Package 174
+
+**Affected files:**
+- `native/ovs_audio/Cargo.toml` (change): `audiopus_sys` with static libopus (A183); `build.ps1` checks the pinned CMake version
+- `native/ovs_audio/src/core/decoder.rs` (new): libopus decoder per speaker, always stereo out (a mono packet on both sides, Package 142), PLC for an empty or 1-byte packet (`Decode_OneBytePacket_Concealed`), FEC decode from the next packet only for SILK/hybrid configurations (`VoiceDecoder.MayCarryFec`)
+- `native/ovs_audio/src/core/jitter.rs` (new): `JitterBuffer` ported: `StartDelay` 2, `MaxFrames` 10, `FrameMs` 20, the RFC 3550 jitter, `LateMs`, `Cushion`, the spurt rules of Package 133 and 134, the copies of Package 136, the counters `Received`, `Lost`, `Rebuilt`, `Concealed`, `Recovered`, `JitterMs`, `DelayMs`; arrival stamped natively on push (monotonic clock), a test clock in the tests
+- `native/ovs_audio/src/core/speakers.rs` (new): speakers by session id with their buffer and decoder, idle removal after `IdleTicksUntilRemoved` (3000 ticks), `RemoveLeft`
+- `native/ovs_audio/src/lib.rs` (change): `ovs_audio_voice_push(speaker, seq, via_link, opus, len, copy, copy_len)`, `_voice_pull(speaker, out_stereo)`, `_voice_stats(out_struct)`, `_voice_remove_left`, `_voice_clear`
+- `src/OVS.Client/Audio/Playback/VoiceMixer.cs` (change): `Push` hands the packet to the native buffer; `Tick` pulls each speaker's decoded frame from it and sums as today (mixing moves in 176); `Stats` reads the native counters into `ReceiveStats`
+- `src/OVS.Client/Audio/Playback/JitterBuffer.cs`, `Audio/Codec/VoiceDecoder.cs` (deleted; `VoiceEncoder` and Concentus stay for sending until 179)
+- `native/ovs_audio/tests/receive.rs` (new): every case of `ReceivePathTests` that tests the buffer or the decoder, ported one to one
+- `tests/OVS.Tests/Client/Audio/Playback/ReceivePathTests.cs` (change): the buffer and decoder cases move to `receive.rs` (listed in the as-built note, no assert lost); the mixer cases stay and run against the native buffer
+- `THIRD-PARTY-NOTICES.md` (change): libopus (BSD-3), `audiopus_sys` (ISC or MIT)
+
+### Context
+
+`VoiceMixer.Push` stamps the arrival and puts the packet into the speaker's `JitterBuffer`; `Tick` calls `JitterBuffer.Pull`, which decodes with Concentus through `VoiceDecoder` (PLC, FEC, copies). The rules took several packages to tune (124, 133, 134, 136, 142) and are pinned by 38 tests in `ReceivePathTests`. They move to Rust unchanged; libopus replaces Concentus (A183), so a decoded frame may differ in its last bits, not in what the tests measure (energy, closeness, counts).
+
+### Acceptance Criteria
+
+- [ ] AC1: Every buffer and decoder case of `ReceivePathTests` holds as a cargo test with the same inputs and the same expected values (start delay, reordering, gaps with PLC, FEC closer than concealment, late packets dropped, talk pause rebuffering, overflow capped at 10, the RFC 3550 jitter, cushion growing and shrinking, copies never duplicating, the 1-byte packet concealed, a mono speaker on both sides).
+- [ ] AC2: `EncodeDecode_Sine_PreservesEnergy` holds with libopus on both sides (the encode side through a test-only libopus encoder in the cargo test).
+- [ ] AC3: The connection details show the same figures as before (`Mixer_Stats_SumOverSpeakers` green), read from the native counters.
+- [ ] AC4: Push and pull allocate nothing in steady state (counting allocator), also with 20 speakers.
+- [ ] AC5: A speaker's buffer and decoder are kept over pauses and dropped after 3000 idle ticks or when the speaker left (`Decoder_SpeakerPauses_Kept`).
+
+### Planned tests (TDD)
+
+1. `tests/receive.rs`: one test per moved case, named after it in snake case (`pull_below_start_delay_returns_none`, `out_of_order_within_delay_played_in_order`, `gap_produces_plc_frame_then_continues`, `gap_rebuilt_from_fec_closer_than_concealment`, `push_late_packet_dropped`, `buffer_talk_pause_rebuffers_and_continues_at_same_seq`, `buffer_overflow_capped_at_10`, `jitter_arrival_times_estimated_per_rfc3550`, `loss_talk_pause_not_counted`, `jitter_short_pause_no_sample`, `spurt_gap_close_or_far_counted_only_when_close`, `cushion_no_jitter_two`, `cushion_grows_with_jitter_fewer_concealed`, `cushion_shrinks_next_spurt_capped`, `buffer_jitter_calms_inside_spurt_nothing_dropped`, `cushion_grows_with_stalls_no_gaps_next_spurt`, `cushion_long_silence_halved`, `decode_one_byte_packet_concealed`, `lost_frame_played_from_copy_fewer_concealed`, `copy_gap_or_arrived_frame_never_replaces_or_duplicates`, `encode_decode_sine_preserves_energy`, `stereo_mono_speaker_both_sides`) - covers AC1, AC2
+2. `tests/receive.rs > twenty_speakers_steady_state_allocate_nothing` - covers AC4
+3. `tests/receive.rs > speaker_idle_3000_ticks_removed_left_removed_at_once` - covers AC5
+4. `ReceivePathTests > "Mixer_Stats_SumOverSpeakers"`, `"Mixer_NoArrivalGiven_StampsEachPushInRealTime"` (now stamped natively), `"Decoder_SpeakerPauses_Kept"` against the native buffer - covers AC3, AC5
+5. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+6. Manual check: two clients on the local server, talk with 10 % loss simulated by the debug API's request route if available, else on a lossy Wi-Fi; the connection details show loss, rebuilt and concealed frames.
+
+Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. `audiopus_sys` building statically with the pinned CMake; `build.ps1` checks it.
+2. Port the cases (test 1) red, then `decoder.rs`, `jitter.rs`, `speakers.rs` until green; tests 2, 3.
+3. Test 4 (red), `VoiceMixer` over the native buffer; delete `JitterBuffer.cs`, `VoiceDecoder.cs`; list the moved asserts.
+4. `build.ps1`, the allocation tests, the manual check.
+
+### Out of Scope
+
+- Summing, volumes, limiter, deafen (176)
+- Encoding (179)
+
+---
+
+## Package 176: Native mixer
+
+**Goal:** The voices are mixed, scaled, limited and played entirely in Rust on the render thread; C# only hands in packets and polls who speaks.
+
+**Dependencies:** Package 175
+
+**Affected files:**
+- `native/ovs_audio/src/core/mixer.rs` (new): per render period pulls 20 ms per speaker from 175's buffers, sums, applies `VolumeCurve.Combine(speaker gain, output volume)` times `DefaultVoiceBoost` (2), the `SoftLimiter` (threshold 0.95, release 0.05 per frame), deafen (silence except the self-test speaker 0), then the sounds of 174 on top; the active speakers with `ViaLink` and the last output level (`LastOutputLevelDb`, voice only, before the tones)
+- `native/ovs_audio/src/core/volume.rs`, `limiter.rs` (new): `VolumeCurve` and `SoftLimiter` ported with their constants
+- `native/ovs_audio/src/core/far_end.rs` (new): a ring of the final mix (downmixed to mono like `SampleConversion.Downmix`) for the echo canceller, read by the capture side (still C# until 178)
+- `native/ovs_audio/src/lib.rs` (change): `ovs_audio_set_speaker_gains`, `_set_output_volume`, `_set_deafened`, `_set_self_test`, `_active_speakers(out, max)`, `_output_level_db`, `_far_end_read(out_mono)`; the render callback now mixes instead of reading the ring of 173 (the ring stays for the self-test loopback until 179)
+- `src/OVS.Client/Audio/Playback/PlaybackLoop.cs` (deleted), `SoftLimiter.cs` (deleted), `Audio/Processing/VolumeCurve.cs` (kept only if the settings UI uses it, else deleted), `Audio/SpeakerReportThrottle.cs` (change: fed by the poll)
+- `src/OVS.Client/Audio/Playback/VoiceMixer.cs` (change): a thin facade over the native mixer: `Push`, `SetSpeakerGains`, `Volume`, `Stats`, `RemoveLeft`, `Clear`
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): the speaker opens when playback is needed and closes when not (Package 124's on-demand rule kept natively: the render stream stops when nothing plays and nothing is needed); `SpeakersChanged`, `LastOutputLevelDb` from a 100 ms poll on the injected `TimeProvider` (A181); `MixForSpeaker` replaced by a test seam on the native mixer
+- `src/OVS.Client/Audio/Playback/SpeakerPoll.cs` (new): the 100 ms poll (timer from `TimeProvider`, `CancellationToken` on dispose)
+- `src/OVS.Client/Audio/Capture/CapturePipeline.cs` (change): before `EchoCanceller.Process` it feeds `EchoCanceller.Render` from `_far_end_read`
+- `native/ovs_audio/tests/mixer.rs` (new); `tests/OVS.Tests/Client/Audio/Playback/PlaybackLoopTests.cs` (deleted, cases moved), `ReceivePathTests.cs` (mixer cases moved), `IdleCostTests.cs` (change: measures the managed side only, the native side is measured by the counting allocator)
+
+### Context
+
+After 175 the playback thread is still managed: `PlaybackLoop.Run` ticks `VoiceMixer` (sum, gains, boost, limiter, deafen) and writes into the native ring. A garbage collection longer than the buffer still leaves a gap in the voices. Moving the mix to the render thread removes the managed thread from the voice path entirely: packets reach the native buffer from the network thread (a pause only delays their arrival, which the jitter buffer absorbs) and the render thread mixes as the device asks. The user asked for the others' voices and the own microphone to go the native way as well (stage 2 and 3).
+
+### Acceptance Criteria
+
+- [ ] AC1: Every mixer and limiter case of `ReceivePathTests` and `PlaybackLoopTests` holds as a cargo test (sum and clamp, default boost doubles a quiet voice, output volume and per-speaker volume with the curve, 200 % four times and limited, the limiter without hard clipping and its recovery, below the threshold untouched, active speakers with `ViaLink`, deafened silences voices but tones play, the own voice plays in the self test while deafened).
+- [ ] AC2: The speaker list in the channel tree lights up as before: at most every 100 ms and once more when all fell silent (`Run_VoiceClearedAfterItsReport_RunsOnUntilTheSilenceIsReported`), now from the poll.
+- [ ] AC3: Voices play on without a gap while managed code is paused for 200 ms, as long as packets were buffered (cargo test with the producer side paused).
+- [ ] AC4: The echo canceller still receives exactly what is played (voices and tones), within one frame of alignment (`MixForSpeaker_CaptureHasCanceller_FedOnlyWhileOnInVoiceMode` moved and green).
+- [ ] AC5: With nothing to play and nothing needed the render stream stops (idle CPU as Package 124: no render callbacks while idle, `Playback_IdleDoesNotMix_WakesOnVoice`), and a packet or a sound starts it again.
+- [ ] AC6: The render thread allocates nothing in steady state with 20 speakers, sounds and the limiter active.
+
+### Planned tests (TDD)
+
+1. `tests/mixer.rs`: the moved cases (`several_speakers_sum_and_clamp`, `loud_input_clamped_to_unit`, `default_boost_doubles_quiet_voice`, `volume_scales_boosted_voice`, `volume_200_four_times_and_limited`, `speaker_gain_only_that_speaker`, `user_volume_200_four_times`, `limiter_loud_input_no_hard_clipping_and_recovers`, `limiter_below_threshold_untouched`, `active_speakers_report_via_link`, `deafened_voice_silenced_but_tone_plays`, `deafened_in_self_test_own_voice_plays`) - covers AC1
+2. `tests/mixer.rs > producer_paused_200ms_buffered_voice_plays_on` - covers AC3
+3. `tests/mixer.rs > far_end_equals_output_downmixed` - covers AC4
+4. `tests/mixer.rs > idle_stream_stops_packet_starts_it` - covers AC5
+5. `tests/mixer.rs > twenty_speakers_sounds_limiter_allocate_nothing` - covers AC6
+6. `SpeakerPollTests > "Poll_VoiceThenSilence_ReportedThenSilenceReportedOnce"` (manual `TimeProvider`) - covers AC2
+7. `VoiceFilterTests > "EchoCanceller_EngineMixAndLiveSwitch_ReachTheOpenCapture"` against the native far end - covers AC4
+8. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+9. Manual check: three clients talking, per-user volume and output volume at 0, 100 and 200 %, deafen, the self test; the tree's speaker marks.
+
+Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1 to 5 (red), `mixer.rs`, `volume.rs`, `limiter.rs`, `far_end.rs`, the render callback mixing.
+2. Test 6 (red), `SpeakerPoll`, `AudioEngine` events from the poll.
+3. Test 7 (red), the far end into `CapturePipeline`.
+4. Delete `PlaybackLoop`, `SoftLimiter`; list the moved asserts; `build.ps1`; allocation tests; manual check.
+
+### Out of Scope
+
+- The microphone path (177 to 179); the self-test loopback still comes from C# encoding until 179
+
+---
+
+## Package 177: Native microphone capture
+
+**Goal:** The microphone is captured on a native WASAPI thread and cut into 20 ms frames in Rust with the same channel, gain and music-mode rules as today.
+
+**Dependencies:** Package 176
+
+**Affected files:**
+- `native/ovs_audio/src/device/wasapi.rs` (change): capture stream by MMDevice id or default (console role), shared mode, float with `AUTOCONVERTPCM | SRC_DEFAULT_QUALITY` at 48 kHz in the device's own channel count (the channel rules need the raw channels), buffer `MicBufferMs` (20 ms), event driven, MMCSS "Pro Audio", errors kept as HRESULT
+- `native/ovs_audio/src/core/channels.rs` (new): `SampleConversion.ReadMono` (average, the dominant channel 6 dB rule, one-sided signal kept at full level), `ReadStereo` (first two channels), `Downmix`, and `StereoInput.OnlySide` (2.5 s one-sided rule) ported
+- `native/ovs_audio/src/core/chunker.rs` (new): `FrameChunker` ported (exact 960-sample frames from irregular chunks)
+- `native/ovs_audio/src/core/capture.rs` (new): input gain with the soft clip (`InputGain_200Percent_SoftClips`), mono or stereo by music mode (Package 142), the test tone source (`CapturePipeline.FromTone`: a steady sine, one frame per 20 ms on its own timer when no device is used)
+- `native/ovs_audio/src/lib.rs` (change): `ovs_audio_mic_open(id, &error)`, `_mic_close`, `_mic_error`, `_mic_read_frame(out, &channels)` (non-blocking), `_mic_frame_event` (the auto-reset event handle of A181), `_set_input_gain`, `_set_music`, `_tone_start(hz)`, `_tone_stop`
+- `src/OVS.Client/Audio/Capture/CapturePipeline.cs` (change): `FromDevice` and `FromTone` take frames from the native capture: a dedicated capture thread waits on the frame event and a stop handle (`WaitHandle.WaitAny`, marked `// clock: real time`, N30 and the no-sleep rule) and runs the rest of today's pipeline (filters, VAD, encoder) on each frame
+- `src/OVS.Client/Audio/Capture/SampleConversion.cs`, `FrameChunker.cs`, `StereoInput.cs`, `SincResampler.cs` (deleted: AUTOCONVERTPCM resamples on Windows; A189 brings a resampler back for other platforms)
+- `src/OVS.Client/Audio/Devices/WasapiHardware.cs` (change): `OpenInput` opens the native capture; `Failed(Input, …)` from the poll
+- `src/OVS.Client/Audio/Devices/CaptureSource.cs`, `DeviceLifecycle.cs` (change only where the pipeline is made)
+- `native/ovs_audio/tests/capture.rs` (new); `tests/OVS.Tests/Client/Audio/Capture/SampleConversionTests.cs` (deleted, cases moved), `Transmit/SendPathTests.cs` (the chunker, resampler and music-mode input cases moved or kept against the native side)
+
+### Context
+
+`CapturePipeline.FromDevice` opens NAudio's `WasapiCapture`, converts each chunk with `SampleConversion` (mono or stereo, the dominant channel rules), resamples with `SincResampler` when the device is not at 48 kHz, cuts frames with `FrameChunker` and then runs gain, filters, VAD and the encoder on NAudio's managed callback thread. A garbage collection stops it, and WASAPI's capture buffer overflows when the pause is long. This package moves only the device and the frame cutting; the filters follow in 178, the decision and encoding in 179, so every package stays small enough to test fully.
+
+### Acceptance Criteria
+
+- [ ] AC1: Every case of `SampleConversionTests` and the chunker, music-mode and resampling-free input cases of `SendPathTests` hold as cargo tests (`read_mono_float_stereo_averages`, the dominant channel at and below 6 dB, the one-sided signal kept, `read_stereo_four_channels_keeps_the_first_two`, `frame_chunker_irregular_input_exact_frames_without_loss`, `music_mode_stereo_arrives_separated`, `music_mode_one_input_instrument_both_sides`).
+- [ ] AC2: A 44.1 kHz microphone arrives as 48 kHz frames without drift (24 h of samples in the fake device give exactly the expected frame count, ±1).
+- [ ] AC3: While managed code is paused for 200 ms no microphone audio is lost: the frames queue natively (up to 1 s) and the capture thread takes them all afterwards in order.
+- [ ] AC4: The test tone (debug API `/tone`, Package 124's tone capture) still replaces the microphone and runs without a device.
+- [ ] AC5: An unplugged microphone raises `Failed(Input, …)` and Package 137's reopen follows (`StreamError_Reopens_BacksOff`, `ChosenMicRemoved_FallsBack_Returns` green).
+- [ ] AC6: The native capture thread allocates nothing in steady state.
+
+### Planned tests (TDD)
+
+1. `tests/capture.rs`: the moved cases - covers AC1
+2. `tests/capture.rs > fake_device_44k1_no_drift_over_24h` (the fake device stands for AUTOCONVERTPCM's output by delivering 48 kHz in irregular chunks; the resampling itself is the OS's and is covered by the manual check) - covers AC2
+3. `tests/capture.rs > reader_paused_200ms_no_frame_lost` - covers AC3
+4. `tests/capture.rs > tone_source_one_frame_per_20ms_without_device` - covers AC4
+5. `tests/capture.rs > capture_steady_state_allocates_nothing` - covers AC6
+6. `SendPathTests > "StreamError_Reopens_BacksOff"`, `"ChosenMicRemoved_FallsBack_Returns"`, `DeviceLifecycleTests > "SetTone_MicOpen_ReplacesItUntilTheToneEnds"` against the native capture - covers AC4, AC5
+7. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+8. Manual check: a 44.1 kHz and a 48 kHz microphone, a stereo interface in music mode, unplugging during a call.
+
+Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1 to 5 (red), `channels.rs`, `chunker.rs`, `capture.rs`, the WASAPI capture stream.
+2. Test 6 (red), `CapturePipeline` on the native frames, `WasapiHardware.OpenInput`.
+3. Delete the managed conversion classes; list the moved asserts; `build.ps1`; allocation tests; manual check.
+
+### Out of Scope
+
+- Filters, VAD (178); send decision, encoding, self test, pre-roll (179)
+
+---
+
+## Package 178: Native capture filters
+
+**Goal:** Echo cancellation (AEC3), noise suppression, automatic gain and the voice gate run in Rust on the capture thread with today's rules.
+
+**Dependencies:** Package 177
+
+**Affected files:**
+- `native/ovs_audio/shim/aec.cpp`, `shim/aec.h` (new): today's `native/ovs_aec/ovs_aec.cpp` API (create, set delay, render, capture, destroy) as a static shim
+- `native/ovs_audio/build.rs` (new): builds the shim with the `cc` crate and links webrtc-audio-processing v2.1 and abseil statically (A185); `build.ps1` first builds those for `x86_64-pc-windows-msvc` (meson, pinned versions as in `native/ovs_aec/build.ps1`)
+- `native/ovs_audio/Cargo.toml` (change): `nnnoiseless` (A184), `cc` (build)
+- `native/ovs_audio/src/core/filters/aec.rs`, `noise.rs`, `autogain.rs`, `vad.rs` (new): the echo canceller fed from 176's far end on the same thread before each capture frame, with the delay hint from the real figures (A187); `NoiseSuppressor` with `NoiseCutDb` and the voice probability; `AutoGain` ported (target -20 dB, at most +30 dB, peak -3 dBFS, 0.2 dB per frame, `VoiceFloorDb` -45, `SpeechProbability` 0.5, `Reset` when switched on again); `VoiceActivityDetector` ported (hangover 9 frames, 2 s floor at the 10th percentile, 15 learning frames, the hysteresis 0.7, automatic threshold, the level of the louder side in stereo)
+- `native/ovs_audio/src/lib.rs` (change): `ovs_audio_set_filters(noise, echo, auto_gain)`, `_set_vad(threshold_db, automatic)`, `_vad_state(out: active, level_db, threshold_in_use_db)`, `_filter_state(out: auto_gain_db, missing filters)`; in music mode the filters stay off (Package 142)
+- `src/OVS.Client/Audio/Capture/CapturePipeline.cs` (change): no filters or VAD of its own any more; reads the VAD result and level per frame from the native capture
+- `src/OVS.Client/Audio/Processing/AutoGain.cs`, `EchoCanceller.cs`, `NoiseSuppressor.cs`, `NativeCaptureFilters.cs`, `Audio/Transmit/VoiceActivityDetector.cs` (deleted; `ovs_aec.dll` and RNNoise stay referenced until 180 only if something still loads them, else removed here)
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): `ApplyCaptureSettings` maps onto the native setters; `InputThresholdDb`, `VoiceDetected`, `InputLevel` from the poll; `EchoDelayMs` removed (A187)
+- `native/ovs_audio/tests/filters.rs` (new) with the fixtures of `VoiceFilterTests`; `tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs`, `NativeCaptureFiltersTests.cs` (cases moved), `SendPathTests.cs` (VAD cases moved), `AudioEngineTests.cs` (the echo delay cases replaced)
+
+### Context
+
+Today each capture gets `NoiseSuppressor` (RNNoise through `rnnoise.dll`), `EchoCanceller` (`ovs_aec.dll`, AEC3) and `AutoGain` from `NativeCaptureFilters.AttachTo`, and `VoiceActivityDetector` decides on the filtered frame. All of that runs on the capture thread, managed. With the far end native since 176 and the capture native since 177, the filters move next to them, so the echo canceller sees both ends on native threads with their real timing. The user decided one library per platform: AEC3 statically linked (A185), RNNoise through `nnnoiseless` (A184).
+
+### Acceptance Criteria
+
+- [ ] AC1: Every case of `VoiceFilterTests` holds as a cargo test with the same fixtures and limits (noise lowered and off unchanged, noise keeps the VAD closed, auto gain raised, capped or held, starts over, raises a very quiet voice with suppression, ignores noise rated as noise, caps at 30 dB and the peak, the echo canceller removes the far end and keeps the near end, unchanged without a far end).
+- [ ] AC2: Every VAD case of `SendPathTests` holds as a cargo test (`vad_silence_or_loud_inactive_or_active_with_9_frame_hangover`, `vad_hysteresis_hold_180ms`, the five automatic cases, `vad_frame_level_in_db`, `music_mode_ptt_or_vad_louder_side_opens`).
+- [ ] AC3: `nnnoiseless` lowers the fixtures' steady noise within 1 dB of today's RNNoise (A184), measured once in the first step and written into the as-built note.
+- [ ] AC4: Switching a filter on the settings page applies live without reopening the microphone (`ApplyLive_SwitchesFilters_WithoutRestart`), and music mode switches them off (`MusicMode_On_FiltersOff`).
+- [ ] AC5: The level meter and the threshold line on the settings page move as before (poll every 100 ms), also while muted.
+- [ ] AC6: The capture thread allocates nothing in steady state with all filters on.
+
+### Planned tests (TDD)
+
+1. `tests/filters.rs`: the moved cases of `VoiceFilterTests` - covers AC1
+2. `tests/filters.rs`: the moved VAD cases - covers AC2
+3. `tests/filters.rs > nnnoiseless_lowers_fixture_noise_like_rnnoise` (the reference figure from today's run written into the test) - covers AC3
+4. `tests/filters.rs > filters_on_steady_state_allocate_nothing` - covers AC6
+5. `SendPathTests > "ApplyLive_SwitchesFilters_WithoutRestart"`, `"MusicMode_On_FiltersOff"` against the native filters - covers AC4
+6. `SettingsTests` level meter test (the existing one for Package 129's threshold line) against the poll - covers AC5
+7. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+8. Manual check: a call with speakers (no headset) and echo cancellation on and off; a fan as steady noise with suppression on and off; a quiet microphone with automatic gain.
+
+Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Build AEC3 for the MSVC target and link the shim (A185); if it fails, stop and ask the user about the gnullvm alternative.
+2. Measure RNNoise against `nnnoiseless` on the fixtures (AC3).
+3. Tests 1 to 4 (red), the four filters.
+4. Tests 5, 6 (red), the setters and the poll in `AudioEngine`.
+5. Delete the managed filter classes; list the moved asserts; `build.ps1`; allocation tests; manual check.
+
+### Out of Scope
+
+- The send decision and encoding (179)
+- Removing `rnnoise.dll`, `ovs_aec.dll` and their package from the build (180)
+
+---
+
+## Package 179: Native send decision and encoding
+
+**Goal:** Rust decides per frame whether and to which target a frame is sent, encodes it with libopus and hands finished packets to C# through an event, also in the self test and in music mode.
+
+**Dependencies:** Package 178
+
+**Affected files:**
+- `native/ovs_audio/src/core/transmit.rs` (new): `TransmitRule.ChooseTarget` ported (mode, PTT, link PTT, VAD, muted, may speak linked); the flags as atomics set from C#: mode, effective PTT and link-PTT down (the release delay of Package 130 stays in `KeyPoller`), push-to-mute held, self muted, connected, channel muted, has speak linked, self test; the pre-roll (`Capture_SendStart_IncludesPreviousFrame`)
+- `native/ovs_audio/src/core/encoder.rs` (new): libopus encoder ported from `VoiceEncoder` (complexity 5, DTX off, FEC with the loss hint in voice, music: general audio, stereo from 64 kbps, mono below or from a mono device, the music encoder made on first use); bitrate and loss hint set from C# (`LossAdapter` stays C#, A183)
+- `native/ovs_audio/src/core/packets.rs` (new): a queue of finished packets (opus bytes, target) in preallocated slots, signalled through the auto-reset event (A181); the transmit changes (target or none) and the self-test loopback: in the self test a packet goes into the own speaker's buffer of 175 as speaker 0 instead of the queue
+- `native/ovs_audio/src/lib.rs` (change): `ovs_audio_set_transmit_flags(…)`, `_set_bitrate(kbps)`, `_set_loss_hint(percent)`, `_packet_event`, `_packet_take(out, max, &len, &target)`, `_transmit_state(out: target or none, frames sent)`
+- `src/OVS.Client/Audio/Transmit/PacketPump.cs` (new): waits on the packet event with `ThreadPool.RegisterWaitForSingleObject` (no blocked thread; unregistered on dispose with a `CancellationToken`), takes every packet and calls `AudioEngine.Send` (`VoiceClient.SendVoice`), counts `FramesSent`
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): `ChooseTarget` and `OnFrameEncoded` removed; every flag setter and `KeyPoller.Changed` write the native flags; `TransmitChanged` from the poll; `EncoderBitrate`, `EncoderLossHint` pushed to native on change
+- `src/OVS.Client/Audio/Capture/CapturePipeline.cs` (deleted or reduced to the open and close of the native capture; its remaining members move into `CaptureSource`)
+- `src/OVS.Client/Audio/Codec/VoiceEncoder.cs`, `Audio/Transmit/TransmitRule.cs` (deleted)
+- `native/ovs_audio/tests/transmit.rs` (new); `tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs` (the rule table, PTT, push-to-mute, muted channel, release delay, self test, encoder and music cases moved or kept against the native side), `LossAdapterTests.cs` (unchanged)
+
+### Context
+
+`CapturePipeline` asks `ChooseTarget` (`AudioEngine.ChooseTarget` through `TransmitRule`) per frame, encodes with `VoiceEncoder` (Concentus) and raises `FrameEncoded`; `AudioEngine.OnFrameEncoded` sends it or, in the self test, pushes it into the mixer as speaker 0. The decision needs the key state and the flags, which live in C# (`KeyPoller`, the view models through `EngineSync`); they become atomics the native capture thread reads. Finished packets go to C# through an event and a queue (A181), so the capture thread never waits for C# and a garbage collection only delays the send by its length, without losing frames.
+
+### Acceptance Criteria
+
+- [ ] AC1: Every row of `ChooseTarget_EachRuleRow_ReturnsExpectedTarget` holds as a cargo test.
+- [ ] AC2: Push-to-talk, link push-to-talk, push-to-mute, the muted channel, the release delay (also pressed again within it), voice activation and mute behave as the `SendPathTests` cases say (`PttKey_BelowThreshold_SendsOnlyInPttMode`, `PushToMute_Held_SendsNothing`, `Send_MutedChannel_Nothing`, `Ptt_Released_KeepsSendingForDelay`, `Ptt_PressedAgainWithinDelay_NoGap`, `LinkPttRelease_Delayed_MuteImmediate`), now end to end through the native side.
+- [ ] AC3: The first frame of a send start includes the frame before it (pre-roll).
+- [ ] AC4: The encoder follows the channel bitrate and the adapted bitrate and loss hint (`Encoder_ChannelBitrate_Followed`, `Encoder_AdaptedValues_Used`, `Sender_LossReported_OnlyThenAddsCopy`), complexity 5, DTX off.
+- [ ] AC5: The self test plays the own voice back only for the own ears and follows the mode (`SelfTest_Running_PlaysOwnVoiceOnly`, `SelfTest_FollowsMode_PushToTalkWithoutKeySilent`, `SelfTest_PushToTalkKeyHeld_PlaysBack`, `SelfTest_PttRelease_PlaysBackForDelay`).
+- [ ] AC6: Music mode sends stereo from 64 kbps and mono below (`MusicMode_LowBitrate_Mono`).
+- [ ] AC7: With managed code paused for 200 ms no frame is lost: the packets wait in the native queue and are all sent afterwards in order.
+- [ ] AC8: The capture thread allocates nothing in steady state while sending.
+
+### Planned tests (TDD)
+
+1. `tests/transmit.rs > choose_target_each_rule_row_returns_expected_target` - covers AC1
+2. `tests/transmit.rs`: the PTT, push-to-mute, muted channel, release delay and VAD sending cases - covers AC2
+3. `tests/transmit.rs > send_start_includes_previous_frame` - covers AC3
+4. `tests/transmit.rs > encoder_bitrate_and_loss_hint_followed_complexity_5_dtx_off` - covers AC4
+5. `tests/transmit.rs > self_test_packet_goes_to_own_speaker_not_queue` and the mode cases - covers AC5
+6. `tests/transmit.rs > music_low_bitrate_mono_from_64_stereo` - covers AC6
+7. `tests/transmit.rs > packet_queue_reader_paused_200ms_nothing_lost` - covers AC7
+8. `tests/transmit.rs > sending_steady_state_allocates_nothing` - covers AC8
+9. `PacketPumpTests > "Event_Signalled_EveryPacketSentInOrder"`, `"Dispose_Pending_UnregistersAndSendsNothingMore"` - covers AC7
+10. `SendPathTests` end-to-end cases against the native side (the names of AC2, AC5) - covers AC2, AC5
+11. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+12. Manual check: two clients, push-to-talk and voice activation, link push-to-talk across a link, the self test, music mode at 48 and 96 kbps.
+
+Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1 to 8 (red), `transmit.rs`, `encoder.rs`, `packets.rs`.
+2. Test 9 (red), `PacketPump`.
+3. Test 10 (red), the flag setters in `AudioEngine`; delete `VoiceEncoder`, `TransmitRule`, the managed decision; list the moved asserts.
+4. `build.ps1`; allocation tests; manual check.
+
+### Out of Scope
+
+- `LossAdapter` (stays C#, fed by the server's ping)
+- Encryption and the UDP socket (stay in C#, `VoiceClient`)
+
+---
+
+## Package 180: Remove the managed audio path
+
+**Goal:** The client has exactly one native audio library: the managed audio path left over from 172 to 179, NAudio's wave output and capture, Concentus, `rnnoise.dll`, `ovs_aec.dll` and `YellowDogMan.RRNoise.NET` are gone.
+
+**Dependencies:** Package 179
+
+**Affected files:**
+- `src/OVS.Client/OVS.Client.csproj` (change): `Concentus` and `YellowDogMan.RRNoise.NET` removed; `ovs_aec.dll` no longer copied; `NAudio` stays for `CoreAudioApi` (A186)
+- `src/OVS.Client/runtimes/win-x64/native/ovs_aec.dll` (deleted); `native/ovs_aec/` (deleted, its build moved into `native/ovs_audio/build.ps1` in 178)
+- every class under `src/OVS.Client/Audio/` that only served the managed path and is still there (to be listed by a search for `NAudio.Wave`, `Concentus`, `rnnoise`, `ovs_aec`)
+- `src/OVS.Client/Audio/Devices/WasapiHardware.cs` (change): only listing, `FindCurrentDeviceId`, the watcher and the native opens
+- `src/OVS.Client/Diagnostics/DebugApi.cs` (change): `/state` audio figures from the native poll only
+- `THIRD-PARTY-NOTICES.md` (change): RNNoise's entry for `nnnoiseless`, WebRTC Audio Processing and Abseil now statically in `ovs_audio.dll`, the MinGW and libc++ entry removed if A185 used MSVC, libopus added (175), the `windows` crate (172)
+- `CODING-RULES-OVS.md` (change): the client layout without the deleted folders and classes; `Audio/Native/` described
+- `README.md` or the build documentation (change): how to build `ovs_audio.dll`
+- `tests/OVS.Tests/` (change): tests of deleted classes removed (each moved assert already listed in 173 to 179)
+
+### Context
+
+172 to 179 replaced the audio path step by step and left the managed parts in place only where nothing native existed yet. This package removes what is left so that there is one path (the user's decision: no fallback, A180) and one native library per platform. A missing `ovs_audio.dll` then means a client without audio and a notice, like `--no-audio`.
+
+### Acceptance Criteria
+
+- [ ] AC1: No source file of the client references `NAudio.Wave`, `Concentus`, `rnnoise` or `ovs_aec`; the published client contains `ovs_audio.dll` and no `rnnoise.dll` or `ovs_aec.dll`.
+- [ ] AC2: Without `ovs_audio.dll` the client starts, shows one notice that audio is unavailable, logs the reason once, and connects and chats without audio.
+- [ ] AC3: The whole suite and the cargo tests are green; the allocation tests pass three times alone.
+- [ ] AC4: `THIRD-PARTY-NOTICES.md` names every component in `ovs_audio.dll` with its licence, and no component that is gone.
+- [ ] AC5: The published client is smaller or at most 2 MB larger than before 172 (written into the as-built note).
+
+### Planned tests (TDD)
+
+1. `ArchitectureTests > "Client_NoReference_ToNAudioWaveConcentusRnnoiseOrOvsAec"` (a source scan like the existing rule tests, or a rule in `tools/rule-lint`) - covers AC1
+2. `AudioEngineTests > "Start_LibraryMissing_OneNoticeAndRunsWithoutAudio"` - covers AC2
+3. `NoticesTests > "ThirdPartyNotices_NameEveryNativeComponent"` (a list in the test checked against the file) - covers AC4
+4. Full suite and cargo tests (AC3); allocation tests three times (N30)
+5. Manual check: publish as in `release.yml`, list the files, compare the size (AC5); start without the DLL (AC2); one full call with two clients.
+
+Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1 to 3 (red).
+2. Remove the packages, DLLs and classes; fix what no longer builds.
+3. Notices, coding rules, build documentation.
+4. Full suite, cargo tests, allocation tests, manual check.
+
+### Out of Scope
+
+- Device listing and the watcher without NAudio (with the platform packages, A186, A189)
+- Linux, macOS, Android, iOS (A189)
