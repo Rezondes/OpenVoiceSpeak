@@ -29,6 +29,7 @@ public sealed class OverlayDialogsTests
         { "BookmarkList.Confirm", "Confirm" },
         { "PageFlow.AskLeave", "Leave" },
         { "PageFlow.EditKeyBinding", "KeyBinding" },
+        { "PageFlow.AskImport", "Import" },
         { "Server.Confirm", "Confirm" },
         { "Server.Ban", "Ban" },
         { "Server.Mute", "Mute" }, // Package 166
@@ -94,6 +95,7 @@ public sealed class OverlayDialogsTests
         "BookmarkList.Confirm" => dialogs.BookmarkList.Confirm!("Wirklich?"),
         "PageFlow.AskLeave" => dialogs.PageFlow.AskLeave!(),
         "PageFlow.EditKeyBinding" => dialogs.PageFlow.EditKeyBinding!(null, _ => Task.FromResult<OVS.Client.Input.KeyChord?>(null)),
+        "PageFlow.AskImport" => dialogs.PageFlow.AskImport!(new OVS.Client.Models.ImportPlan("Discord", [new("Name", "Aus", "An", _ => { })], [])),
         "Server.Confirm" => dialogs.Server.Confirm!("Wirklich?"),
         "Server.Ban" => dialogs.Server.Ban!("anna", true, null),
         "Server.Mute" => dialogs.Server.Mute!("anna", null),

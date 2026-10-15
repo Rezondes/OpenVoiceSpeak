@@ -32,6 +32,7 @@ internal static class OverlayDialogs
     {
         AskLeave = () => LeaveDialog.ShowAsync(overlay), // Package 114
         EditKeyBinding = (binding, capture) => KeyBindingDialog.ShowAsync(overlay, binding, capture),
+        AskImport = plan => ImportDialog.ShowAsync(overlay, plan), // Package 171
     };
 
     /// <param name="groups">Package 93: the server's groups for the channel dialog's group lock.</param>

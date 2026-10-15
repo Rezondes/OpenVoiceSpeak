@@ -9866,13 +9866,13 @@ Users come from Discord or Fluxer and have their microphone, sensitivity and key
 
 ### Acceptance Criteria
 
-- [ ] AC1: The Audio page has a button "Aus Discord übernehmen" ("Take over from Discord"); without a Discord (or Fluxer) installation it is off with a tooltip that says none was found.
-- [ ] AC2: A click reads the settings and shows a dialog with one row per setting that would change: its name, the value now, the value from Discord, and a check box that is checked; settings that are equal or that OVS cannot hold do not show.
-- [ ] AC3: Unchecking a row keeps that setting as it is; "Übernehmen" sets exactly the checked ones on the page (previewed at once, shown in the unsaved-changes bar, saved only with "Speichern"); "Abbrechen" changes nothing.
-- [ ] AC4: With nothing to change the dialog says so ("Alles schon gleich" / "Nothing to change") instead of an empty list.
-- [ ] AC5: A storage it cannot read (locked, damaged, an unknown format) shows "Konnte die Einstellungen von Discord nicht lesen" with the reason in the client log, and changes nothing; the import never writes into Discord's folder.
-- [ ] AC6: Devices are matched by their name; a Discord device not present here is left out with the note "Gerät nicht gefunden".
-- [ ] AC7: The dialog and its rows fit from 360 px in both languages and work by keyboard (Space toggles a row, Enter takes over).
+- [x] AC1: The Audio page has a button "Aus Discord übernehmen" ("Take over from Discord"); without a Discord (or Fluxer) installation it is off with a tooltip that says none was found.
+- [x] AC2: A click reads the settings and shows a dialog with one row per setting that would change: its name, the value now, the value from Discord, and a check box that is checked; settings that are equal or that OVS cannot hold do not show.
+- [x] AC3: Unchecking a row keeps that setting as it is; "Übernehmen" sets exactly the checked ones on the page (previewed at once, shown in the unsaved-changes bar, saved only with "Speichern"); "Abbrechen" changes nothing.
+- [x] AC4: With nothing to change the dialog says so ("Alles schon gleich" / "Nothing to change") instead of an empty list.
+- [x] AC5: A storage it cannot read (locked, damaged, an unknown format) shows "Konnte die Einstellungen von Discord nicht lesen" with the reason in the client log, and changes nothing; the import never writes into Discord's folder.
+- [x] AC6: Devices are matched by their Windows id (Discord stores the id, not the name); a Discord device not present here is left out with the note "Gerät nicht gefunden".
+- [x] AC7: The dialog and its rows fit from 360 px in both languages and work by keyboard (Space toggles a row, Enter takes over).
 
 ### Tests (TDD)
 
@@ -9881,8 +9881,10 @@ Users come from Discord or Fluxer and have their microphone, sensitivity and key
 3. `ImportMappingTests > "Map_EveryValue_OntoOvsScales"`, `"Map_EqualValues_NoChange"`, `"Map_UnknownDevice_LeftOutWithNote"`, `"Map_UnsupportedValue_LeftOut"` (AC2, AC6)
 4. `ImportDialogTests > "Rows_Shown_AllCheckedByDefault"`, `"Uncheck_Row_ThatSettingKept"`, `"Nothing_ToChange_SaysSo"`, `"Keyboard_SpaceAndEnter_ToggleAndTakeOver"` (AC2, AC3, AC4, AC7)
 5. `SettingsTests > "ImportFromDiscord_Checked_SetOnPageNotSaved"` and `"ImportFromDiscord_Cancelled_NothingChanges"` (AC3)
-6. `ResponsiveTests > "ImportDialog_At360_Fits"` (AC7)
+6. `ResponsiveTests > "Dialogs_At360_Fit"` (AC7)
 7. Manual check (A174): a real Discord installation on Windows 11, before and after an update of Discord.
+
+(as built: step 1 was done on the developer's Windows 11 with Discord and Fluxer installed; only the audio keys were read, never tokens. Discord: `_https://discord.com\0\1MediaEngineStore`, JSON with the context "default" (mode, modeOptions.threshold/autoThreshold/delay, inputVolume/outputVolume as percent, inputDeviceId/outputDeviceId as Windows endpoint ids or "default", echoCancellation, noiseSuppression, noiseCancellation (Krisp), automaticGainControl), and `keybinds` (`_state` entries with action PUSH_TO_TALK and shortcut `[[0, virtual key, ...]]`; mouse buttons `[1, ...]` and chords are left out). Fluxer: `_https://web.fluxer.app\0\1VoiceSettings` (volumes, filters, vadAutoSensitivity; its device ids are browser hashes, so only "default" matches; no mode or push-to-talk key there). Devices match by id, as both apps store ids. The user asked for two classes on one base: `ChatAppAudioImport` (folders, reading, decoding, JSON helpers, the order Discord before Fluxer) with `DiscordAudioImport` and `FluxerAudioImport`. No Snappy package (A176): `LevelDbReader.Unsnappy` decodes the few block types in about 40 lines. The files are read with every share mode instead of being copied: nothing is written either way. The mapping lives in `ViewModels/ImportMapping.cs` (it sets page values); the dialog is `ImportDialog` in the overlay. Enter on a focused check box now answers every dialog (OverlayHost), Space still toggles it. The 360 px check is a case of `Dialogs_At360_Fit`. The check after a Discord update is still open.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx`
 

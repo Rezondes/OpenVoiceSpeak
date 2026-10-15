@@ -28,6 +28,10 @@ static partial class ClientLogLines
     [LoggerMessage(Level = LogLevel.Error, Message = "Unobserved error: {Exception}")]
     public static partial void UnobservedError(this ILogger logger, string exception);
 
+    /// <summary>Package 171: Discord's or Fluxer's audio settings could not be read.</summary>
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Audio settings of Discord or Fluxer could not be read: {Problem}")]
+    public static partial void AudioImportFailed(this ILogger logger, string problem);
+
     /// <summary>Package 170: ovs:// now points at this exe.</summary>
     [LoggerMessage(Level = LogLevel.Information, Message = "Server links (ovs://) registered for {Exe}")]
     public static partial void UrlProtocolRegistered(this ILogger logger, string exe);

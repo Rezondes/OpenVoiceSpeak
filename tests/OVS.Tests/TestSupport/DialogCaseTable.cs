@@ -2,6 +2,7 @@ using OVS.Client.Controls;
 using OVS.Client.Dialogs;
 using OVS.Client.Input;
 using OVS.Client.Localization;
+using OVS.Client.Models;
 using OVS.Client.Net;
 using OVS.Client.Net.Updates;
 using OVS.Client.Settings;
@@ -63,6 +64,10 @@ static class DialogCaseTable
         new("QuickSwitcher", typeof(QuickSwitcherDialog), overlayHost => AcceptedAsync(QuickSwitcherDialog.ShowAsync(overlayHost,
                 new QuickSwitcherViewModel([], [new Bookmark("Gilde", "h", 7000, "ich")], _ => Task.CompletedTask)), hit => hit is not null),
             () => [Strings.Dlg_Cancel, Strings.Quick_Open], Red: false, EnterAccepts: true),
+        // Package 171: one change, checked from the start
+        new("Import", typeof(ImportDialog), overlayHost => AcceptedAsync(ImportDialog.ShowAsync(overlayHost,
+                new ImportPlan("Discord", [new ImportChange(Strings.Ui_AutoGain, Strings.Import_Off, Strings.Import_On, _ => { })], [])), chosen => chosen?.Count == 1),
+            () => [Strings.Dlg_Cancel, Strings.Import_Apply], Red: false, EnterAccepts: true),
     ];
 
     public static DialogCase Find(string name) => All.Single(dialogCase => dialogCase.Name == name);

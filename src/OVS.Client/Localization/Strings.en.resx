@@ -176,6 +176,25 @@
   <data name="Icon_Missing" xml:space="preserve"><value>The file does not exist.</value></data>
   <data name="Icon_NotSquare" xml:space="preserve"><value>The image must be square (1:1), it is {0} x {1} pixels.</value></data>
   <data name="Icon_PickFilter" xml:space="preserve"><value>Images (PNG, JPG)</value></data>
+  <data name="Import_Apply" xml:space="preserve"><value>Take over</value></data>
+  <data name="Import_BeforeAfterFmt" xml:space="preserve"><value>Now: {0}, new: {1}</value></data>
+  <data name="Import_Button" xml:space="preserve"><value>Take over from Discord</value></data>
+  <data name="Import_ButtonHint" xml:space="preserve"><value>Takes over devices, volumes, filters and push-to-talk from Discord or Fluxer. You see every change first.</value></data>
+  <data name="Import_DeviceMissingFmt" xml:space="preserve"><value>{0}: device not found</value></data>
+  <data name="Import_Failed" xml:space="preserve"><value>Could not read the settings of Discord</value></data>
+  <data name="Import_Intro" xml:space="preserve"><value>Uncheck everything that should stay as it is. Nothing is saved until you choose Save.</value></data>
+  <data name="Import_Mode" xml:space="preserve"><value>Transmit mode</value></data>
+  <data name="Import_ModePtt" xml:space="preserve"><value>Push-to-talk</value></data>
+  <data name="Import_ModeVad" xml:space="preserve"><value>Voice activation</value></data>
+  <data name="Import_NoKey" xml:space="preserve"><value>none</value></data>
+  <data name="Import_NoneFound" xml:space="preserve"><value>No Discord or Fluxer found on this PC.</value></data>
+  <data name="Import_Nothing" xml:space="preserve"><value>Nothing to change</value></data>
+  <data name="Import_Off" xml:space="preserve"><value>Off</value></data>
+  <data name="Import_On" xml:space="preserve"><value>On</value></data>
+  <data name="Import_PttKey" xml:space="preserve"><value>Push-to-talk key</value></data>
+  <data name="Import_SpeakerVolume" xml:space="preserve"><value>Speaker volume</value></data>
+  <data name="Import_TitleFmt" xml:space="preserve"><value>Take over from {0}</value></data>
+  <data name="Import_VadAutomatic" xml:space="preserve"><value>Automatic threshold</value></data>
   <data name="Icon_PickTitle" xml:space="preserve"><value>Choose server logo</value></data>
   <data name="Icon_TooBig" xml:space="preserve"><value>The file is larger than 3 MB.</value></data>
   <data name="Icon_TooSmall" xml:space="preserve"><value>The image must be at least {0} x {0} pixels.</value></data>

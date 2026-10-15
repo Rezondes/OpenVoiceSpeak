@@ -153,8 +153,9 @@ internal sealed class OverlayHost : Panel
             Close();
             args.Handled = true;
         }
-        // Enter in a multi-line box is a line break, and a focused button presses itself.
-        else if (args.Key == Key.Enter && args.Source is not (TextBox { AcceptsReturn: true } or Button))
+        // Enter in a multi-line box is a line break, and a focused button presses itself; a check box or toggle is
+        // switched with Space, so Enter there answers the dialog (Package 171)
+        else if (args.Key == Key.Enter && args.Source is not (TextBox { AcceptsReturn: true } or (Button and not Avalonia.Controls.Primitives.ToggleButton)))
         {
             onEnter?.Invoke();
             args.Handled = true;

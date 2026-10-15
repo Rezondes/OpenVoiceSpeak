@@ -10,4 +10,7 @@ internal sealed record PageFlowDialogs
 
     /// <summary>Package 41: action and key; null binding = add. The second argument captures the next key.</summary>
     public Func<KeyBinding?, Func<KeyAction, Task<KeyChord?>>, Task<KeyBinding?>>? EditKeyBinding { get; init; }
+
+    /// <summary>Package 171: the changes Discord's settings would make, each checked; returns the checked ones.</summary>
+    public Func<Models.ImportPlan, Task<IReadOnlyList<Models.ImportChange>?>>? AskImport { get; init; }
 }

@@ -716,6 +716,12 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         "BackupDownload" => BackupDownloadDialog.ShowAsync(overlayHost), // Package 89
         "Leave" => LeaveDialog.ShowAsync(overlayHost), // Package 114: three buttons
         "ConnectionDetails" => ConnectionDetailsDialog.ShowAsync(overlayHost, Measured()), // Package 133
+        "Import" => ImportDialog.ShowAsync(overlayHost, new ImportPlan("Discord", // Package 171: long device names
+        [
+            new ImportChange(Strings.Ui_Microphone, "Mikrofon (Realtek High Definition Audio mit langem Namen)", "XLR Mic 1 (Elgato Wave XLR Pro)", _ => { }),
+            new ImportChange(Strings.Import_PttKey, Strings.Import_NoKey, "Strg+F12", _ => { }),
+            new ImportChange(Strings.Ui_EchoCancellation, Strings.Import_On, Strings.Import_Off, _ => { }),
+        ], [TextFormat.Of(Strings.Import_DeviceMissingFmt, Strings.Ui_Speaker)])),
         _ => throw new ArgumentException(name),
     };
 
@@ -753,7 +759,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public static TheoryData<string, string> Dialogs()
     {
         var data = new TheoryData<string, string>();
-        foreach (var dialog in new[] { "Connect", "TofuMismatch", "TofuUnknown", "Ban", "BanWithoutIp", "DeleteUser", "Confirm", "Update", "KeyBinding", "ChannelCreate", "ChannelEdit", "PickChannel", "AskText", "Password", "ChannelPassword", "Bookmark", "BackupDownload", "Leave", "ConnectionDetails" })
+        foreach (var dialog in new[] { "Connect", "TofuMismatch", "TofuUnknown", "Ban", "BanWithoutIp", "DeleteUser", "Confirm", "Update", "KeyBinding", "ChannelCreate", "ChannelEdit", "PickChannel", "AskText", "Password", "ChannelPassword", "Bookmark", "BackupDownload", "Leave", "ConnectionDetails", "Import" })
             foreach (var culture in new[] { "de-DE", "en-US" })
                 data.Add(dialog, culture);
         return data;

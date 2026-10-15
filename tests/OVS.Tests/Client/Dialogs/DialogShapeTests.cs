@@ -18,7 +18,7 @@ public sealed class DialogShapeTests
     {
         var dialogs = DialogCaseTable.FindDialogTypes();
         // a new dialog also needs its case in DialogCaseTable (DialogButtonsTests); the channel dialog is Views/ChannelDialogView
-        Assert.True(dialogs.Count == 18, $"{dialogs.Count} dialog types: update this count and the cases of DialogCaseTable (DialogButtonsTests)");
+        Assert.True(dialogs.Count == 19,$"{dialogs.Count} dialog types: update this count and the cases of DialogCaseTable (DialogButtonsTests)");
         var problems = new List<string>();
         foreach (var type in dialogs)
         {

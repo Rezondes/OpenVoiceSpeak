@@ -52,6 +52,18 @@
       <TabItem x:Name="AudioPage" Header="{x:Static l:Strings.Nav_Audio}">
         <ScrollViewer anim:PageMotion.Reveal="True">
           <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Left">
+            <!-- Package 171: takes over the audio settings of Discord or Fluxer, every change shown first -->
+            <StackPanel Spacing="4">
+              <Button x:Name="ImportFromDiscordButton" Command="{Binding ImportFromDiscordCommand}" HorizontalAlignment="Left"
+                      ToolTip.Tip="{Binding ImportTip}" ToolTip.ShowOnDisabled="True">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
+                  <TextBlock Text="{x:Static l:Strings.Import_Button}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Button>
+              <TextBlock Classes="caption danger" Text="{Binding ImportError}" TextWrapping="Wrap"
+                         IsVisible="{Binding ImportError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
             <!-- Devices -->
             <StackPanel Spacing="8">
               <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_DevicesSection}" />

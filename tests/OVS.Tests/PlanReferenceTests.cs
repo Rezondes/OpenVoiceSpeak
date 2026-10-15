@@ -16,23 +16,6 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         ["UiSmokeTests > \"ChannelDialog_SameForCreateAndEdit\""] =
             "never written: no UI test opens the channel dialog in both modes; ChannelDialogViewModelTests checks title, button and fields per mode",
-        ["LevelDbReaderTests > \"Read_LogAndTable_ReturnsLatestValuePerKey\""] = "planned in Package 171, written when it is built",
-        ["LevelDbReaderTests > \"Read_DamagedBlock_SkippedNotThrown\""] = "planned in Package 171, written when it is built",
-        ["LevelDbReaderTests > \"Read_LockedFolder_ReadsFromACopy\""] = "planned in Package 171, written when it is built",
-        ["DiscordAudioImportTests > \"Read_Fixture_AudioValuesFound\""] = "planned in Package 171, written when it is built",
-        ["DiscordAudioImportTests > \"Read_NoInstallation_NoneFound\""] = "planned in Package 171, written when it is built",
-        ["DiscordAudioImportTests > \"Read_UnknownFormat_ReasonReported\""] = "planned in Package 171, written when it is built",
-        ["ImportMappingTests > \"Map_EveryValue_OntoOvsScales\""] = "planned in Package 171, written when it is built",
-        ["ImportMappingTests > \"Map_EqualValues_NoChange\""] = "planned in Package 171, written when it is built",
-        ["ImportMappingTests > \"Map_UnknownDevice_LeftOutWithNote\""] = "planned in Package 171, written when it is built",
-        ["ImportMappingTests > \"Map_UnsupportedValue_LeftOut\""] = "planned in Package 171, written when it is built",
-        ["ImportDialogTests > \"Rows_Shown_AllCheckedByDefault\""] = "planned in Package 171, written when it is built",
-        ["ImportDialogTests > \"Uncheck_Row_ThatSettingKept\""] = "planned in Package 171, written when it is built",
-        ["ImportDialogTests > \"Nothing_ToChange_SaysSo\""] = "planned in Package 171, written when it is built",
-        ["ImportDialogTests > \"Keyboard_SpaceAndEnter_ToggleAndTakeOver\""] = "planned in Package 171, written when it is built",
-        ["SettingsTests > \"ImportFromDiscord_Checked_SetOnPageNotSaved\""] = "planned in Package 171, written when it is built",
-        ["SettingsTests > \"ImportFromDiscord_Cancelled_NothingChanges\""] = "planned in Package 171, written when it is built",
-        ["ResponsiveTests > \"ImportDialog_At360_Fits\""] = "planned in Package 171, written when it is built",
     };
 
     /// <summary>N20: checked criteria no test can check and without a manual marker, each with the reason.</summary>

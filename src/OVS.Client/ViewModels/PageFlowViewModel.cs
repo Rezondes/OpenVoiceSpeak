@@ -37,6 +37,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     readonly Action<Action<float>> stopLevelMeter;
     readonly Func<float> readThresholdDb;
     readonly Func<ServerViewModel?> shownServer;
+    readonly AudioImportSource? audioImport;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHomePage), nameof(IsSettingsPage), nameof(IsAdminPage))]
@@ -70,13 +71,16 @@ internal sealed partial class PageFlowViewModel : ObservableObject
     /// <param name="readThresholdDb">The voice activation threshold in use, read with each level (Package 129).</param>
     /// <param name="shownServer">The server view model now shown; the administration needs one.</param>
     /// <param name="testSpeaker">Package 159: plays the speaker test at a volume.</param>
+    /// <param name="audioImport">Package 171: where Discord's audio settings are read from; without it the button is off.</param>
     internal PageFlowViewModel(TimeProvider time, Action<Action> post, Func<ClientSettings> settings, Func<ActiveDevices?> knownDevices,
         Action refreshDevices, Func<Task<KeyChord>> captureChord, Action<IReadOnlyList<KeyBinding>> setKeyBindings, Func<PageFlowDialogs> dialogs, Func<AdminDialogs> adminDialogs,
         Func<Task<string>> checkNow, Func<string, SoundEvent, SoundImportResult> importSound,
         Action<SoundEvent, SoundSetting, float> previewSound, Action<ClientSettings> applyLive, Action<BackgroundAppearance> showAppearance,
         Func<bool, Task> setSelfTest, Func<ClientSettings, Task> applySaved, Action<Action<float>> startLevelMeter,
-        Action<Action<float>> stopLevelMeter, Func<float> readThresholdDb, Func<ServerViewModel?> shownServer, Action<float>? testSpeaker = null)
+        Action<Action<float>> stopLevelMeter, Func<float> readThresholdDb, Func<ServerViewModel?> shownServer, Action<float>? testSpeaker = null,
+        AudioImportSource? audioImport = null)
     {
+        this.audioImport = audioImport;
         this.time = time;
         this.post = post;
         this.settings = settings;
@@ -119,6 +123,10 @@ internal sealed partial class PageFlowViewModel : ObservableObject
         var newPage = new SettingsViewModel(settings(), knownDevices()?.Inputs, knownDevices()?.Outputs, time, captureChord)
         {
             EditKeyBinding = dialogs().EditKeyBinding,
+            CanImport = audioImport?.IsInstalled() ?? false, // Package 171
+            ReadImport = audioImport?.Read,
+            LogImportProblem = audioImport?.LogProblem,
+            AskImport = dialogs().AskImport,
             CheckNow = checkNow,
             ImportSound = importSound,
             PreviewSound = previewSound,

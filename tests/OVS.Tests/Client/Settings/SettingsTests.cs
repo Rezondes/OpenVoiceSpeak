@@ -12,6 +12,7 @@ using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
 using OVS.Client.Localization;
+using OVS.Client.Models;
 using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using OVS.Shared.Protocol;
@@ -371,6 +372,55 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var settings = Vm(clientSettings);
         Assert.Equal(["Maustaste 4", "Maustaste 5"], settings.KeyBindings.Select(keyBinding => keyBinding.ChordName));
         Assert.Equal(clientSettings.KeyBindings, settings.ToSettings(new ClientSettings()).KeyBindings);
+    }
+
+    // ---- Package 171: take over from Discord ----
+
+    static readonly OVS.Client.Models.ImportedAudio Discord = new("Discord") { AutoGain = false, EchoCancellation = false };
+
+    [Fact]
+    public async Task ImportFromDiscord_Checked_SetOnPageNotSaved()
+    {
+        var saves = 0;
+        var settings = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System)
+        {
+            CanImport = true,
+            ReadImport = () => new AudioImportResult(Discord, null),
+            AskImport = plan => Task.FromResult<IReadOnlyList<ImportChange>?>([plan.Changes.Single(change => change.Name == Strings.Ui_AutoGain)]), // echo unchecked
+            ApplySaved = () => Task.FromResult(saves++),
+        };
+
+        await settings.ImportFromDiscordCommand.ExecuteAsync(null);
+
+        Assert.Equal((false, true, true, 0), (settings.AutoGain, settings.EchoCancellation, settings.HasChanges, saves)); // shown in the bar, not saved
+    }
+
+    [Fact]
+    public async Task ImportFromDiscord_Cancelled_NothingChanges()
+    {
+        var problems = new List<string>();
+        var settings = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System)
+        {
+            CanImport = true,
+            ReadImport = () => new AudioImportResult(Discord, null),
+            AskImport = _ => Task.FromResult<IReadOnlyList<ImportChange>?>(null),
+            LogImportProblem = problems.Add,
+        };
+
+        await settings.ImportFromDiscordCommand.ExecuteAsync(null);
+        Assert.Equal((true, true, false), (settings.AutoGain, settings.EchoCancellation, settings.HasChanges));
+
+        // nothing readable: the page says so, the log says why, nothing changes
+        var unreadable = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System)
+        {
+            CanImport = true, ReadImport = () => new AudioImportResult(null, "discord: locked"), LogImportProblem = problems.Add,
+        };
+        await unreadable.ImportFromDiscordCommand.ExecuteAsync(null);
+        Assert.Equal((Strings.Import_Failed, false), (unreadable.ImportError, unreadable.HasChanges));
+        Assert.Equal(["discord: locked"], problems);
+
+        var none = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System); // no Discord, no Fluxer
+        Assert.Equal((false, Strings.Import_NoneFound), (none.ImportFromDiscordCommand.CanExecute(null), none.ImportTip));
     }
 
     [Fact]

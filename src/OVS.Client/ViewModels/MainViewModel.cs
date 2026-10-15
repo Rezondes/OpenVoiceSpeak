@@ -109,7 +109,7 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 audio.InputLevel -= handler;
                 audio.LevelMeter = false;
             },
-            readThresholdDb: () => audio.InputThresholdDb, shownServer: () => Server);
+            readThresholdDb: () => audio.InputThresholdDb, shownServer: () => Server, audioImport: AudioImportSource.ForUser(Log)); // Package 171
         var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: time, log: Log,
             reportUplink: loss => audio.Loss.Report(loss), endLossStreaks: () => audio.Loss.EndStreaks());
         Stats = new ConnectionStatsViewModel(time,
