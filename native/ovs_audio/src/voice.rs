@@ -344,3 +344,55 @@ pub unsafe extern "C" fn ovs_audio_mixer_settle(mixer: *const crate::core::mixer
     // SAFETY: the caller's guarantee
     guard((), || unsafe { (&*mixer).settle() });
 }
+
+/// Package 179: a new Opus encoder for `channels` (1 or 2), voice (`music` 0) or music mode.
+#[no_mangle]
+pub extern "C" fn ovs_audio_encoder_create(channels: u32, music: u8) -> *mut crate::core::encoder::Encoder {
+    guard(null_mut(), || Box::into_raw(Box::new(crate::core::encoder::Encoder::new(channels.clamp(1, 2) as usize, music != 0))))
+}
+
+/// Package 179: frees an encoder.
+///
+/// # Safety
+/// `encoder` came from create and is not used afterwards.
+#[no_mangle]
+pub unsafe extern "C" fn ovs_audio_encoder_free(encoder: *mut crate::core::encoder::Encoder) {
+    if !encoder.is_null() {
+        // SAFETY: the caller's guarantee
+        guard((), || drop(unsafe { Box::from_raw(encoder) }));
+    }
+}
+
+/// Package 179: sets a value by Opus' request number (`OPUS_SET_*`); Opus' error code.
+///
+/// # Safety
+/// `encoder` is live.
+#[no_mangle]
+pub unsafe extern "C" fn ovs_audio_encoder_set(encoder: *mut crate::core::encoder::Encoder, request: i32, value: i32) -> i32 {
+    // SAFETY: the caller's guarantee
+    guard(-1, || unsafe { (&mut *encoder).set(request, value) })
+}
+
+/// Package 179: reads a value by Opus' request number (`OPUS_GET_*`).
+///
+/// # Safety
+/// `encoder` is live.
+#[no_mangle]
+pub unsafe extern "C" fn ovs_audio_encoder_get(encoder: *mut crate::core::encoder::Encoder, request: i32) -> i32 {
+    // SAFETY: the caller's guarantee
+    guard(0, || unsafe { (&mut *encoder).get(request) })
+}
+
+/// Package 179: encodes 20 ms of `samples` floats (interleaved when stereo) into `out`; the length or a negative error.
+///
+/// # Safety
+/// `encoder` is live; `frame` holds `samples` floats and `out` `capacity` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn ovs_audio_encoder_encode(encoder: *mut crate::core::encoder::Encoder, frame: *const f32, samples: u32, out: *mut u8, capacity: u32) -> i32 {
+    guard(-1, || {
+        // SAFETY: the caller's guarantee
+        unsafe {
+            (&mut *encoder).encode(std::slice::from_raw_parts(frame, samples as usize), std::slice::from_raw_parts_mut(out, capacity as usize))
+        }
+    })
+}

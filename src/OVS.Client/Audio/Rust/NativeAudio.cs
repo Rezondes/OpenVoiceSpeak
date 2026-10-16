@@ -123,6 +123,17 @@ internal sealed unsafe class NativeAudio
     /// <summary>ovs_audio_mic_fake_fail: ends the fake microphone's stream with an HRESULT.</summary>
     internal delegate* unmanaged[Cdecl]<nint, int, void> MicFakeFail { get; private set; }
 
+    /// <summary>ovs_audio_encoder_create: a new Opus encoder, voice or music mode (Package 179).</summary>
+    internal delegate* unmanaged[Cdecl]<uint, byte, nint> EncoderCreate { get; private set; }
+    /// <summary>ovs_audio_encoder_free: frees an encoder.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, void> EncoderFree { get; private set; }
+    /// <summary>ovs_audio_encoder_set: sets a value by Opus' request number.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, int, int, int> EncoderSet { get; private set; }
+    /// <summary>ovs_audio_encoder_get: reads a value by Opus' request number.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, int, int> EncoderGet { get; private set; }
+    /// <summary>ovs_audio_encoder_encode: encodes 20 ms; the packet length or a negative error.</summary>
+    internal delegate* unmanaged[Cdecl]<nint, float*, uint, byte*, uint, int> EncoderEncode { get; private set; }
+
     /// <summary>The library of this name, loaded on the first call.</summary>
     public static NativeAudio Load(string library = Library) => Loaded.GetOrAdd(library, name => new Lazy<NativeAudio>(() => Open(name))).Value;
 
@@ -138,6 +149,7 @@ internal sealed unsafe class NativeAudio
             native.BindVoice(handle);
             native.BindMixer(handle);
             native.BindMicrophone(handle);
+            native.BindEncoder(handle);
             return native;
         }
         #pragma warning disable CA1031 // missing, wrong architecture, a missing export: the client runs without audio (A180)
@@ -212,6 +224,16 @@ internal sealed unsafe class NativeAudio
         MicError = (delegate* unmanaged[Cdecl]<nint, int>)NativeLibrary.GetExport(handle, "ovs_audio_mic_error");
         MicFakeWrite = (delegate* unmanaged[Cdecl]<nint, float*, uint, void>)NativeLibrary.GetExport(handle, "ovs_audio_mic_fake_write");
         MicFakeFail = (delegate* unmanaged[Cdecl]<nint, int, void>)NativeLibrary.GetExport(handle, "ovs_audio_mic_fake_fail");
+    }
+
+    /// <summary>The encoder's exports (Package 179).</summary>
+    void BindEncoder(nint handle)
+    {
+        EncoderCreate = (delegate* unmanaged[Cdecl]<uint, byte, nint>)NativeLibrary.GetExport(handle, "ovs_audio_encoder_create");
+        EncoderFree = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "ovs_audio_encoder_free");
+        EncoderSet = (delegate* unmanaged[Cdecl]<nint, int, int, int>)NativeLibrary.GetExport(handle, "ovs_audio_encoder_set");
+        EncoderGet = (delegate* unmanaged[Cdecl]<nint, int, int>)NativeLibrary.GetExport(handle, "ovs_audio_encoder_get");
+        EncoderEncode = (delegate* unmanaged[Cdecl]<nint, float*, uint, byte*, uint, int>)NativeLibrary.GetExport(handle, "ovs_audio_encoder_encode");
     }
 
     /// <summary>Null when the library's ABI version is this client's, else the reason with both versions.</summary>

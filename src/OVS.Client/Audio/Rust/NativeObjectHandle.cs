@@ -26,6 +26,9 @@ internal sealed unsafe class NativeObjectHandle : SafeHandle
         return new NativeObjectHandle(create(), free);
     }
 
+    /// <summary>Package 179: takes ownership of an object made already (<paramref name="created"/>), freed through <paramref name="free"/>.</summary>
+    public static NativeObjectHandle Take(nint created, delegate* unmanaged[Cdecl]<nint, void> free) => new(created, free);
+
     /// <summary>The native pointer; valid while this handle lives.</summary>
     public nint Pointer => handle;
 

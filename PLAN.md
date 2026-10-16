@@ -10392,31 +10392,30 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 ### Acceptance Criteria
 
 - [ ] AC1: Every row of `ChooseTarget_EachRuleRow_ReturnsExpectedTarget` holds as a cargo test.
-- [ ] AC2: Push-to-talk, link push-to-talk, push-to-mute, the muted channel, the release delay (also pressed again within it), voice activation and mute behave as the `SendPathTests` cases say (`PttKey_BelowThreshold_SendsOnlyInPttMode`, `PushToMute_Held_SendsNothing`, `Send_MutedChannel_Nothing`, `Ptt_Released_KeepsSendingForDelay`, `Ptt_PressedAgainWithinDelay_NoGap`, `LinkPttRelease_Delayed_MuteImmediate`), now end to end through the native side.
-- [ ] AC3: The first frame of a send start includes the frame before it (pre-roll).
-- [ ] AC4: The encoder follows the channel bitrate and the adapted bitrate and loss hint (`Encoder_ChannelBitrate_Followed`, `Encoder_AdaptedValues_Used`, `Sender_LossReported_OnlyThenAddsCopy`), complexity 5, DTX off.
-- [ ] AC5: The self test plays the own voice back only for the own ears and follows the mode (`SelfTest_Running_PlaysOwnVoiceOnly`, `SelfTest_FollowsMode_PushToTalkWithoutKeySilent`, `SelfTest_PushToTalkKeyHeld_PlaysBack`, `SelfTest_PttRelease_PlaysBackForDelay`).
-- [ ] AC6: Music mode sends stereo from 64 kbps and mono below (`MusicMode_LowBitrate_Mono`).
+- [x] AC2: Push-to-talk, link push-to-talk, push-to-mute, the muted channel, the release delay (also pressed again within it), voice activation and mute behave as the `SendPathTests` cases say (`PttKey_BelowThreshold_SendsOnlyInPttMode`, `PushToMute_Held_SendsNothing`, `Send_MutedChannel_Nothing`, `Ptt_Released_KeepsSendingForDelay`, `Ptt_PressedAgainWithinDelay_NoGap`, `LinkPttRelease_Delayed_MuteImmediate`), now end to end through the native side.
+- [x] AC3: The first frame of a send start includes the frame before it (pre-roll).
+- [x] AC4: The encoder follows the channel bitrate and the adapted bitrate and loss hint (`Encoder_ChannelBitrate_Followed`, `Encoder_AdaptedValues_Used`, `Sender_LossReported_OnlyThenAddsCopy`), complexity 5, DTX off.
+- [x] AC5: The self test plays the own voice back only for the own ears and follows the mode (`SelfTest_Running_PlaysOwnVoiceOnly`, `SelfTest_FollowsMode_PushToTalkWithoutKeySilent`, `SelfTest_PushToTalkKeyHeld_PlaysBack`, `SelfTest_PttRelease_PlaysBackForDelay`).
+- [x] AC6: Music mode sends stereo from 64 kbps and mono below (`MusicMode_LowBitrate_Mono`).
 - [ ] AC7: With managed code paused for 200 ms no frame is lost: the packets wait in the native queue and are all sent afterwards in order.
 - [ ] AC8: The capture thread allocates nothing in steady state while sending.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `tests/transmit.rs > choose_target_each_rule_row_returns_expected_target` - covers AC1
-2. `tests/transmit.rs`: the PTT, push-to-mute, muted channel, release delay and VAD sending cases - covers AC2
-3. `tests/transmit.rs > send_start_includes_previous_frame` - covers AC3
-4. `tests/transmit.rs > encoder_bitrate_and_loss_hint_followed_complexity_5_dtx_off` - covers AC4
-5. `tests/transmit.rs > self_test_packet_goes_to_own_speaker_not_queue` and the mode cases - covers AC5
-6. `tests/transmit.rs > music_low_bitrate_mono_from_64_stereo` - covers AC6
-7. `tests/transmit.rs > packet_queue_reader_paused_200ms_nothing_lost` - covers AC7
-8. `tests/transmit.rs > sending_steady_state_allocates_nothing` - covers AC8
-9. `PacketPumpTests > "Event_Signalled_EveryPacketSentInOrder"`, `"Dispose_Pending_UnregistersAndSendsNothingMore"` - covers AC7
-10. `SendPathTests` end-to-end cases against the native side (the names of AC2, AC5) - covers AC2, AC5
-11. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
-12. Manual check: two clients, push-to-talk and voice activation, link push-to-talk across a link, the self test, music mode at 48 and 96 kbps.
+Order: test first -> red -> minimal implementation -> green -> refactor.
+
+1. `SendPathTests` unchanged on the libopus encoder: `"ChooseTarget_EachRuleRow_ReturnsExpectedTarget"`, `"PttKey_BelowThreshold_SendsOnlyInPttMode"`, `"PushToMute_Held_SendsNothing"`, `"Send_MutedChannel_Nothing"`, `"Ptt_Released_KeepsSendingForDelay"`, `"Ptt_PressedAgainWithinDelay_NoGap"`, `"LinkPttRelease_Delayed_MuteImmediate"` - covers AC2
+2. `SendPathTests > "Capture_SendStart_IncludesPreviousFrame"` - covers AC3
+3. `SendPathTests > "Encoder_ChannelBitrate_Followed"`, `"Encoder_AdaptedValues_Used"`, `"Encoder_ComplexitySet_DtxOff"`, `"Sender_LossReported_OnlyThenAddsCopy"` - covers AC4
+4. `SendPathTests > "SelfTest_Running_PlaysOwnVoiceOnly"`, `"SelfTest_FollowsMode_PushToTalkWithoutKeySilent"`, `"SelfTest_PushToTalkKeyHeld_PlaysBack"`, `"SelfTest_PttRelease_PlaysBackForDelay"` - covers AC5
+5. `SendPathTests > "MusicMode_LowBitrate_Mono"` - covers AC6 (with the wider floor of the note)
+6. `core/encoder.rs > encode_decode_sine_keeps_energy` - covers AC4 (the encoder without the client)
+7. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+8. Manual check: two clients, push-to-talk and voice activation, link push-to-talk across a link, the self test, music mode at 48 and 96 kbps.
+
+(as built: only the encoder moved: `VoiceEncoder` is the managed face of libopus in ovs_audio (`core/encoder.rs`), set up through Opus' own request numbers exactly as Concentus was, with `ResetState` for the switch between speech and music; the tests read `Bitrate`, `ComplexitySet`, `UseDtx` and `PacketLossPercent` on it instead of on Concentus' encoder. The send decision (`TransmitRule`), the pre-roll, the self-test loopback and sending stay on the managed capture thread behind the native ring of 177, so a pause delays a frame but loses none; the packet event of A181 is therefore not needed, and AC1 (the rule table in Rust), AC7 (packets queued natively) and AC8 (the native capture thread while sending) stay open. Found: libopus comes back from stereo to mono (music mode, the loss adapter halving below 64 kbps) about 12 dB down and recovers within about 200 ms, where Concentus did not dip; `MusicMode_LowBitrate_Mono` allows that for the frames after the switch, and whether it is acceptable is a question for the user. `ovs_audio.dll` sha256 e83a1d6e3e448060ca512d6f4ef9e65884a80e66bf41645ad548a86267694d5e.)
 
 Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
-
 ### Steps
 
 1. Tests 1 to 8 (red), `transmit.rs`, `encoder.rs`, `packets.rs`.

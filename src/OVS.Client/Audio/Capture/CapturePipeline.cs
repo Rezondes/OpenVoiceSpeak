@@ -257,7 +257,7 @@ internal sealed class CapturePipeline : IDisposable
                     if (opus != lastEncoder)
                     {
                         // Package 142: switched between speech and music; what it encoded last may be minutes old
-                        if (lastEncoder is not null) opus.Opus.ResetState();
+                        if (lastEncoder is not null) opus.ResetState();
                         lastEncoder = opus;
                     }
                     // Package 142 (A151): stereo from 64 kbps, so back to mono too when the loss adapter halves it

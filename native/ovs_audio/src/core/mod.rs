@@ -2,6 +2,7 @@
 //! and moves unchanged to other platforms (A189). `tests/core_has_no_os.rs` checks the sources.
 
 pub mod decoder;
+pub mod encoder;
 pub mod jitter;
 pub mod limiter;
 pub mod mixer;
