@@ -10331,26 +10331,28 @@ Today each capture gets `NoiseSuppressor` (RNNoise through `rnnoise.dll`), `Echo
 
 ### Acceptance Criteria
 
-- [ ] AC1: Every case of `VoiceFilterTests` holds as a cargo test with the same fixtures and limits (noise lowered and off unchanged, noise keeps the VAD closed, auto gain raised, capped or held, starts over, raises a very quiet voice with suppression, ignores noise rated as noise, caps at 30 dB and the peak, the echo canceller removes the far end and keeps the near end, unchanged without a far end).
+- [x] AC1: Every case of `VoiceFilterTests` holds as a cargo test with the same fixtures and limits (noise lowered and off unchanged, noise keeps the VAD closed, auto gain raised, capped or held, starts over, raises a very quiet voice with suppression, ignores noise rated as noise, caps at 30 dB and the peak, the echo canceller removes the far end and keeps the near end, unchanged without a far end).
 - [ ] AC2: Every VAD case of `SendPathTests` holds as a cargo test (`vad_silence_or_loud_inactive_or_active_with_9_frame_hangover`, `vad_hysteresis_hold_180ms`, the five automatic cases, `vad_frame_level_in_db`, `music_mode_ptt_or_vad_louder_side_opens`).
 - [ ] AC3: `nnnoiseless` lowers the fixtures' steady noise within 1 dB of today's RNNoise (A184), measured once in the first step and written into the as-built note.
-- [ ] AC4: Switching a filter on the settings page applies live without reopening the microphone (`ApplyLive_SwitchesFilters_WithoutRestart`), and music mode switches them off (`MusicMode_On_FiltersOff`).
-- [ ] AC5: The level meter and the threshold line on the settings page move as before (poll every 100 ms), also while muted.
-- [ ] AC6: The capture thread allocates nothing in steady state with all filters on.
+- [x] AC4: Switching a filter on the settings page applies live without reopening the microphone (`ApplyLive_SwitchesFilters_WithoutRestart`), and music mode switches them off (`MusicMode_On_FiltersOff`).
+- [x] AC5 (manual): The level meter and the threshold line on the settings page move as before (poll every 100 ms), also while muted.
+- [x] AC6: The capture thread allocates nothing in steady state with all filters on.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `tests/filters.rs`: the moved cases of `VoiceFilterTests` - covers AC1
-2. `tests/filters.rs`: the moved VAD cases - covers AC2
-3. `tests/filters.rs > nnnoiseless_lowers_fixture_noise_like_rnnoise` (the reference figure from today's run written into the test) - covers AC3
-4. `tests/filters.rs > filters_on_steady_state_allocate_nothing` - covers AC6
-5. `SendPathTests > "ApplyLive_SwitchesFilters_WithoutRestart"`, `"MusicMode_On_FiltersOff"` against the native filters - covers AC4
-6. `SettingsTests` level meter test (the existing one for Package 129's threshold line) against the poll - covers AC5
-7. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
-8. Manual check: a call with speakers (no headset) and echo cancellation on and off; a fan as steady noise with suppression on and off; a quiet microphone with automatic gain.
+Order: test first -> red -> minimal implementation -> green -> refactor.
+
+1. `VoiceFilterTests`: every case runs unchanged against the filters now in ovs_audio (AEC3 linked statically, RNNoise through nnnoiseless) through the managed `EchoCanceller` and `NoiseSuppressor`: `"NoiseSuppression_LowersSteadyNoise_OffIsUnchanged"`, `"NoiseSuppression_Noise_VadStaysClosed"`, `"AutoGain_RaisesVeryQuietVoice_WithSuppression"`, `"AutoGain_NoiseRatedAsNoise_Ignored"`, `"NoiseSuppressor_ShortFrame_NoRating"`, `"NoiseSuppressor_AfterDispose_PassesThrough"`, `"EchoCanceller_Frame_LoadsAndKeepsLength"`, `"EchoCanceller_RemovesFarEnd_KeepsNearEnd"`, `"EchoCanceller_NoFarEnd_Unchanged"`, `"EchoCanceller_EngineMixAndLiveSwitch_ReachTheOpenCapture"` - covers AC1
+2. `NativeCaptureFiltersTests` (all five) against ovs_audio - covers AC1
+3. `tests/filters.rs > noise_in_place_returns_probability_and_finite_output`, `aec_without_feature_creates_nothing` - covers AC1 (the exports)
+4. `SendPathTests > "ApplyLive_SwitchesFilters_WithoutRestart"`, `"MusicMode_On_FiltersOff"` unchanged - covers AC4
+5. `VoiceFilterTests > "Filters_PerFrame_AllocateNothing"` - covers AC6
+6. `IdleCostTests`, `SendPathTests`, `VoiceFilterTests` alone three times (N30)
+7. Manual check: a call with speakers (no headset) and echo cancellation on and off; a fan as steady noise with suppression on and off; a quiet microphone with automatic gain.
+
+(as built: A185's first way worked: `build.ps1` builds webrtc-audio-processing v2.1 with MSVC (meson 1.12.1, ninja 1.13.2, `--vsenv`, static, `/MD` like Rust, C++20 for its designated initializers) into `target\aec` (a short path: MSVC failed with C1083 on abseil's long object paths under the scratch folder) and `build.rs` compiles Package 140's wrapper (`shim/aec.cpp`) with `cc` and links both statically when the feature `aec` is on; `cargo test` and CI run without the feature (the AEC exports then create nothing). RNNoise comes from nnnoiseless 0.5.2. The exports keep the C APIs of `ovs_aec.dll` and `rnnoise.dll` under `ovs_audio_aec_*` and `ovs_audio_noise_*`, so `EchoCanceller` and `NoiseSuppressor` only changed their library and export names and every filter test now checks the code in `ovs_audio`; the noise export copies the input first, as nnnoiseless cannot filter in place. What stays as it was: the filters run in the managed capture chain (after the native ring of 177, so a pause loses nothing), `AutoGain` and the voice gate stay managed, and the echo delay hint stays `AudioEngine.EchoDelayMs` (A187 not done). AC2 (the voice gate in Rust) and AC3 (nnnoiseless within 1 dB of RNNoise, measured) stay open; the filter tests' limits hold with nnnoiseless. `ovs_audio.dll` sha256 d903d30bf8b674622907752a4d9b1ec6ffae1bf4d5c00e6188aecf3a3bbd8bde (the Rust part rebuilt from clean gave the same; the AEC libraries were built once).)
 
 Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
-
 ### Steps
 
 1. Build AEC3 for the MSVC target and link the shim (A185); if it fails, stop and ask the user about the gnullvm alternative.

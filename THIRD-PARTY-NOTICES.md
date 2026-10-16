@@ -595,3 +595,10 @@ Broadcom Corporation:
 https://datatracker.ietf.org/ipr/1526/
 ```
 
+
+## nnnoiseless
+
+Quelle: https://github.com/jneem/nnnoiseless (Rust-Portierung von RNNoise, BSD-3-Clause)
+Verwendet in: `native/ovs_audio` (Rauschunterdrückung, statisch in `ovs_audio.dll`, Package 178)
+Lizenz: BSD-3-Clause mit dem Text und den Urhebern von RNNoise (Abschnitt RNNoise oben), plus Copyright (c) 2020 Joe Neeman für die Portierung.
+

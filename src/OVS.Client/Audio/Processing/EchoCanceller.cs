@@ -14,7 +14,7 @@ namespace OVS.Client.Audio.Processing;
 internal sealed unsafe class EchoCanceller : IDisposable
 {
     /// <summary>The native library's name.</summary>
-    public const string Library = "ovs_aec";
+    public const string Library = Rust.NativeAudio.Library; // Package 178: AEC3 is linked into ovs_audio
 
     static readonly ConcurrentDictionary<string, Lazy<Native>> Loaded = new();
 
@@ -35,11 +35,11 @@ internal sealed unsafe class EchoCanceller : IDisposable
             var handle = NativeLibrary.Load(library, typeof(EchoCanceller).Assembly, null);
             return new Native
             {
-                Create = (delegate* unmanaged[Cdecl]<nint>)NativeLibrary.GetExport(handle, "ovs_aec_create"),
-                SetDelay = (delegate* unmanaged[Cdecl]<nint, int, void>)NativeLibrary.GetExport(handle, "ovs_aec_set_delay"),
-                Render = (delegate* unmanaged[Cdecl]<nint, float*, int>)NativeLibrary.GetExport(handle, "ovs_aec_render"),
-                Capture = (delegate* unmanaged[Cdecl]<nint, float*, int>)NativeLibrary.GetExport(handle, "ovs_aec_capture"),
-                Destroy = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "ovs_aec_destroy"),
+                Create = (delegate* unmanaged[Cdecl]<nint>)NativeLibrary.GetExport(handle, "ovs_audio_aec_create"),
+                SetDelay = (delegate* unmanaged[Cdecl]<nint, int, void>)NativeLibrary.GetExport(handle, "ovs_audio_aec_set_delay"),
+                Render = (delegate* unmanaged[Cdecl]<nint, float*, int>)NativeLibrary.GetExport(handle, "ovs_audio_aec_render"),
+                Capture = (delegate* unmanaged[Cdecl]<nint, float*, int>)NativeLibrary.GetExport(handle, "ovs_audio_aec_capture"),
+                Destroy = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "ovs_audio_aec_destroy"),
             };
         }
         #pragma warning disable CA1031 // missing, wrong architecture, a missing export: echo cancellation is off
@@ -58,7 +58,7 @@ internal sealed unsafe class EchoCanceller : IDisposable
         if (error is not null) return null;
         var state = native.Create();
         if (state != 0) return new EchoCanceller(native, state);
-        error = "ovs_aec_create returned nothing";
+        error = "ovs_audio_aec_create returned nothing";
         return null;
     }
 

@@ -13,7 +13,7 @@ namespace OVS.Client.Audio.Processing;
 internal sealed unsafe class NoiseSuppressor : IDisposable
 {
     /// <summary>The native library's name.</summary>
-    public const string Library = "rnnoise";
+    public const string Library = Rust.NativeAudio.Library; // Package 178 (A184): RNNoise through nnnoiseless in ovs_audio
 
     // RNNoise expects samples in the 16-bit range, not -1..1
     const float Scale = 32768f;
@@ -34,9 +34,9 @@ internal sealed unsafe class NoiseSuppressor : IDisposable
             var handle = NativeLibrary.Load(library, typeof(NoiseSuppressor).Assembly, null);
             return new Native
             {
-                Create = (delegate* unmanaged[Cdecl]<nint, nint>)NativeLibrary.GetExport(handle, "rnnoise_create"),
-                ProcessFrame = (delegate* unmanaged[Cdecl]<nint, float*, float*, float>)NativeLibrary.GetExport(handle, "rnnoise_process_frame"),
-                Destroy = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "rnnoise_destroy"),
+                Create = (delegate* unmanaged[Cdecl]<nint, nint>)NativeLibrary.GetExport(handle, "ovs_audio_noise_create"),
+                ProcessFrame = (delegate* unmanaged[Cdecl]<nint, float*, float*, float>)NativeLibrary.GetExport(handle, "ovs_audio_noise_process_frame"),
+                Destroy = (delegate* unmanaged[Cdecl]<nint, void>)NativeLibrary.GetExport(handle, "ovs_audio_noise_destroy"),
             };
         }
         #pragma warning disable CA1031 // whatever keeps it from loading (missing, wrong architecture, missing runtime) turns it off
@@ -55,7 +55,7 @@ internal sealed unsafe class NoiseSuppressor : IDisposable
         if (error is not null) return null;
         var state = native.Create(0); // 0: the built-in model
         if (state != 0) return new NoiseSuppressor(native, state);
-        error = "rnnoise_create returned nothing";
+        error = "ovs_audio_noise_create returned nothing";
         return null;
     }
 

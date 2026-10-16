@@ -12,6 +12,16 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 # Package 175 (A183): libopus, built from its bundled sources with CMake and linked statically
 audiopus_sys = { version = "0.2.2", features = ["static"] }
+# Package 178 (A184): RNNoise in pure Rust, instead of rnnoise.dll
+nnnoiseless = { version = "0.5", default-features = false }
+
+[build-dependencies]
+# Package 178 (A185): compiles the AEC3 shim (only with the feature "aec")
+cc = "1"
+
+[features]
+# Package 178 (A185): link WebRTC's AEC3, built by build.ps1 into target/aec (OVS_AEC_BUILD); cargo test runs without it
+aec = []
 
 [target.'cfg(windows)'.dependencies]
 # Package 173 (A177): WASAPI directly, to open by MMDevice id and let Windows convert the rate (AUTOCONVERTPCM)
