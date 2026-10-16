@@ -103,23 +103,15 @@ public sealed class WebsiteShots
         scene.Save(Folder, "start");
     }
 
-    static void OpenSettings(WebsiteScene scene, string section, bool toBottom = false)
+    /// <summary>Package 152: opens the settings on the page with the x:Name <paramref name="pageName"/> of the side navigation.</summary>
+    static void OpenSettings(WebsiteScene scene, string pageName)
     {
         scene.Vm.PageFlow.OpenSettings();
         ShotWriter.Settle(700);
         scene.Vm.PageFlow.SettingsPage!.InputLevelDb = -16;
         var page = scene.Window.GetVisualDescendants().OfType<SettingsView>().Single();
-        var title = page.GetVisualDescendants().OfType<TextBlock>().First(textBlock => textBlock.Text == section);
-        if (toBottom)
-        {
-            // the section ends at the bottom of what shows (the version below it changes with every build)
-            var block = (Visual)title.GetVisualParent()!;
-            var scroll = title.GetVisualAncestors().OfType<ScrollViewer>().First();
-            var bottom = block.TranslatePoint(default, (Visual)scroll.Content!)!.Value.Y + block.Bounds.Height;
-            scroll.Offset = new Vector(0, bottom - scroll.Viewport.Height + 12);
-        }
-        else ScrollTo(title);
-        ShotWriter.Settle(900); // the sections below fade up
+        page.FindControl<TabControl>("Sections")!.SelectedItem = page.FindControl<TabItem>(pageName);
+        ShotWriter.Settle(900); // the page's cards fade up
     }
 
     [AvaloniaTheory]
@@ -128,8 +120,8 @@ public sealed class WebsiteShots
     {
         using var scene = new WebsiteScene(lang, theme, 760, clientSettings => clientSettings.Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation);
         scene.Connect();
-        OpenSettings(scene, Strings.Ui_VolumeSection);
-        Shows(scene.Window, Strings.Ui_TransmitSection);
+        OpenSettings(scene, "TransmitPage");
+        Shows(scene.Window, Strings.Ui_ModeVad);
         scene.Save(Folder, "settings-audio");
     }
 
@@ -139,9 +131,8 @@ public sealed class WebsiteShots
     {
         using var scene = new WebsiteScene(lang, theme, 760);
         scene.Connect();
-        OpenSettings(scene, Strings.Ui_AppearanceSection, toBottom: true);
-        Shows(scene.Window, Strings.Ui_AppearanceSection);
-        Assert.DoesNotContain(scene.Window.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text?.Contains(" dev.", StringComparison.Ordinal) == true && OnScreen(textBlock, scene.Window));
+        OpenSettings(scene, "AppearancePage");
+        Shows(scene.Window, Strings.Settings_StreamerMode);
         scene.Save(Folder, "settings-look");
     }
 
@@ -181,11 +172,11 @@ public sealed class WebsiteShots
         scene.Save(Folder, "channel-dialog");
     }
 
-    /// <summary>The administration on one of its tabs (0 groups, 1 users, 2 bans, 3 links, 4 server, 5 logs).</summary>
+    /// <summary>The administration on one of its tabs (0 groups, 1 users, 2 bans, 3 links, 4 backups, 5 logs).</summary>
     static AdminScene Admin(string lang, string theme, int tab)
     {
-        // Package 154: the side navigation's index of each former tab (group titles between them; "server" is Übersicht)
-        int[] pageOf = [3, 6, 7, 4, 1, 9];
+        // Package 154: the side navigation's index of each former tab (group titles between them)
+        int[] pageOf = [3, 6, 7, 4, 11, 9];
         return AdminOnPage(lang, theme, pageOf[tab]);
     }
 
