@@ -497,3 +497,8 @@ brag-output*/
 
 # Package 172: cargo's build output of the native audio library
 native/ovs_audio/target/
+
+# graphify: the graph in graphify-out/ is committed (rebuilt by the graphify
+# git hooks); only its local cache and cost report stay out
+graphify-out/cache/
+graphify-out/cost.json
