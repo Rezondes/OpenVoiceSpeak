@@ -1,25 +1,17 @@
-using NAudio.Wave;
 using OVS.Client.Audio.Capture;
 using OVS.Client.Audio.Codec;
 
 namespace OVS.Tests.Client.Audio.Capture;
 
-/// <summary>The capture buffer's conversions to float samples, mono or stereo, and the stereo downmix.</summary>
+/// <summary>The microphone's samples as mono or stereo, and the stereo downmix.</summary>
 public class SampleConversionTests
 {
-    static byte[] Bytes(Array samples)
-    {
-        var bytes = new byte[Buffer.ByteLength(samples)];
-        Buffer.BlockCopy(samples, 0, bytes, 0, bytes.Length);
-        return bytes;
-    }
-
     static bool Near(float actual, float expected) => Math.Abs(actual - expected) < 1e-6f;
 
     static float[] ReadMono(float[] interleaved, int channels)
     {
         float[] buffer = [];
-        return SampleConversion.ReadMono(Bytes(interleaved), interleaved.Length * sizeof(float), WaveFormat.CreateIeeeFloatWaveFormat(48_000, channels), ref buffer).ToArray();
+        return SampleConversion.ReadMono(interleaved, channels, ref buffer).ToArray();
     }
 
     [Fact]
@@ -46,22 +38,6 @@ public class SampleConversionTests
     }
 
     [Fact]
-    public void ReadMono_Pcm16Mono_Scales()
-    {
-        short[] pcm = [16384, -32768];
-        float[] buffer = [];
-        Assert.Equal([0.5f, -1f], SampleConversion.ReadMono(Bytes(pcm), 4, new WaveFormat(48_000, 16, 1), ref buffer).ToArray());
-    }
-
-    [Fact]
-    public void ReadMono_Pcm16Stereo_ScalesAndAverages()
-    {
-        short[] pcm = [16384, 16384, -32768, -16384];
-        float[] buffer = [];
-        Assert.Equal([0.5f, -0.75f], SampleConversion.ReadMono(Bytes(pcm), 8, new WaveFormat(48_000, 16, 2), ref buffer).ToArray());
-    }
-
-    [Fact]
     public void ReadMono_FourSimilarChannels_AveragesAll()
     {
         Assert.Equal([0.25f, -0.25f], ReadMono([0.1f, 0.2f, 0.3f, 0.4f, -0.1f, -0.2f, -0.3f, -0.4f], 4), Near);
@@ -81,32 +57,14 @@ public class SampleConversionTests
         Assert.Equal([0.38f, 0.38f], ReadMono([0.5f, 0.26f, 0.5f, 0.26f], 2), Near);
     }
 
+    /// <summary>Package 124: nothing allocated per read while the caller's buffer is large enough.</summary>
     [Fact]
-    public void ReadMono_ExtensibleFloatFormat_ReadsFloats()
-    {
-        float[] stereo = [0.2f, 0.4f, -1f, 1f];
-        float[] buffer = [];
-        var mono = SampleConversion.ReadMono(Bytes(stereo), 16, new WaveFormatExtensible(48_000, 32, 2), ref buffer).ToArray();
-        Assert.Equal([0.3f, 0f], mono, Near);
-    }
-
-    [Fact]
-    public void ReadMono_Pcm24_ThrowsNotSupportedInEnglish()
-    {
-        var format = new WaveFormat(48_000, 24, 1);
-        float[] buffer = [];
-        var error = Assert.Throws<NotSupportedException>(() => SampleConversion.ReadMono(new byte[6], 6, format, ref buffer));
-        Assert.Equal($"Capture format {format} is not supported", error.Message);
-    }
-
-    /// <summary>Package 124: nothing allocated per callback while the caller's buffer is large enough.</summary>
-    [Fact]
-    public void ReadMono_BufferLargeEnough_KeptAndOnlyTheGivenBytesRead()
+    public void ReadMono_BufferLargeEnough_KeptAndOnlyTheGivenSamplesRead()
     {
         float[] samples = [0.2f, 0.4f, 0.6f, 0.8f];
         float[] buffer = new float[16];
         var kept = buffer;
-        var mono = SampleConversion.ReadMono(Bytes(samples), 8, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 1), ref buffer).ToArray();
+        var mono = SampleConversion.ReadMono(samples.AsSpan(0, 2), 1, ref buffer).ToArray();
         Assert.Same(kept, buffer);
         Assert.Equal([0.2f, 0.4f], mono);
     }
@@ -116,7 +74,7 @@ public class SampleConversionTests
     {
         float[] samples = [0.2f, 0.4f, 0.6f, 0.8f];
         float[] small = new float[1];
-        SampleConversion.ReadMono(Bytes(samples), 16, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 1), ref small);
+        SampleConversion.ReadMono(samples, 1, ref small);
         Assert.Equal(4, small.Length);
     }
 
@@ -125,7 +83,7 @@ public class SampleConversionTests
     {
         float[] four = [0.1f, 0.2f, 0.3f, 0.4f, -0.1f, -0.2f, -0.3f, -0.4f];
         float[] buffer = [];
-        var stereo = SampleConversion.ReadStereo(Bytes(four), 32, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 4), ref buffer).ToArray();
+        var stereo = SampleConversion.ReadStereo(four, 4, ref buffer).ToArray();
         Assert.Equal([0.1f, 0.2f, -0.1f, -0.2f], stereo);
     }
 
@@ -134,7 +92,7 @@ public class SampleConversionTests
     {
         float[] samples = [0.5f, 0f, -0.5f, 0f];
         float[] buffer = [];
-        var stereo = SampleConversion.ReadStereo(Bytes(samples), 16, WaveFormat.CreateIeeeFloatWaveFormat(48_000, 2), ref buffer).ToArray();
+        var stereo = SampleConversion.ReadStereo(samples, 2, ref buffer).ToArray();
         Assert.Equal(samples, stereo);
     }
 

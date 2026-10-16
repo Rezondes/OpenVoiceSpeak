@@ -10454,16 +10454,16 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 ### Acceptance Criteria
 
 - [ ] AC1: No source file of the client references `NAudio.Wave`, `Concentus`, `rnnoise` or `ovs_aec`; the published client contains `ovs_audio.dll` and no `rnnoise.dll` or `ovs_aec.dll`.
-- [ ] AC2: Without `ovs_audio.dll` the client starts, shows one notice that audio is unavailable, logs the reason once, and connects and chats without audio.
-- [ ] AC3: The whole suite and the cargo tests are green; the allocation tests pass three times alone.
-- [ ] AC4: `THIRD-PARTY-NOTICES.md` names every component in `ovs_audio.dll` with its licence, and no component that is gone.
-- [ ] AC5: The published client is smaller or at most 2 MB larger than before 172 (written into the as-built note).
+- [x] AC2: Without `ovs_audio.dll` the client starts, shows one notice that audio is unavailable, logs the reason once, and connects and chats without audio.
+- [x] AC3 (manual): The whole suite and the cargo tests are green; the allocation tests pass three times alone.
+- [x] AC4: `THIRD-PARTY-NOTICES.md` names every component in `ovs_audio.dll` with its licence, and no component that is gone.
+- [x] AC5 (manual): The published client is smaller or at most 2 MB larger than before 172 (written into the as-built note).
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `ArchitectureTests > "Client_NoReference_ToNAudioWaveConcentusRnnoiseOrOvsAec"` (a source scan like the existing rule tests, or a rule in `tools/rule-lint`) - covers AC1
+1. `ArchitectureTests > "Client_NoReference_ToNAudioWaveConcentusRnnoiseOrOvsAec"` (a source scan like the existing rule tests, or a rule in `tools/rule-lint`) and `ArchitectureTests > "Client_NativeLibraries_OnlyOvsAudio"` - covers AC1
 2. `AudioEngineTests > "Start_LibraryMissing_OneNoticeAndRunsWithoutAudio"` - covers AC2
-3. `NoticesTests > "ThirdPartyNotices_NameEveryNativeComponent"` (a list in the test checked against the file) - covers AC4
+3. `NoticesTests > "ThirdPartyNotices_NativeComponents_EachNamedAndNoneGone"` (a list in the test checked against the file) - covers AC4
 4. Full suite and cargo tests (AC3); allocation tests three times (N30)
 5. Manual check: publish as in `release.yml`, list the files, compare the size (AC5); start without the DLL (AC2); one full call with two clients.
 
@@ -10475,6 +10475,8 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 2. Remove the packages, DLLs and classes; fix what no longer builds.
 3. Notices, coding rules, build documentation.
 4. Full suite, cargo tests, allocation tests, manual check.
+
+(as built: Concentus, `YellowDogMan.RRNoise.NET` (and with it `rnnoise.dll`), `ovs_aec.dll` and `native/ovs_aec/` are gone; `runtimes/win-x64/native` holds only `ovs_audio.dll`. `SampleConversion` reads the native microphone's float samples as spans instead of bytes in an NAudio `WaveFormat` (its PCM16, extensible-format and 24-bit cases went with the byte path). NAudio stays: `CoreAudioApi` for the device listing and watcher (A186, as planned) and, unplanned, `NAudio.Wave`'s `AudioFileReader` and `WaveFileWriter` in `Sounds/SoundImport` and `SoundLibrary`, which read the user's WAV and MP3 tones (no output, no capture); replacing them needs an MP3 decoder, a question for the user, so AC1 stays open and `ArchitectureTests` allows `NAudio.Wave` only under `Audio/Sounds/`. Without `ovs_audio.dll` the engine runs as with `--no-audio`: `AudioEngine.Unavailable` gives the one notice `MainViewModel` shows at the start, `AudioOff` the one log line. The notices name the Rust crates nnnoiseless and libopus pull in (table with MIT and ISC texts) and no longer MinGW or libc++ (A185 built AEC3 with MSVC). Published as in `release.yml`: `OVS.Client.exe` 103,664,409 bytes against 102,678,443 before Package 172 (f25e7df), 0.99 MB more; the old bundle held `rnnoise.dll`, `ovs_aec.dll` and `Concentus.dll`, the new one only `ovs_audio.dll`. Not done here: the start without the DLL and a full call with two clients by hand. `ovs_audio.dll` unchanged, sha256 e83a1d6e3e448060ca512d6f4ef9e65884a80e66bf41645ad548a86267694d5e.)
 
 ### Out of Scope
 

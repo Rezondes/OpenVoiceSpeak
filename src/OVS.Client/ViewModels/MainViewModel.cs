@@ -144,6 +144,7 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         Keys = keys;
         Audio = audio;
         Audio.Warning += text => post(() => AddNotice(text, NoticeKind.Warning)); // Package 124: devices open when needed
+        if (Audio.Unavailable is { } noAudio) AddNotice(noAudio, NoticeKind.Warning); // Package 180 (A180)
         this.soundLibrary = soundLibrary;
         Audio.TransmitChanged += target => post(() =>
         {

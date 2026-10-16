@@ -268,6 +268,8 @@ dotnet build
 dotnet test
 ```
 
+Die Audio-Engine des Clients ist die native Bibliothek `ovs_audio.dll` (Rust, `native/ovs_audio`). Sie liegt fertig gebaut unter `src/OVS.Client/runtimes/win-x64/native/`. Nach einer Änderung am Rust-Code baut `powershell -File native\ovs_audio\build.ps1` sie neu (rustup mit den MSVC-Buildtools, Python 3 mit meson und ninja, git; Details im Kopf des Skripts). Vor dem Commit laufen dort `cargo test` und `cargo clippy --all-targets -- -D warnings`. Fehlt die DLL, startet der Client ohne Audio und zeigt einen Hinweis.
+
 Die Tests laufen mit In-Process-Servern auf zufälligen lokalen Ports. Sie umfassen Protokoll, Rechte, Voice-Kryptografie, Routing und Relay über echtes UDP, die Audio-Pipeline, die ViewModels, Server-, Channel- und Client-Logs sowie den automatischen Neustart. Dazu kommen Ende-zu-Ende-Tests mit zwei echten Clients, gesteuert über die Debug-API.
 
 Server ohne Docker starten, z. B. zum Testen unter Windows (Daten landen in `./data`, Einstellungen wie oben als Umgebungsvariablen):

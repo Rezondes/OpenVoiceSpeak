@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using NAudio.Wave;
 using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Processing;
@@ -60,9 +59,8 @@ internal sealed class CapturePipeline : IDisposable
 
     void MicrophoneLoop(NativeMicrophone source, Action<Exception>? failed)
     {
-        var format = WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, source.Channels);
-        var raw = new float[AudioFormat.SampleRate / 10 * source.Channels]; // up to 100 ms per read
-        var bytes = new byte[raw.Length * sizeof(float)];
+        int channels = source.Channels;
+        var raw = new float[AudioFormat.SampleRate / 10 * channels]; // up to 100 ms per read
         float[] samples = []; // reused: only this thread touches it
         var sides = new StereoInput(); // Package 142: one per opened device
         WaitHandle[] wakes = [source.Ready, toneStop.WaitHandle];
@@ -79,10 +77,9 @@ internal sealed class CapturePipeline : IDisposable
             int count;
             while ((count = source.Read(raw)) > 0)
             {
-                Buffer.BlockCopy(raw, 0, bytes, 0, count * sizeof(float));
-                if (Music && format.Channels >= 2) // Package 142: without the downmix; a mono device stays mono
-                    Feed(SampleConversion.ReadStereo(bytes, count * sizeof(float), format, ref samples, sides), format.SampleRate, 2);
-                else Feed(SampleConversion.ReadMono(bytes, count * sizeof(float), format, ref samples), format.SampleRate);
+                if (Music && channels >= 2) // Package 142: without the downmix; a mono device stays mono
+                    Feed(SampleConversion.ReadStereo(raw.AsSpan(0, count), channels, ref samples, sides), AudioFormat.SampleRate, 2);
+                else Feed(SampleConversion.ReadMono(raw.AsSpan(0, count), channels, ref samples), AudioFormat.SampleRate);
             }
         }
     }

@@ -32,15 +32,10 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <!-- Step 30d4 (W6, decided by the user): ClientServices makes the main view model and its parts -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
-    <PackageReference Include="Concentus" Version="2.2.2" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.10" />
-    <!-- Package 123: only the native RNNoise builds (BSD-3); NoiseSuppressor calls them itself, so the wrapper stays unused -->
-    <PackageReference Include="YellowDogMan.RRNoise.NET" Version="0.1.9" IncludeAssets="native" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Package 140: WebRTC's echo canceller behind the own C wrapper (BSD-3), built by native/ovs_aec/build.ps1 -->
-    <None Include="runtimes\win-x64\native\ovs_aec.dll" Link="ovs_aec.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!-- Package 172 (A180): the native audio engine (Rust), built by native/ovs_audio/build.ps1 -->
     <None Include="runtimes\win-x64\native\ovs_audio.dll" Link="ovs_audio.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

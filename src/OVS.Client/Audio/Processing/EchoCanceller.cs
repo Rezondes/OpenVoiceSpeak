@@ -5,8 +5,8 @@ using OVS.Client.Audio.Codec;
 namespace OVS.Client.Audio.Processing;
 
 /// <summary>
-/// Package 140 (A149): WebRTC's echo canceller (AEC3, from the freedesktop webrtc-audio-processing, BSD-3) behind the
-/// own C wrapper <c>ovs_aec</c> (see native/ovs_aec). Loaded by hand like <see cref="NoiseSuppressor"/>: a missing
+/// Package 140 (A149): WebRTC's echo canceller (AEC3, from the freedesktop webrtc-audio-processing, BSD-3), since
+/// Package 178 linked into the native library (native/ovs_audio, <c>shim/aec.cpp</c>). Loaded by hand like <see cref="NoiseSuppressor"/>: a missing
 /// library shows up as null. The far end (<see cref="Render"/>) comes from the playback thread, the near end
 /// (<see cref="Process"/>) from the capture thread under the pipeline's lock; the library locks the two sides itself.
 /// </summary>

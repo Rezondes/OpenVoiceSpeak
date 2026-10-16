@@ -81,6 +81,9 @@ static partial class ClientLogLines
     [LoggerMessage(Level = LogLevel.Warning, Message = "{Feature} off: {Library} cannot be loaded ({Error})")]
     public static partial void FilterOff(this ILogger logger, string feature, string library, string? error);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Audio off: {Library} cannot be loaded ({Error})")]
+    public static partial void AudioOff(this ILogger logger, string library, string error);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Sound file {File} for {Sound} missing or unreadable, the default tone plays")]
     public static partial void SoundFileUnreadable(this ILogger logger, string file, SoundEvent sound);
 

@@ -12,6 +12,7 @@
   <data name="Audio_MicLost" xml:space="preserve"><value>Mikrofon getrennt, Standardgerät wird verwendet.</value></data>
   <data name="Audio_SpeakerFailed" xml:space="preserve"><value>Lautsprecher konnte nicht geöffnet werden: {0}</value></data>
   <data name="Audio_SpeakerLost" xml:space="preserve"><value>Lautsprecher getrennt, Standardgerät wird verwendet.</value></data>
+  <data name="Audio_Unavailable" xml:space="preserve"><value>Audio ist nicht verfügbar, der Client läuft ohne Mikrofon und Lautsprecher: {0}</value></data>
   <data name="Backup_ConfirmDelete" xml:space="preserve"><value>Backup vom {0} löschen?</value></data>
   <data name="Backup_ConfirmRestore" xml:space="preserve"><value>Alle werden getrennt, der aktuelle Stand wird ersetzt. Vorher legt der Server ein Sicherheits-Backup an.</value></data>
   <data name="Backup_Details" xml:space="preserve"><value>{0}, Serverversion {1}</value></data>

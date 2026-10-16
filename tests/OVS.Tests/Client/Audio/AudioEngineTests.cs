@@ -2,6 +2,7 @@ using OVS.Client.Audio;
 using OVS.Client.Audio.Processing;
 using OVS.Client.Input;
 using OVS.Tests.Client.Audio.Processing;
+using OVS.Tests.TestSupport;
 
 namespace OVS.Tests.Client.Audio;
 
@@ -20,6 +21,30 @@ public class AudioEngineTests
     [Fact]
     public void EchoDelayMs_DefaultBuffers_IsPlaybackPlusSpeakerPlusMic() =>
         Assert.Equal(90, AudioEngine.EchoDelayMs); // the playback's 40 ms, the speaker's 30 ms and the microphone's 20 ms
+
+    /// <summary>
+    /// Package 180 (A180): without the native library the engine runs as with --no-audio: it opens no device, keeps no
+    /// watch on them, names the reason once for the start's notice and logs it once; connecting still works.
+    /// </summary>
+    [Fact]
+    public void Start_LibraryMissing_OneNoticeAndRunsWithoutAudio()
+    {
+        var log = new List<string>();
+        var hardware = new FakeAudioHardware();
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware, new NativeCaptureFilters(new LineLogger(log)),
+            audioLibrary: "ovs-no-such-audio");
+
+        engine.Connected = true;
+        engine.Mixer.Push(7, 0, [0xF8, 0xFF, 0xFE], viaLink: false);
+        engine.Connected = false;
+
+        Assert.Contains("ovs-no-such-audio", engine.Unavailable, StringComparison.Ordinal);
+        Assert.False(engine.DeviceLifecycle.OpensDevices);
+        Assert.Equal(0, hardware.Subscribers);
+        Assert.Equal(new DeviceCounts(0, 0, 0, 0), hardware.Counts);
+        Assert.Single(log, line => line.Contains("ovs-no-such-audio", StringComparison.Ordinal));
+    }
 
     [Fact]
     public void SetTone_NoFiltersGiven_ToneCaptureCarriesBothFiltersWithTheEngineEchoDelay()

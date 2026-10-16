@@ -1,4 +1,3 @@
-using NAudio.Wave;
 using OVS.Client.Audio.Capture;
 using OVS.Client.Audio.Codec;
 using OVS.Client.Audio.Playback;
@@ -63,19 +62,18 @@ public class IdleCostTests
     [Fact]
     public void Engine_SteadyState_AllocatesNothing()
     {
-        // capture while not sending: 10 ms of 16 bit stereo at 44.1 kHz per callback (mono, resampler, chunker, VAD) ...
-        var pcm16 = new WaveFormat(44_100, 16, 2);
-        var stereo = new byte[441 * pcm16.BlockAlign];
-        new Random(1).NextBytes(stereo);
+        // capture while not sending: 10 ms of stereo at 44.1 kHz per read (mono, resampler, chunker, VAD) ...
+        const int Rate44 = 44_100;
+        var random = new Random(1);
+        var stereo = Enumerable.Range(0, 441 * 2).Select(_ => (float)random.NextDouble() * 2 - 1).ToArray();
         var pipeline = CapturePipeline.Manual();
         float[] mono = [];
-        Assert.Equal(0, Allocated(() => pipeline.Feed(SampleConversion.ReadMono(stereo, stereo.Length, pcm16, ref mono), pcm16.SampleRate)).Min());
+        Assert.Equal(0, Allocated(() => pipeline.Feed(SampleConversion.ReadMono(stereo, 2, ref mono), Rate44)).Min());
 
         // ... and float mono at 48 kHz, where the resampler passes the samples through
-        var float48 = WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 1);
-        var floats = new byte[AudioFormat.HalfFrameSamples * float48.BlockAlign];
+        var floats = new float[AudioFormat.HalfFrameSamples];
         var direct = CapturePipeline.Manual();
-        Assert.Equal(0, Allocated(() => direct.Feed(SampleConversion.ReadMono(floats, floats.Length, float48, ref mono), float48.SampleRate)).Min());
+        Assert.Equal(0, Allocated(() => direct.Feed(SampleConversion.ReadMono(floats, 1, ref mono), AudioFormat.SampleRate)).Min());
 
         // Decoding: Package 175 decodes with native libopus (A183), which allocates nothing on the managed heap, so a mixer
         // tick and a decode must allocate nothing at all (in at least one window); with Concentus they allocated about 28 KB
@@ -112,12 +110,11 @@ public class IdleCostTests
         music.Music = true;
         float[] samples = [];
         var sides = new StereoInput(); // judging the sides (review) allocates nothing either
-        Assert.Equal(0, Allocated(() => music.Feed(SampleConversion.ReadStereo(stereo, stereo.Length, pcm16, ref samples, sides), pcm16.SampleRate, 2)).Min());
-        var stereoFloats = new byte[AudioFormat.HalfFrameSamples * 2 * sizeof(float)];
+        Assert.Equal(0, Allocated(() => music.Feed(SampleConversion.ReadStereo(stereo, 2, ref samples, sides), Rate44, 2)).Min());
+        var stereoFloats = new float[AudioFormat.HalfFrameSamples * 2];
         var direct48 = CapturePipeline.Manual();
         direct48.Music = true;
-        var float48Stereo = WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 2);
-        Assert.Equal(0, Allocated(() => direct48.Feed(SampleConversion.ReadStereo(stereoFloats, stereoFloats.Length, float48Stereo, ref samples, sides), AudioFormat.SampleRate, 2)).Min());
+        Assert.Equal(0, Allocated(() => direct48.Feed(SampleConversion.ReadStereo(stereoFloats, 2, ref samples, sides), AudioFormat.SampleRate, 2)).Min());
 
         // ... and while sending in stereo it allocates what the Opus encoder and the packet arrays do, nothing more: the
         // same frames through an encoder of its own, the pre-roll frame first as the pipeline sends it. Taken in turns,

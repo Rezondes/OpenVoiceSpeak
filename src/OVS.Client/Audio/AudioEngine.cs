@@ -5,7 +5,10 @@ using OVS.Client.Audio.Playback;
 using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
+using OVS.Client.Audio.Rust;
 using OVS.Client.Input;
+using OVS.Client.Localization;
+using OVS.Client.Logging;
 using OVS.Client.Settings;
 using OVS.Shared.Protocol;
 using OVS.Shared.Voice;
@@ -49,11 +52,19 @@ internal sealed class AudioEngine : IDisposable
     /// </param>
     /// <param name="samples">Package 48: a sound's samples for its setting (the profile's own tones); null: the default tones.</param>
     /// <param name="keys">The key poller push-to-talk and the self test read.</param>
+    /// <param name="audioLibrary">Package 180: the native audio library; tests name a missing one.</param>
     public AudioEngine(KeyPoller keys, TimeProvider time, IAudioHardware? hardware, NativeCaptureFilters? filters = null,
-        Func<SoundEvent, SoundSetting, float[]>? samples = null)
+        Func<SoundEvent, SoundSetting, float[]>? samples = null, string audioLibrary = NativeAudio.Library)
     {
         this.keys = keys;
         Filters = filters ?? new NativeCaptureFilters(log: null);
+        // Package 180 (A180): without the native library the client runs as with --no-audio, with one notice and one log line
+        if (NativeAudio.Load(audioLibrary).Error is { } missing)
+        {
+            hardware = null;
+            Unavailable = TextFormat.Of(Strings.Audio_Unavailable, missing);
+            Filters.Log?.AudioOff(audioLibrary, missing);
+        }
         Loss = new LossAdapter(time, ProtocolDefaults.Bitrate);
         // before the keys' tones can start the playback thread, which opens the speaker through it
         DeviceLifecycle = new DeviceLifecycle(gate, hardware, time, () => micWanted, () => PlaybackRunning, ConfigureCapture,
@@ -194,6 +205,9 @@ internal sealed class AudioEngine : IDisposable
 
     /// <summary>Package 124: a device opened in the background could not be used (the text for a notice).</summary>
     public event Action<string>? Warning;
+
+    /// <summary>Package 180 (A180): why there is no audio at all (the native library cannot load), for one notice at the start; null when there is.</summary>
+    public string? Unavailable { get; }
 
     /// <summary>Package 53: sliders on the settings page act at once, without restarting the devices.</summary>
     public void ApplyLive(ClientSettings live)

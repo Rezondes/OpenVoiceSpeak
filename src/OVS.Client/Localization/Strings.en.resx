@@ -12,6 +12,7 @@
   <data name="Audio_MicLost" xml:space="preserve"><value>Microphone disconnected, using the default device.</value></data>
   <data name="Audio_SpeakerFailed" xml:space="preserve"><value>Could not open the speaker: {0}</value></data>
   <data name="Audio_SpeakerLost" xml:space="preserve"><value>Speaker disconnected, using the default device.</value></data>
+  <data name="Audio_Unavailable" xml:space="preserve"><value>Audio is unavailable, the client runs without microphone and speaker: {0}</value></data>
   <data name="Backup_ConfirmDelete" xml:space="preserve"><value>Delete the backup from {0}?</value></data>
   <data name="Backup_ConfirmRestore" xml:space="preserve"><value>Everyone is disconnected and the current state is replaced. The server takes a safety backup first.</value></data>
   <data name="Backup_Details" xml:space="preserve"><value>{0}, server version {1}</value></data>

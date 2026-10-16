@@ -33,8 +33,8 @@ SOFTWARE.
 
 ## RNNoise
 
-Quelle: https://github.com/xiph/rnnoise (Windows-Build aus https://github.com/Yellow-Dog-Man/rnnoise, bezogen über das NuGet-Paket `YellowDogMan.RRNoise.NET`, nur die native Bibliothek)
-Verwendet in: `rnnoise.dll`, aufgerufen von `src/OVS.Client/Audio/Processing/NoiseSuppressor.cs` (Rauschunterdrückung); außerdem in `ovs_aec.dll` (WebRTCs Kopie unter `third_party/rnnoise`, siehe WebRTC Audio Processing)
+Quelle: https://github.com/xiph/rnnoise (über nnnoiseless und in WebRTCs Kopie unter `third_party/rnnoise`)
+Verwendet in: `ovs_audio.dll`: über nnnoiseless (Rauschunterdrückung, Package 178) und in WebRTCs Kopie unter `third_party/rnnoise` (siehe WebRTC Audio Processing)
 
 ```
 Copyright (c) 2017, Mozilla
@@ -73,7 +73,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ## WebRTC Audio Processing
 
 Quelle: https://gitlab.freedesktop.org/pulseaudio/webrtc-audio-processing (Tag `v2.1`, aus https://webrtc.googlesource.com/src)
-Verwendet in: `ovs_aec.dll` (gebaut mit `native/ovs_aec/build.ps1`), aufgerufen von `src/OVS.Client/Audio/Processing/EchoCanceller.cs` (Echounterdrückung)
+Verwendet in: `ovs_audio.dll` (statisch, gebaut von `native/ovs_audio/build.rs` mit dem Feature `aec`, Package 178), aufgerufen über `src/OVS.Client/Audio/Processing/EchoCanceller.cs` (Echounterdrückung)
 
 ```
 Copyright (c) 2011, The WebRTC project authors. All rights reserved.
@@ -234,7 +234,7 @@ SOFTWARE.
 ## Abseil
 
 Quelle: https://github.com/abseil/abseil-cpp (`20240722.0`, über WebRTC Audio Processing)
-Verwendet in: `ovs_aec.dll`
+Verwendet in: `ovs_audio.dll` (statisch, mit WebRTC Audio Processing)
 
 ```
                                  Apache License
@@ -440,81 +440,6 @@ Verwendet in: `ovs_aec.dll`
    limitations under the License.
 ```
 
-## MinGW-w64-Laufzeit und LLVM libc++
-
-Quelle: https://www.mingw-w64.org und https://libcxx.llvm.org, beide über den Zig-Compiler 0.16.0 (https://ziglang.org)
-Verwendet in: `ovs_aec.dll` (statisch gelinkt). libc++, libc++abi und libunwind stehen unter Apache-2.0 mit LLVM-Ausnahme, die für Binärdateien keine Nennung verlangt. Die MinGW-w64-Laufzeit:
-
-```
-With exception of certain parts that are prominently marked as being
-in the Public Domain, BSD, or LGPL this Software is provided under the
-Zope Public License (ZPL) Version 2.1.
-
-Copyright (c) 2009 - 2013 by the mingw-w64 project
-
-See the AUTHORS file for the list of contributors to the mingw-w64 project.
-
-This license has been certified as open source. It has also been designated
-as GPL compatible by the Free Software Foundation (FSF).
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-   1. Redistributions in source code must retain the accompanying copyright
-      notice, this list of conditions, and the following disclaimer.
-   2. Redistributions in binary form must reproduce the accompanying
-      copyright notice, this list of conditions, and the following disclaimer
-      in the documentation and/or other materials provided with the
-      distribution.
-   3. Names of the copyright holders must not be used to endorse or promote
-      products derived from this software without prior written permission
-      from the copyright holders.
-   4. The right to distribute this software or to use it for any purpose does
-      not give you the right to use Servicemarks (sm) or Trademarks (tm) of
-      the copyright holders.  Use of them is covered by separate agreement
-      with the copyright holders.
-   5. If any files are modified, you must cause the modified files to carry
-      prominent notices stating that you changed the files and the date of
-      any change.
-
-Disclaimer
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY EXPRESSED
-OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
-EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-```
-
-winpthreads (Teil der MinGW-w64-Laufzeit):
-
-```
-Copyright (c) 2011-2016  mingw-w64 project
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
 ## windows-rs (windows, windows-core und Begleit-Crates)
 
 Quelle: https://github.com/microsoft/windows-rs
@@ -602,3 +527,63 @@ Quelle: https://github.com/jneem/nnnoiseless (Rust-Portierung von RNNoise, BSD-3
 Verwendet in: `native/ovs_audio` (Rauschunterdrückung, statisch in `ovs_audio.dll`, Package 178)
 Lizenz: BSD-3-Clause mit dem Text und den Urhebern von RNNoise (Abschnitt RNNoise oben), plus Copyright (c) 2020 Joe Neeman für die Portierung.
 
+## Rust-Crates in `ovs_audio.dll`
+
+Verwendet in: `native/ovs_audio`, statisch in `ovs_audio.dll` gelinkt (Package 175 und 178, über nnnoiseless und libopus). Wo eine Crate unter MIT oder Apache-2.0 steht, wird sie hier unter MIT verwendet.
+
+| Crate | Version | Lizenz | Urheber |
+|---|---|---|---|
+| anymap3 | 1.1.0 | BlueOak-1.0.0 oder MIT oder Apache-2.0 | Chris Morgan, Olivier 'reivilibre' |
+| array-init | 2.1.0 | MIT oder Apache-2.0 | Manish Goregaokar, Michal 'vorner' Vaner |
+| audiopus_sys | 0.2.2 | ISC | Lakelezz |
+| cfg-if | 1.0.5 | MIT oder Apache-2.0 | Alex Crichton |
+| easyfft | 0.4.2 | MIT oder Apache-2.0 | Walter Smuts |
+| generic_singleton | 0.5.3 | MIT oder Apache-2.0 | Walter Smuts |
+| lock_api, parking_lot, parking_lot_core | 0.4.14, 0.12.5, 0.9.12 | MIT oder Apache-2.0 | Amanieu d'Antras |
+| num-complex, num-integer, num-traits | 0.4.6, 0.1.47, 0.2.19 | MIT oder Apache-2.0 | The Rust Project Developers |
+| once_cell | 1.21.4 | MIT oder Apache-2.0 | Aleksey Kladov |
+| primal-check | 0.3.4 | MIT oder Apache-2.0 | Huon Wilson |
+| realfft | 3.5.0 | MIT | Henrik Enquist |
+| rustfft | 6.4.1 | MIT oder Apache-2.0 | Allen Welkie, Elliott Mahler |
+| scopeguard | 1.2.0 | MIT oder Apache-2.0 | bluss |
+| serde, serde_core | 1.0.229 | MIT oder Apache-2.0 | Erick Tryzelaar, David Tolnay |
+| smallvec | 1.16.3 | MIT oder Apache-2.0 | The Servo Project Developers |
+| strength_reduce, transpose | 0.2.4, 0.2.3 | MIT oder Apache-2.0 | Elliott Mahler |
+
+MIT (für alle Crates der Tabelle außer audiopus_sys, jeweils mit den genannten Urhebern als Copyright-Inhabern):
+
+```
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+ISC (audiopus_sys, Copyright (c) Lakelezz):
+
+```
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```

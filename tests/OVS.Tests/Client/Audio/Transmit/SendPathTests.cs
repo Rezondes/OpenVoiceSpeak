@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
-using NAudio.Wave;
 using OVS.Client.Audio;
 using OVS.Client.Audio.Capture;
 using OVS.Client.Audio.Codec;
@@ -1130,14 +1129,11 @@ public class SendPathTests
     [Fact]
     public void MusicMode_OneInputInstrument_BothSides()
     {
-        var format = WaveFormat.CreateIeeeFloatWaveFormat(AudioFormat.SampleRate, 2);
         float[] buffer = [];
         float[] Chunk(StereoInput sides, int count, double left, double right, float amplitude = 0.3f)
         {
-            var frame = StereoTones(count, left, right, amplitude); // 20 ms, as WASAPI hands it over
-            var bytes = new byte[frame.Length * sizeof(float)];
-            Buffer.BlockCopy(frame, 0, bytes, 0, bytes.Length);
-            return SampleConversion.ReadStereo(bytes, bytes.Length, format, ref buffer, sides).ToArray();
+            var frame = StereoTones(count, left, right, amplitude); // 20 ms, as the microphone hands it over
+            return SampleConversion.ReadStereo(frame, 2, ref buffer, sides).ToArray();
         }
         int window = (int)(StereoInput.OneSidedAfter / AudioFormat.FrameDuration);
 
