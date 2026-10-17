@@ -198,13 +198,13 @@ public sealed class MainViewModelTests : IAsyncLifetime
             seen.Add(viewModel.Audio.ChannelBitrate); // the own channel edited
             return seen;
         });
-        Assert.Equal([64, 64, 96, 24], steps);
+        Assert.Equal([128, 128, 96, 24], steps);
         await ui.InvokeAsync<object?>(async () =>
         {
             await viewModel.Connection.DisconnectAsync();
             return null;
         });
-        Assert.Equal(64, await OnUiAsync(() => viewModel.Audio.ChannelBitrate));
+        Assert.Equal(128, await OnUiAsync(() => viewModel.Audio.ChannelBitrate));
     }
 
     /// <summary>
@@ -218,18 +218,18 @@ public sealed class MainViewModelTests : IAsyncLifetime
         {
             var seen = new List<int>();
             var time = new ManualTimeProvider();
-            viewModel.Audio.Loss = new LossAdapter(time, 64);
-            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin()); // in the Lobby at 64
+            viewModel.Audio.Loss = new LossAdapter(time, 128);
+            MainViewModelSetup.ShowServer(viewModel, FakeServers.Admin()); // in the Lobby at the default, 128
             EngineProbe.LowerByLoss(viewModel.Audio.Loss, time); // 6 s above 10 %
             seen.Add(viewModel.Audio.EncoderBitrate);
             viewModel.Server!.Apply(new ChannelUpdated(new ChannelInfo(FakeServers.Raid, "Raid", "", 1)));
             seen.Add(viewModel.Audio.EncoderBitrate); // another channel edited: no move
             viewModel.Server.Apply(new UserUpdated(new UserInfo(1, "fp1", "ich", FakeServers.Raid, false, false, false,
                 OVS.Shared.Permissions.Permission.All, [OVS.Shared.Permissions.WellKnownGroups.Admin])));
-            seen.Add(viewModel.Audio.EncoderBitrate); // moved into a channel at 64 too
+            seen.Add(viewModel.Audio.EncoderBitrate); // moved into a channel at the default too
             return seen;
         });
-        Assert.Equal([32, 32, 64], steps);
+        Assert.Equal([64, 64, 128], steps);
     }
 
     // ---- Package 131 (A140): talking into a muted microphone ----

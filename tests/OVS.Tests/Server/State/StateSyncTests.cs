@@ -110,7 +110,7 @@ public class StateSyncTests
         await using (var client = await TestClient.ConnectAsync(server, identity: admin))
         await using (var testClient = await TestClient.ConnectAsync(server))
         {
-            Assert.Equal(64, Assert.Single(testClient.Welcome.Snapshot.Channels).Bitrate); // the Lobby
+            Assert.Equal(ProtocolDefaults.Bitrate, Assert.Single(testClient.Welcome.Snapshot.Channels).Bitrate); // the Lobby
             await client.SendAsync(new CreateChannel("Raid", "", Bitrate: 96));
             var mirror = new OVS.Client.Net.StateMirror(testClient.Welcome);
             mirror.Apply(await testClient.WaitForAsync<ChannelAdded>());

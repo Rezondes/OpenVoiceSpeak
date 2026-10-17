@@ -13,6 +13,7 @@ using OVS.Client.Input;
 using OVS.Client.Localization;
 using OVS.Client.Net;
 using OVS.Client.Settings;
+using OVS.Shared.Protocol;
 using OVS.Shared.Voice;
 using OVS.Tests.Client.Audio.Processing;
 using OVS.Tests.TestSupport;
@@ -193,7 +194,7 @@ public class SendPathTests
 
     /// <summary>
     /// Package 132 (A141): on a steady noise signal the frames match the own channel's bitrate within 15 %, also after a
-    /// move to another one and for link push-to-talk (the own channel, not the linked ones); the self test uses 64 kbps.
+    /// move to another one and for link push-to-talk (the own channel, not the linked ones); the self test uses the default (Package 183: 128 kbps).
     /// </summary>
     [Fact]
     public async Task Encoder_ChannelBitrate_Followed()
@@ -201,7 +202,7 @@ public class SendPathTests
         using var rig = new TalkRig(0);
         var random = new Random(132);
         rig.Signal = () => VoiceFilterTests.Noise(random, -20);
-        Assert.Equal(64, rig.Engine.ChannelBitrate); // not in any channel yet
+        Assert.Equal(ProtocolDefaults.Bitrate, rig.Engine.ChannelBitrate); // not in any channel yet
         rig.Engine.ChannelBitrate = 96;
         await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         Assert.InRange(rig.Kbps(), 96 * 0.85, 96 * 1.15);
@@ -217,9 +218,9 @@ public class SendPathTests
         Assert.All(rig.Sent.Skip(linkStart), value => Assert.Equal(Link, value));
         await rig.KeyAsync(TalkRig.LinkPtt, false, KeyAction.LinkPushToTalk);
 
-        rig.Engine.SelfTest = true; // the own ears hear what a 64 kbps channel sends
+        rig.Engine.SelfTest = true; // the own ears hear what a channel at the default sends
         await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
-        Assert.InRange(rig.Kbps(), 64 * 0.85, 64 * 1.15);
+        Assert.InRange(rig.Kbps(), ProtocolDefaults.Bitrate * 0.85, ProtocolDefaults.Bitrate * 1.15);
         Assert.Equal(0, rig.Engine.FramesSent);
 
         // a real capture asks the engine too
@@ -281,20 +282,20 @@ public class SendPathTests
         await rig.KeyAsync(TalkRig.Ptt, true, KeyAction.PushToTalk);
         rig.Frames(1);
         Assert.Equal(10, opus.PacketLossPercent);
-        Assert.Equal(64_000, opus.Bitrate);
+        Assert.Equal(ProtocolDefaults.Bitrate * 1000, opus.Bitrate);
 
         ReportLoss(rig, 14, 4); // 6 s above 10 %
         Assert.Equal(10, opus.PacketLossPercent); // nothing changes between frames
         rig.Frames(1);
         Assert.Equal(21, opus.PacketLossPercent);
-        Assert.Equal(32_000, opus.Bitrate);
+        Assert.Equal(ProtocolDefaults.Bitrate / 2 * 1000, opus.Bitrate);
 
         ReportLoss(rig, 0, 6); // 10 s clean
         rig.Frames(1);
         Assert.Equal(5, opus.PacketLossPercent);
-        Assert.Equal(64_000, opus.Bitrate);
+        Assert.Equal(ProtocolDefaults.Bitrate * 1000, opus.Bitrate);
 
-        // the self test sends nothing: the initial hint, like its 64 kbps
+        // the self test sends nothing: the initial hint, like its default bitrate
         ReportLoss(rig, 20, 1);
         rig.Engine.SelfTest = true;
         rig.Frames(1);
@@ -787,7 +788,7 @@ public class SendPathTests
         Assert.Equal(5, VoiceEncoder.Complexity);
         Assert.Equal(VoiceEncoder.Complexity, opus.ComplexitySet);
         Assert.False(opus.UseDtx);
-        Assert.Equal(64_000, opus.Bitrate); // Package 132: the default channel bitrate until the channel's is known
+        Assert.Equal(ProtocolDefaults.Bitrate * 1000, opus.Bitrate); // Package 132: the default channel bitrate until the channel's is known
 
         var pipeline = CapturePipeline.Manual();
         pipeline.ChooseTarget = _ => Ch; // as if the key is held through the pause
@@ -1110,7 +1111,7 @@ public class SendPathTests
         Assert.InRange(ToneIn(settled, 1, 1000), 0.29, 0.31);
         Assert.True(ToneIn(settled, 0, 1000) < 0.003 && ToneIn(settled, 1, 440) < 0.003, "the sides stay apart");
 
-        var loud = new MusicRig { Kbps = OVS.Shared.Protocol.ProtocolLimits.MaxBitrate };
+        var loud = new MusicRig { Kbps = ProtocolLimits.MaxBitrate };
         var random = new Random(142);
         for (int count = 0; count < 50; count++)
             loud.Feed(Enumerable.Range(0, AudioFormat.StereoFrameSamples).Select(_ => 0.5f * (2 * random.NextSingle() - 1)).ToArray(), 2);

@@ -14,7 +14,7 @@ public class SmokeTests
     [Fact]
     public void LimitedDefaults_Values_InsideTheirRanges()
     {
-        Assert.Equal(64, ProtocolDefaults.Bitrate);
+        Assert.Equal(128, ProtocolDefaults.Bitrate); // Package 183 (A194)
         Assert.Equal(50, ProtocolDefaults.MaxUsers);
         Assert.Equal(30, ProtocolDefaults.LogDays);
         Assert.InRange(ProtocolDefaults.Bitrate, ProtocolLimits.MinBitrate, ProtocolLimits.MaxBitrate);

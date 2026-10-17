@@ -60,9 +60,14 @@ public sealed class PersistedFixtureTests() : TempDirectoryTest("ovs-fixture-", 
         .. serverData.Users.Select(user => string.Join(",", user.GroupIds)), .. serverData.Users.SelectMany(user => user.PreviousNicknames), .. serverData.Bans.Select(ban => $"{ban.Id}"),
     ];
 
-    /// <summary>What the fixture generator stored; the release had no channel bitrate yet, so its channels load with the default.</summary>
+    /// <summary>
+    /// What the fixture generator stored; the release had no channel bitrate yet, so its channels load with the default.
+    /// Package 183: the current fixture stored the old default of 64 kbps, which the migration to version 8 lifts at the
+    /// server's start.
+    /// </summary>
     static ServerData Expected(string version)
     {
+        int stored = version == PersistedFixtures.Current ? 64 : OVS.Shared.Protocol.ProtocolDefaults.Bitrate;
         var lobby = new Guid("10000000-0000-0000-0000-000000000001");
         var raid = new Guid("10000000-0000-0000-0000-000000000002");
         var moderator = new Guid("20000000-0000-0000-0000-000000000001");
@@ -80,17 +85,17 @@ public sealed class PersistedFixtureTests() : TempDirectoryTest("ovs-fixture-", 
             DefaultChannelId = lobby,
             Channels =
             [
-                new ChannelRecord { Id = lobby, Name = "Lobby" },
+                new ChannelRecord { Id = lobby, Name = "Lobby", Bitrate = stored },
                 new ChannelRecord
                 {
                     Id = raid, Name = "Raid", Description = "Mit Passwort", Order = 1, IsMuted = true, MaxUsers = 5,
-                    Bitrate = version == PersistedFixtures.Current ? 96 : 64,
+                    Bitrate = version == PersistedFixtures.Current ? 96 : stored,
                     StoredPassword = StoredPassword.FromStored(version == PersistedFixtures.Current
                         ? "pbkdf2$100000$a2BpHGlppwK6yp1mDZn5tA==$EejxIRWPgCIybTZ9pfE1Kbk37mJiDIlVdKpYu9oqJVg="
                         : "pbkdf2$100000$/hf+SY0bsSEoY+Pwayi35g==$RiowhwpqRi2niCqqwfd950YHK57+Ko/doXpSRnRAz8k="),
                 },
-                new ChannelRecord { Id = new Guid("10000000-0000-0000-0000-000000000003"), Order = 2, Kind = ChannelKind.Separator },
-                new ChannelRecord { Id = new Guid("10000000-0000-0000-0000-000000000004"), Name = "Gesperrt", Order = 3, AllowedGroupIds = [] },
+                new ChannelRecord { Id = new Guid("10000000-0000-0000-0000-000000000003"), Order = 2, Kind = ChannelKind.Separator, Bitrate = stored },
+                new ChannelRecord { Id = new Guid("10000000-0000-0000-0000-000000000004"), Name = "Gesperrt", Order = 3, AllowedGroupIds = [], Bitrate = stored },
             ],
             Links = [new ChannelLinkRecord(lobby, raid)],
             Groups =

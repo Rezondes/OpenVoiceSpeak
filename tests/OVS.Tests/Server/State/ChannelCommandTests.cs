@@ -123,11 +123,11 @@ public sealed class ChannelCommandTests : IAsyncLifetime
         Assert.Equal(ReasonCodes.PermissionDenied, (await guest.ErrorAsync("p")).Code);
     }
 
-    /// <summary>Package 132 (A141): 64 kbps without a value, 16 to 128 kept on create and edit, anything else refused; separators have none.</summary>
+    /// <summary>Package 132 (A141): the default (Package 183: 128 kbps) without a value, 16 to 128 kept on create and edit, anything else refused; separators have none.</summary>
     [Fact]
     public async Task Bitrate_CreateAndEdit_DefaultRangeOrRefused()
     {
-        Assert.Equal(64, (await CreateAsync("Standard")).Bitrate);
+        Assert.Equal(ProtocolDefaults.Bitrate, (await CreateAsync("Standard")).Bitrate);
         await admin.SendAsync(new CreateChannel("Leise", "", Bitrate: 16));
         Assert.Equal(16, (await guest.WaitForAsync<ChannelAdded>(channelAdded => channelAdded.Channel.Name == "Leise")).Channel.Bitrate);
         await admin.SendAsync(new CreateChannel("Musik", "", Bitrate: 128));

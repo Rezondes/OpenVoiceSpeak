@@ -5,9 +5,9 @@ public static class ProtocolDefaults
 {
     /// <summary>The server's TCP and UDP port.</summary>
     public const int Port = 7000;
-    // Package 132 (A141): a channel's voice bitrate in kbps
-    /// <summary>A new channel's voice bitrate in kbps (Package 132, A141).</summary>
-    public const int Bitrate = 64;
+    // Package 132 (A141): a channel's voice bitrate in kbps; Package 183 (A194): 128 instead of 64
+    /// <summary>A new channel's voice bitrate in kbps (Package 132, A141; Package 183, A194).</summary>
+    public const int Bitrate = 128;
     // Package 69: the defaults of the server limits (ServerLimits)
     /// <summary>The default of the server's user limit (Package 69).</summary>
     public const int MaxUsers = 50;

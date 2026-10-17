@@ -31,8 +31,8 @@ internal sealed class ChannelRecord
     /// <summary>Package 111: older files load as voice channels, without a new data version.</summary>
     public ChannelKind Kind { get; set; }
     /// <summary>
-    /// Package 132 (A141): kbps; older files load as 64 (the channels move from the old fixed 32 kbps), without a new
-    /// data version. A separator gets 0 and is never asked for it.
+    /// Package 132 (A141): kbps; older files load as the default (the channels moved from the old fixed 32 kbps), without
+    /// a new data version; Package 183 (A194): the default is 128. A separator gets 0 and is never asked for it.
     /// </summary>
     public int Bitrate { get; set; } = ProtocolDefaults.Bitrate;
 

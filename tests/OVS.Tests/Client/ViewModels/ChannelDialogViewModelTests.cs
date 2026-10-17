@@ -140,14 +140,14 @@ public class ChannelDialogViewModelTests
         Assert.Null(channelDialog.Result()!.AllowedGroupIds);
     }
 
-    /// <summary>Package 132 (A141): "Qualität" starts at 64 kbps for a new channel and at the channel's own when editing, bounded 16 to 128.</summary>
+    /// <summary>Package 132 (A141): "Qualität" starts at the default (Package 183: 128 kbps) for a new channel and at the channel's own when editing, bounded 16 to 128.</summary>
     [Fact]
     public void Bitrate_NewOrEditedChannel_ShownAndBounded()
     {
         var create = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create) { Name = "Neu" };
-        Assert.Equal(64m, create.Bitrate);
+        Assert.Equal(128m, create.Bitrate);
         Assert.Equal((16m, 128m), (create.MinBitrate, create.MaxBitrate));
-        Assert.Equal(64, create.Result()!.Bitrate);
+        Assert.Equal(128, create.Result()!.Bitrate);
         create.Bitrate = 96;
         Assert.Equal(new ChannelEdit("Neu", "", Bitrate: 96), create.Result());
 
@@ -165,7 +165,7 @@ public class ChannelDialogViewModelTests
         var lobby = new ChannelDialogViewModel(new ChannelEdit("Lobby", "", Bitrate: 48), ChannelDialogMode.EditDefault) { Bitrate = 80 };
         Assert.Equal(80, lobby.Result()!.Bitrate);
         // a separator has none
-        Assert.Equal(64, new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create) { IsSeparator = true, Bitrate = 96 }.Result()!.Bitrate);
+        Assert.Equal(128, new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create) { IsSeparator = true, Bitrate = 96 }.Result()!.Bitrate);
     }
 
     /// <summary>Package 132: the channel's bitrate goes into the dialog and the edited one to the server.</summary>
@@ -191,7 +191,7 @@ public class ChannelDialogViewModelTests
         Assert.Equal(128, Assert.IsType<EditChannel>(sent[^1]).Bitrate);
 
         await channel.CreateCommand.ExecuteAsync(null); // the dialog answers with a 128 kbps channel
-        Assert.Equal((64, 128), (shown.Bitrate, Assert.IsType<CreateChannel>(sent[^1]).Bitrate));
+        Assert.Equal((128, 128), (shown.Bitrate, Assert.IsType<CreateChannel>(sent[^1]).Bitrate));
     }
 
     /// <summary>Package 111: creating, "Trenner" hides every field and gives a separator without name or options.</summary>

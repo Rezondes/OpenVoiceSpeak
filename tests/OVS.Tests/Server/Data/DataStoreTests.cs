@@ -68,22 +68,25 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         Assert.Equal(OVS.Shared.Protocol.Messages.Channels.ChannelKind.Voice, Assert.Single(new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels).Kind);
     }
 
-    /// <summary>Package 132 (A141): a file from before loads every voice channel at 64 kbps; a stored value round-trips.</summary>
+    /// <summary>
+    /// Package 132 (A141): a file from before loads every voice channel at the default; a stored value round-trips.
+    /// Package 183 (AC1, AC3, A194): the default is 128 kbps.
+    /// </summary>
     [Fact]
-    public void Channel_WithoutBitrate_Loads64()
+    public void Channel_WithoutBitrate_LoadsTheDefault()
     {
         var store = new DataStore(FilePath);
         var data = store.LoadOrCreate(() => ServerData.CreateDefault(Config));
         data.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Name = "Raid", Order = 1, Bitrate = 96 });
         store.Save(data);
-        Assert.Equal([64, 96], new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels.Select(channel => channel.Bitrate));
+        Assert.Equal([128, 96], new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException()).Channels.Select(channel => channel.Bitrate));
 
         var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(FilePath))!;
         var channels = json.AsObject().First(pair => pair.Key.Equals("channels", StringComparison.OrdinalIgnoreCase)).Value!.AsArray();
         foreach (var channel in channels) channel!.AsObject().Remove(channel.AsObject().First(pair => pair.Key.Equals("bitrate", StringComparison.OrdinalIgnoreCase)).Key);
         File.WriteAllText(FilePath, json.ToJsonString());
         var old = new DataStore(FilePath).LoadOrCreate(() => throw new InvalidOperationException());
-        Assert.Equal([64, 64], old.Channels.Select(channel => channel.Bitrate));
+        Assert.Equal([128, 128], old.Channels.Select(channel => channel.Bitrate));
 
         // a backup is checked the same way: a voice channel outside 16 to 128 kbps is refused
         old.Users.Add(new UserRecord { Fingerprint = "ab", GroupIds = [PermissionRules.AdminGroupId] });

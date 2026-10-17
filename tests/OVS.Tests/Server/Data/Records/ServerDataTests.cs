@@ -37,12 +37,43 @@ public class ServerDataTests
 
         Assert.True(data.Migrate(new ServerConfig(0, "unused", 10, "Testserver", "")));
 
-        Assert.Equal(7, data.DataVersion);
+        Assert.Equal(ServerData.CurrentVersion, data.DataVersion);
         var serverAdmin = Assert.Single(data.Groups, groupRecord => groupRecord.Id == WellKnownGroups.ServerAdmin);
         Assert.Equal(("Server-Admin", Permission.All), (serverAdmin.Name, serverAdmin.Permissions));
         Assert.Equal([WellKnownGroups.Admin], data.Users[0].GroupIds);
         Assert.False(data.Migrate(new ServerConfig(0, "unused", 10, "Testserver", "")));
         Assert.Single(data.Groups, groupRecord => groupRecord.Id == WellKnownGroups.ServerAdmin);
+    }
+
+    /// <summary>
+    /// Package 183 (AC2, A194): the migration to version 8 lifts every voice channel stored at the old default of 64 kbps to
+    /// the new one; another bitrate and a separator's 0 stay.
+    /// </summary>
+    [Fact]
+    public void Migrate_Version7_Channels64BecomeTheNewDefault()
+    {
+        var data = Valid();
+        data.DataVersion = 7;
+        data.Channels[0].Bitrate = 64;
+        data.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Name = "Raid", Order = 1, Bitrate = 96 });
+        data.Channels.Add(new ChannelRecord { Id = Guid.NewGuid(), Name = "", Order = 2, Kind = OVS.Shared.Protocol.Messages.Channels.ChannelKind.Separator, Bitrate = 0 });
+
+        Assert.True(data.Migrate(new ServerConfig(0, "unused", 10, "Testserver", "")));
+
+        Assert.Equal(8, data.DataVersion);
+        Assert.Equal([128, 96, 0], data.Channels.Select(channel => channel.Bitrate));
+    }
+
+    /// <summary>Package 183 (AC5): a channel set to 64 kbps after the update is the admin's choice and stays.</summary>
+    [Fact]
+    public void Migrate_Version8_Channel64Kept()
+    {
+        var data = Valid();
+        data.Channels[0].Bitrate = 64;
+
+        Assert.False(data.Migrate(new ServerConfig(0, "unused", 10, "Testserver", "")));
+
+        Assert.Equal(64, data.Channels[0].Bitrate);
     }
 
     /// <summary>Package 181 (A191, A192): a server admin alone counts as the server's admin; a second one is a broken file.</summary>

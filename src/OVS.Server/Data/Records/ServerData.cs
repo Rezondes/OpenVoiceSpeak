@@ -13,9 +13,10 @@ internal sealed class ServerData
     /// <summary>
     /// 1 = before Package 31 (files without this field), 2 = chat rights, 3 = server settings from the environment (69),
     /// 4 = separate view, create and delete rights (76), 5 = the backup right (89), 6 = the channel password bypass only for
-    /// Admin (94), 7 = the Server-Admin group (181). New servers start at the current version.
+    /// Admin (94), 7 = the Server-Admin group (181), 8 = channels at the old default of 64 kbps lifted to 128 (183). New
+    /// servers start at the current version.
     /// </summary>
-    public const int CurrentVersion = 7;
+    public const int CurrentVersion = 8;
     /// <summary>The version the file was written with; older files are migrated on load.</summary>
     public int DataVersion { get; set; } = 1;
 
@@ -92,6 +93,8 @@ internal sealed class ServerData
                 if (Groups[index].Id != PermissionRules.AdminGroupId) Groups[index] = Groups[index] with { Permissions = Groups[index].Permissions & ~Permission.ChannelPasswordBypass };
         if (DataVersion < 7 && !Groups.Any(groupRecord => groupRecord.Id == PermissionRules.ServerAdminGroupId)) // Package 181 (A192): nobody in it, so the token comes at this start
             Groups.Add(PermissionRules.ServerAdminGroup());
+        if (DataVersion < 8) // Package 183 (A194): 64 kbps was the default, never chosen on purpose
+            foreach (var channel in Channels.Where(channel => channel is { Kind: ChannelKind.Voice, Bitrate: 64 })) channel.Bitrate = ProtocolDefaults.Bitrate;
         DataVersion = CurrentVersion;
         return true;
     }
