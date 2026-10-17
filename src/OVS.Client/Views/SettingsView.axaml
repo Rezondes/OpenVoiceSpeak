@@ -149,14 +149,10 @@
                 </StackPanel>
               </Border>
             </StackPanel>
-          </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-      <TabItem x:Name="TransmitPage" Header="{x:Static l:Strings.Nav_Transmit}">
-        <ScrollViewer anim:PageMotion.Reveal="True">
-          <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Left">
-            <!-- Transmit mode -->
+
+            <!-- Transmit mode; Package 186 (A199): a section of the Audio page, below the voice filters -->
             <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_TransmitModeSection}" />
               <Border Classes="card">
                 <StackPanel Spacing="10">
                   <RadioButton IsChecked="{Binding IsPushToTalk}">

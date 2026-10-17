@@ -10824,19 +10824,21 @@ The settings have the pages Audio, Sendemodus, Tasten and Sounds in the voice gr
 
 ### Acceptance Criteria
 
-- [ ] AC1: The side navigation of the voice group lists Audio, Tasten and Sounds, no "Sendemodus".
-- [ ] AC2: The page "Audio" shows, in this order, the import, devices, volume, voice filters and the section "Sendemodus" with everything the old page had (modes, push-to-talk key hint, automatic sensitivity, threshold with meter, self test); each works as before.
-- [ ] AC3: The settings search finds "Push-to-Talk", "Schwelle" and "Selbsttest" on "Audio" and scrolls to the section.
-- [ ] AC4: The level meter runs while the Audio page is shown (it ran on the Sendemodus page) and stops when the page is left, as before.
-- [ ] AC5: The page fits from 360 px in both languages.
+- [x] AC1: The side navigation of the voice group lists Audio, Tasten and Sounds, no "Sendemodus".
+- [x] AC2: The page "Audio" shows, in this order, the import, devices, volume, voice filters and the section "Sendemodus" with everything the old page had (modes, push-to-talk key hint, automatic sensitivity, threshold with meter, self test); each works as before.
+- [x] AC3: The settings search finds "Push-to-Talk", "Schwelle" and "Selbsttest" on "Audio" and scrolls to the section.
+- [x] AC4: The level meter runs while the Audio page is shown (it ran on the Sendemodus page) and stops when the page is left, as before.
+- [x] AC5: The page fits from 360 px in both languages.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `SettingsSearchTests > "Find_Push_OnAudio"` (replaces the hit on `Nav_Transmit`) (AC3)
-2. `UiSmokeTests > "Settings_VoiceGroup_NoTransmitPage"` (AC1)
+1. `SettingsSearchTests > "Find_PartOfLabel_HitWithPage"` (the hit for "push" now on the Audio page) and `"Choose_Hit_OpensPageAndScrolls"` (AC3)
+2. `UiSmokeTests > "Settings_Pages_ListedInGroups"` and `"Settings_EveryControl_OnOnePage"` (AC1)
 3. `SettingsTests > "AudioPage_TransmitSection_BelowVoiceFilters"` (AC2)
-4. `LiveMotionTests` and `SettingsTests` that opened "Sendemodus" open "Audio" and stay green; `"LevelMeter_AudioPage_RunsAndStops"` (AC2, AC4)
-5. `ResponsiveTests > "SettingsPages_At360_Fit"` (AC5)
+4. `LiveMotionTests > "LevelMeter_SettingsOpened_StartsAtTheLevel"` and the `SettingsTests` and `UiSmokeTests` cases that opened "Sendemodus", now opening "Audio" (AC2, AC4)
+5. `ResponsiveTests > "Settings_At360To1100_Fit"` (AC5)
+
+(as built: the level meter already starts with the settings page, not with one of its pages, so nothing moved for AC4. `Nav_Transmit` is gone; the section title is `Ui_TransmitModeSection`, because an unused `Ui_TransmitSection` ("ÜBERTRAGUNG") was already there. The website shot `settings-audio` opens "AudioPage".)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 

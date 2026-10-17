@@ -646,6 +646,34 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     /// Package 129 (A138): "Automatisch" is heard at once, the threshold slider is disabled while it is on, and the
     /// meter marks the threshold the gate uses (reported by the engine) instead of the slider's value.
     /// </summary>
+    /// <summary>
+    /// Package 186 (AC1, AC2, A199): the voice group lists Audio, Tasten and Sounds only; the Audio page shows the transmit
+    /// mode as its last section, below the voice filters, with the modes and the self test.
+    /// </summary>
+    [AvaloniaFact]
+    public void AudioPage_TransmitSection_BelowVoiceFilters()
+    {
+        var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = Vm(new ClientSettings()) } };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        try
+        {
+            var headers = SettingsPages.All(window).Select(tabItem => tabItem.Header as string).ToList();
+            Assert.DoesNotContain("Sendemodus", headers);
+            Assert.Equal(Strings.Nav_Audio, headers[headers.IndexOf(Strings.Nav_Keys) - 1]);
+            SettingsPages.Open(window, Strings.Nav_Audio);
+            var sections = window.GetVisualDescendants().OfType<TextBlock>().Where(textBlock => textBlock.Classes.Contains("section") && textBlock.IsEffectivelyVisible)
+                .Select(textBlock => textBlock.Text).ToList();
+            Assert.Equal([Strings.Ui_DevicesSection, Strings.Ui_VolumeSection, Strings.Ui_VoiceFilterSection, Strings.Ui_TransmitModeSection], sections);
+            Assert.Contains(window.GetVisualDescendants().OfType<Button>(), button => button.Name == "SelfTestButton" && button.IsEffectivelyVisible);
+            Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == Strings.Ui_ModePtt && textBlock.IsEffectivelyVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     [AvaloniaFact]
     public void VadAuto_On_LiveAndSliderDisabled()
     {
@@ -655,7 +683,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
         var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = settings } };
         window.Show();
         Dispatcher.UIThread.RunJobs();
-        SettingsPages.Open(window, Strings.Nav_Transmit);
+        SettingsPages.Open(window, Strings.Nav_Audio);
         var slider = window.GetVisualDescendants().OfType<Slider>().Single(otherSlider => AutomationProperties.GetName(otherSlider) == Strings.Ui_ThresholdName);
         Assert.True(settings.VadAutomatic);
         Assert.False(slider.IsEnabled);
@@ -978,7 +1006,7 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
             var window = new Window { Width = 900, Height = 900, Content = new OVS.Client.Views.SettingsView { DataContext = settings } };
             window.Show();
             Dispatcher.UIThread.RunJobs();
-            SettingsPages.Open(window, Strings.Nav_Transmit);
+            SettingsPages.Open(window, Strings.Nav_Audio);
             var button = window.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Command == settings.ToggleSelfTestCommand);
             settings.IsSelfTesting = true;
             Assert.True(button.Focus());

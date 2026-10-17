@@ -270,7 +270,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             foreach (var name in new[] { $"{label} abspielen", $"{label}: Lautstärke", $"{label}: stumm", $"{label}: Datei wählen", $"{label}: zurücksetzen" })
                 Assert.Contains(name, soundControls);
         // Package 59: without a PTT key the transmit section says so (here the profile was saved before, so it has none)
-        SettingsPages.Open(main, Strings.Nav_Transmit);
+        SettingsPages.Open(main, Strings.Nav_Audio);
         bool hasPtt = viewModel.Settings.KeyBindings.Any(keyBinding => keyBinding.Action == OVS.Client.Input.KeyAction.PushToTalk);
         Assert.Equal(!hasPtt, main.GetVisualDescendants().OfType<TextBlock>()
             .Any(textBlock => textBlock.Text == "Push-to-Talk ist gewählt, aber keine Taste belegt. Ohne Taste hört dich niemand." && textBlock.IsEffectivelyVisible));
@@ -802,7 +802,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Show();
         viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
-        SettingsPages.Open(main, Strings.Nav_Transmit);
+        SettingsPages.Open(main, Strings.Nav_Audio);
         Assert.Contains(main.GetVisualDescendants().OfType<TextBlock>(),
             textBlock => textBlock.Text == "Push-to-Talk ist gewählt, aber keine Taste belegt. Ohne Taste hört dich niemand." && textBlock.IsEffectivelyVisible);
         var button = main.GetVisualDescendants().OfType<Button>().Single(otherButton => otherButton.Content is "Taste festlegen");
@@ -863,7 +863,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
         var sections = SettingsPages.Sections(main);
-        Assert.Equal(["SPRECHEN UND HÖREN", "Audio", "Sendemodus", "Tastenbelegung", "Sounds", "APP", "Darstellung", "Benachrichtigungen", "Über und Updates"],
+        Assert.Equal(["SPRECHEN UND HÖREN", "Audio", "Tastenbelegung", "Sounds", "APP", "Darstellung", "Benachrichtigungen", "Über und Updates"],
             sections.Items.OfType<TabItem>().Select(tabItem => tabItem.Header as string));
         Assert.Equal(["SPRECHEN UND HÖREN", "APP"], sections.Items.OfType<TabItem>().Where(tabItem => tabItem.Classes.Contains("navGroup")).Select(tabItem => tabItem.Header as string));
         Assert.Equal("Audio", ((TabItem)sections.SelectedItem!).Header);
@@ -887,7 +887,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
             found.AddRange(content.GetVisualDescendants().OfType<TextBlock>().Where(textBlock => textBlock.Classes.Contains("section")).Select(textBlock => $"{settingsPage.Header}: {textBlock.Text}"));
             found.AddRange(content.GetVisualDescendants().OfType<Control>().Where(control => control.Name is "SelfTestButton" or "UpdateCheckBusy").Select(control => $"{settingsPage.Header}: {control.Name}"));
         }
-        Assert.Equal(["Audio: GERÄTE", "Audio: LAUTSTÄRKE", "Audio: SPRACHFILTER", "Sendemodus: SelfTestButton", "Über und Updates: UpdateCheckBusy"], found);
+        Assert.Equal(["Audio: GERÄTE", "Audio: LAUTSTÄRKE", "Audio: SPRACHFILTER", "Audio: SENDEMODUS", "Audio: SelfTestButton", "Über und Updates: UpdateCheckBusy"], found);
         main.Close();
     }
 
@@ -900,7 +900,7 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         main.Show();
         viewModel.PageFlow.OpenSettings();
         Dispatcher.UIThread.RunJobs();
-        SettingsPages.Open(main, Strings.Nav_Transmit);
+        SettingsPages.Open(main, Strings.Nav_Audio);
         Button SelfTest() => main.GetVisualDescendants().OfType<Button>().Single(button => AutomationProperties.GetName(button) is "Selbsttest starten" or "Selbsttest beenden");
         Assert.Contains(Texts(main), text => text?.Contains("Kopfhörer", StringComparison.Ordinal) == true);
         Assert.Equal("Selbsttest starten", AutomationProperties.GetName(SelfTest()));

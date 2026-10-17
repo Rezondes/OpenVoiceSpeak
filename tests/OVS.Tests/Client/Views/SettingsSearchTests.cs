@@ -43,7 +43,7 @@ public sealed class SettingsSearchTests
         {
             var search = new NavSearch(SettingsPages.Sections(view));
             Assert.Contains(search.Find("Rausch"), hit => hit.Text == Strings.Ui_NoiseSuppression && hit.PageName == Strings.Nav_Audio);
-            Assert.Contains(search.Find("push"), hit => hit.PageName == Strings.Nav_Transmit);
+            Assert.Contains(search.Find("push"), hit => hit.PageName == Strings.Nav_Audio);
             Assert.True(search.Find("Sprache").Any(hit => hit.Text == Strings.Settings_Language && hit.PageName == Strings.Nav_Appearance), string.Join(" | ", search.Find("Sprache").Select(hit => hit.Text + "@" + hit.PageName)));
             Assert.Contains(search.Find("gerate"), hit => hit.Text == Strings.Ui_DevicesSection); // without the umlaut
             Assert.Empty(search.Find("   "));

@@ -120,7 +120,7 @@ public sealed class WebsiteShots
     {
         using var scene = new WebsiteScene(lang, theme, 760, clientSettings => clientSettings.Mode = OVS.Client.Audio.Transmit.TransmitMode.VoiceActivation);
         scene.Connect();
-        OpenSettings(scene, "TransmitPage");
+        OpenSettings(scene, "AudioPage"); // Package 186: the transmit mode is a section of it
         Shows(scene.Window, Strings.Ui_ModeVad);
         scene.Save(Folder, "settings-audio");
     }

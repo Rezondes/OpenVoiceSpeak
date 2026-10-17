@@ -355,7 +355,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         foreach (var settingsPage in SettingsPages.All(page))
         {
             SettingsPages.Open(page, (string)settingsPage.Header!);
-            if ((string)settingsPage.Header! == Strings.Nav_Transmit)
+            if ((string)settingsPage.Header! == Strings.Nav_Audio)
             {
                 // Package 129: voice activation shows the "Automatisch" box, its hint, the meter and the slider
                 ((SettingsViewModel)page.DataContext!).VoiceActivation = true;

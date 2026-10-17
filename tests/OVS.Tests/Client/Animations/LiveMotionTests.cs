@@ -332,7 +332,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         viewModel.PageFlow.OpenSettings();
         MotionWait.Settle(500);
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible); // the page has come in
-        SettingsPages.Open(main, Strings.Nav_Transmit);
+        SettingsPages.Open(main, Strings.Nav_Audio);
         var meter = main.GetVisualDescendants().OfType<ProgressBar>().Single(progressBar => progressBar.Minimum == -60 && progressBar.Maximum == -10);
         Assert.True(meter.IsEffectivelyVisible);
         Assert.Equal(-60, meter.Value);
@@ -341,7 +341,7 @@ public sealed class LiveMotionTests() : TempDirectoryTest("ovs-live-", quiet: tr
         MotionWait.Until(() => !main.FindControl<Border>("PageGhost")!.IsVisible);
 
         viewModel.PageFlow.OpenSettings(); // the new model's level is -60 as well
-        SettingsPages.Open(main, Strings.Nav_Transmit); // a new model starts on Audio (Package 152)
+        SettingsPages.Open(main, Strings.Nav_Audio); // a new model starts on Audio (Package 152), which holds the meter (Package 186)
         double high = -60;
         Watch(400, () => high = Math.Max(high, meter.Value));
         Assert.True(high <= -59.9, $"the meter starts at the level, no sweep from full ({high})");

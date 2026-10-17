@@ -666,7 +666,7 @@
   <data name="Nav_VoiceGroup" xml:space="preserve"><value>VOICE</value></data>
   <data name="Nav_AppGroup" xml:space="preserve"><value>APP</value></data>
   <data name="Nav_Audio" xml:space="preserve"><value>Audio</value></data>
-  <data name="Nav_Transmit" xml:space="preserve"><value>Transmit mode</value></data>
+  <data name="Ui_TransmitModeSection" xml:space="preserve"><value>TRANSMIT MODE</value></data>
   <data name="Nav_Keys" xml:space="preserve"><value>Keybinds</value></data>
   <data name="Nav_Sounds" xml:space="preserve"><value>Sounds</value></data>
   <data name="Nav_Appearance" xml:space="preserve"><value>Appearance</value></data>
