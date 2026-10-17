@@ -48,7 +48,7 @@ public sealed class DiscordAudioImportTests() : TempDirectoryTest("ovs-chatapp-"
             LevelDbFiles.Text("""{"inputDeviceId":"default","inputVolume":100,"outputVolume":25,"echoCancellation":true,"autoGainControl":false,"vadAutoSensitivity":true}"""), 1)]);
 
         Assert.False(new DiscordAudioImport().IsInstalled(dir));
-        var audio = ChatAppAudioImport.ReadFirst(dir).Audio!; // Discord missing: Fluxer's
+        var audio = new FluxerAudioImport().Read(dir).Audio!;
 
         Assert.Equal(("Fluxer", "default", 25d, false, true), (audio.Source, audio.InputDeviceId, audio.OutputPercent, audio.AutoGain, audio.VadAutomatic));
         Assert.Null(audio.VoiceActivation);
@@ -57,9 +57,9 @@ public sealed class DiscordAudioImportTests() : TempDirectoryTest("ovs-chatapp-"
     [Fact]
     public void Read_NoInstallation_NoneFound()
     {
-        Assert.False(ChatAppAudioImport.AnyInstalled(dir));
-        var result = ChatAppAudioImport.ReadFirst(dir);
-        Assert.Equal((null, "neither Discord nor Fluxer is installed"), (result.Audio, result.Problem));
+        Assert.All(ChatAppAudioImport.All, app => Assert.False(app.IsInstalled(dir)));
+        var result = new DiscordAudioImport().Read(dir);
+        Assert.Equal((null, "Discord is not installed"), (result.Audio, result.Problem));
     }
 
     [Fact]
@@ -68,9 +68,9 @@ public sealed class DiscordAudioImportTests() : TempDirectoryTest("ovs-chatapp-"
         LevelDbFiles.WriteLog(Path.Combine(Storage("discord"), "000003.log"),
             [new(LevelDbFiles.Key("https://discord.com", "MediaEngineStore"), LevelDbFiles.Text("{nicht json"), 1)]);
 
-        var result = ChatAppAudioImport.ReadFirst(dir);
+        var result = new DiscordAudioImport().Read(dir);
 
-        Assert.True(ChatAppAudioImport.AnyInstalled(dir));
+        Assert.True(new DiscordAudioImport().IsInstalled(dir));
         Assert.Null(result.Audio);
         Assert.StartsWith("discord: ", result.Problem, StringComparison.Ordinal);
     }

@@ -13,7 +13,7 @@ namespace OVS.Client.Settings;
 /// </summary>
 internal abstract class ChatAppAudioImport
 {
-    /// <summary>The apps in the order they are tried: Discord before Fluxer (the button is named after Discord).</summary>
+    /// <summary>The apps in the order of their buttons (Package 187): Discord, then Fluxer. A new app needs only its class here.</summary>
     public static IReadOnlyList<ChatAppAudioImport> All { get; } = [new DiscordAudioImport(), new FluxerAudioImport()];
 
     /// <summary>The app's name, for the dialog's title.</summary>
@@ -48,24 +48,6 @@ internal abstract class ChatAppAudioImport
             }
         }
         return new AudioImportResult(null, problem ?? $"{Name} is not installed");
-    }
-
-    /// <summary>Any of <see cref="All"/> is installed.</summary>
-    /// <param name="appData">The roaming application data folder.</param>
-    public static bool AnyInstalled(string appData) => All.Any(app => app.IsInstalled(appData));
-
-    /// <summary>The settings of the first installed app that has some; otherwise the first problem.</summary>
-    /// <param name="appData">The roaming application data folder.</param>
-    public static AudioImportResult ReadFirst(string appData)
-    {
-        string? problem = null;
-        foreach (var app in All.Where(app => app.IsInstalled(appData)))
-        {
-            var result = app.Read(appData);
-            if (result.Audio is not null) return result;
-            problem ??= result.Problem;
-        }
-        return new AudioImportResult(null, problem ?? "neither Discord nor Fluxer is installed");
     }
 
     static string StorageOf(string appData, string folder) => Path.Combine(appData, folder, "Local Storage", "leveldb");

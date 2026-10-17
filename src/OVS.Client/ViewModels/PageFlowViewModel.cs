@@ -123,8 +123,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
         var newPage = new SettingsViewModel(settings(), knownDevices()?.Inputs, knownDevices()?.Outputs, time, captureChord)
         {
             EditKeyBinding = dialogs().EditKeyBinding,
-            CanImport = audioImport?.IsInstalled() ?? false, // Package 171
-            ReadImport = audioImport?.Read,
+            ImportApps = audioImport?.Apps ?? [], // Package 171, 187: one button per app
             LogImportProblem = audioImport?.LogProblem,
             DeviceNameOf = audioImport?.DeviceNameOf, // Package 185
             AskImport = dialogs().AskImport,

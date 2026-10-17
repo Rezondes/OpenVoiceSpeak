@@ -10875,21 +10875,23 @@ The page has one button "Aus Discord übernehmen" (`SettingsView.axaml:57`). It 
 
 ### Acceptance Criteria
 
-- [ ] AC1: The Audio page shows "Aus Discord übernehmen" and "Aus Fluxer übernehmen"; a new subclass in `All` adds its button without another change.
-- [ ] AC2: "Aus Fluxer übernehmen" reads only Fluxer, also while Discord is installed; "Aus Discord übernehmen" reads only Discord.
-- [ ] AC3: A button whose app is not installed is off with the tooltip "Fluxer wurde auf diesem PC nicht gefunden." (and the same for Discord).
-- [ ] AC4: A storage that cannot be read shows the error under that app's button only, with the reason in the client log.
-- [ ] AC5: The dialog, the preview and the unsaved-changes bar behave as in Package 171.
-- [ ] AC6: The buttons wrap and fit from 360 px in both languages.
+- [x] AC1: The Audio page shows "Aus Discord übernehmen" and "Aus Fluxer übernehmen"; a new subclass in `All` adds its button without another change.
+- [x] AC2: "Aus Fluxer übernehmen" reads only Fluxer, also while Discord is installed; "Aus Discord übernehmen" reads only Discord.
+- [x] AC3: A button whose app is not installed is off with the tooltip "Fluxer wurde auf diesem PC nicht gefunden." (and the same for Discord).
+- [x] AC4: A storage that cannot be read shows the error under that app's button only, with the reason in the client log.
+- [x] AC5: The dialog, the preview and the unsaved-changes bar behave as in Package 171.
+- [x] AC6: The buttons wrap and fit from 360 px in both languages.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `ChatAppImportViewModelTests > "Import_Fluxer_ReadsOnlyFluxerWhileDiscordInstalled"` (AC2)
-2. `ChatAppImportViewModelTests > "NotInstalled_ButtonOffWithAppNameInTip"` (AC3)
+2. `ChatAppImportViewModelTests > "Button_AppNotInstalled_OffWithAppNameInTip"` (AC3)
 3. `ChatAppImportViewModelTests > "Import_Unreadable_ErrorUnderThisButtonOnly"` (AC4)
-4. `SettingsTests > "AudioPage_OneImportButtonPerApp"` (AC1)
-5. `SettingsTests > "ImportFromDiscord_Checked_SetOnPageNotSaved"` and `"ImportFromDiscord_Cancelled_NothingChanges"` moved to the new view model, still green (AC5)
-6. `ResponsiveTests > "SettingsPages_At360_Fit"` with both buttons (AC6)
+4. `SettingsTests > "AudioPage_ImportButtons_OnePerApp"` (AC1)
+5. `SettingsTests > "ImportFromDiscord_Checked_SetOnPageNotSaved"` and `"ImportFromDiscord_Cancelled_NothingChanges"` through the new view model (AC5)
+6. `ResponsiveTests > "Settings_At360To1100_Fit"` with both buttons (AC6)
+
+(as built: `AudioImportSource` holds one `AudioImportApp` per entry of `ChatAppAudioImport.All`; `ReadFirst` and `AnyInstalled` are gone. The page makes its `ChatAppImportViewModel` buttons once from `ImportApps`; the dialog, the log and the device names stay on the page. The buttons sit in a wrap panel.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 

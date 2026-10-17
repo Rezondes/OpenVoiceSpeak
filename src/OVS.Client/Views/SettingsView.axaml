@@ -52,18 +52,29 @@
       <TabItem x:Name="AudioPage" Header="{x:Static l:Strings.Nav_Audio}">
         <ScrollViewer anim:PageMotion.Reveal="True">
           <StackPanel Classes="settingsBody" Spacing="20" MaxWidth="720" HorizontalAlignment="Left">
-            <!-- Package 171: takes over the audio settings of Discord or Fluxer, every change shown first -->
-            <StackPanel Spacing="4">
-              <Button x:Name="ImportFromDiscordButton" Command="{Binding ImportFromDiscordCommand}" HorizontalAlignment="Left"
-                      ToolTip.Tip="{Binding ImportTip}" ToolTip.ShowOnDisabled="True">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
-                  <TextBlock Text="{x:Static l:Strings.Import_Button}" TextWrapping="Wrap" />
-                </StackPanel>
-              </Button>
-              <TextBlock Classes="caption danger" Text="{Binding ImportError}" TextWrapping="Wrap"
-                         IsVisible="{Binding ImportError, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            </StackPanel>
+            <!-- Package 171: takes over the audio settings of Discord or Fluxer, every change shown first; Package 187: one button per app -->
+            <ItemsControl x:Name="ImportButtons" ItemsSource="{Binding Imports}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ChatAppImportViewModel">
+                  <StackPanel Spacing="4" Margin="0,0,8,4" MaxWidth="340">
+                    <Button Command="{Binding ImportCommand}" HorizontalAlignment="Left" ToolTip.Tip="{Binding Tip}" ToolTip.ShowOnDisabled="True"
+                            AutomationProperties.Name="{Binding Text}">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Classes="sm" Data="{StaticResource Icon.ArrowDown}" />
+                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Button>
+                    <TextBlock Classes="caption danger" Text="{Binding Error}" TextWrapping="Wrap"
+                               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <!-- Devices -->
             <StackPanel Spacing="8">
               <TextBlock Classes="section" Text="{x:Static l:Strings.Ui_DevicesSection}" />

@@ -378,19 +378,20 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
 
     static readonly OVS.Client.Models.ImportedAudio Discord = new("Discord") { AutoGain = false, EchoCancellation = false };
 
+    static AudioImportApp App(string name, AudioImportResult result, bool installed = true) => new(name, () => installed, () => result);
+
     [Fact]
     public async Task ImportFromDiscord_Checked_SetOnPageNotSaved()
     {
         var saves = 0;
         var settings = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System)
         {
-            CanImport = true,
-            ReadImport = () => new AudioImportResult(Discord, null),
+            ImportApps = [App("Discord", new AudioImportResult(Discord, null))],
             AskImport = plan => Task.FromResult<IReadOnlyList<ImportChange>?>([plan.Changes.Single(change => change.Name == Strings.Ui_AutoGain)]), // echo unchecked
             ApplySaved = () => Task.FromResult(saves++),
         };
 
-        await settings.ImportFromDiscordCommand.ExecuteAsync(null);
+        await settings.Imports[0].ImportCommand.ExecuteAsync(null);
 
         Assert.Equal((false, true, true, 0), (settings.AutoGain, settings.EchoCancellation, settings.HasChanges, saves)); // shown in the bar, not saved
     }
@@ -398,29 +399,25 @@ public sealed class SettingsTests() : TempDirectoryTest("ovs-settings-", quiet: 
     [Fact]
     public async Task ImportFromDiscord_Cancelled_NothingChanges()
     {
-        var problems = new List<string>();
         var settings = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System)
         {
-            CanImport = true,
-            ReadImport = () => new AudioImportResult(Discord, null),
+            ImportApps = [App("Discord", new AudioImportResult(Discord, null))],
             AskImport = _ => Task.FromResult<IReadOnlyList<ImportChange>?>(null),
-            LogImportProblem = problems.Add,
         };
 
-        await settings.ImportFromDiscordCommand.ExecuteAsync(null);
+        await settings.Imports[0].ImportCommand.ExecuteAsync(null);
         Assert.Equal((true, true, false), (settings.AutoGain, settings.EchoCancellation, settings.HasChanges));
+    }
 
-        // nothing readable: the page says so, the log says why, nothing changes
-        var unreadable = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System)
-        {
-            CanImport = true, ReadImport = () => new AudioImportResult(null, "discord: locked"), LogImportProblem = problems.Add,
-        };
-        await unreadable.ImportFromDiscordCommand.ExecuteAsync(null);
-        Assert.Equal((Strings.Import_Failed, false), (unreadable.ImportError, unreadable.HasChanges));
-        Assert.Equal(["discord: locked"], problems);
+    /// <summary>Package 187 (AC1, A200): one button per chat app, in the order of <see cref="ChatAppAudioImport.All"/>, named after it.</summary>
+    [Fact]
+    public void AudioPage_ImportButtons_OnePerApp()
+    {
+        var source = AudioImportSource.ForUser(NullLogger.Instance);
+        var settings = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System) { ImportApps = source.Apps };
 
-        var none = new SettingsViewModel(new ClientSettings(), [], [], TimeProvider.System); // no Discord, no Fluxer
-        Assert.Equal((false, Strings.Import_NoneFound), (none.ImportFromDiscordCommand.CanExecute(null), none.ImportTip));
+        Assert.Equal([TextFormat.Of(Strings.Import_ButtonFmt, "Discord"), TextFormat.Of(Strings.Import_ButtonFmt, "Fluxer")], settings.Imports.Select(import => import.Text));
+        Assert.Same(settings.Imports, settings.Imports); // made once
     }
 
     [Fact]

@@ -180,16 +180,16 @@
   <data name="Icon_PickFilter" xml:space="preserve"><value>Bilder (PNG, JPG)</value></data>
   <data name="Import_Apply" xml:space="preserve"><value>Übernehmen</value></data>
   <data name="Import_BeforeAfterFmt" xml:space="preserve"><value>Jetzt: {0}, neu: {1}</value></data>
-  <data name="Import_Button" xml:space="preserve"><value>Aus Discord übernehmen</value></data>
-  <data name="Import_ButtonHint" xml:space="preserve"><value>Übernimmt Geräte, Lautstärken, Filter und Push-to-Talk aus Discord oder Fluxer. Du siehst jede Änderung vorher.</value></data>
+  <data name="Import_ButtonFmt" xml:space="preserve"><value>Aus {0} übernehmen</value></data>
+  <data name="Import_ButtonHintFmt" xml:space="preserve"><value>Übernimmt Geräte, Lautstärken, Filter und Push-to-Talk aus {0}. Du siehst jede Änderung vorher.</value></data>
   <data name="Import_DeviceMissingFmt" xml:space="preserve"><value>{0}: Gerät nicht gefunden</value></data>
-  <data name="Import_Failed" xml:space="preserve"><value>Konnte die Einstellungen von Discord nicht lesen</value></data>
+  <data name="Import_FailedFmt" xml:space="preserve"><value>Konnte die Einstellungen von {0} nicht lesen</value></data>
   <data name="Import_Intro" xml:space="preserve"><value>Entferne den Haken bei allem, was so bleiben soll. Gespeichert wird erst mit Speichern.</value></data>
   <data name="Import_Mode" xml:space="preserve"><value>Sendemodus</value></data>
   <data name="Import_ModePtt" xml:space="preserve"><value>Push-to-Talk</value></data>
   <data name="Import_ModeVad" xml:space="preserve"><value>Sprachaktivierung</value></data>
   <data name="Import_NoKey" xml:space="preserve"><value>keine</value></data>
-  <data name="Import_NoneFound" xml:space="preserve"><value>Kein Discord oder Fluxer auf diesem PC gefunden.</value></data>
+  <data name="Import_NoneFoundFmt" xml:space="preserve"><value>{0} wurde auf diesem PC nicht gefunden.</value></data>
   <data name="Import_Nothing" xml:space="preserve"><value>Alles schon gleich</value></data>
   <data name="Import_Off" xml:space="preserve"><value>Aus</value></data>
   <data name="Import_On" xml:space="preserve"><value>An</value></data>

@@ -134,14 +134,12 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
 
     // ---- Package 171: take over the audio settings of Discord or Fluxer ----
 
-    /// <summary>Discord or Fluxer is installed; without one the button is off and its tooltip says so.</summary>
-    public bool CanImport { get; init; }
+    /// <summary>Package 187 (A200): the chat apps the page can take settings over from, one button each.</summary>
+    public IReadOnlyList<AudioImportApp> ImportApps { get; init; } = [];
 
-    /// <summary>What the button does, or why it is off.</summary>
-    public string ImportTip => CanImport ? Strings.Import_ButtonHint : Strings.Import_NoneFound;
-
-    /// <summary>Reads Discord's or Fluxer's settings (off the UI thread).</summary>
-    public Func<AudioImportResult>? ReadImport { get; init; }
+    /// <summary>Package 187: the buttons, made once in the order of <see cref="ImportApps"/>.</summary>
+    public IReadOnlyList<ChatAppImportViewModel> Imports => imports ??= [.. ImportApps.Select(app => new ChatAppImportViewModel(app, this))];
+    IReadOnlyList<ChatAppImportViewModel>? imports;
 
     /// <summary>The dialog with one checked row per change; returns the checked ones, null when cancelled.</summary>
     public Func<ImportPlan, Task<IReadOnlyList<ImportChange>?>>? AskImport { get; init; }
@@ -151,26 +149,6 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
 
     /// <summary>Package 185 (A198): the name Windows knows for a device id, also of a device that is gone.</summary>
     public Func<string, string?>? DeviceNameOf { get; init; }
-
-    /// <summary>Shown under the button when nothing could be read.</summary>
-    [ObservableProperty] string? importError;
-
-    /// <summary>Reads, asks, and sets the checked values on the page: previewed at once, saved only with "Speichern".</summary>
-    [RelayCommand(CanExecute = nameof(CanImport))]
-    async Task ImportFromDiscordAsync()
-    {
-        ImportError = null;
-        if (ReadImport is not { } read) return;
-        var result = await Task.Run(read);
-        if (result.Audio is not { } audio)
-        {
-            ImportError = Strings.Import_Failed;
-            LogImportProblem?.Invoke(result.Problem ?? "nothing found");
-            return;
-        }
-        if (AskImport is not { } ask || await ask(ImportMapping.Map(audio, this)) is not { } chosen) return;
-        foreach (var change in chosen) change.Apply(this);
-    }
 
     /// <summary>Package 159: plays the speaker test at the given output volume, on the speaker the page previews.</summary>
     public Action<float>? TestSpeaker { get; set; }
@@ -567,7 +545,6 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
     [
         nameof(HasChanges), nameof(InputLevelDb), nameof(ThresholdInUseDb), nameof(IsAboveThreshold), nameof(MeterThresholdDb),
         nameof(UpdateStatus), nameof(IsSelfTesting), nameof(SelfTestText), nameof(DeviceHint), nameof(Inputs), nameof(Outputs),
-        nameof(ImportError), // Package 171
     ];
 
     /// <summary>Package 153: every change of a value the user sets tells the bar whether the page differs now.</summary>
