@@ -10923,15 +10923,16 @@ In the server header the dot, the status texts and the `CopyServerLink` button s
 
 ### Acceptance Criteria
 
-- [ ] AC1: With the server link button shown, the vertical centre of "Verbunden" equals the dot's within 1 px.
-- [ ] AC2: Without the button (no link, streamer mode) the layout is as before.
+- [x] AC1: With the server link button shown, the vertical centre of "Verbunden" equals the dot's within 1 px.
+- [x] AC2: Without the button (no link, streamer mode) the layout is as before.
 - [ ] AC3 (manual): Both screenshots of the user's report look aligned.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `UiSmokeTests > "ServerHeader_WithServerLink_StatusCentredOnDot"` - Given: a connected server with a link; Expected: the centres of text and dot differ by at most 1 px (red today) (AC1)
-2. `UiSmokeTests > "ServerHeader_WithoutServerLink_StatusCentredOnDot"` (AC2)
-3. Manual check AC3.
+1. `ConnectionBindingTests > "Header_ServerLinkShownOrNot_StatusCentredOnDot"` - Given: a server without and then with a link; Expected: the middles of the drawn text line and of the dot differ by at most 1 px (red before the fix: 10 px with the link) (AC1, AC2)
+2. Manual check AC3 (open).
+
+(as built: one test for both cases, beside the copy button's own test in `ConnectionBindingTests`; it measures the drawn line (`DesiredSize`), since a stretched text block is as tall as the row.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 

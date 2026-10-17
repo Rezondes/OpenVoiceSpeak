@@ -144,6 +144,33 @@ public sealed class ConnectionBindingTests() : TempDirectoryTest("ovs-connbind-"
         main.Close();
     }
 
+    /// <summary>
+    /// Package 188 (AC1, AC2): the status text sits centred beside the green dot, also while the taller "Serverlink
+    /// kopieren" button makes the row higher.
+    /// </summary>
+    [AvaloniaFact]
+    public void Header_ServerLinkShownOrNot_StatusCentredOnDot()
+    {
+        var server = FakeServers.Admin();
+        var main = Open(server, out _);
+        var row = (StackPanel)main.FindControl<OVS.Client.Controls.CopyButton>("CopyServerLink")!.Parent!;
+        double Offset()
+        {
+            var dot = row.Children.OfType<Avalonia.Controls.Shapes.Ellipse>().Single();
+            var text = row.Children.OfType<TextBlock>().Single(textBlock => textBlock.IsVisible);
+            // the middle of what is drawn: a stretched text block draws its line at its top, so its own height is no measure
+            double Middle(Control control) => Avalonia.VisualExtensions.TranslatePoint(control, new Avalonia.Point(0, control.DesiredSize.Height / 2), row)!.Value.Y;
+            return Math.Abs(Middle(dot) - Middle(text));
+        }
+        Assert.True(Offset() <= 1, $"without the link: {Offset():0.0} px");
+
+        server.ServerLink = "https://rezondes.github.io/OpenVoiceSpeak/?join=gilde.example.org:7000";
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(Offset() <= 1, $"with the link: {Offset():0.0} px");
+        main.Close();
+    }
+
     const string BookmarkName = "Gilde";
 
     /// <summary>Clicks through <see cref="OverlayRig.Click"/> (the Click event reaches the handlers whether or not the button is enabled); tells whether a handler got it.</summary>
