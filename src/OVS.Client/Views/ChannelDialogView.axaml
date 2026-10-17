@@ -45,6 +45,13 @@
       <NumericUpDown Value="{Binding Bitrate}" Minimum="{Binding MinBitrate}" Maximum="{Binding MaxBitrate}" Increment="8" FormatString="0"
                      Width="140" HorizontalAlignment="Left" AutomationProperties.Name="{x:Static l:Strings.Dlg_Bitrate}" />
       <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Dlg_BitrateHint}" />
+      <!-- Package 184 (A197): above 256 kbps a lost packet comes back from a copy of lower quality -->
+      <Border x:Name="LowCopyWarning" Classes="banner warning" IsVisible="{Binding ShowsLowCopyWarning}">
+        <DockPanel>
+          <PathIcon DockPanel.Dock="Left" Classes="warning" Data="{StaticResource Icon.Warning}" Margin="0,0,8,0" VerticalAlignment="Top" />
+          <TextBlock Classes="warning" Text="{x:Static l:Strings.Dlg_LowCopyWarning}" TextWrapping="Wrap" />
+        </DockPanel>
+      </Border>
     </StackPanel>
     <!-- Package 93: only members of a ticked group (and admins) may join -->
     <StackPanel Spacing="4">

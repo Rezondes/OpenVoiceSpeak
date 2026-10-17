@@ -123,7 +123,7 @@ public class IdleCostTests
         var sender = CapturePipeline.Manual();
         sender.Music = true;
         sender.ChooseTarget = _ => VoiceHeaderTarget;
-        sender.FrameEncoded += (_, _) => { }; // as the engine listens
+        sender.FrameEncoded += (_, _, _) => { }; // as the engine listens
         var own = new VoiceEncoder(music: true) { Mono = false }; // stereo, as the pipeline sets it
         own.Encode(new float[AudioFormat.StereoFrameSamples]);
         own.Encode(frames[0]);

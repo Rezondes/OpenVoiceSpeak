@@ -5,9 +5,12 @@ public static class ProtocolLimits
 {
     /// <summary>The largest user limit of a channel.</summary>
     public const int MaxChannelUsers = 999;
-    // Package 132 (A141): a channel's voice bitrate in kbps; 128 kbps is 320 bytes per 20 ms frame, far below MaxOpusSize
-    /// <summary>The range of a channel's voice bitrate in kbps; 128 kbps is 320 bytes per 20 ms frame, far below MaxOpusSize.</summary>
-    public const int MinBitrate = 16, MaxBitrate = 128;
+    // Package 132 (A141): a channel's voice bitrate in kbps; Package 184 (A195): up to Opus' maximum, 1275 bytes per 20 ms
+    /// <summary>
+    /// The range of a channel's voice bitrate in kbps; Package 184 (A195): up to 510, Opus' maximum (MaxOpusSize per 20 ms
+    /// frame); above 256 the copy of a lost frame has a lower bitrate (RelayPayload.CopyKbps).
+    /// </summary>
+    public const int MinBitrate = 16, MaxBitrate = 510;
     /// <summary>The longest chat message.</summary>
     public const int MaxChatLength = 2000;
     /// <summary>The longest kick or ban reason.</summary>

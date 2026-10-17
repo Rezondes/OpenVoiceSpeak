@@ -234,4 +234,38 @@ public class VoicePacketTests
         Assert.Equal(uint.MaxValue, counter.Next());
         Assert.Throws<OverflowException>(() => counter.Next());
     }
+
+    /// <summary>
+    /// Package 184 (AC3, A196): above 256 kbps the current frame and the lower-rate copy share the packet, each capped so
+    /// both always fit; at 510 kbps the current frame keeps Opus' largest size and the copy gets the rest, at most 64 kbps.
+    /// </summary>
+    [Theory]
+    [InlineData(257)]
+    [InlineData(300)]
+    [InlineData(400)]
+    [InlineData(510)]
+    public void Budget_Above256_CurrentAndCopyFitTheMaxSize(int kbps)
+    {
+        int copyKbps = RelayPayload.CopyKbps(kbps);
+
+        Assert.InRange(copyKbps, 16, RelayPayload.MaxCopyKbps);
+        Assert.True(RelayPayload.HeaderSize + RelayPayload.FrameBytes(kbps) + RelayPayload.CopyBytes(kbps) <= RelayPayload.MaxSize);
+        Assert.True(RelayPayload.FrameBytes(kbps) >= kbps * 20 / 8, "the current frame keeps at least its own bitrate's size");
+        Assert.True(RelayPayload.FrameBytes(kbps) <= VoiceHeader.MaxOpusSize);
+        var payload = RelayPayload.Build(1, new byte[RelayPayload.FrameBytes(kbps)], new byte[RelayPayload.CopyBytes(kbps)]);
+        Assert.True(RelayPayload.TryReadArrays(payload, out _, out _, out var copy));
+        Assert.Equal(RelayPayload.CopyBytes(kbps), copy!.Length);
+    }
+
+    /// <summary>Package 184 (AC2): up to 256 kbps two full frames fit, so the copy stays the full previous frame.</summary>
+    [Fact]
+    public void Budget_At256_TwoFullFramesFit()
+    {
+        Assert.Equal(256, RelayPayload.FullCopyUpToKbps);
+        Assert.Equal(0, RelayPayload.CopyKbps(256));
+        Assert.True(2 * RelayPayload.FrameBytes(256) + RelayPayload.HeaderSize <= RelayPayload.MaxSize, "two capped frames fit, also when VBR runs over");
+        Assert.True(RelayPayload.HeaderSize + 2 * (256 * 20 / 8) <= RelayPayload.MaxSize);
+        Assert.Equal(64, RelayPayload.CopyKbps(300));
+        Assert.Equal(37, RelayPayload.CopyKbps(510));
+    }
 }

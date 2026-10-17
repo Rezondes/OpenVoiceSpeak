@@ -92,7 +92,7 @@ public sealed class VoiceLinkTests : IDisposable
     {
         link.Start(CreateClient());
 
-        engine.Send!(EngineProbe.SilentFrame(), VoiceHeader.TargetLinked);
+        engine.Send!(EngineProbe.SilentFrame(), VoiceHeader.TargetLinked, null);
 
         await server.WaitForAsync(PacketType.Voice);
         Assert.Equal(VoiceHeader.TargetLinked, Assert.Single(server.Received, header => header.Type == PacketType.Voice).Target);
@@ -160,7 +160,7 @@ public sealed class VoiceLinkTests : IDisposable
     [Fact]
     public void Stop_NothingStarted_StillClearsTheEngineSend()
     {
-        engine.Send = (_, _) => { };
+        engine.Send = (_, _, _) => { };
 
         link.Stop();
 

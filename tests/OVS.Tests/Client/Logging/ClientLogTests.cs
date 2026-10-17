@@ -192,7 +192,7 @@ public sealed class ClientLogTests() : TempDirectoryTest("ovs-clientlog-", quiet
     public async Task AudioDebug_On_WritesToClientLog()
     {
         using var keys = new KeyPoller(TimeProvider.System); // no bindings: only simulated keys count
-        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, Send = (_, _, _) => { } };
         using (new OVS.Client.Diagnostics.AudioDebugLog(keys, engine, new ClientLog(dir, TimeProvider.System)))
         {
             engine.DeviceLifecycle.SetTone(440);

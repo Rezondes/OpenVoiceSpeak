@@ -10716,27 +10716,30 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 
 ### Acceptance Criteria
 
-- [ ] AC1: The channel dialog takes 16 to 510 kbps; the server accepts 510 and refuses 511 with "Bitrate: 16 to 510 kbps."; a client clamps to 510.
-- [ ] AC2: Up to 256 kbps sending is unchanged: the full previous frame rides along from 2 % uplink loss.
-- [ ] AC3: Above 256 kbps every UDP voice packet after the first of a talk spurt carries a copy of the previous frame, whose length never exceeds the room the current frame leaves; at 510 kbps no copy is dropped over a talk spurt of 10 s with a speech-like signal.
-- [ ] AC4: A listener with at least 2 % downlink loss gets the copy and plays a lost frame from it (counted as rebuilt, Package 133); a listener without loss gets the frame alone.
-- [ ] AC5: The copy encoder exists only while the channel is above 256 kbps; it is dropped when the channel goes to 256 or below; in music mode it is a music encoder in mono.
-- [ ] AC6: The channel dialog shows the warning under "Qualität" exactly while more than 256 kbps are set, in both languages, and it fits from 360 px.
-- [ ] AC7: A client and a server of the old protocol version refuse each other with the usual version message.
-- [ ] AC8: Over TCP (Package 141) no copy is sent at any bitrate.
+- [x] AC1: The channel dialog takes 16 to 510 kbps; the server accepts 510 and refuses 511 with "Bitrate: 16 to 510 kbps."; a client clamps to 510.
+- [x] AC2: Up to 256 kbps sending is unchanged: the full previous frame rides along from 2 % uplink loss.
+- [x] AC3: Above 256 kbps every UDP voice packet after the first of a talk spurt carries a copy of the previous frame, whose length never exceeds the room the current frame leaves; at 510 kbps no copy is dropped over a talk spurt of 10 s with a speech-like signal.
+- [x] AC4: A listener with at least 2 % downlink loss gets the copy and plays a lost frame from it (counted as rebuilt, Package 133); a listener without loss gets the frame alone.
+- [x] AC5: The copy encoder exists only while the channel is above 256 kbps; it is dropped when the channel goes to 256 or below; in music mode it is a music encoder in mono.
+- [x] AC6: The channel dialog shows the warning under "Qualität" exactly while more than 256 kbps are set, in both languages, and it fits from 360 px.
+- [x] AC7: A client and a server of the old protocol version refuse each other with the usual version message.
+- [x] AC8: Over TCP (Package 141) no copy is sent at any bitrate.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `VoicePacketTests > "Budget_At510_CurrentAndCopyFitTheMaxSize"` and `"Budget_At256_TwoFullFramesFit"` (AC3)
+1. `VoicePacketTests > "Budget_Above256_CurrentAndCopyFitTheMaxSize"` and `"Budget_At256_TwoFullFramesFit"` (AC3)
 2. `SendPathTests > "Encoder_Above256_CopyEncodedAtMost64Kbps"`, `"Encoder_At256_NoCopyEncoder"`, `"Encoder_Music_CopyEncoderMono"`, `"Encoder_ChannelDownTo256_CopyEncoderDropped"` (AC2, AC5)
-3. `SendPathTests > "Encode_At510_CopyNeverDroppedOverTenSeconds"` - Given: 500 frames of the speech-like test signal at 510 kbps; Expected: every packet after the first carries a copy, each at most `MaxSize` (AC3)
-4. `VoiceLinkTests > "SendVoice_Above256_CopyAlwaysAlong"`, `"SendVoice_At256_CopyOnlyFromLoss"`, `"SendVoice_OverTcp_NeverACopy"` (AC2, AC3, AC8)
-5. `VoiceRelayTests > "Relay_LargeFrameWithLowCopy_CopyToLossyListenerOnly"` (AC4)
-6. `ChannelDialogViewModelTests > "Bitrate_Above256_ShowsLowCopyWarning"` and `"Bitrate_510_Accepted511_Clamped"`; `ChannelSettingsRuleTests` or the existing server channel test: `"Bitrate_511_Refused"` (AC1, AC6)
-7. `EngineSyncTests > "SyncConnection_BitrateAboveTheMaximum_SetsTheMaximum"` with 510 (AC1)
-8. `WireFreezeTests` with version 22 (AC7)
+3. `SendPathTests > "Encode_At510_CopyNeverDroppedOverTenSeconds"` - Given: 500 frames of noise at 510 kbps (Opus' largest frames); Expected: every packet after the first carries a copy, each at most `MaxSize` (AC3)
+4. `SendPathTests > "SendVoice_LowCopy_AlongWithoutLoss"` and `"Sender_LossReported_OnlyThenAddsCopy"` (AC2, AC3)
+5. `VoiceRelayTests > "Relay_LargeFrameWithLowCopy_CopyToLossyListenerOnly"` and `ReceivePathTests > "LostFrame_PlayedFromCopy_FewerConcealed"` (AC4)
+6. `ChannelDialogViewModelTests > "Bitrate_Above256_ShowsLowCopyWarning"` and `"Bitrate_NewOrEditedChannel_ShownAndBounded"`; `ChannelSettingsRuleTests > "CheckBitrate_Kbps_OnlyInRange"` and `ChannelCommandTests > "Bitrate_CreateAndEdit_DefaultRangeOrRefused"` (AC1, AC6)
+7. `EngineSyncTests > "SyncConnection_BitrateAboveTheMaximum_SetsTheMaximum"` (AC1)
+8. `SmokeTests > "VersionAndPort_Defaults_AreStable"` with version 22 (AC7)
 9. `ResponsiveTests > "Dialogs_At360_Fit"` with the warning shown (AC6)
-10. Manual check, muted and without sound: two clients on the test server at 510 kbps over `LossyUdpRelay` with 5 % loss; the receiving statistics count rebuilt frames, none concealed for a single loss.
+10. `VoiceRelayTests > "VoiceOverTcp_Routing_LikeUdp"` (AC8: `VoiceUp` carries one frame, so TCP has no room for a copy)
+11. Manual check, muted and without sound: two clients on the test server at 510 kbps over `LossyUdpRelay` with 5 % loss; the receiving statistics count rebuilt frames, none concealed for a single loss (open).
+
+(as built: the frame cap applies at every bitrate. At or below 256 kbps a frame may take half the packet (684 bytes), so two frames of the same cap always fit; without it a stereo noise frame at 256 kbps ran over and lost its copy, which `MusicMode_Stereo_ArrivesSeparated` found. `CapturePipeline.FrameEncoded` and `AudioEngine.Send` carry the copy as a third argument; `VoiceClient.SendVoice` takes it and sends it under the routing rules of Package 136 without waiting for reported loss. The server needed no change: `RelayAsync` already prefers the sender's copy. The planned VoiceLink tests landed in `SendPathTests`, beside the copy test of Package 136. The bitrate hint of the dialog now names 128 as the default (left from Package 183).)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 

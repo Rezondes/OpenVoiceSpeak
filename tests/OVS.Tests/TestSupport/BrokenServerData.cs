@@ -38,7 +38,7 @@ static class BrokenServerData
             case "channel-name-control": lobby.Name = "a\u0007b"; break;
             case "channel-description-too-long": lobby.Description = new string('d', ProtocolLimits.MaxTextLength + 1); break;
             case "channel-bitrate-low": lobby.Bitrate = ProtocolLimits.MinBitrate - 1; break;
-            case "channel-bitrate-high": lobby.Bitrate = 200; break;
+            case "channel-bitrate-high": lobby.Bitrate = ProtocolLimits.MaxBitrate + 1; break;
             case "unknown-kind": lobby.Kind = (ChannelKind)7; break;
             case "channel-id-twice": serverData.Channels.Add(new ChannelRecord { Id = lobby.Id, Name = "Zweite" }); break;
             case "no-default-channel": serverData.DefaultChannelId = Guid.NewGuid(); break;

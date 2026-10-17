@@ -65,7 +65,12 @@ internal sealed partial class ChannelDialogViewModel(ChannelEdit current, Channe
     }
 
     /// <summary>Package 132 (A141): "Qualität" in kbps, also for the default channel.</summary>
-    [ObservableProperty] decimal? bitrate = current.Bitrate;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsLowCopyWarning))]
+    decimal? bitrate = current.Bitrate;
+
+    /// <summary>Package 184 (A197): above 256 kbps a lost packet is replaced by a lower-rate copy; the dialog says so.</summary>
+    public bool ShowsLowCopyWarning => Bitrate > OVS.Shared.Voice.RelayPayload.FullCopyUpToKbps;
     /// <summary>The lowest bitrate in kbps.</summary>
     #pragma warning disable CA1822 // bound from XAML, which reads instance properties
     public decimal MinBitrate => ProtocolLimits.MinBitrate;

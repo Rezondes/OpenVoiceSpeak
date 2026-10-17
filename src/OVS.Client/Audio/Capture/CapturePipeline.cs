@@ -5,6 +5,7 @@ using OVS.Client.Audio.Processing;
 using OVS.Client.Audio.Rust;
 using OVS.Client.Audio.Transmit;
 using OVS.Shared.Protocol;
+using OVS.Shared.Voice;
 
 namespace OVS.Client.Audio.Capture;
 
@@ -18,6 +19,8 @@ internal sealed class CapturePipeline : IDisposable
     readonly FrameChunker chunker = new(), stereoChunker = new(2);
     readonly VoiceEncoder encoder = new();
     VoiceEncoder? musicEncoder, lastEncoder; // Package 142: the music one made on first use
+    VoiceEncoder? copyEncoder; // Package 184 (A196): the lower-rate copy's, only while above RelayPayload.FullCopyUpToKbps
+    byte[]? lastCopy; // Package 184: the copy encoder's packet of the frame sent last, null at a spurt's start
     readonly object gate = new();
     readonly float[] previous = new float[AudioFormat.StereoFrameSamples]; // pre-roll, see Feed
     readonly float[] doubled = new float[AudioFormat.StereoFrameSamples]; // Package 142: a mono microphone's music frame
@@ -171,8 +174,14 @@ internal sealed class CapturePipeline : IDisposable
     /// <summary>Package 135: tests read back what the encoder was set to.</summary>
     internal VoiceEncoder Encoder => encoder;
 
-    /// <summary>Raised with each encoded frame and its target.</summary>
-    public event Action<byte[], byte>? FrameEncoded;
+    /// <summary>
+    /// Raised with each encoded frame and its target. Package 184 (A196): above <see cref="RelayPayload.FullCopyUpToKbps"/>
+    /// also the lower-rate copy of the frame before it (null for the first of a spurt and at or below that bitrate).
+    /// </summary>
+    public event Action<byte[], byte, byte[]?>? FrameEncoded;
+
+    /// <summary>Package 184: tests read back the copy encoder (null while at or below 256 kbps).</summary>
+    internal VoiceEncoder? CopyEncoder => copyEncoder;
     /// <summary>Raised with each frame's level in dB.</summary>
     public event Action<float>? Level;
 
@@ -261,22 +270,59 @@ internal sealed class CapturePipeline : IDisposable
                     if (music) opus.Mono = channels == 1 || kbps < VoiceEncoder.StereoFromKbps;
                     if (kbps != opus.BitrateKbps) opus.BitrateKbps = kbps;
                     if (LossHint() is var loss && loss != opus.PacketLossPercent) opus.PacketLossPercent = loss; // Package 135
+                    var copier = CopyEncoderFor(music, kbps);
                     // The level only crosses the threshold inside a word: send the 20 ms before it too, so the onset is not cut.
-                    if (!sending) FrameEncoded?.Invoke(Encode(opus, previous, channels), voiceTarget);
-                    FrameEncoded?.Invoke(Encode(opus, frame, channels), voiceTarget);
+                    if (!sending) EncodeAndRaise(opus, copier, previous, channels, kbps, voiceTarget);
+                    EncodeAndRaise(opus, copier, frame, channels, kbps, voiceTarget);
                 }
+                else lastCopy = null; // Package 184: a copy never reaches across a pause
                 sending = target is not null;
                 frame.CopyTo(previous, 0);
             }
         }
     }
 
-    /// <summary>Package 142: a frame of <paramref name="channels"/>; a mono one doubled for the stereo music encoder. Under gate.</summary>
-    byte[] Encode(VoiceEncoder opus, float[] frame, int channels)
+    /// <summary>
+    /// Package 184 (A196): the copy encoder of this mode at the copy's bitrate, made on the first frame above 256 kbps and
+    /// dropped at or below it; a music copy goes out in mono (it is below the 64 kbps of stereo). Under gate.
+    /// </summary>
+    VoiceEncoder? CopyEncoderFor(bool music, int kbps)
     {
-        if (channels == opus.Channels) return opus.Encode(frame.AsSpan(0, AudioFormat.FrameSamples * channels));
+        int copyKbps = RelayPayload.CopyKbps(kbps);
+        if (copyKbps == 0)
+        {
+            copyEncoder = null;
+            lastCopy = null;
+            return null;
+        }
+        if (copyEncoder?.Channels != (music ? 2 : 1))
+        {
+            copyEncoder = new VoiceEncoder(music);
+            if (music) copyEncoder.Mono = true; // a voice encoder is mono already and takes no forced channel count
+            lastCopy = null;
+        }
+        if (copyEncoder.BitrateKbps != copyKbps) copyEncoder.BitrateKbps = copyKbps;
+        return copyEncoder;
+    }
+
+    /// <summary>
+    /// Package 184 (A196): encodes the frame, capped so a copy fits beside it, and raises it with the copy of the frame
+    /// before; then encodes this frame's copy for the next one. Under gate.
+    /// </summary>
+    void EncodeAndRaise(VoiceEncoder opus, VoiceEncoder? copier, float[] frame, int channels, int kbps, byte target)
+    {
+        var current = Encode(opus, frame, channels, RelayPayload.FrameBytes(kbps));
+        var copy = lastCopy;
+        lastCopy = copier is null ? null : Encode(copier, frame, channels, RelayPayload.CopyBytes(kbps));
+        FrameEncoded?.Invoke(current, target, copy);
+    }
+
+    /// <summary>Package 142: a frame of <paramref name="channels"/>; a mono one doubled for the stereo music encoder. Under gate.</summary>
+    byte[] Encode(VoiceEncoder opus, float[] frame, int channels, int maxBytes)
+    {
+        if (channels == opus.Channels) return opus.Encode(frame.AsSpan(0, AudioFormat.FrameSamples * channels), maxBytes);
         for (int index = 0; index < AudioFormat.FrameSamples; index++) doubled[2 * index] = doubled[2 * index + 1] = frame[index];
-        return opus.Encode(doubled);
+        return opus.Encode(doubled, maxBytes);
     }
 
     /// <summary>

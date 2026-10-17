@@ -707,7 +707,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
         "KeyBinding" => KeyBindingDialog.ShowAsync(overlayHost, null, _ => Task.FromResult<KeyChord?>(null)),
         "ChannelCreate" => ChannelDialogView.ShowAsync(overlayHost, new ChannelEdit("", ""), ChannelDialogMode.Create),
         "ChannelEdit" => ChannelDialogView.ShowAsync(overlayHost, new ChannelEdit("Raid", "Donnerstags ab 20 Uhr", IsMuted: true, MaxUsers: 8,
-            AllowedGroupIds: [server.Mirror.Groups[2].Id]), ChannelDialogMode.Edit, server.Mirror.Groups), // Package 93: with its groups
+            AllowedGroupIds: [server.Mirror.Groups[2].Id], Bitrate: 320), ChannelDialogMode.Edit, server.Mirror.Groups), // Package 93: with its groups; Package 184: with the copy warning
         "PickChannel" => ChannelPickerDialog.ShowAsync(overlayHost, "Verschieben nach", server.Tree.Channels),
         "AskText" => TextDialog.ShowAsync(overlayHost, Strings.Dialog_RedeemToken, "Token:"),
         "Password" => ServerPasswordDialog.ShowAsync(overlayHost, "Gilde"),

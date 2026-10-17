@@ -864,7 +864,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             serverTime.Advance(AudioFormat.FrameDuration); // its voice rate limit (60/s, burst 10) refills
             await OnUiAsync(() =>
             {
-                viewModel.Audio.Send!(frame, OVS.Shared.Voice.VoiceHeader.TargetChannel);
+                viewModel.Audio.Send!(frame, OVS.Shared.Voice.VoiceHeader.TargetChannel, null);
                 return 0;
             });
             await Task.Delay(5); // lets the server take each frame before the next advance, so they do not drain the bucket at once
@@ -942,7 +942,7 @@ public sealed class MainViewModelTests : IAsyncLifetime
             serverTime.Advance(AudioFormat.FrameDuration);
             await OnUiAsync(() =>
             {
-                viewModel.Audio.Send!(frame, OVS.Shared.Voice.VoiceHeader.TargetChannel);
+                viewModel.Audio.Send!(frame, OVS.Shared.Voice.VoiceHeader.TargetChannel, null);
                 return 0;
             });
         }

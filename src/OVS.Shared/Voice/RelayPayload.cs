@@ -22,6 +22,30 @@ public static class RelayPayload
     /// </summary>
     public static readonly TimeSpan CopyMaxAge = TimeSpan.FromMilliseconds(100);
 
+    /// <summary>Package 184 (A196): up to this channel bitrate in kbps the copy is the full previous frame (two fit a packet).</summary>
+    public const int FullCopyUpToKbps = 256;
+    /// <summary>Package 184 (A196): the highest bitrate in kbps of the lower-rate copy above <see cref="FullCopyUpToKbps"/>.</summary>
+    public const int MaxCopyKbps = 64;
+    const int OpusRoom = MaxSize - HeaderSize;
+
+    /// <summary>
+    /// Package 184 (A196): the lower-rate copy's kbps at this channel bitrate, 0 at or below <see cref="FullCopyUpToKbps"/>;
+    /// at most <see cref="MaxCopyKbps"/> and at most what the current frame leaves of the packet (37 at 510 kbps).
+    /// </summary>
+    public static int CopyKbps(int kbps) => kbps <= FullCopyUpToKbps ? 0 : Math.Min(MaxCopyKbps, (OpusRoom - BytesOf(kbps)) * 2 / 5);
+
+    /// <summary>Package 184: the most bytes the lower-rate copy may take (its kbps over 20 ms), 0 without one.</summary>
+    public static int CopyBytes(int kbps) => BytesOf(CopyKbps(kbps));
+
+    /// <summary>
+    /// Package 184: the most bytes the current frame may take, so a copy always fits beside it: at or below
+    /// <see cref="FullCopyUpToKbps"/> half the packet (a full copy of the same cap), above it what <see cref="CopyBytes"/> leaves.
+    /// </summary>
+    public static int FrameBytes(int kbps) => kbps <= FullCopyUpToKbps ? OpusRoom / 2 : Math.Min(VoiceHeader.MaxOpusSize, OpusRoom - CopyBytes(kbps));
+
+    /// <summary>The bytes of one 20 ms frame at this bitrate in kbps.</summary>
+    static int BytesOf(int kbps) => kbps * 20 / 8;
+
     /// <summary>A copy that would not fit the packet beside the current frame is left out.</summary>
     public static byte[] Build(uint frameSeq, ReadOnlySpan<byte> current, ReadOnlySpan<byte> copy = default)
     {

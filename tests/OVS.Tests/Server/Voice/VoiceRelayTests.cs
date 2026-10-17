@@ -342,6 +342,45 @@ public sealed class VoiceRelayTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// Package 184 (AC4, A196): at 510 kbps the sender's lower-rate copy rides beside a frame of Opus' largest size; the
+    /// server passes it to the lossy listener and strips it for the clean one, and never swaps in its kept full frame.
+    /// </summary>
+    [Fact]
+    public async Task Relay_LargeFrameWithLowCopy_CopyToLossyListenerOnly()
+    {
+        var time = new ManualTimeProvider();
+        await using var own = await TestServer.StartAsync(time: time);
+        await using var client = await TestClient.ConnectAsync(own, "x");
+        await using var testClient = await TestClient.ConnectAsync(own, "y");
+        await using var otherClient = await TestClient.ConnectAsync(own, "z");
+        using var vx = new TestVoice(client, own.VoiceEndPoint);
+        using var vy = new TestVoice(testClient, own.VoiceEndPoint);
+        using var vz = new TestVoice(otherClient, own.VoiceEndPoint);
+        foreach (var voice in new[] { vx, vy, vz }) await voice.HelloAsync();
+        await vy.SendAsync(PacketType.Ping, new PingPayload(0, new LossReport(100, 10)).Build());
+        Assert.NotNull(await vy.ReceiveAsync());
+
+        int kbps = OVS.Shared.Protocol.ProtocolLimits.MaxBitrate;
+        var frames = Enumerable.Range(0, 3).Select(_ => RandomNumberGenerator.GetBytes(RelayPayload.FrameBytes(kbps))).ToArray();
+        var copies = Enumerable.Range(0, 3).Select(_ => RandomNumberGenerator.GetBytes(RelayPayload.CopyBytes(kbps))).ToArray();
+        for (uint number = 0; number < 3; number++)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(20));
+            await vx.SendRawAsync(vx.SealRaw(PacketType.Voice, RelayPayload.Build(number, frames[number], number == 0 ? null : copies[number - 1])));
+        }
+
+        for (uint number = 0; number < 3; number++)
+        {
+            Assert.True(RelayPayload.TryReadArrays((await vy.ReceiveVoiceAsync())!.Plain, out _, out var lossyFrame, out var lossyCopy));
+            Assert.Equal(frames[number], lossyFrame);
+            Assert.Equal(number == 0 ? null : copies[number - 1], lossyCopy);
+            Assert.True(RelayPayload.TryReadArrays((await vz.ReceiveVoiceAsync())!.Plain, out _, out var cleanFrame, out var cleanCopy));
+            Assert.Equal(frames[number], cleanFrame);
+            Assert.Null(cleanCopy);
+        }
+    }
+
+    /// <summary>
     /// Package 136 (review): the frame before only goes along under the same routing, right after it and only if it was
     /// relayed or never arrived; the extra packet of a recovered frame costs a token of the sender's rate limit, and a
     /// recovered frame arriving late itself is not relayed again. x (admin) speaks in the lobby with y (lossy) and z;

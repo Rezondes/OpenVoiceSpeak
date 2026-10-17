@@ -193,9 +193,11 @@ internal sealed class VoiceClient : IDisposable
     /// used by pings, so it has gaps the receiver's jitter buffer must not see. Package 136 (A145): while the uplink
     /// loses frames, the previous frame rides along (the encoder's own array, kept, so nothing extra is allocated), but
     /// only to the same target (it travels under this frame's routing) and only right after it (not the end of the last
-    /// talk spurt). Package 141: over TCP the frame alone, with the same frame numbers.
+    /// talk spurt). Package 141: over TCP the frame alone, with the same frame numbers. Package 184 (A196): a lower-rate
+    /// copy given by the capture (above 256 kbps) rides along always, not only while the uplink loses frames, so the server
+    /// has one for every listener with loss.
     /// </summary>
-    public void SendVoice(byte[] opus, byte target)
+    public void SendVoice(byte[] opus, byte target, byte[]? lowCopy = null)
     {
         lock (sendGate)
         {
@@ -206,8 +208,9 @@ internal sealed class VoiceClient : IDisposable
                 (lastFrame, lastTarget, lastSentAt) = (opus, target, now);
                 return;
             }
-            bool follows = sendCopies && target == lastTarget && time.GetElapsedTime(lastSentAt, now) <= RelayPayload.CopyMaxAge;
-            Send(PacketType.Voice, RelayPayload.Build(nextFrame++, opus, follows ? lastFrame : default), target);
+            bool follows = target == lastTarget && time.GetElapsedTime(lastSentAt, now) <= RelayPayload.CopyMaxAge;
+            var copy = lowCopy ?? (sendCopies ? lastFrame : null);
+            Send(PacketType.Voice, RelayPayload.Build(nextFrame++, opus, follows && copy is not null ? copy : default), target);
             (lastFrame, lastTarget, lastSentAt) = (opus, target, now);
         }
     }

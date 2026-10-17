@@ -295,8 +295,8 @@ internal sealed class AudioEngine : IDisposable
     /// <summary>The voices' level in the last frame mixed, before the tones.</summary>
     public float LastOutputLevelDb => playbackLoop.LastOutputLevelDb;
 
-    /// <summary>Set to VoiceClient.SendVoice while connected.</summary>
-    public Action<byte[], byte>? Send { get; set; }
+    /// <summary>Set to VoiceClient.SendVoice while connected: frame, target and (Package 184) the lower-rate copy or null.</summary>
+    public Action<byte[], byte, byte[]?>? Send { get; set; }
 
     /// <summary>Package 122: who is heard, on the playback thread, at most every 100 ms and once more when all fell silent.</summary>
     public event Action<List<ActiveSpeaker>>? SpeakersChanged
@@ -354,7 +354,7 @@ internal sealed class AudioEngine : IDisposable
         ThreadPool.QueueUserWorkItem(_ => DeviceLifecycle.SyncCaptureAndReport());
     }
 
-    void OnFrameEncoded(byte[] opus, byte target)
+    void OnFrameEncoded(byte[] opus, byte target, byte[]? copy)
     {
         if (loopbackFrame)
         {
@@ -363,7 +363,7 @@ internal sealed class AudioEngine : IDisposable
             return;
         }
         if (Send is not { } send) return;
-        send(opus, target);
+        send(opus, target, copy);
         Interlocked.Increment(ref framesSent);
     }
 

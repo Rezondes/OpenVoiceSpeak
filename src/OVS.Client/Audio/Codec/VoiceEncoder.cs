@@ -105,13 +105,17 @@ internal sealed unsafe class VoiceEncoder
     }
 
     /// <param name="frame">20 ms, interleaved when stereo.</param>
+    /// <param name="maxBytes">
+    /// Package 184 (A196): the most bytes the packet may take (Opus' <c>max_data_bytes</c>), so a lower-rate copy always fits
+    /// beside it; at most <see cref="VoiceHeader.MaxOpusSize"/>.
+    /// </param>
     /// <returns>A new array: it is sent or kept by the mixer (and only made while sending, never per idle frame).</returns>
-    public byte[] Encode(ReadOnlySpan<float> frame)
+    public byte[] Encode(ReadOnlySpan<float> frame, int maxBytes = VoiceHeader.MaxOpusSize)
     {
         int length;
         fixed (float* samples = frame)
         fixed (byte* data = buffer)
-            length = native.EncoderEncode(encoder.Pointer, samples, (uint)frame.Length, data, (uint)buffer.Length);
+            length = native.EncoderEncode(encoder.Pointer, samples, (uint)frame.Length, data, (uint)Math.Clamp(maxBytes, 1, buffer.Length));
         return length > 0 ? buffer[..length] : [];
     }
 }

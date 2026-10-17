@@ -55,7 +55,7 @@ public class SendPathTests
     public async Task PttKey_BelowThreshold_SendsOnlyInPttMode(TransmitMode mode, bool expectFrames)
     {
         using var keys = new KeyPoller(TimeProvider.System); // no bindings: a real key pressed while the tests run does not count
-        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, Send = (_, _, _) => { } };
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -10f, VadAutomatic = false }); // test tone is -13.5 dBFS: below
         engine.DeviceLifecycle.SetTone(440);
         keys.Simulate(ptt: true);
@@ -77,7 +77,7 @@ public class SendPathTests
     public async Task PushToMute_Held_SendsNothing(TransmitMode mode)
     {
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, Send = (_, _) => { } };
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, Send = (_, _, _) => { } };
         engine.Configure(new ClientSettings { Mode = mode, VadThresholdDb = -40f }); // tone at -13.5 dBFS: well above
         keys.Simulate(KeyAction.PushToMute, true);
         keys.Simulate(ptt: true);
@@ -97,7 +97,7 @@ public class SendPathTests
     public async Task Send_MutedChannel_Nothing()
     {
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, ChannelMuted = true, Send = (_, _) => { } };
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { Connected = true, SelfMuted = false, ChannelMuted = true, Send = (_, _, _) => { } };
         engine.Configure(new ClientSettings { Mode = TransmitMode.VoiceActivation, VadThresholdDb = -40f });
         engine.DeviceLifecycle.SetTone(440);
         await CaptureRunningAsync(engine);
@@ -461,7 +461,7 @@ public class SendPathTests
         var pipeline = CapturePipeline.FromTone(440); // never started, fed by hand
         var sent = new List<float>();
         pipeline.ChooseTarget = voice => voice ? Ch : null;
-        pipeline.FrameEncoded += (_, _) => sent.Add(0);
+        pipeline.FrameEncoded += (_, _, _) => sent.Add(0);
         pipeline.Feed(Constant(0.001f), AudioFormat.SampleRate); // quiet: nothing
         Assert.Empty(sent);
         pipeline.Feed(Constant(0.5f), AudioFormat.SampleRate);   // onset: the quiet frame before it, then this one
@@ -653,7 +653,7 @@ public class SendPathTests
         using var keys = new KeyPoller(TimeProvider.System);
         using var engine = ToneEngine(keys, new ClientSettings { Mode = VoiceActivation, VadThresholdDb = -50 });
         int sent = 0;
-        engine.Send = (_, _) => Interlocked.Increment(ref sent);
+        engine.Send = (_, _, _) => Interlocked.Increment(ref sent);
         engine.Connected = true;
         engine.SelfMuted = true;
         engine.Deafened = true;
@@ -793,7 +793,7 @@ public class SendPathTests
         var pipeline = CapturePipeline.Manual();
         pipeline.ChooseTarget = _ => Ch; // as if the key is held through the pause
         var sizes = new List<int>();
-        pipeline.FrameEncoded += (packet, _) => sizes.Add(packet.Length);
+        pipeline.FrameEncoded += (packet, _, _) => sizes.Add(packet.Length);
         for (int index = 0; index < 50; index++) pipeline.Feed(Constant(0f), AudioFormat.SampleRate);
         Assert.Equal(51, sizes.Count); // the frame before the first one too
         Assert.All(sizes, size => Assert.True(size > 1, $"{size} byte packet"));
@@ -858,6 +858,132 @@ public class SendPathTests
         Assert.Null(await SendAsync(8));
         await ReportAsync(new LossReport(100, 1));
         Assert.Null(await SendAsync(9));
+    }
+
+    // ---- Package 184: up to 510 kbps with a lower-rate copy ----
+
+    /// <summary>
+    /// Package 184 (AC3, A196): a lower-rate copy the capture gives rides along without any reported loss, under the
+    /// routing rules of Package 136 (same target, right after).
+    /// </summary>
+    [Fact]
+    public async Task SendVoice_LowCopy_AlongWithoutLoss()
+    {
+        var key = RandomNumberGenerator.GetBytes(32);
+        using var server = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        using var serverCrypto = new VoiceCrypto(key);
+        var clock = new ManualTimeProvider();
+        using var client = new VoiceClient((IPEndPoint)server.Client.LocalEndPoint!, 5, key, clock);
+        client.Start();
+        async Task<byte[]> ReceiveAsync()
+        {
+            using var cancelSource = new CancellationTokenSource(10_000);
+            var got = await server.ReceiveAsync(cancelSource.Token);
+            Assert.True(serverCrypto.TryOpen(PacketDirection.ClientToServer, got.Buffer, out _, out var plain));
+            return plain;
+        }
+        await ReceiveAsync(); // the Hello
+        var low = RandomNumberGenerator.GetBytes(20);
+        async Task<byte[]?> SendAsync(byte[]? copy, byte target = Ch)
+        {
+            client.SendVoice(RandomNumberGenerator.GetBytes(40), target, copy);
+            Assert.True(RelayPayload.TryReadArrays(await ReceiveAsync(), out _, out _, out var sentCopy));
+            return sentCopy;
+        }
+
+        Assert.Null(await SendAsync(null)); // the first of a spurt has none
+        Assert.Equal(low, await SendAsync(low)); // no loss reported: still along
+        Assert.Null(await SendAsync(low, Link)); // never across a change of target
+        clock.Advance(TimeSpan.FromMilliseconds(150));
+        Assert.Null(await SendAsync(low)); // nor across a pause
+        Assert.Null(await SendAsync(null)); // at or below 256 kbps the rule of Package 136: no loss, no copy
+    }
+
+    /// <summary>Feeds frames of noise into a pipeline that always sends at <paramref name="kbps"/>; the copies it raised.</summary>
+    static List<byte[]?> CopiesAt(CapturePipeline pipeline, Func<int> kbps, int frames = 50)
+    {
+        var copies = new List<byte[]?>();
+        var random = new Random(184);
+        pipeline.Bitrate = kbps;
+        pipeline.ChooseTarget = _ => Ch;
+        pipeline.FrameEncoded += (_, _, copy) => copies.Add(copy);
+        for (int index = 0; index < frames; index++) pipeline.Feed(VoiceFilterTests.Noise(random, -20), AudioFormat.SampleRate);
+        return copies;
+    }
+
+    /// <summary>Package 184 (AC3, AC5, A196): above 256 kbps a voice copy encoder at 64 kbps gives a copy for every frame after the first.</summary>
+    [Fact]
+    public void Encoder_Above256_CopyEncodedAtMost64Kbps()
+    {
+        using var pipeline = CapturePipeline.Manual();
+
+        var copies = CopiesAt(pipeline, () => 300);
+
+        Assert.Equal(51, copies.Count); // with the pre-roll frame
+        Assert.Null(copies[0]);
+        Assert.All(copies.Skip(1), copy => Assert.InRange(copy!.Length, 1, RelayPayload.CopyBytes(300)));
+        Assert.Equal((1, 64_000), (pipeline.CopyEncoder!.Channels, pipeline.CopyEncoder.Bitrate));
+    }
+
+    /// <summary>Package 184 (AC2, AC5): at 256 kbps there is no copy encoder, the copy stays the full previous frame of Package 136.</summary>
+    [Fact]
+    public void Encoder_At256_NoCopyEncoder()
+    {
+        using var pipeline = CapturePipeline.Manual();
+
+        Assert.All(CopiesAt(pipeline, () => 256), Assert.Null);
+        Assert.Null(pipeline.CopyEncoder);
+    }
+
+    /// <summary>Package 184 (AC5): in music mode the copy comes from a music encoder in mono.</summary>
+    [Fact]
+    public void Encoder_Music_CopyEncoderMono()
+    {
+        using var pipeline = CapturePipeline.Manual();
+        pipeline.Music = true;
+
+        CopiesAt(pipeline, () => 400, frames: 5);
+
+        Assert.Equal((2, true), (pipeline.CopyEncoder!.Channels, pipeline.CopyEncoder.Mono));
+    }
+
+    /// <summary>Package 184 (AC5): the channel lowered to 256 kbps drops the copy encoder and its last copy.</summary>
+    [Fact]
+    public void Encoder_ChannelDownTo256_CopyEncoderDropped()
+    {
+        using var pipeline = CapturePipeline.Manual();
+        int kbps = 300;
+
+        var copies = CopiesAt(pipeline, () => kbps, frames: 5);
+        kbps = 256;
+        for (int index = 0; index < 3; index++) pipeline.Feed(VoiceFilterTests.Noise(new Random(index), -20), AudioFormat.SampleRate);
+
+        Assert.NotNull(copies[5]);
+        Assert.All(copies.Skip(6), Assert.Null);
+        Assert.Null(pipeline.CopyEncoder);
+    }
+
+    /// <summary>
+    /// Package 184 (AC3): at 510 kbps 10 s of noise (the largest frames Opus makes) never lose the copy: every frame after
+    /// the first fits one packet together with it.
+    /// </summary>
+    [Fact]
+    public void Encode_At510_CopyNeverDroppedOverTenSeconds()
+    {
+        using var pipeline = CapturePipeline.Manual();
+        var payloads = new List<byte[]>();
+        pipeline.FrameEncoded += (opus, _, copy) => payloads.Add(RelayPayload.Build((uint)payloads.Count, opus, copy));
+
+        var copies = CopiesAt(pipeline, () => ProtocolLimits.MaxBitrate, frames: 500);
+
+        Assert.Equal(501, payloads.Count);
+        Assert.All(copies.Skip(1), copy => Assert.NotNull(copy));
+        Assert.All(payloads.Skip(1), payload =>
+        {
+            Assert.True(payload.Length <= RelayPayload.MaxSize);
+            Assert.True(RelayPayload.TryReadArrays(payload, out _, out _, out var copy));
+            Assert.NotNull(copy);
+        });
     }
 
     // ---- Package 137: audio device changes ----
@@ -1058,7 +1184,7 @@ public class SendPathTests
 
     /// <summary>
     /// Package 142 (AC1): in a 64 kbps channel a different tone on each side reaches a receiver's mixer with each tone on
-    /// its own side, the other tone at least 20 dB below it. At 128 kbps a stereo frame and the copy of the one before it
+    /// its own side, the other tone at least 20 dB below it. At 256 kbps (Package 184) a stereo frame and the copy of the one before it
     /// (Package 136) still fit one voice packet.
     /// </summary>
     [Fact]
@@ -1111,7 +1237,7 @@ public class SendPathTests
         Assert.InRange(ToneIn(settled, 1, 1000), 0.29, 0.31);
         Assert.True(ToneIn(settled, 0, 1000) < 0.003 && ToneIn(settled, 1, 440) < 0.003, "the sides stay apart");
 
-        var loud = new MusicRig { Kbps = ProtocolLimits.MaxBitrate };
+        var loud = new MusicRig { Kbps = RelayPayload.FullCopyUpToKbps }; // Package 184: above it the copy has a lower rate
         var random = new Random(142);
         for (int count = 0; count < 50; count++)
             loud.Feed(Enumerable.Range(0, AudioFormat.StereoFrameSamples).Select(_ => 0.5f * (2 * random.NextSingle() - 1)).ToArray(), 2);
@@ -1298,7 +1424,7 @@ public class SendPathTests
         rig.Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = 0, AudioContent = AudioContent.Music });
         rig.Pipeline.Music = true; // as ApplyLive and StartCapture set it on the engine's capture
         var packets = new List<byte[]>();
-        rig.Pipeline.FrameEncoded += (opus, _) => packets.Add(opus);
+        rig.Pipeline.FrameEncoded += (opus, _, _) => packets.Add(opus);
         int calls = 0;
         rig.Signal = () => StereoTones(calls++);
         void Feed(int count)
@@ -1327,7 +1453,7 @@ public class SendPathTests
         vad.Vad.ThresholdDb = -32;
         int sent = 0;
         vad.ChooseTarget = voice => voice ? Ch : null;
-        vad.FrameEncoded += (_, _) => sent++;
+        vad.FrameEncoded += (_, _, _) => sent++;
         float amplitude = MathF.Pow(10, -27 / 20f); // -30 dBFS RMS on the left, silence on the right: -33 dB over both
         for (int index = 0; index < 3; index++) vad.Feed(StereoTones(index, right: 0, amplitude: amplitude), AudioFormat.SampleRate, 2);
         Assert.True(vad.Vad.LastLevelDb > -31, $"{vad.Vad.LastLevelDb} dBFS");
@@ -1371,7 +1497,7 @@ public class SendPathTests
             Pipeline.ChooseTarget = Engine.ChooseTarget;
             Pipeline.Bitrate = () => Engine.EncoderBitrate; // as StartCapture wires it
             Pipeline.LossHint = () => Engine.EncoderLossHint; // Package 135
-            Pipeline.FrameEncoded += (opus, target) =>
+            Pipeline.FrameEncoded += (opus, target, _) =>
             {
                 Sent.Add(target);
                 Sizes.Add(opus.Length);
@@ -1437,7 +1563,7 @@ public class SendPathTests
             Pipeline.Music = true;
             Pipeline.Bitrate = () => Kbps;
             Pipeline.ChooseTarget = _ => Ch;
-            Pipeline.FrameEncoded += (opus, _) =>
+            Pipeline.FrameEncoded += (opus, _, _) =>
             {
                 Packets.Add(opus);
                 Receiver.Push(1, seq, opus, false, 20.0 * seq);

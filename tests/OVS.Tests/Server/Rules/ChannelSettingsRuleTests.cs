@@ -79,7 +79,7 @@ public class ChannelSettingsRuleTests
     [InlineData(ProtocolLimits.MinBitrate - 1, false)]
     [InlineData(ProtocolLimits.MaxBitrate + 1, false)]
     public void CheckBitrate_Kbps_OnlyInRange(int bitrate, bool allowed) =>
-        Assert.Equal(allowed ? null : new Refusal(ReasonCodes.InvalidValue, "Bitrate: 16 to 128 kbps."), ChannelSettingsRule.CheckBitrate(bitrate));
+        Assert.Equal(allowed ? null : new Refusal(ReasonCodes.InvalidValue, "Bitrate: 16 to 510 kbps."), ChannelSettingsRule.CheckBitrate(bitrate));
 
     [Theory]
     [InlineData(false)]

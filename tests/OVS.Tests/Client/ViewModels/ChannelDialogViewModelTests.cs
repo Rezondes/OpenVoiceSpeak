@@ -140,13 +140,13 @@ public class ChannelDialogViewModelTests
         Assert.Null(channelDialog.Result()!.AllowedGroupIds);
     }
 
-    /// <summary>Package 132 (A141): "Qualität" starts at the default (Package 183: 128 kbps) for a new channel and at the channel's own when editing, bounded 16 to 128.</summary>
+    /// <summary>Package 132 (A141): "Qualität" starts at the default (Package 183: 128 kbps) for a new channel and at the channel's own when editing, bounded 16 to 510 (Package 184).</summary>
     [Fact]
     public void Bitrate_NewOrEditedChannel_ShownAndBounded()
     {
         var create = new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create) { Name = "Neu" };
         Assert.Equal(128m, create.Bitrate);
-        Assert.Equal((16m, 128m), (create.MinBitrate, create.MaxBitrate));
+        Assert.Equal((16m, 510m), (create.MinBitrate, create.MaxBitrate));
         Assert.Equal(128, create.Result()!.Bitrate);
         create.Bitrate = 96;
         Assert.Equal(new ChannelEdit("Neu", "", Bitrate: 96), create.Result());
@@ -154,8 +154,8 @@ public class ChannelDialogViewModelTests
         var edit = new ChannelDialogViewModel(new ChannelEdit("Raid", "", Bitrate: 32), ChannelDialogMode.Edit);
         Assert.Equal(32m, edit.Bitrate);
         Assert.Equal(32, edit.Result()!.Bitrate);
-        edit.Bitrate = 500;
-        Assert.Equal(128m, edit.Bitrate);
+        edit.Bitrate = 511;
+        Assert.Equal(510m, edit.Bitrate);
         edit.Bitrate = 3;
         Assert.Equal(16m, edit.Bitrate);
         edit.Bitrate = null; // an emptied number field keeps the channel's own
@@ -166,6 +166,24 @@ public class ChannelDialogViewModelTests
         Assert.Equal(80, lobby.Result()!.Bitrate);
         // a separator has none
         Assert.Equal(128, new ChannelDialogViewModel(new ChannelEdit("", ""), ChannelDialogMode.Create) { IsSeparator = true, Bitrate = 96 }.Result()!.Bitrate);
+    }
+
+    /// <summary>Package 184 (AC6, A197): the warning about the lower-rate copy shows exactly while more than 256 kbps are set.</summary>
+    [Fact]
+    public void Bitrate_Above256_ShowsLowCopyWarning()
+    {
+        var dialog = new ChannelDialogViewModel(new ChannelEdit("Raid", "", Bitrate: 256), ChannelDialogMode.Edit);
+        var changed = new List<string?>();
+        dialog.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+        Assert.False(dialog.ShowsLowCopyWarning);
+
+        dialog.Bitrate = 257;
+        Assert.True(dialog.ShowsLowCopyWarning);
+        Assert.Contains(nameof(ChannelDialogViewModel.ShowsLowCopyWarning), changed);
+        dialog.Bitrate = 510;
+        Assert.True(dialog.ShowsLowCopyWarning);
+        dialog.Bitrate = null;
+        Assert.False(dialog.ShowsLowCopyWarning);
     }
 
     /// <summary>Package 132: the channel's bitrate goes into the dialog and the edited one to the server.</summary>
