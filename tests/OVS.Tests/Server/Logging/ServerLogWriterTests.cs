@@ -422,11 +422,11 @@ public sealed class ServerLogWriterTests() : TempDirectoryTest("ovs-logs-", quie
         var token = server.State.PendingAdminToken!;
         await using var client = await TestClient.ConnectAsync(server, "anna");
         await client.SendAsync(new RedeemAdminToken(token));
-        await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id && userUpdated.User.Permissions == Permission.All);
+        await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id && userUpdated.User.Permissions.Has(Permission.All));
         await client.SendAsync(new UpdateServerSettings("S", "", "geheim-123"));
         await client.WaitForAsync<ServerSettingsChanged>();
 
-        await EventuallyAsync(() => ServerLog(server), "Admin token created", "anna redeemed the admin token", "password set");
+        await EventuallyAsync(() => ServerLog(server), "Server admin token created", "anna redeemed the server admin token", "password set");
         var all = string.Join("\n", Directory.GetFiles(Path.Combine(server.DataDir, "logs"), "*.log", SearchOption.AllDirectories).Select(ReadShared));
         Assert.DoesNotContain(token, all, StringComparison.Ordinal);
         Assert.DoesNotContain("geheim-123", all, StringComparison.Ordinal);

@@ -32,7 +32,8 @@ Der Ordnername ist der Compose-Projektname und damit Teil des Volume-Namens. Beh
 
 Im Log stehen zwei wichtige Zeilen:
 
-- `Admin token: ...`: Damit wird der erste Nutzer zum Admin (im Client: "Admin-Token einlösen"). Solange es keinen Admin gibt, erzeugt jeder Start (auch ein automatischer Neustart) ein neues Token. Das Token steht nur in der Konsolenausgabe, nicht in den Logdateien.
+- `Server admin token: ...`: Damit wird ein Nutzer zum Server-Admin (im Client: "Server-Admin-Token einlösen"). Der Server-Admin hat alle Rechte, steht über jedem Admin und ist vor deren Aktionen geschützt; es gibt genau einen. Solange es keinen Server-Admin gibt, erzeugt jeder Start (auch ein automatischer Neustart) ein neues Token, auch wenn es schon Admins gibt. Das Token steht nur in der Konsolenausgabe, nicht in den Logdateien.
+  Die Rolle lässt sich im Client nicht abgeben. Zum Wechsel stoppst du den Server, entfernst in `server-data.json` beim bisherigen Server-Admin die Gruppe `00000000-0000-0000-0000-00000000000c` aus `groupIds` und startest neu; dann steht ein neues Token in der Konsole.
 - `Certificate fingerprint: ...`: Der Client zeigt diesen Fingerprint bei der ersten Verbindung an. Vergleiche beide, bevor du dem Server vertraust.
 
 ### Ports und Firewall
@@ -94,7 +95,7 @@ Ohne Docker-Zugang geht es auch im Client: Unter Verwaltung, Logs (Recht "Logs a
 
 Bei einem unerwarteten Fehler zeigt der Client unter der Meldung eine Fehler-ID und den Button "Fehler-ID kopieren". Dieselbe ID steht im Server-Log in der Zeile des Fehlers, mit dem vollständigen Stacktrace; die Log-Suche findet sie.
 
-Jede administrative Aktion (Gruppen, Channels, Links, Mitglieder, Bans, Stummschaltungen, Servereinstellungen, Logo, Backups, Admin-Token) schreibt eine Zeile mit der Markierung `[audit]` und dem Handelnden ins Server-Log. Die Seite Verwaltung, Audit-Log zeigt diese Zeilen neueste zuerst (wer, was, wann), durchsuchbar und filterbar nach Person, mit dem Recht "Logs ansehen". Aufbewahrt werden sie so lange wie die Logs.
+Jede administrative Aktion (Gruppen, Channels, Links, Mitglieder, Bans, Stummschaltungen, Servereinstellungen, Logo, Backups, Server-Admin-Token) schreibt eine Zeile mit der Markierung `[audit]` und dem Handelnden ins Server-Log. Die Seite Verwaltung, Audit-Log zeigt diese Zeilen neueste zuerst (wer, was, wann), durchsuchbar und filterbar nach Person, mit dem Recht "Logs ansehen". Aufbewahrt werden sie so lange wie die Logs.
 
 ### Telemetrie (optional)
 
@@ -241,7 +242,7 @@ Vergeben lassen sich nur Rechte, die man selbst hat, und bearbeiten lassen sich 
 
 Deine Identität, Einstellungen und vertrauten Server liegen in `%APPDATA%\OpenVoiceSpeak`. Sichere `identity.key`: Diese Datei ist dein Account auf allen Servern.
 
-Der Client schreibt alles, was er tut, in eine neue Datei pro Start (und nach Mitternacht): `%APPDATA%\OpenVoiceSpeak\logs\client-<Datum>_<Uhrzeit>.log` (bei `--profile` im dortigen Ordner `logs`). Dazu gehören Verbindungen, Zertifikatsentscheidungen, Änderungen vom Server, eigene Anfragen, Senden und Einstellungen. Passwörter und das Admin-Token stehen nie darin. Dateien, die älter als 30 Tage sind, werden gelöscht.
+Der Client schreibt alles, was er tut, in eine neue Datei pro Start (und nach Mitternacht): `%APPDATA%\OpenVoiceSpeak\logs\client-<Datum>_<Uhrzeit>.log` (bei `--profile` im dortigen Ordner `logs`). Dazu gehören Verbindungen, Zertifikatsentscheidungen, Änderungen vom Server, eigene Anfragen, Senden und Einstellungen. Passwörter und das Server-Admin-Token stehen nie darin. Dateien, die älter als 30 Tage sind, werden gelöscht.
 
 ### Kommandozeile
 

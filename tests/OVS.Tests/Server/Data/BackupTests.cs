@@ -17,6 +17,7 @@ using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Chat;
 using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.Groups;
 using OVS.Shared.Protocol.Messages.ServerBackups;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
@@ -501,7 +502,7 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             try
             {
                 var client = await ConnectWhenUpAsync(port, "chef", admin, run);
-                return new(new Host(run, port, stop), client);
+                return new(new Host(run, port, stop, output), client);
             }
             catch (TimeoutException) when (attempt < 20 && run.IsCompleted)
             {
@@ -641,6 +642,56 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
             Assert.False(File.Exists(Path.Combine(dir, ServerIconStore.FileName))); // the backup had no logo
         }
         Assert.Equal(ServerData.CurrentVersion, DataOf(await File.ReadAllBytesAsync(Path.Combine(dir, DataStore.FileName))).DataVersion);
+    }
+
+    /// <summary>Package 181: the server admin tokens the host's runs printed, in order.</summary>
+    static List<string> ServerAdminTokens(Host host) =>
+        host.Output.Where(line => line.Contains("Server admin token: ", StringComparison.Ordinal))
+            .Select(line => line[(line.IndexOf("Server admin token: ", StringComparison.Ordinal) + "Server admin token: ".Length)..].Split(' ')[0]).ToList();
+
+    /// <summary>Package 181 (AC6): the server admin restores without the Admin group; the next start has them again and no token.</summary>
+    [Fact]
+    public async Task Restore_ByServerAdmin_Allowed()
+    {
+        using var ownerId = ClientIdentity.Create();
+        SeedAdmin(dir, ownerId, serverData => serverData.Users.Single(user => user.Fingerprint == ownerId.Fingerprint).GroupIds = [WellKnownGroups.ServerAdmin]);
+        var (host, owner) = await StartHostAsync(dir, ownerId);
+        await using (host)
+        {
+            await owner.SendAsync(new CreateBackup());
+            var backup = Assert.Single((await owner.WaitForAsync<BackupList>()).Backups).FileName;
+            await owner.SendAsync(new RestoreBackup(backup));
+            Assert.Equal(ReasonCodes.Restoring, (await owner.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
+            await owner.DisposeAsync();
+
+            await using var again = await ConnectWhenUpAsync(host.Port, "chef", ownerId, host.Run);
+            Assert.True(again.Welcome.Snapshot.HasServerAdmin);
+            Assert.Empty(ServerAdminTokens(host));
+        }
+    }
+
+    /// <summary>Package 181 (AC8, A192): a backup from before the server admin restores, and the next start prints a new token.</summary>
+    [Fact]
+    public async Task Restore_WithoutServerAdmin_TokenAtNextStart()
+    {
+        using var adminId = ClientIdentity.Create();
+        SeedAdmin(dir, adminId);
+        var (host, admin) = await StartHostAsync(dir, adminId);
+        await using (host)
+        {
+            await admin.SendAsync(new CreateBackup());
+            var backup = Assert.Single((await admin.WaitForAsync<BackupList>()).Backups).FileName;
+            await admin.SendAsync(new RedeemAdminToken(Assert.Single(ServerAdminTokens(host))));
+            await admin.WaitForAsync<ServerAdminClaimed>();
+
+            await admin.SendAsync(new RestoreBackup(backup));
+            Assert.Equal(ReasonCodes.Restoring, (await admin.WaitForAsync<Disconnected>(timeoutMs: 30_000)).Reason);
+            await admin.DisposeAsync();
+
+            await using var again = await ConnectWhenUpAsync(host.Port, "chef", adminId, host.Run);
+            Assert.False(again.Welcome.Snapshot.HasServerAdmin);
+            Assert.Equal(2, ServerAdminTokens(host).Distinct().Count());
+        }
     }
 
     // ---- Package 89 (A101): the right BackupsManage, upload and restore only for the Admin group, full validation ----
@@ -885,9 +936,11 @@ public sealed class BackupTests() : TempDirectoryTest("ovs-backup-", quiet: true
         Assert.Equal(["behalten.ovsbackup"], Directory.GetFiles(store.Folder).Select(Path.GetFileName));
     }
 
-    sealed class Host(Task<int> run, int port, CancellationTokenSource stop) : IAsyncDisposable
+    sealed class Host(Task<int> run, int port, CancellationTokenSource stop, ConcurrentQueue<string> output) : IAsyncDisposable
     {
         public Task<int> Run => run;
+        /// <summary>Package 181: the console and log lines of every run, the server admin tokens included.</summary>
+        public IReadOnlyCollection<string> Output => output;
         public int Port => port;
         public void Stop() => stop.Cancel();
 

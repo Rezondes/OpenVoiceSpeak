@@ -65,4 +65,9 @@ public enum Permission
     ChannelPasswordBypass = 1 << 26,
     /// <summary>Every right.</summary>
     All = (1 << 27) - 1,
+    /// <summary>
+    /// Package 181 (A190): the server admin's rank, outside All; only the server's rights of a Server-Admin member add it, so
+    /// the strict-subset rule (A102) puts the server admin above every admin. No group stores it.
+    /// </summary>
+    ServerAdminRank = 1 << 27,
 }

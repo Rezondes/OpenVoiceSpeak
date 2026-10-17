@@ -156,8 +156,8 @@ public sealed class ServerTelemetryTests() : TempDirectoryTest("ovs-otel-", quie
         Assert.True(receiver.Count(LogExports, "OpenVoiceSpeak server starting") > 0); // the body, and the template as an attribute
         Assert.True(receiver.Count(LogExports, "Server stopped") > 0);
         Assert.True(receiver.Count(LogExports, ServerTelemetry.ServiceName) > 0); // the resource names the service
-        Assert.True(receiver.Count(LogExports, "Admin token created") > 0); // a fresh data folder: the token itself stays on the console
-        Assert.Equal(0, receiver.Count(LogExports, "Redeem admin token"));
+        Assert.True(receiver.Count(LogExports, "Server admin token created") > 0); // a fresh data folder: the token itself stays on the console
+        Assert.Equal(0, receiver.Count(LogExports, "Redeem server admin token"));
     }
 
     /// <summary>Package 148 (A158): a line written inside a request span carries its trace and span id.</summary>

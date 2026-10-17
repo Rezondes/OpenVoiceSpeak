@@ -68,11 +68,11 @@ static partial class ServerLogLines
 
     /// <summary>A secret: console only, never in a log file (files end up in backups).</summary>
     [LoggerMessage(EventId = 1, EventName = "ConsoleOnly", Level = LogLevel.Information,
-        Message = "Admin token: {Token}  (enter it in the client under 'Redeem admin token')")]
+        Message = "Server admin token: {Token}  (enter it in the client under 'Redeem server admin token')")]
     public static partial void AdminToken(this ILogger logger, string token);
 
 #pragma warning disable SYSLIB1025 // the event name is the provider's routing marker, which StartFailed carries as well
-    [LoggerMessage(EventId = 3, EventName = "FileOnly", Level = LogLevel.Information, Message = "Admin token created, it is only in the console output")]
+    [LoggerMessage(EventId = 3, EventName = "FileOnly", Level = LogLevel.Information, Message = "Server admin token created, it is only in the console output")]
     public static partial void AdminTokenCreated(this ILogger logger);
 #pragma warning restore SYSLIB1025
 
@@ -124,7 +124,7 @@ static partial class ServerLogLines
     [LoggerMessage(Level = LogLevel.Warning, Message = "Wrong admin token from {Nickname} ({Ip})")]
     public static partial void AdminTokenWrong(this ILogger logger, string nickname, IPAddress ip);
 
-    [LoggerMessage(EventId = 100, EventName = "Audit:AdminTokenRedeemed", Level = LogLevel.Information, Message = "{Nickname} redeemed the admin token")]
+    [LoggerMessage(EventId = 100, EventName = "Audit:AdminTokenRedeemed", Level = LogLevel.Information, Message = "{Nickname} redeemed the server admin token")]
     public static partial void AdminTokenRedeemed(this ILogger logger, string nickname);
 
     [LoggerMessage(EventId = 101, EventName = "Audit:GroupCreated", Level = LogLevel.Information, Message = "Group '{Group}' created by {Nickname} ({Permissions})")]

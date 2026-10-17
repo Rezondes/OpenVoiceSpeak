@@ -76,6 +76,7 @@ public sealed class WireFreezeTests
         "restoreBackup: fileName, requestId",
         "searchLogs: channelId, from, kind, query, requestId, to",
         "sendChat: requestId, target, text, toSessionId",
+        "serverAdminClaimed:",
         "serverIcon: hash, pngBase64, requestId",
         "serverSettingsChanged: settings",
         "setAvatar: fingerprint, pngBase64, requestId",
@@ -115,7 +116,7 @@ public sealed class WireFreezeTests
         "LogHit: fileId, line, text",
         "ServerLimits: afkChannelId, afkMinutes, autoRestart, autoRestartTime, logDays, logRotateDaily, maxUsers",
         "ServerSettingsInfo: afkChannelId, hasPassword, iconHash, limits, name, welcomeText",
-        "ServerSnapshot: channels, defaultChannelId, groups, links, settings, users",
+        "ServerSnapshot: channels, defaultChannelId, groups, hasServerAdmin, links, settings, users",
         "UserInfo: avatar, canBeModeratedByMe, channelId, fingerprint, groupIds, nickname, permissions, selfDeafened, selfMuted, serverMuted, serverMutedUntil, sessionId",
     ];
 
@@ -174,7 +175,7 @@ public sealed class WireFreezeTests
         "DisplayMode: Animated, Simplified",
         "KeyAction: PushToTalk, LinkPushToTalk, PushToMute, ToggleMute, ToggleDeafen, ToggleStreamerMode",
         "LogKind: Server, Channel",
-        "Permission: None, Speak, SpeakLinked, ChannelCreate, ChannelEdit, ChannelDelete, ChannelLink, UserMove, UserMute, UserKick, UserBan, GroupsManage, GroupsAssign, ServerConfig, ChatServer, ChatChannel, ChatPrivate, ChannelJoinFull, UsersView, BansView, GroupsView, GroupsCreate, GroupsDelete, UserDelete, LogsView, LogsDownload, BackupsManage, ChannelPasswordBypass, All",
+        "Permission: None, Speak, SpeakLinked, ChannelCreate, ChannelEdit, ChannelDelete, ChannelLink, UserMove, UserMute, UserKick, UserBan, GroupsManage, GroupsAssign, ServerConfig, ChatServer, ChatChannel, ChatPrivate, ChannelJoinFull, UsersView, BansView, GroupsView, GroupsCreate, GroupsDelete, UserDelete, LogsView, LogsDownload, BackupsManage, ChannelPasswordBypass, All, ServerAdminRank",
         "SoundEvent: MicOff, MicOn, SoundOff, SoundOn, Connected, Disconnected, ChannelEntered, UserJoined, UserLeft, ServerMuted, Moved, PrivateMessage, ServerMessage, ChannelMessage, LinkVoice, OwnLinkVoice, GroupChanged, GroupChangedByMe, TalkKeyDown, TalkKeyUp",
         "TransmitMode: PushToTalk, VoiceActivation",
     ];

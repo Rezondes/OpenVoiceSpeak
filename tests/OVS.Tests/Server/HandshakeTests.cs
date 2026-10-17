@@ -187,10 +187,10 @@ public class HandshakeTests
     }
 
     [Fact]
-    public async Task Startup_NoAdmin_LogsAdminToken()
+    public async Task Startup_NoServerAdmin_LogsServerAdminToken()
     {
         await using var server = await TestServer.StartAsync();
-        Assert.Contains(server.Log, line => line.Contains("Admin token: " + server.State.PendingAdminToken, StringComparison.Ordinal));
+        Assert.Contains(server.Log, line => line.Contains("Server admin token: " + server.State.PendingAdminToken, StringComparison.Ordinal));
     }
 
     /// <summary>Package 88: one IPv6 host owns a whole /64, so its addresses share the 5 connections of one IP.</summary>

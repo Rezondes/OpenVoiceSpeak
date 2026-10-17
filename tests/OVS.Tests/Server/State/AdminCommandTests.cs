@@ -29,32 +29,82 @@ public class AdminCommandTests
         Assert.Null(token.Current);
     }
 
+    /// <summary>Package 181 (AC2, A192): the token comes at every start without a server admin, admins or not.</summary>
     [Fact]
-    public async Task AdminToken_AdminExistsOrNot_GeneratedOnlyWithout()
+    public async Task ServerAdminToken_AdminsButNoServerAdmin_Generated()
     {
         await using (var fresh = await TestServer.StartAsync())
             Assert.NotNull(fresh.State.PendingAdminToken);
 
         using var adminId = ClientIdentity.Create();
         await using var withAdmin = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"));
-        Assert.Null(withAdmin.State.PendingAdminToken);
+        Assert.NotNull(withAdmin.State.PendingAdminToken);
     }
 
     [Fact]
-    public async Task Redeem_BroadcastsNewPermissions_ThenTokenInvalid()
+    public async Task ServerAdminToken_ServerAdminExists_None()
     {
-        await using var server = await TestServer.StartAsync();
-        await using var client = await TestClient.ConnectAsync(server);
+        using var ownerId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(ownerId, "Server-Admin"));
+        Assert.Null(server.State.PendingAdminToken);
+    }
+
+    /// <summary>Package 181 (AC3): the redeemer keeps their groups and becomes server admin, everyone hears it, the token is gone.</summary>
+    [Fact]
+    public async Task Redeem_ValidToken_ServerAdminClaimedTokenGone()
+    {
+        using var adminId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(adminId, "Admin"));
+        await using var client = await TestClient.ConnectAsync(server, identity: adminId);
         await using var testClient = await TestClient.ConnectAsync(server);
 
         await client.SendAsync(new RedeemAdminToken(server.State.PendingAdminToken!));
         var update = await testClient.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id);
         Assert.Equal(Permission.None, update.User.Permissions); // Package 92: others' rights stay with the server
+        Assert.Contains(PermissionRules.ServerAdminGroupId, update.User.GroupIds);
         Assert.Contains(PermissionRules.AdminGroupId, update.User.GroupIds);
-        Assert.Equal(Permission.All, (await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id)).User.Permissions);
+        Assert.Equal(Permission.All | Permission.ServerAdminRank, (await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id)).User.Permissions);
+        await client.WaitForAsync<ServerAdminClaimed>();
+        await testClient.WaitForAsync<ServerAdminClaimed>();
+        Assert.Null(server.State.PendingAdminToken);
 
         await testClient.SendAsync(new RedeemAdminToken("egal") { RequestId = "t" });
         Assert.Equal(ReasonCodes.InvalidToken, (await testClient.ErrorAsync("t")).Code);
+    }
+
+    /// <summary>Package 181 (AC1): nobody gives or takes Server-Admin through the protocol, not even the server admin.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AssignOrUnassign_ServerAdminGroup_Refused(bool assign)
+    {
+        using var ownerId = ClientIdentity.Create();
+        using var otherId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(serverData =>
+        {
+            TestServer.Grant(ownerId, "Server-Admin")(serverData);
+            TestServer.Grant(otherId, "Gast")(serverData);
+        });
+        await using var owner = await TestClient.ConnectAsync(server, identity: ownerId);
+
+        var target = assign ? otherId.Fingerprint : ownerId.Fingerprint;
+        await owner.SendAsync(assign ? new AssignGroup(target, PermissionRules.ServerAdminGroupId) { RequestId = "a" }
+                                     : new UnassignGroup(target, PermissionRules.ServerAdminGroupId) { RequestId = "a" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await owner.ErrorAsync("a")).Code);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task UpdateOrDelete_ServerAdminGroup_ProtectedGroup(bool update)
+    {
+        using var ownerId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(ownerId, "Server-Admin"));
+        await using var owner = await TestClient.ConnectAsync(server, identity: ownerId);
+
+        await owner.SendAsync(update ? new UpdateGroup(PermissionRules.ServerAdminGroupId, "Chef", Permission.Speak) { RequestId = "g" }
+                                     : new DeleteGroup(PermissionRules.ServerAdminGroupId) { RequestId = "g" });
+        Assert.Equal(ReasonCodes.ProtectedGroup, (await owner.ErrorAsync("g")).Code);
     }
 
     [Fact]
@@ -172,17 +222,17 @@ public class AdminCommandTests
         await using (var client = await TestClient.ConnectAsync(server, "anna", id))
         {
             await client.SendAsync(new RedeemAdminToken(server.State.PendingAdminToken!));
-            await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id && userUpdated.User.Permissions == Permission.All);
+            await client.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == client.Id && userUpdated.User.Permissions.Has(Permission.All));
             await client.SendAsync(new UpdateServerSettings("S", "", "geheim"));
             await client.WaitForAsync<ServerSettingsChanged>();
         }
         server = await server.RestartAsync();
         await using var _ = server;
 
-        Assert.Null(server.State.PendingAdminToken); // an admin exists now
+        Assert.Null(server.State.PendingAdminToken); // a server admin exists now
         await using var again = await TestClient.OpenAsync(server.Port, id);
         var welcome = Assert.IsType<Welcome>(await again.HandshakeAsync("anna", "geheim"));
-        Assert.Equal(Permission.All, welcome.Snapshot.Users.Single(user => user.SessionId == welcome.SessionId).Permissions);
+        Assert.Equal(Permission.All | Permission.ServerAdminRank, welcome.Snapshot.Users.Single(user => user.SessionId == welcome.SessionId).Permissions);
         Assert.DoesNotContain("geheim", await File.ReadAllTextAsync(Path.Combine(server.DataDir, "server-data.json")), StringComparison.Ordinal);
     }
 

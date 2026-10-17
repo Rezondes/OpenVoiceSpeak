@@ -8,9 +8,10 @@ public class GroupRulesTests
     static readonly Guid Custom = Guid.NewGuid();
     const P Moderator = P.Speak | P.UserKick | P.UserBan;
 
-    /// <summary>"admin", "guest" or "custom" (a group of its own).</summary>
+    /// <summary>"serveradmin", "admin", "guest" or "custom" (a group of its own).</summary>
     static Guid Group(string name) => name switch
     {
+        "serveradmin" => WellKnownGroups.ServerAdmin,
         "admin" => WellKnownGroups.Admin,
         "guest" => WellKnownGroups.Guest,
         _ => Custom,
@@ -19,13 +20,26 @@ public class GroupRulesTests
     [Theory]
     [InlineData("guest", true)]
     [InlineData("admin", true)]
+    [InlineData("serveradmin", true)]
     [InlineData("custom", false)]
-    public void IsProtected_Group_OnlyGuestAndAdmin(string group, bool expected) =>
+    public void IsProtected_Group_OnlyGuestAdminAndServerAdmin(string group, bool expected) =>
         Assert.Equal(expected, GroupRules.IsProtected(Group(group)));
 
     [Fact]
     public void CanSave_AdminGroup_Never() =>
         Assert.False(GroupRules.CanSave(P.All, WellKnownGroups.Admin, P.All, P.All));
+
+    /// <summary>Package 181 (A190): not even the server admin may save, delete or assign the Server-Admin group.</summary>
+    [Fact]
+    public void ServerAdmin_IsProtected_NeverSavedDeletedOrAssigned()
+    {
+        const P serverAdmin = P.All | P.ServerAdminRank;
+        Assert.True(GroupRules.IsProtected(WellKnownGroups.ServerAdmin));
+        Assert.False(GroupRules.CanSave(serverAdmin, WellKnownGroups.ServerAdmin, P.All, P.All));
+        Assert.False(GroupRules.CanDelete(serverAdmin, WellKnownGroups.ServerAdmin, P.All));
+        Assert.False(GroupRules.CanAssign(serverAdmin, WellKnownGroups.ServerAdmin, P.All));
+        Assert.True(GroupRules.CanAssign(serverAdmin, WellKnownGroups.Admin, P.All));
+    }
 
     public static TheoryData<P, P?, P, bool> SaveCases => new()
     {

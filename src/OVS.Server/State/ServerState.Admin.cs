@@ -35,10 +35,11 @@ internal sealed partial class ServerState
             return;
         }
         var user = FindUser(session.Fingerprint)!;
-        if (!user.GroupIds.Contains(AdminGroupId)) user.GroupIds.Add(AdminGroupId);
+        user.GroupIds.Add(ServerAdminGroupId); // Package 181: the other groups stay; only one server admin, the token is gone now
         saves.Persist();
         RecomputePermissions();
         logs.Server.AdminTokenRedeemed(session.Nickname);
+        Broadcast(new ServerAdminClaimed());
     }
 
     void OnCreateGroup(Session session, CreateGroup request)
@@ -87,7 +88,7 @@ internal sealed partial class ServerState
             Fail(session, request, ReasonCodes.NotFound);
             return;
         }
-        if (group.Id == AdminGroupId)
+        if (GroupRules.IsFixed(group.Id)) // Package 181: Server-Admin as Admin
         {
             Fail(session, request, ReasonCodes.ProtectedGroup);
             return;

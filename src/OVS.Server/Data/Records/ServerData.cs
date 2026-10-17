@@ -13,9 +13,9 @@ internal sealed class ServerData
     /// <summary>
     /// 1 = before Package 31 (files without this field), 2 = chat rights, 3 = server settings from the environment (69),
     /// 4 = separate view, create and delete rights (76), 5 = the backup right (89), 6 = the channel password bypass only for
-    /// Admin (94). New servers start at the current version.
+    /// Admin (94), 7 = the Server-Admin group (181). New servers start at the current version.
     /// </summary>
-    public const int CurrentVersion = 6;
+    public const int CurrentVersion = 7;
     /// <summary>The version the file was written with; older files are migrated on load.</summary>
     public int DataVersion { get; set; } = 1;
 
@@ -90,14 +90,16 @@ internal sealed class ServerData
         if (DataVersion < 6) // Package 94: a stored "All" reads as the new right too, but only Admin gets it
             for (int index = 0; index < Groups.Count; index++)
                 if (Groups[index].Id != PermissionRules.AdminGroupId) Groups[index] = Groups[index] with { Permissions = Groups[index].Permissions & ~Permission.ChannelPasswordBypass };
+        if (DataVersion < 7 && !Groups.Any(groupRecord => groupRecord.Id == PermissionRules.ServerAdminGroupId)) // Package 181 (A192): nobody in it, so the token comes at this start
+            Groups.Add(PermissionRules.ServerAdminGroup());
         DataVersion = CurrentVersion;
         return true;
     }
 
     /// <summary>
     /// Package 89 (A101): why a start of the server could not rely on this data, null when it can: every list present
-    /// without empty entries, names under the stored-name rule, unique ids, references that exist and at least one member
-    /// of the Admin group. The reason is English, for the log. A method, so it is never written to the file.
+    /// without empty entries, names under the stored-name rule, unique ids, references that exist, at least one member
+    /// of the Admin or Server-Admin group and at most one server admin (Package 181, A191). The reason is English, for the log. A method, so it is never written to the file.
     /// </summary>
     public string? FindProblem() =>
         FindListProblem() ?? FindSettingsProblem() ?? FindChannelProblem() ?? FindGroupProblem() ?? FindUserProblem() ?? FindBanProblem();
@@ -154,7 +156,8 @@ internal sealed class ServerData
         if (!AllUnique(Users.Select(user => user.Fingerprint))) return "user twice";
         var groups = Groups.Select(groupRecord => groupRecord.Id).ToHashSet();
         if (!Users.All(user => user.GroupIds.All(groups.Contains))) return "user in an unknown group";
-        return Users.Any(user => user.GroupIds.Contains(WellKnownGroups.Admin)) ? null : "no member of the Admin group";
+        if (Users.Count(user => user.GroupIds.Contains(WellKnownGroups.ServerAdmin)) > 1) return "more than one server admin";
+        return Users.Any(user => WellKnownGroups.HoldsAdminGroup(user.GroupIds)) ? null : "no member of the Admin or Server-Admin group";
     }
 
     string? FindBanProblem()

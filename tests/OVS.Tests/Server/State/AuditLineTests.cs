@@ -32,7 +32,7 @@ public sealed class AuditLineTests
     /// <summary>What the audit line of each administrative request says (the action, after the actor).</summary>
     static readonly Dictionary<Type, string> Expected = new()
     {
-        [typeof(RedeemAdminToken)] = "neu redeemed the admin token",
+        [typeof(RedeemAdminToken)] = "neu redeemed the server admin token",
         [typeof(CreateGroup)] = "Group 'Team' created by chef",
         [typeof(UpdateGroup)] = "Group 'Team' changed by chef",
         [typeof(ReorderGroups)] = "Groups reordered by chef",

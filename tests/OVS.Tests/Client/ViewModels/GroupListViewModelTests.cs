@@ -296,7 +296,7 @@ public sealed class GroupListViewModelTests
         string create, string delete, string userDelete, string manage, string ban, string bypass)
     {
         var labels = TestCulture.With(culture, () => Create().Section.Groups.First().Toggles.ToDictionary(toggle => toggle.Permission, toggle => toggle.Label));
-        var singleRights = Enum.GetValues<Permission>().Where(right => right != Permission.None && ((int)right & ((int)right - 1)) == 0).ToList();
+        var singleRights = Enum.GetValues<Permission>().Where(right => right != Permission.None && ((int)right & ((int)right - 1)) == 0 && right.IsSubsetOf(Permission.All)).ToList(); // Package 181: the rank is no toggle
         Assert.Equal(singleRights.Order(), labels.Keys.Order());
         Assert.Equal(labels.Count, labels.Values.Distinct().Count());
         Assert.Equal([users, bans, groups, create, delete, userDelete, manage, ban, bypass],

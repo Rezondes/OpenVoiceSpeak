@@ -11,6 +11,7 @@ public class ChannelAccessTests
     /// <summary>"admin", "guest" and "team" separated by commas; "" is no group, null no list.</summary>
     static Guid[]? Groups(string? names) => names?.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(name => name switch
     {
+        "serveradmin" => WellKnownGroups.ServerAdmin,
         "admin" => WellKnownGroups.Admin,
         "guest" => WellKnownGroups.Guest,
         _ => Team,
@@ -47,4 +48,15 @@ public class ChannelAccessTests
     [InlineData(true, "admin", P.None, false)]
     public void NeedsPassword_Moving_RequiredUnlessAdminBypassIgnored(bool hasPassword, string groups, P actor, bool expected) =>
         Assert.Equal(expected, ChannelAccess.NeedsPassword(hasPassword, Groups(groups)!, actor, moving: true));
+
+    /// <summary>Package 181: the server admin passes the locks like an admin, also without the Admin group.</summary>
+    [Fact]
+    public void ServerAdmin_LockedChannel_PassesGroupAndPasswordLock()
+    {
+        var own = Groups("serveradmin")!;
+        Assert.True(ChannelAccess.GroupsAllow([], own));
+        Assert.True(ChannelAccess.GroupsAllow(Groups("team"), own));
+        Assert.False(ChannelAccess.NeedsPassword(true, own, P.None, moving: false));
+        Assert.False(ChannelAccess.NeedsPassword(true, own, P.None, moving: true));
+    }
 }

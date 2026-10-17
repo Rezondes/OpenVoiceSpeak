@@ -59,6 +59,7 @@ public sealed class ProtocolLogTextTests
         { new ChannelsUnlinked(Lobby, Raid), "Link between 'Lobby' and 'Raid' removed" },
         { new GroupsChanged([new GroupInfo(Mods, "Mods", Permission.Speak)]), "Groups changed: Mods" },
         { new ServerSettingsChanged(new ServerSettingsInfo("Neu", "", true)), "Server settings changed: name 'Neu', with password" },
+        { new ServerAdminClaimed(), "Server admin token redeemed, the server has a server admin" }, // Package 181
         { new UserList(null, []), "User list received (0 entries)" },
         { new BanList(null, []), "Ban list received (0 entries)" },
         { new ChatMessage(ChatTarget.Server, 2, "bert", null, null, "Hallo", default), "Chat (General) bert: Hallo" },

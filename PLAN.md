@@ -1066,10 +1066,10 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~DataStoreTests|FullyQualif
 ### Tests (TDD)
 
 1. `AdminCommandTests.cs`:
-   - `"AdminToken_AdminExistsOrNot_GeneratedOnlyWithout"` (AC1)
+   - `"ServerAdminToken_AdminsButNoServerAdmin_Generated"` and `"ServerAdminToken_ServerAdminExists_None"` (AC1; since Package 181 the token depends on the server admin)
    - `"AdminToken_RedeemedTwice_OnlyFirstValid"` (AC2, AC3)
 2. `AdminCommandTests.cs`:
-   - `"Redeem_BroadcastsNewPermissions_ThenTokenInvalid"` (AC2)
+   - `"Redeem_ValidToken_ServerAdminClaimedTokenGone"` (AC2; since Package 181 the token gives Server-Admin)
    - `"CreateGroup_AsAdmin_BroadcastsGroupsChanged"`, `"UpdateGroup_OnlineMember_PermissionsChange"` (AC4)
    - `"CreateGroup_GrantingUnownedPermission_PermissionDenied"` (AC4, Eskalation)
    - `[Theory] "ProtectedGroups_Changed_Refused"` (AC5)
@@ -10523,14 +10523,14 @@ This changes the rights model itself, so the existing classes are changed (the e
 
 ### Acceptance Criteria
 
-- [ ] AC1: A new server and an existing server after migration (data version 7) have the protected group "Server-Admin" (`...0c`) with all rights; it cannot be renamed, changed, deleted, assigned or unassigned through the protocol (`ProtectedGroup` or `PermissionDenied`).
-- [ ] AC2: At every start without a member of Server-Admin the server prints `Server admin token: ...` on the console only, also when admins exist; with a server admin it prints none.
-- [ ] AC3: Redeeming the token puts the redeemer into Server-Admin (keeping their other groups), invalidates the token, persists, recomputes the rights, writes the audit line and broadcasts `ServerAdminClaimed` to every session. A second token never exists while a server admin exists (A191).
-- [ ] AC4: A server admin can kick, ban, mute, move, delete and change the groups of any admin, including taking Admin away (the last-admin rule still holds for Admin itself).
-- [ ] AC5: No admin can kick, ban, mute, move, delete or change the groups of the server admin; each is refused with `PermissionDenied`.
-- [ ] AC6: The server admin passes group and password locks like Admin and may upload and restore backups.
-- [ ] AC7: The snapshot carries `HasServerAdmin`, true exactly when a member of Server-Admin exists.
-- [ ] AC8: A backup without a server admin restores; the token appears at the next start. A backup without the Server-Admin group is migrated like an old data file.
+- [x] AC1: A new server and an existing server after migration (data version 7) have the protected group "Server-Admin" (`...0c`) with all rights; it cannot be renamed, changed, deleted, assigned or unassigned through the protocol (`ProtectedGroup` or `PermissionDenied`).
+- [x] AC2: At every start without a member of Server-Admin the server prints `Server admin token: ...` on the console only, also when admins exist; with a server admin it prints none.
+- [x] AC3: Redeeming the token puts the redeemer into Server-Admin (keeping their other groups), invalidates the token, persists, recomputes the rights, writes the audit line and broadcasts `ServerAdminClaimed` to every session. A second token never exists while a server admin exists (A191).
+- [x] AC4: A server admin can kick, ban, mute, move, delete and change the groups of any admin, including taking Admin away (the last-admin rule still holds for Admin itself).
+- [x] AC5: No admin can kick, ban, mute, move, delete or change the groups of the server admin; each is refused with `PermissionDenied`.
+- [x] AC6: The server admin passes group and password locks like Admin and may upload and restore backups.
+- [x] AC7: The snapshot carries `HasServerAdmin`, true exactly when a member of Server-Admin exists.
+- [x] AC8: A backup without a server admin restores; the token appears at the next start. A backup without the Server-Admin group is migrated like an old data file.
 
 ### Tests (TDD)
 
@@ -10539,17 +10539,18 @@ Order: test first -> red -> minimal implementation -> green -> refactor.
 1. `GroupRulesTests > "ServerAdmin_IsProtected_NeverSavedDeletedOrAssigned"` - AC1
    - Given: an actor with `All | ServerAdminRank`
    - Expected: `IsProtected` true, `CanSave`, `CanDelete`, `CanAssign` false for `...0c`
-2. `PermissionRulesTests > "Effective_ServerAdmin_AllPlusRank"` and `"DefaultGroups_ContainServerAdmin"` - AC1
+2. `PermissionRulesTests > "Effective_ServerAdmin_AllPlusRank"` and `"DefaultGroups_Created_ContainServerAdmin"` - AC1
 3. `PermissionRulesTests > "CanActOn_ServerAdminOverAdmin_TrueAndNotBack"` - AC4, AC5
    - Given: `All | ServerAdminRank` and `All`
    - Expected: `CanActOn` true one way, false the other
-4. `ServerDataTests` (under `Server/Data/Records`) `> "Migrate_Version6_AddsServerAdminGroup"` - AC1, AC8
-5. `AdminCommandTests > "ServerAdminToken_AdminsButNoServerAdmin_Generated"` and `"ServerAdminToken_ServerAdminExists_None"` - AC2 (the existing `AdminToken_AdminExistsOrNot_GeneratedOnlyWithout` becomes these two)
-6. `AdminCommandTests > "Redeem_GivesServerAdmin_BroadcastsClaimed_ThenTokenInvalid"` - AC3 (extends `Redeem_BroadcastsNewPermissions_ThenTokenInvalid`)
+4. `ServerDataTests > "Migrate_Version6_AddsServerAdminGroup"` and `"FindProblem_OneOrTwoServerAdmins_OnlyTwoAProblem"` - AC1, AC8, A191
+5. `AdminCommandTests > "ServerAdminToken_AdminsButNoServerAdmin_Generated"` and `"ServerAdminToken_ServerAdminExists_None"` - AC2 (the test of Package 8 became these two)
+6. `AdminCommandTests > "Redeem_ValidToken_ServerAdminClaimedTokenGone"` - AC3 (replaces the redeem test of Package 8)
 7. `AdminCommandTests > "AssignOrUnassign_ServerAdminGroup_Refused"` and `"UpdateOrDelete_ServerAdminGroup_ProtectedGroup"` - AC1
 8. `ModerationTests > "ServerAdmin_KickBanMuteDeleteAdmin_Works"` and `"UnassignAdmin_ByServerAdmin_Works"` - AC4
-9. `ModerationTests > "Admin_KickBanMuteMoveDeleteOrUnassign_ServerAdmin_PermissionDenied"` (a theory over the actions) - AC5
-10. `ChannelAccessTests > "ServerAdmin_PassesGroupAndPasswordLock"` and `BackupTests > "Restore_ByServerAdmin_Allowed"` - AC6
+9. `ModerationTests > "Admin_ActionOnServerAdmin_PermissionDenied"` (a theory over the actions) - AC5
+10. `ChannelAccessTests > "ServerAdmin_LockedChannel_PassesGroupAndPasswordLock"` and `BackupTests > "Restore_ByServerAdmin_Allowed"` - AC6
+    - `GroupRulesTests > "IsProtected_Group_OnlyGuestAdminAndServerAdmin"` (AC1)
 11. `StateSyncTests > "Snapshot_HasServerAdmin_FollowsMembers"` - AC7
 12. `BackupTests > "Restore_WithoutServerAdmin_TokenAtNextStart"` - AC8
 13. `ServerTelemetryTests > "Log_ChannelAndAdminToken_NeverExported"` stays green with the new text.
@@ -10563,6 +10564,8 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s` (covers
 3. Tests 5 to 7, then the token condition, `OnRedeemAdminToken`, `ServerAdminClaimed`, the log line.
 4. Tests 8 to 12, then `ChannelAccess`, `RequireAdminGroup`, the snapshot field.
 5. README, full suite, rule-lint.
+
+(as built: as planned with the rank flag `Permission.ServerAdminRank` (`1 << 27`) outside `All`; `Effective` gives `All | ServerAdminRank` to a Server-Admin member and masks every other union with `All`, so a stored group never carries the rank. `GroupRules.IsFixed` (Admin and Server-Admin) replaces the Admin checks in `CanSave` and `OnUpdateGroup`; `CanAssign` is false for Server-Admin for everyone. `WellKnownGroups.HoldsAdminGroup` (Admin or Server-Admin) serves `ChannelAccess`, the backup upload and restore and `FindProblem`, which now needs a member of Admin or Server-Admin (a fresh server's redeemer is only in Server-Admin) and refuses a second server admin ("more than one server admin"). The redeem adds Server-Admin and keeps every other group, so it no longer adds Admin. Unplanned: the protocol version went to 21 (a new message, the snapshot field and the rank flag), the log lines say "server admin token" (`Server admin token created`, `... redeemed the server admin token`), and the client's `ProtocolLogText` got its text for `ServerAdminClaimed` here, because the check of every server message runs with this package. A migration does not check whether a custom group is already called "Server-Admin" (a question for the user).)
 
 ### Out of Scope
 
@@ -10598,7 +10601,7 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s` (covers
 - [ ] AC4: An admin sees no moderation actions on the server admin; the server admin sees them on admins (both from `CanModerate` with the new rank).
 - [ ] AC5 (manual): On the user's server with three admins, after a restart the token is in the console, redeeming it in the client makes the user server admin, and the user can take Admin away from another admin.
 
-### Tests (TDD)
+### Planned tests (TDD)
 
 1. `ServerViewModelTests > "CanRedeemToken_NoServerAdmin_True_AfterClaimed_False"` - AC1
 2. `ServerViewModelTests > "CanRedeemToken_SelfServerAdmin_False"` - AC1

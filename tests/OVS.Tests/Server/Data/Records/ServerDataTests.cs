@@ -23,6 +23,40 @@ public class ServerDataTests
     [Fact]
     public void FindProblem_ValidData_None() => Assert.Null(Valid().FindProblem());
 
+    /// <summary>
+    /// Package 181 (AC1, AC8): a data file or backup of version 6 has no Server-Admin group; it is valid, and the migration
+    /// to version 7 adds the group with every right, keeps the users' groups and runs once.
+    /// </summary>
+    [Fact]
+    public void Migrate_Version6_AddsServerAdminGroup()
+    {
+        var data = Valid();
+        data.DataVersion = 6;
+        data.Groups.RemoveAll(groupRecord => groupRecord.Id == WellKnownGroups.ServerAdmin);
+        Assert.Null(data.FindProblem());
+
+        Assert.True(data.Migrate(new ServerConfig(0, "unused", 10, "Testserver", "")));
+
+        Assert.Equal(7, data.DataVersion);
+        var serverAdmin = Assert.Single(data.Groups, groupRecord => groupRecord.Id == WellKnownGroups.ServerAdmin);
+        Assert.Equal(("Server-Admin", Permission.All), (serverAdmin.Name, serverAdmin.Permissions));
+        Assert.Equal([WellKnownGroups.Admin], data.Users[0].GroupIds);
+        Assert.False(data.Migrate(new ServerConfig(0, "unused", 10, "Testserver", "")));
+        Assert.Single(data.Groups, groupRecord => groupRecord.Id == WellKnownGroups.ServerAdmin);
+    }
+
+    /// <summary>Package 181 (A191, A192): a server admin alone counts as the server's admin; a second one is a broken file.</summary>
+    [Fact]
+    public void FindProblem_OneOrTwoServerAdmins_OnlyTwoAProblem()
+    {
+        var data = Valid();
+        data.Users[0].GroupIds = [WellKnownGroups.ServerAdmin];
+        Assert.Null(data.FindProblem());
+
+        data.Users.Add(new UserRecord { Fingerprint = "h", LastNickname = "carl", GroupIds = [WellKnownGroups.ServerAdmin] });
+        Assert.Equal("more than one server admin", data.FindProblem());
+    }
+
     /// <summary>The server settings write only their stored values: the limits and the legacy check are methods, not keys.</summary>
     [Fact]
     public void Json_ServerSettings_OnlyStoredKeys()
@@ -123,7 +157,7 @@ public class ServerDataTests
         { "nickname-too-long", "nickname invalid" },
         { "user-twice", "user twice" },
         { "dangling-group", "user in an unknown group" },
-        { "no-admin", "no member of the Admin group" },
+        { "no-admin", "no member of the Admin or Server-Admin group" },
         { "ban-fingerprint-null", "ban incomplete" },
         { "ban-nickname-null", "ban incomplete" },
         { "ban-reason-null", "ban incomplete" },

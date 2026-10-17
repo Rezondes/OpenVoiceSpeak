@@ -12,7 +12,7 @@ namespace OVS.Server.State;
 
 /// <summary>
 /// Package 74: backups from the administration. Package 89 (A101): list, create, download and delete with BackupsManage;
-/// upload and restore replace everything, so only for members of the Admin group, not for every holder of all rights.
+/// upload and restore replace everything, so only for members of the Admin group and the server admin (Package 181), not for every holder of all rights.
 /// </summary>
 internal sealed partial class ServerState
 {
@@ -38,7 +38,7 @@ internal sealed partial class ServerState
     /// <summary>Package 89: checked on every request, so leaving the group stops an upload at its next chunk.</summary>
     static bool RequireAdminGroup(Session session, Request request)
     {
-        if (session.GroupIds.Contains(WellKnownGroups.Admin)) return true;
+        if (WellKnownGroups.HoldsAdminGroup(session.GroupIds)) return true; // Package 181: the server admin as well
         Fail(session, request, ReasonCodes.PermissionDenied);
         return false;
     }
@@ -113,7 +113,7 @@ internal sealed partial class ServerState
     void OnUploadBackupChunk(Session session, UploadBackupChunk request)
     {
         // Step 30: the file goes before the refusal is sent; a client that looks at once must not still see it
-        if (!session.GroupIds.Contains(WellKnownGroups.Admin)) DropUpload(session);
+        if (!WellKnownGroups.HoldsAdminGroup(session.GroupIds)) DropUpload(session);
         if (!RequireAdminGroup(session, request)) return;
         if (!UploadFolder.IsValidId(request.UploadId) || request.DataBase64.Length > Base64Text.Encoded(ProtocolLimits.BackupChunkBytes))
         {

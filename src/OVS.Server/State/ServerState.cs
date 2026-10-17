@@ -86,7 +86,7 @@ internal sealed partial class ServerState
         HintIgnoredStartValues();
         EndMutes(); // Package 166: an end that passed while the server was down, and the timer of the next
         ScheduleAfkCheck(); // Package 169
-        if (!data.Users.Any(user => user.GroupIds.Contains(AdminGroupId)))
+        if (!HasServerAdmin) // Package 181 (A192): also when admins exist
         {
             // The token is a secret: console only, never in a log file (files end up in backups).
             #pragma warning disable CA1873 // the token is made here whatever happens to the line
@@ -96,8 +96,11 @@ internal sealed partial class ServerState
         }
     }
 
-    /// <summary>The admin token while nobody redeemed it.</summary>
+    /// <summary>The server admin token while nobody redeemed it.</summary>
     public string? PendingAdminToken => adminToken.Current;
+
+    /// <summary>Package 181 (A191): someone is in Server-Admin; then no token exists.</summary>
+    bool HasServerAdmin => data.Users.Any(user => user.GroupIds.Contains(ServerAdminGroupId));
 
     /// <summary>Package 69: raised under the lock after the server settings changed; handlers must be quick.</summary>
     public event Action? SettingsChanged;
@@ -421,7 +424,8 @@ internal sealed partial class ServerState
         data.Channels.Select(Info).ToList(),
         data.Links.Select(channelLink => new LinkInfo(channelLink.A, channelLink.B)).ToList(),
         GroupInfos(to),
-        sessions.Values.Select(session => Info(session, to)).ToList());
+        sessions.Values.Select(session => Info(session, to)).ToList(),
+        HasServerAdmin);
 
     static string BanText(BanRecord ban) =>
         ban.ExpiresAt is { } until ? $"{ban.Reason} (bis {until:yyyy-MM-dd HH:mm} UTC)" : $"{ban.Reason} (dauerhaft)";

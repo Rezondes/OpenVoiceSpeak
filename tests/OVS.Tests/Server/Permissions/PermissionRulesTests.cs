@@ -25,6 +25,36 @@ public class PermissionRulesTests
         Assert.Equal(P.All, Effective([AdminGroupId], [new GroupRecord(AdminGroupId, "Admin", P.None)]));
     }
 
+    /// <summary>Package 181 (A190): the rank flag lies outside All and only Effective gives it, to members of Server-Admin.</summary>
+    [Fact]
+    public void Effective_ServerAdmin_AllPlusRank()
+    {
+        Assert.False(P.ServerAdminRank.IsSubsetOf(P.All));
+        Assert.Equal(P.All | P.ServerAdminRank, Effective([ServerAdminGroupId], Groups));
+        Assert.Equal(P.All | P.ServerAdminRank, Effective([ServerAdminGroupId, AdminGroupId, Guest.Id], Groups));
+        Assert.Equal(P.All | P.ServerAdminRank, Effective([ServerAdminGroupId], [new GroupRecord(ServerAdminGroupId, "Server-Admin", P.None)]));
+        // a stored group never carries the rank into Effective
+        Assert.False(Effective([Guest.Id], [new GroupRecord(Guest.Id, "Gast", P.Speak | P.ServerAdminRank)]).Has(P.ServerAdminRank));
+    }
+
+    [Fact]
+    public void DefaultGroups_Created_ContainServerAdmin()
+    {
+        var serverAdmin = Groups.Single(groupRecord => groupRecord.Id == ServerAdminGroupId);
+        Assert.Equal("Server-Admin", serverAdmin.Name);
+        Assert.Equal(P.All, serverAdmin.Permissions);
+        Assert.Equal(WellKnownGroups.ServerAdmin, ServerAdminGroupId);
+    }
+
+    [Fact]
+    public void CanActOn_ServerAdminOverAdmin_TrueAndNotBack()
+    {
+        Assert.True((P.All | P.ServerAdminRank).CanActOn(P.All));
+        Assert.False(P.All.CanActOn(P.All | P.ServerAdminRank));
+        Assert.True((P.All | P.ServerAdminRank).CanModerate("a", P.All, "b"));
+        Assert.False(P.All.CanModerate("b", P.All | P.ServerAdminRank, "a"));
+    }
+
     [Fact]
     public void DefaultGroups_Created_HaveDocumentedPermissions()
     {

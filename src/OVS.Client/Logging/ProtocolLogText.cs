@@ -52,6 +52,8 @@ internal static class ProtocolLogText
                 return $"Link between {DescribeChannel(channelsUnlinked.A, mirror)} and {DescribeChannel(channelsUnlinked.B, mirror)} removed";
             case GroupsChanged groupsChanged:
                 return $"Groups changed: {string.Join(", ", groupsChanged.Groups.Select(groupInfo => groupInfo.Name))}";
+            case ServerAdminClaimed:
+                return "Server admin token redeemed, the server has a server admin"; // Package 181
             case ServerSettingsChanged serverSettingsChanged:
                 return $"Server settings changed: name '{serverSettingsChanged.Settings.Name}', {(serverSettingsChanged.Settings.HasPassword ? "with" : "without")} password";
             case UserList userList:

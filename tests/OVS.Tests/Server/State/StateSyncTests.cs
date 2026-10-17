@@ -21,7 +21,7 @@ public class StateSyncTests
         var lobby = Assert.Single(snapshot.Channels);
         Assert.Equal("Lobby", lobby.Name);
         Assert.Equal("Testserver", snapshot.Settings.Name);
-        Assert.Equal(3, snapshot.Groups.Count);
+        Assert.Equal(4, snapshot.Groups.Count);
         Assert.Equal(["anna", "bert"], snapshot.Users.Select(user => user.Nickname).Order());
 
         var self = snapshot.Users.Single(user => user.SessionId == testClient.Id);
@@ -30,6 +30,20 @@ public class StateSyncTests
 
         var joined = await client.WaitForAsync<UserJoined>();
         Assert.Equal("bert", joined.User.Nickname);
+    }
+
+    /// <summary>Package 181 (AC7): the snapshot says whether someone holds Server-Admin, before and after the token.</summary>
+    [Fact]
+    public async Task Snapshot_HasServerAdmin_FollowsMembers()
+    {
+        await using var server = await TestServer.StartAsync();
+        await using var client = await TestClient.ConnectAsync(server, "anna");
+        Assert.False(client.Welcome.Snapshot.HasServerAdmin);
+
+        await client.SendAsync(new RedeemAdminToken(server.State.PendingAdminToken!));
+        await client.WaitForAsync<ServerAdminClaimed>();
+        await using var later = await TestClient.ConnectAsync(server, "bert");
+        Assert.True(later.Welcome.Snapshot.HasServerAdmin);
     }
 
     [Fact]
@@ -135,7 +149,7 @@ public class StateSyncTests
         await using var guest = await TestClient.ConnectAsync(server, "gast");
 
         var snapshot = guest.Welcome.Snapshot;
-        Assert.Equal(3, snapshot.Groups.Count); // id, name and order stay
+        Assert.Equal(4, snapshot.Groups.Count); // id, name and order stay
         Assert.All(snapshot.Groups, groupInfo => Assert.Equal((Permission.None, false), (groupInfo.Permissions, groupInfo.AssignableByMe)));
         var modSeen = snapshot.Users.Single(user => user.SessionId == mod.Id);
         Assert.Equal((Permission.None, false), (modSeen.Permissions, modSeen.CanBeModeratedByMe));
@@ -178,7 +192,7 @@ public class StateSyncTests
         Assert.Equal(OVS.Server.Permissions.PermissionRules.ModeratorPermissions, full.Single(groupInfo => groupInfo.Name == "Moderator").Permissions);
         Assert.Equal(Permission.All, full.Single(groupInfo => groupInfo.Name == "Admin").Permissions);
         Assert.Equal(assignerRights, full.Single(groupInfo => groupInfo.Name == "Zuweiser").Permissions);
-        Assert.All(full, groupInfo => Assert.True(groupInfo.AssignableByMe));
+        Assert.All(full, groupInfo => Assert.Equal(groupInfo.Id != WellKnownGroups.ServerAdmin, groupInfo.AssignableByMe)); // Package 181: only the token gives it
 
         var limited = assigner.Welcome.Snapshot.Groups;
         Assert.All(limited, groupInfo => Assert.Equal(Permission.None, groupInfo.Permissions));

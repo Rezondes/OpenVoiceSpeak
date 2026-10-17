@@ -51,6 +51,7 @@ namespace OVS.Shared.Protocol.Messages;
 [JsonDerivedType(typeof(ListUsers), "listUsers")]
 [JsonDerivedType(typeof(UserList), "userList")]
 [JsonDerivedType(typeof(RedeemAdminToken), "redeemAdminToken")]
+[JsonDerivedType(typeof(ServerAdminClaimed), "serverAdminClaimed")] // Package 181
 [JsonDerivedType(typeof(UpdateServerSettings), "updateServerSettings")]
 [JsonDerivedType(typeof(GroupsChanged), "groupsChanged")]
 [JsonDerivedType(typeof(ServerSettingsChanged), "serverSettingsChanged")]

@@ -36,6 +36,7 @@ internal sealed partial class ServerViewModel : ObservableObject
     [ObservableProperty] string welcomeText = "";
     /// <summary>Package 170: the web link that opens OVS with this server's address; null for an address a link cannot carry.</summary>
     [ObservableProperty] string? serverLink;
+    /// <summary>Package 181: in Admin or Server-Admin, so backups can be uploaded and restored.</summary>
     [ObservableProperty] bool isAdmin;
     [ObservableProperty] ChannelViewModel? currentChannel;
     [ObservableProperty] UserViewModel? self;
@@ -291,7 +292,7 @@ internal sealed partial class ServerViewModel : ObservableObject
         ServerName = Mirror.Settings.Name;
         WelcomeText = Mirror.Settings.WelcomeText;
         SelfPermissions = self?.Permissions ?? Permission.None;
-        IsAdmin = self?.GroupIds.Contains(WellKnownGroups.Admin) ?? false;
+        IsAdmin = self is not null && WellKnownGroups.HoldsAdminGroup(self.GroupIds);
         Tree.Rebuild(self);
         CurrentChannel = self is null ? null : Tree.FindChannel(self.ChannelId);
         Self = Tree.FindUser(Mirror.SelfId);

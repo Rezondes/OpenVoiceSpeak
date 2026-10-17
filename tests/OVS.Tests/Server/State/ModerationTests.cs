@@ -649,6 +649,90 @@ public sealed class ModerationTests : IAsyncLifetime
         if (actor != moderator) await actor.DisposeAsync();
     }
 
+    /// <summary>Package 181: a server with one server admin and three admins, all online.</summary>
+    static async Task<ServerAdminRig> StartWithServerAdminAsync()
+    {
+        var ownerId = ClientIdentity.Create();
+        var adminIds = new[] { ClientIdentity.Create(), ClientIdentity.Create(), ClientIdentity.Create() };
+        var started = await TestServer.StartAsync(serverData =>
+        {
+            TestServer.Grant(ownerId, "Server-Admin")(serverData);
+            foreach (var id in adminIds) TestServer.Grant(id, "Admin")(serverData);
+        });
+        var owner = await TestClient.ConnectAsync(started, "chefin", ownerId);
+        var admins = new TestClient[adminIds.Length];
+        for (int index = 0; index < adminIds.Length; index++) admins[index] = await TestClient.ConnectAsync(started, $"admin{index}", adminIds[index]);
+        return new ServerAdminRig(started, owner, admins);
+    }
+
+    /// <summary>Package 181 (AC4): the server admin outranks every admin.</summary>
+    [Fact]
+    public async Task ServerAdmin_KickBanMuteDeleteAdmin_Works()
+    {
+        await using var rig = await StartWithServerAdminAsync();
+        var (owner, admins) = (rig.Owner, rig.Admins);
+
+        await owner.SendAsync(new SetSessionServerMute(admins[0].Id, true));
+        await owner.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == admins[0].Id && userUpdated.User.ServerMuted);
+        await owner.SendAsync(new KickSession(admins[0].Id, "x"));
+        Assert.Equal(ReasonCodes.Kicked, (await admins[0].WaitForAsync<Disconnected>()).Reason);
+        await owner.SendAsync(new BanSession(admins[1].Id, "x", null, false));
+        Assert.Equal(ReasonCodes.Banned, (await admins[1].WaitForAsync<Disconnected>()).Reason);
+        await owner.SendAsync(new DeleteKnownUser(admins[0].Identity.Fingerprint));
+        Assert.DoesNotContain(await UsersAsync(owner), knownUser => knownUser.Fingerprint == admins[0].Identity.Fingerprint);
+        Assert.Single(await BansAsync(owner));
+    }
+
+    /// <summary>Package 181 (AC4): the server admin takes Admin away; the last-admin rule still holds for Admin itself.</summary>
+    [Fact]
+    public async Task UnassignAdmin_ByServerAdmin_Works()
+    {
+        await using var rig = await StartWithServerAdminAsync();
+        var (owner, admins) = (rig.Owner, rig.Admins);
+
+        foreach (var target in admins[..2])
+        {
+            await owner.SendAsync(new UnassignGroup(target.Identity.Fingerprint, PermissionRules.AdminGroupId));
+            await owner.WaitForAsync<UserUpdated>(userUpdated => userUpdated.User.SessionId == target.Id && !userUpdated.User.GroupIds.Contains(PermissionRules.AdminGroupId));
+        }
+        await owner.SendAsync(new UnassignGroup(admins[2].Identity.Fingerprint, PermissionRules.AdminGroupId) { RequestId = "last" });
+        Assert.Equal(ReasonCodes.LastAdmin, (await owner.ErrorAsync("last")).Code);
+    }
+
+    /// <summary>Package 181 (AC5): no admin acts on the server admin.</summary>
+    [Theory]
+    [InlineData("kick")]
+    [InlineData("ban")]
+    [InlineData("banUser")]
+    [InlineData("mute")]
+    [InlineData("move")]
+    [InlineData("delete")]
+    [InlineData("assign")]
+    [InlineData("unassign")]
+    public async Task Admin_ActionOnServerAdmin_PermissionDenied(string action)
+    {
+        await using var rig = await StartWithServerAdminAsync();
+        var (owner, admins) = (rig.Owner, rig.Admins);
+        var fingerprint = owner.Identity.Fingerprint;
+        var moderatorGroup = admins[0].Welcome.Snapshot.Groups.Single(groupInfo => groupInfo.Name == "Moderator").Id;
+
+        Request request = action switch
+        {
+            "kick" => new KickSession(owner.Id, "x"),
+            "ban" => new BanSession(owner.Id, "x", null, false),
+            "banUser" => new BanKnownUser(fingerprint, "x", null, false),
+            "mute" => new SetSessionServerMute(owner.Id, true),
+            "move" => new MoveUser(owner.Id, admins[0].Welcome.Snapshot.DefaultChannelId),
+            "delete" => new DeleteKnownUser(fingerprint),
+            "assign" => new AssignGroup(fingerprint, moderatorGroup),
+            _ => new UnassignGroup(fingerprint, PermissionRules.ServerAdminGroupId),
+        };
+        await admins[0].SendAsync(request with { RequestId = "r" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await admins[0].ErrorAsync("r")).Code);
+        Assert.Contains(PermissionRules.ServerAdminGroupId, (await UsersAsync(owner)).Single(knownUser => knownUser.Fingerprint == fingerprint).GroupIds);
+        Assert.Empty(await BansAsync(owner));
+    }
+
     [Fact]
     public async Task Ban_LastAdmin_Refused()
     {
@@ -761,4 +845,14 @@ public sealed class ModerationTests : IAsyncLifetime
     }
 
     static readonly TimeSpan ServerTuningSaveDelay = OVS.Server.ServerTuning.SaveDelay;
+
+    /// <summary>Package 181: a server with one server admin and three admins, disposes the clients and the server.</summary>
+    sealed record ServerAdminRig(TestServer Server, TestClient Owner, TestClient[] Admins) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            foreach (var client in Admins.Prepend(Owner)) await client.DisposeAsync();
+            await Server.DisposeAsync();
+        }
+    }
 }

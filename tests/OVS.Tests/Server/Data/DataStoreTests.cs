@@ -24,7 +24,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         var lobby = Assert.Single(data.Channels);
         Assert.Equal("Lobby", lobby.Name);
         Assert.Equal(lobby.Id, data.DefaultChannelId);
-        Assert.Equal(["Gast", "Moderator", "Admin"], data.Groups.Select(groupRecord => groupRecord.Name));
+        Assert.Equal(["Gast", "Moderator", "Admin", "Server-Admin"], data.Groups.Select(groupRecord => groupRecord.Name));
         Assert.Equal("Mein Server", data.Settings.Name);
         Assert.True(data.Settings.CheckPassword("pw"));
         Assert.False(data.Settings.CheckPassword("nein"));
@@ -237,7 +237,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         Assert.Equal(Permission.UserBan | Permission.UserKick | Permission.BansView, perms["Banner"]);
         Assert.Equal(Permission.Speak | Permission.ChatChannel, perms["Normal"]);
         Assert.Equal(Permission.All & ~Permission.ChannelPasswordBypass, perms["Alles"]); // Package 94: only Admin gets the newest right
-        Assert.All(loaded.Groups.Where(groupRecord => groupRecord.Name != "Alles"), groupRecord => Assert.Equal(Permission.None, groupRecord.Permissions & (Permission.UserDelete | Permission.LogsView | Permission.LogsDownload)));
+        Assert.All(loaded.Groups.Where(groupRecord => groupRecord.Name != "Alles" && groupRecord.Id != WellKnownGroups.ServerAdmin), groupRecord => Assert.Equal(Permission.None, groupRecord.Permissions & (Permission.UserDelete | Permission.LogsView | Permission.LogsDownload)));
         Assert.False(loaded.Migrate(Config)); // once
     }
 
@@ -270,7 +270,7 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
         Assert.False(loaded.Migrate(Config)); // once
 
         // new servers: only Admin
-        Assert.Equal(["Admin"], ServerData.CreateDefault(Config).Groups.Where(groupRecord => groupRecord.Permissions.Has(Permission.BackupsManage)).Select(groupRecord => groupRecord.Name));
+        Assert.Equal(["Admin", "Server-Admin"], ServerData.CreateDefault(Config).Groups.Where(groupRecord => groupRecord.Permissions.Has(Permission.BackupsManage)).Select(groupRecord => groupRecord.Name));
     }
 
     /// <summary>
@@ -291,12 +291,12 @@ public sealed class DataStoreTests() : TempDirectoryTest("ovs-data-", quiet: fal
 
         var loaded = store.LoadOrCreate(() => throw new InvalidOperationException());
         Assert.True(loaded.Migrate(Config));
-        Assert.Equal(6, loaded.DataVersion);
+        Assert.Equal(ServerData.CurrentVersion, loaded.DataVersion);
         var perms = loaded.Groups.ToDictionary(groupRecord => groupRecord.Name, groupRecord => groupRecord.Permissions);
         Assert.Equal(Permission.All & ~Permission.ChannelPasswordBypass, perms["Alles"]);
         Assert.Equal(Permission.All, perms["Admin"]);
         Assert.False(loaded.Migrate(Config)); // once
-        Assert.Equal(["Admin"], ServerData.CreateDefault(Config).Groups.Where(groupRecord => groupRecord.Permissions.Has(Permission.ChannelPasswordBypass)).Select(groupRecord => groupRecord.Name));
+        Assert.Equal(["Admin", "Server-Admin"], ServerData.CreateDefault(Config).Groups.Where(groupRecord => groupRecord.Permissions.Has(Permission.ChannelPasswordBypass)).Select(groupRecord => groupRecord.Name));
     }
 
     [Fact]

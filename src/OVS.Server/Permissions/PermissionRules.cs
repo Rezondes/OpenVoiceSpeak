@@ -10,6 +10,8 @@ internal static class PermissionRules
     public static readonly Guid GuestGroupId = WellKnownGroups.Guest;
     /// <summary>The group that holds every right.</summary>
     public static readonly Guid AdminGroupId = WellKnownGroups.Admin;
+    /// <summary>Package 181: the one server admin's group.</summary>
+    public static readonly Guid ServerAdminGroupId = WellKnownGroups.ServerAdmin;
 
     /// <summary>The rights of the default Moderator group.</summary>
     public const Permission ModeratorPermissions =
@@ -20,20 +22,25 @@ internal static class PermissionRules
     /// <summary>What a guest may do on a new server, and what existing servers add once (A28).</summary>
     public const Permission GuestPermissions = Permission.Speak | Permission.ChatChannel | Permission.ChatPrivate;
 
-    /// <summary>The groups of a new server: Gast, Moderator and Admin.</summary>
+    /// <summary>Package 181: the Server-Admin group as a new server and the migration to data version 7 add it.</summary>
+    public static GroupRecord ServerAdminGroup() => new(ServerAdminGroupId, "Server-Admin", Permission.All);
+
+    /// <summary>The groups of a new server: Gast, Moderator, Admin and Server-Admin.</summary>
     public static List<GroupRecord> DefaultGroups() =>
     [
         new(GuestGroupId, "Gast", GuestPermissions),
         new(Guid.NewGuid(), "Moderator", ModeratorPermissions),
         new(AdminGroupId, "Admin", Permission.All),
+        ServerAdminGroup(),
     ];
 
-    /// <summary>The union of the groups' rights; every right for a member of Admin.</summary>
+    /// <summary>The union of the groups' rights; every right for a member of Admin, and the rank above it for the server admin (A190).</summary>
     public static Permission Effective(IEnumerable<Guid> groupIds, IEnumerable<GroupRecord> groups)
     {
         var ids = groupIds.ToHashSet();
+        if (ids.Contains(ServerAdminGroupId)) return Permission.All | Permission.ServerAdminRank;
         if (ids.Contains(AdminGroupId)) return Permission.All;
-        return groups.Where(groupRecord => ids.Contains(groupRecord.Id)).Aggregate(Permission.None, (acc, groupRecord) => acc | groupRecord.Permissions);
+        return groups.Where(groupRecord => ids.Contains(groupRecord.Id)).Aggregate(Permission.None, (acc, groupRecord) => acc | groupRecord.Permissions) & Permission.All;
     }
 
     /// <summary>True when actor may delete group (<see cref="GroupRules.CanDelete"/>).</summary>
