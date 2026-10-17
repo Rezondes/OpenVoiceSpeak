@@ -44,6 +44,41 @@ public sealed class UsersAndBansViewModelTests
         return BoundAsync(toggle.ToggleCommand.ExecuteAsync(null));
     }
 
+    static readonly GroupInfo ServerAdminGroup = new(WellKnownGroups.ServerAdmin, "Server-Admin", Permission.All); // Package 182: never AssignableByMe
+
+    /// <summary>Package 182 (AC3): the member administration never offers to give or take Server-Admin.</summary>
+    [Fact]
+    public void ServerAdminGroup_InMemberAdministration_NeverOffered()
+    {
+        var (section, server) = Create();
+        server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, ServerAdminGroup]));
+        section.Apply(new UserList("r", [Yvonne, new KnownUserInfo("fpS", "Sabine", [WellKnownGroups.ServerAdmin])]));
+
+        Assert.All(section.Users, user => Assert.False(user.Toggles.Single(toggle => toggle.GroupId == WellKnownGroups.ServerAdmin).IsEnabled));
+        Assert.True(section.Users.Single(user => user.Nickname == "Yvonne").Toggles.Single(toggle => toggle.GroupId == WellKnownGroups.Admin).IsEnabled);
+    }
+
+    /// <summary>Package 182 (AC4): the actions follow the server's rank judgement: hidden for an admin, shown for the server admin.</summary>
+    [Fact]
+    public void Actions_OnServerAdmin_HiddenForAdminShownForServerAdmin()
+    {
+        var (section, server) = Create();
+        server.Apply(new GroupsChanged([FakeServers.GuestGroup, FakeServers.AdminGroup, ServerAdminGroup]));
+        section.Apply(new UserList("r",
+        [
+            new KnownUserInfo("fpS", "Sabine", [WellKnownGroups.ServerAdmin], CanBeModeratedByMe: false), // the own user is an admin
+            new KnownUserInfo("fpA", "Arne", [WellKnownGroups.Admin], CanBeModeratedByMe: false),
+        ]));
+        var owner = section.Users.Single(user => user.Nickname == "Sabine");
+        Assert.False(owner.CanBan || owner.CanDelete || owner.Toggles.Any(toggle => toggle.IsEnabled));
+
+        FakeServers.SetOwnRightsAndGroups(server, Permission.All | Permission.ServerAdminRank, [WellKnownGroups.ServerAdmin]);
+        section.Apply(new UserList("r2", [new KnownUserInfo("fpA", "Arne", [WellKnownGroups.Admin], CanBeModeratedByMe: true), Me]));
+        var admin = section.Users.Single(user => user.Nickname == "Arne");
+        Assert.True(admin.CanDelete);
+        Assert.True(admin.Toggles.Single(toggle => toggle.GroupId == WellKnownGroups.Admin).IsEnabled);
+    }
+
     [Fact]
     public async Task ToggleUserGroup_OwnGroup_MarksBeforeTheRequestIsSent()
     {

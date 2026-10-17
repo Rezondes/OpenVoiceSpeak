@@ -38,6 +38,10 @@ internal sealed partial class ServerViewModel : ObservableObject
     [ObservableProperty] string? serverLink;
     /// <summary>Package 181: in Admin or Server-Admin, so backups can be uploaded and restored.</summary>
     [ObservableProperty] bool isAdmin;
+    /// <summary>Package 182: the own user is the server admin.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanRedeemToken))] bool isServerAdmin;
+    /// <summary>Package 182: the server has a server admin (the snapshot or ServerAdminClaimed), so no token exists.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CanRedeemToken))] bool hasServerAdmin;
     [ObservableProperty] ChannelViewModel? currentChannel;
     [ObservableProperty] UserViewModel? self;
     /// <summary>The server logo as PNG, null while the server has none or it is still loading.</summary>
@@ -91,10 +95,8 @@ internal sealed partial class ServerViewModel : ObservableObject
     public bool CanAdminister =>
         (SelfPermissions & (Permission.GroupsView | Permission.UsersView | Permission.BansView | Permission.ServerConfig | Permission.ChannelLink
                             | Permission.LogsView | Permission.BackupsManage)) != 0;
-    /// <summary>The admin token can be redeemed (the own user is no admin yet).</summary>
-    public bool CanRedeemToken => !IsAdmin;
-
-    partial void OnIsAdminChanged(bool value) => OnPropertyChanged(nameof(CanRedeemToken));
+    /// <summary>Package 182: the server admin token can be redeemed, exactly while the server has no server admin (A191).</summary>
+    public bool CanRedeemToken => !HasServerAdmin && !IsServerAdmin;
 
     /// <summary>The last user list page set the server sent.</summary>
     public UserList? LastUserList { get; private set; }
@@ -293,6 +295,8 @@ internal sealed partial class ServerViewModel : ObservableObject
         WelcomeText = Mirror.Settings.WelcomeText;
         SelfPermissions = self?.Permissions ?? Permission.None;
         IsAdmin = self is not null && WellKnownGroups.HoldsAdminGroup(self.GroupIds);
+        IsServerAdmin = self?.GroupIds.Contains(WellKnownGroups.ServerAdmin) ?? false;
+        HasServerAdmin = Mirror.HasServerAdmin;
         Tree.Rebuild(self);
         CurrentChannel = self is null ? null : Tree.FindChannel(self.ChannelId);
         Self = Tree.FindUser(Mirror.SelfId);

@@ -200,6 +200,21 @@ public sealed class GroupListViewModelTests
         Assert.True(moderator.CanDelete);
     }
 
+    /// <summary>Package 182 (AC3): Server-Admin is fixed like Admin, also for the server admin, with its own note.</summary>
+    [Fact]
+    public void ServerAdminGroup_InEditor_FixedWithNote()
+    {
+        var serverAdmin = new GroupInfo(WellKnownGroups.ServerAdmin, "Server-Admin", Permission.All);
+        var rig = CreateFor(Permission.All | Permission.ServerAdminRank, FakeServers.GuestGroup, FakeServers.AdminGroup, serverAdmin);
+        var row = Row(rig, "Server-Admin");
+
+        Assert.True(row.IsReadOnly);
+        Assert.All(row.Toggles, toggle => Assert.False(toggle.IsEnabled));
+        Assert.False(row.CanDelete);
+        Assert.Equal("Die Server-Admin-Gruppe hat immer alle Rechte, ist nicht änderbar und wird nur per Token vergeben.",
+            TestCulture.With("de-DE", () => CreateFor(Permission.All, serverAdmin).Section.Groups.Live().Single().ReadOnlyReason));
+    }
+
     [Fact]
     public void Groups_ActorHoldsAllRights_AdminGroupReadOnlyWithDisabledTogglesAndNeitherProtectedGroupDeletable()
     {

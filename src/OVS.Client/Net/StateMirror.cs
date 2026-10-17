@@ -22,6 +22,7 @@ internal sealed class StateMirror
         Links = serverSnapshot.Links.Select(link => ChannelPair.Of(link.A, link.B)).ToHashSet();
         Groups = serverSnapshot.Groups.ToList();
         Users = serverSnapshot.Users.ToDictionary(user => user.SessionId);
+        HasServerAdmin = serverSnapshot.HasServerAdmin;
     }
 
     /// <summary>The own session id.</summary>
@@ -38,6 +39,8 @@ internal sealed class StateMirror
     public List<GroupInfo> Groups { get; private set; }
     /// <summary>The users online by session id.</summary>
     public Dictionary<uint, UserInfo> Users { get; }
+    /// <summary>Package 182: the server has a server admin, so no server admin token exists.</summary>
+    public bool HasServerAdmin { get; private set; }
 
     /// <summary>The own user.</summary>
     public UserInfo? Self => Users.GetValueOrDefault(SelfId);
@@ -61,6 +64,7 @@ internal sealed class StateMirror
             case ChannelsUnlinked channelsUnlinked: return Links.Remove(ChannelPair.Of(channelsUnlinked.A, channelsUnlinked.B));
             case GroupsChanged groupsChanged: Groups = groupsChanged.Groups.ToList(); return true;
             case ServerSettingsChanged serverSettingsChanged: Settings = serverSettingsChanged.Settings; return true;
+            case ServerAdminClaimed: HasServerAdmin = true; return true;
             default: return false;
         }
     }

@@ -41,6 +41,7 @@ internal sealed partial class GroupEditViewModel : ObservableObject, IMotionKey
         // The reason names the first failing part of GroupRules.CanSave.
         ReadOnlyReason = id is null || GroupRules.CanSave(actor, id, permissions, permissions) ? null
             : id == WellKnownGroups.Admin ? Strings.Ui_AdminGroupFixed
+            : id == WellKnownGroups.ServerAdmin ? Strings.Ui_ServerAdminGroupFixed // Package 182
             : !permissions.IsSubsetOf(actor) ? Strings.Ui_GroupStronger
             : Strings.Ui_GroupViewOnly;
         IsReadOnly = ReadOnlyReason is not null;

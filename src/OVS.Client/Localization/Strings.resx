@@ -51,7 +51,7 @@
   <data name="Dialog_Kick" xml:space="preserve"><value>{0} kicken</value></data>
   <data name="Dialog_KickReason" xml:space="preserve"><value>Grund:</value></data>
   <data name="Dialog_LinkWith" xml:space="preserve"><value>"{0}" verlinken mit</value></data>
-  <data name="Dialog_RedeemToken" xml:space="preserve"><value>Admin-Token einlösen</value></data>
+  <data name="Dialog_RedeemToken" xml:space="preserve"><value>Server-Admin-Token einlösen</value></data>
   <data name="Dialog_RedeemTokenPrompt" xml:space="preserve"><value>Token aus dem Serverlog:</value></data>
   <data name="Dialog_Unlink" xml:space="preserve"><value>Link von "{0}" entfernen</value></data>
   <data name="Dlg_Action" xml:space="preserve"><value>Aktion</value></data>
@@ -145,7 +145,7 @@
   <data name="Error_InvalidBackup" xml:space="preserve"><value>Das Backup ist ungültig oder zu neu für diesen Server. Es wurde nichts geändert.</value></data>
   <data name="Error_InvalidLink" xml:space="preserve"><value>Ein Channel kann nicht mit sich selbst verlinkt werden.</value></data>
   <data name="Error_InvalidName" xml:space="preserve"><value>Ungültiger Name.</value></data>
-  <data name="Error_InvalidToken" xml:space="preserve"><value>Das Admin-Token ist ungültig oder wurde bereits eingelöst.</value></data>
+  <data name="Error_InvalidToken" xml:space="preserve"><value>Das Server-Admin-Token ist ungültig oder wurde bereits eingelöst.</value></data>
   <data name="Error_InvalidValue" xml:space="preserve"><value>Ungültiger Wert.</value></data>
   <data name="Error_Kicked" xml:space="preserve"><value>Du wurdest vom Server gekickt.</value></data>
   <data name="Error_LastAdmin" xml:space="preserve"><value>Der letzte Admin kann nicht entfernt werden.</value></data>
@@ -485,7 +485,7 @@
   <data name="Ui_PlayFmt" xml:space="preserve"><value>{0} abspielen</value></data>
   <data name="Ui_PrivateMessage" xml:space="preserve"><value>Privatnachricht</value></data>
   <data name="Ui_PttHint" xml:space="preserve"><value>Push-to-Talk ist gewählt, aber keine Taste belegt. Ohne Taste hört dich niemand.</value></data>
-  <data name="Ui_RedeemTokenMenu" xml:space="preserve"><value>Admin-Token einlösen ...</value></data>
+  <data name="Ui_RedeemTokenMenu" xml:space="preserve"><value>Server-Admin-Token einlösen ...</value></data>
   <data name="Ui_Refresh" xml:space="preserve"><value>Aktualisieren</value></data>
   <data name="Ui_RemoveLogo" xml:space="preserve"><value>Logo entfernen</value></data>
   <data name="Ui_RemovePassword" xml:space="preserve"><value>Passwort entfernen</value></data>
@@ -502,6 +502,7 @@
   <data name="Ui_Send" xml:space="preserve"><value>Senden</value></data>
   <data name="Ui_SendEnter" xml:space="preserve"><value>Senden (Enter)</value></data>
   <data name="Ui_Server" xml:space="preserve"><value>Server</value></data>
+  <data name="Ui_ServerAdminGroupFixed" xml:space="preserve"><value>Die Server-Admin-Gruppe hat immer alle Rechte, ist nicht änderbar und wird nur per Token vergeben.</value></data>
   <data name="Ui_ServerLogo" xml:space="preserve"><value>Server-Logo</value></data>
   <data name="Ui_ServerMuteMenu" xml:space="preserve"><value>Serverseitig stummschalten an/aus</value></data>
   <data name="Ui_ServerMuted" xml:space="preserve"><value>Vom Server stummgeschaltet</value></data>

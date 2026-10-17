@@ -358,12 +358,13 @@
                                   </Panel>
                                 </Border>
                               </Border>
-                              <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" VerticalAlignment="Center">
+                              <!-- Package 182: a grid, not a stack panel, so a long name is trimmed and "(du)" stays beside it -->
+                              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4" Margin="8,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center">
                                 <TextBlock Classes="userName" Text="{Binding Nickname}" TextTrimming="CharacterEllipsis"
                                            Foreground="{Binding NameColor, Converter={x:Static conv:AvatarConverters.NameBrush}}"
                                            FontWeight="{Binding IsSelf, Converter={x:Static conv:AvatarConverters.SelfWeight}}" />
-                                <TextBlock Classes="caption" Text="{x:Static l:Strings.Ui_You}" IsVisible="{Binding IsSelf}" VerticalAlignment="Center" />
-                              </StackPanel>
+                                <TextBlock Grid.Column="1" Classes="caption" Text="{x:Static l:Strings.Ui_You}" IsVisible="{Binding IsSelf}" VerticalAlignment="Center" />
+                              </Grid>
                             </DockPanel>
                           </Border>
                         </DataTemplate>

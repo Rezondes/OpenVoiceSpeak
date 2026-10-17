@@ -235,7 +235,7 @@ public sealed class ResponsiveTests() : TempDirectoryTest("ovs-resp-", quiet: tr
     public void Narrow_HeaderIconOnly_NothingClipped(bool admin)
     {
         var server = FakeServers.Admin();
-        server.IsAdmin = admin; // not admin: "Admin-Token einlösen" joins the header
+        server.HasServerAdmin = admin; // Package 182: without a server admin "Server-Admin-Token einlösen" joins the header
         var main = Open(360, server);
         var viewModel = (MainViewModel)main.DataContext!;
         viewModel.Connection.PingText = "23 ms";

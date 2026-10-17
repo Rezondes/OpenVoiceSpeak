@@ -21,8 +21,8 @@ static class Snapshots
 
     /// <summary>A server named <paramref name="name"/> without a password, icon or limits.</summary>
     public static ServerSnapshot Snapshot(string name, string welcome, Guid defaultChannel, IReadOnlyList<ChannelInfo> channels,
-        IReadOnlyList<GroupInfo> groups, IReadOnlyList<UserInfo> users, IReadOnlyList<LinkInfo>? links = null) =>
-        new(new ServerSettingsInfo(name, welcome, false), defaultChannel, channels, links ?? [], groups, users);
+        IReadOnlyList<GroupInfo> groups, IReadOnlyList<UserInfo> users, IReadOnlyList<LinkInfo>? links = null, bool hasServerAdmin = false) =>
+        new(new ServerSettingsInfo(name, welcome, false), defaultChannel, channels, links ?? [], groups, users, hasServerAdmin);
 
     /// <summary>The welcome of session 1 (the own user) without a voice key.</summary>
     public static Welcome Welcome(ServerSnapshot snapshot) => new(1, "", snapshot);

@@ -1744,7 +1744,7 @@ Testbefehl: `dotnet test --filter "FullyQualifiedName~ClientSettingsTests|FullyQ
    - `"AssignGroup_SendsRequest_DisablesHigherGroups"` (AC5)
    - `ServerViewModelTests > "Ban_Confirmed_SendsDurationAndIpFlag"` (AC6)
    - `[Theory] "Tabs_Rights_VisibleByPermission"` (AC7)
-   - `ServerViewModelTests > "RedeemToken_Admin_Hidden"` (AC8)
+   - `ServerViewModelTests > "CanRedeemToken_ServerAdminClaimed_HiddenAfterwards"` (AC8; since Package 182 the button follows the server admin)
 3. `SettingsTests.cs > "ErrorTexts_EveryCode_HasText"`: Schleife über alle Codes (AC9)
 
 Testbefehl: `dotnet test --filter "FullyQualifiedName~MenuPermissionTests|FullyQualifiedName~AdminViewModelTests|FullyQualifiedName~ErrorTextsTests"`
@@ -10595,20 +10595,20 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s` (covers
 
 ### Acceptance Criteria
 
-- [ ] AC1: The button "Server-Admin-Token einlösen ..." is visible exactly when the server has no server admin and the own user is not server admin; after `ServerAdminClaimed` it disappears in every connected client without reconnecting.
-- [ ] AC2: Redeeming works as before (dialog, `RedeemAdminToken`, confirmation by `UserUpdated`); a wrong token shows "Das Server-Admin-Token ist ungültig oder wurde bereits eingelöst."
-- [ ] AC3: In the group editor Server-Admin is fixed with the note "Die Server-Admin-Gruppe hat immer alle Rechte, ist nicht änderbar und wird nur per Token vergeben."; in the member administration it is never offered to give or take.
-- [ ] AC4: An admin sees no moderation actions on the server admin; the server admin sees them on admins (both from `CanModerate` with the new rank).
+- [x] AC1: The button "Server-Admin-Token einlösen ..." is visible exactly when the server has no server admin and the own user is not server admin; after `ServerAdminClaimed` it disappears in every connected client without reconnecting.
+- [x] AC2: Redeeming works as before (dialog, `RedeemAdminToken`, confirmation by `UserUpdated`); a wrong token shows "Das Server-Admin-Token ist ungültig oder wurde bereits eingelöst."
+- [x] AC3: In the group editor Server-Admin is fixed with the note "Die Server-Admin-Gruppe hat immer alle Rechte, ist nicht änderbar und wird nur per Token vergeben."; in the member administration it is never offered to give or take.
+- [x] AC4: An admin sees no moderation actions on the server admin; the server admin sees them on admins (both from `CanModerate` with the new rank).
 - [ ] AC5 (manual): On the user's server with three admins, after a restart the token is in the console, redeeming it in the client makes the user server admin, and the user can take Admin away from another admin.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `ServerViewModelTests > "CanRedeemToken_NoServerAdmin_True_AfterClaimed_False"` - AC1
+1. `ServerViewModelTests > "CanRedeemToken_ServerAdminClaimed_HiddenAfterwards"` - AC1
 2. `ServerViewModelTests > "CanRedeemToken_SelfServerAdmin_False"` - AC1
 3. `ServerViewModelTests > "Redeem_WrongToken_ShowsServerAdminText"` - AC2
-4. `GroupListViewModelTests > "ServerAdminGroup_FixedWithNote"` and `UsersAndBansViewModelTests > "ServerAdminGroup_NeverOffered"` - AC3
-5. `UsersAndBansViewModelTests > "Actions_OnServerAdmin_HiddenForAdmin_ShownForServerAdmin"` - AC4
-6. `ProtocolLogTextTests` with the new message.
+4. `GroupListViewModelTests > "ServerAdminGroup_InEditor_FixedWithNote"` and `UsersAndBansViewModelTests > "ServerAdminGroup_InMemberAdministration_NeverOffered"` - AC3
+5. `UsersAndBansViewModelTests > "Actions_OnServerAdmin_HiddenForAdminShownForServerAdmin"` - AC4
+6. `ProtocolLogTextTests > "Describe_ServerMessage_InWordsWithNamesFromTheMirror"` with the new message (built with Package 181).
 7. Manual check AC5 (muted, no sound).
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
@@ -10618,6 +10618,8 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 1. Tests 1 to 3 (red), then `ServerViewModel` and the strings.
 2. Tests 4 to 6, then group editor, member administration, protocol log text.
 3. Full suite, rule-lint, manual check.
+
+(as built: `StateMirror.HasServerAdmin` comes from the snapshot and turns true with `ServerAdminClaimed`, which rebuilds the view model like any state change; `ServerViewModel.IsServerAdmin` and `HasServerAdmin` drive `CanRedeemToken`, so the button now also shows for admins until someone claims the role. The texts name the server admin token in both languages, the group editor gives Server-Admin its own fixed note (`Ui_ServerAdminGroupFixed`), and the member administration needed no change: the server sends `AssignableByMe` false for Server-Admin and `CanBeModeratedByMe` judged with the rank. `ProtocolLogText` got its text with Package 181. Unplanned: with the button in the header for admins, a long own nickname in the sidebar at 760 px ran out of its row (the name sat in a horizontal stack panel, so its ellipsis never applied, which non-admins already hit); the row is now a grid that trims the name and keeps "(du)" beside it. AC5 (the manual check on the user's server) is open.)
 
 ### Out of Scope
 

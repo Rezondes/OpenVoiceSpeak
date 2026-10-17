@@ -30,12 +30,12 @@ public class ServerViewModelTests
     const P Moderator = P.Speak | P.SpeakLinked | P.ChannelLink | P.UserMove | P.UserMute | P.UserKick | P.UserBan;
 
     static Fixture Create(P selfPerms = P.Speak, IReadOnlyList<Guid>? selfGroups = null, ServerDialogs? dialogs = null, IReadOnlyList<GroupInfo>? groups = null,
-        params UserInfo[] others)
+        bool hasServerAdmin = false, params UserInfo[] others)
     {
         var snapshot = Snapshot("Server", "Hallo", Lobby,
             [new ChannelInfo(Lobby, "Lobby", "", 0), new ChannelInfo(Bravo, "Bravo", "", 1), new ChannelInfo(Alpha, "alpha", "", 1)],
             groups ?? [new GroupInfo(WellKnownGroups.Guest, "Gast", P.Speak), new GroupInfo(WellKnownGroups.Admin, "Admin", P.All)],
-            [User(1, "ich", Lobby, selfPerms, selfGroups), .. others]);
+            [User(1, "ich", Lobby, selfPerms, selfGroups), .. others], hasServerAdmin: hasServerAdmin);
         var sent = new List<Request>();
         var time = new ManualTimeProvider();
         var server = new ServerViewModel(Mirror(snapshot), request =>
@@ -738,11 +738,55 @@ public class ServerViewModelTests
         Assert.Contains(nameof(ChannelViewModel.MaxUsers), changed);
     }
 
+    /// <summary>Package 182 (AC1): the token exists exactly while nobody is server admin, admins or not; the claim hides it at once.</summary>
     [Fact]
-    public void RedeemToken_Admin_Hidden()
+    public void CanRedeemToken_ServerAdminClaimed_HiddenAfterwards()
     {
         Assert.True(Create().Vm.CanRedeemToken);
-        Assert.False(Create(P.All, [WellKnownGroups.Admin]).Vm.CanRedeemToken);
+        var fixture = Create(P.All, [WellKnownGroups.Admin]);
+        Assert.True(fixture.Vm.CanRedeemToken);
+        var changed = new List<string?>();
+        fixture.Vm.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+
+        fixture.Vm.Apply(new ServerAdminClaimed());
+
+        Assert.False(fixture.Vm.CanRedeemToken);
+        Assert.Contains(nameof(ServerViewModel.CanRedeemToken), changed);
+        Assert.False(Create(hasServerAdmin: true).Vm.CanRedeemToken);
+    }
+
+    [Fact]
+    public void CanRedeemToken_SelfServerAdmin_False()
+    {
+        var fixture = Create(P.All | P.ServerAdminRank, [WellKnownGroups.ServerAdmin]);
+        Assert.False(fixture.Vm.CanRedeemToken);
+        Assert.True(fixture.Vm.IsServerAdmin);
+        Assert.True(fixture.Vm.IsAdmin); // Package 181: backups like an admin
+    }
+
+    /// <summary>Package 182 (AC2): a wrong token is refused in the dialog with the server admin text.</summary>
+    [Fact]
+    public async Task Redeem_WrongToken_ShowsServerAdminText()
+    {
+        PendingActionViewModel? pending = null;
+        var fixture = Create(dialogs: new ServerDialogs
+        {
+            AskText = (_, _, submit) =>
+            {
+                pending = submit!("falsch");
+                return Task.FromResult<string?>(null);
+            },
+        });
+
+        await fixture.Vm.RedeemTokenCommand.ExecuteAsync(null);
+        Assert.Equal(new RedeemAdminToken("falsch"), fixture.Sent[^1] with { RequestId = null });
+        var error = TestCulture.With("de-DE", () =>
+        {
+            fixture.Vm.Apply(new Error(fixture.Sent[^1].RequestId, ReasonCodes.InvalidToken));
+            return pending!.Error;
+        });
+
+        Assert.Equal("Das Server-Admin-Token ist ungültig oder wurde bereits eingelöst.", error);
     }
 
     [Fact]
