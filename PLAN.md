@@ -43,6 +43,8 @@
 > **Packages 172 to 180 (native audio engine in Rust):** the measurement of 15 October 2026 (`MESSUNG-VERBUNDEN-STOCKEN.md`) found the stutter of the "Verbunden" sound: a garbage collection of about 50 ms stops the managed playback loop and NAudio's managed render thread, and 40 ms of buffer do not cover it. TeamSpeak, Discord and Fluxer all render audio on native threads. The audio path moves into one native Rust library in three stages, in the user's words: stage 1 output and sounds (172 to 174), stage 2 jitter buffer, decoding and mixing (175, 176), stage 3 the microphone path (177 to 179); 180 removes the old managed path. The order is strictly linear: each package builds on the one before and ends green and committable, the old managed path stays where the native one does not exist yet (A180). Later platforms (Linux, macOS, Android, iOS) come as own packages over cpal (A189) and are not planned here. Their test sections are headed "Planned tests (TDD)" so that `PlanReferenceTests` does not try to resolve tests that do not exist yet; each package renames its heading to "Tests (TDD)" when it is built, and 172 teaches the check to resolve the Rust tests (`file.rs > name`).
 >
 > **Packages 181 and 182 (server admin):** the question "how do I add a server admin later" showed that no role above Admin exists: admins cannot act on each other, and the token only comes without any admin. 181 adds the role on the server (group, rank, token), 182 the client; 182 needs 181.
+>
+> **Packages 183 to 189 (audio quality and audio settings):** the question "why does the quality stop at 128 kbps" showed the limit is a choice of A141, not Opus'. The bitrate request was split at the user's request into the new default (183) and the range up to 510 kbps with a lower-rate copy (184); 184 needs 183. The other points follow the request: 185 (Discord devices), 186 (one audio page), 187 (Fluxer button), and the two points added later, 188 (status alignment) and 189 (link push-to-talk tone). 187 needs 186, because both change the Audio page. 183, 185, 186, 188 and 189 can start at once. 184 raises the protocol version by one. The test sections are headed "Planned tests (TDD)" until each package is built (see 172 to 180).
 
 ## Überblick
 
@@ -227,6 +229,13 @@
 | 180 | Remove the managed audio path | The old managed audio path, NAudio's wave output and capture, Concentus and the separate native DLLs are gone, and the client has exactly one native audio library. | 179 |
 | 181 | Server admin role (server) | One server admin outranks every admin, is protected from them and gets the role only through the one-time token, which existing servers print at their next start. | - |
 | 182 | Server admin role (client) | The client offers the server admin token only while the server has none and shows the Server-Admin group as fixed. | 181 |
+| 183 | Default quality 128 kbps | New channels and every channel stored at 64 kbps encode with 128 kbps. | - |
+| 184 | Quality up to 510 kbps | A channel's quality goes up to 510 kbps, a lost frame above 256 kbps is replaced by a lower-rate copy that always fits, and the channel dialog warns about it. | 183 |
+| 185 | Find devices taken from Discord | "Aus Discord übernehmen" finds the microphone and speaker even when Windows gave the same device a new id. | - |
+| 186 | Audio and transmit mode on one page | The settings page "Sendemodus" is gone, its content is the section "Sendemodus" under "Sprachfilter" on the page "Audio". | - |
+| 187 | Take over from Fluxer | The Audio page has one take-over button per chat app, so Fluxer's settings can be taken over while Discord is installed. | 186 |
+| 188 | Status beside the server link | "Verbunden" sits centred beside the green dot also when the "Serverlink kopieren" button shows. | - |
+| 189 | Link push-to-talk only with a link | Link push-to-talk in a channel without links sends nothing, and the talk key tone plays only while a talk key really sends. | - |
 
 ## Annahmen
 
@@ -434,6 +443,14 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A191 Exactly one server admin.** The token exists only while nobody is in Server-Admin; a second server admin is not possible.
 - **A192 One token.** The admin token becomes the server admin token and appears at every start without a server admin, even with admins; an existing server gets it at its next start. A backup without a server admin restores, the token comes at the next start.
 - **A193 No hand-over in the client.** The role cannot be given away in the client; a change goes through `server-data.json` (remove `...0c` from the user's `GroupIds`, restart, new token).
+- **A194 Default 128 kbps (Package 183).** The user's decision: `ProtocolDefaults.Bitrate` becomes 128. Data version 8 lifts every voice channel stored at exactly 64 kbps to 128 (64 was the old default, so those channels were never chosen on purpose); other values stay. A stored channel without a value loads as 128. The wire format does not change, so the protocol version stays.
+- **A195 Range 16 to 510 kbps (Package 184).** The user's decision: `ProtocolLimits.MaxBitrate` becomes 510, Opus' maximum (RFC 6716: 1275 bytes per 20 ms frame, `VoiceHeader.MaxOpusSize`). An older server refuses more than 128 and an older client clamps to 128, so the protocol version goes up by one.
+- **A196 Lower-rate copy (Package 184).** The user's decision (4a): up to 256 kbps the copy of Package 136 stays the full previous frame, sent from 2 % uplink loss as today. Above 256 kbps two full frames no longer fit one packet (`RelayPayload.MaxSize` 1368 bytes of Opus for both), so the sender always attaches a copy of the previous frame from a second encoder of the same mode, at most 64 kbps and at most the room the current frame leaves (about 32 kbps at 510 kbps). The current frame is capped at its share of the packet through Opus' `max_data_bytes`, so the copy always fits and is never dropped silently. The server relays the copy to listeners with at least 2 % downlink loss and strips it for the others, as today; it never transcodes. Over TCP no copy (Package 141). The second encoder runs only while the channel is above 256 kbps.
+- **A197 Warning (Package 184).** The user's decision (3a): the channel dialog shows a warning under "Qualität" whenever more than 256 kbps are set, that lost packets are then replaced by a copy of lower quality. No live notice while talking.
+- **A198 Device by name (Package 185).** The user's decision (5a): Windows creates a new endpoint id when a driver or a USB device is set up again (on the developer's PC "Ingame Mic (Elgato Virtual Audio)" exists four times, three of them not present), so the id Discord stored may point to an old endpoint. Ids are compared ignoring case; a stored id that is not among the active devices is looked up in Windows in every state (`DeviceState.All`) for its friendly name, and the one active device of the same direction with that name is taken. Two active devices with that name, or none, leave the device out with the note "Gerät nicht gefunden" as today. Not present or disabled devices stay out of the device lists. USB devices are ordinary WASAPI endpoints: they are listed while active, and plugging one in already refreshes the lists (Package 137). Fluxer's device ids are browser hashes and still match only "default".
+- **A199 One audio page (Package 186).** The user's decision (7a): the page "Sendemodus" goes away; its card (push-to-talk, voice activation with threshold, self test) becomes the section "Sendemodus" directly below "Sprachfilter" on "Audio". The settings search (Package 158) finds its entries on "Audio".
+- **A200 One button per app (Package 187).** The user's decision (6a): the Audio page shows one button per entry of `ChatAppAudioImport.All` ("Aus Discord übernehmen", "Aus Fluxer übernehmen"), each reading only its own app; a button whose app is not installed is off with a tooltip that says so. A new app needs only its own class (CODING-RULES rule 26).
+- **A201 Link push-to-talk without a link (Package 189).** The user's decision (8a): with the right to speak over links but no link from the own channel, link push-to-talk sends nothing. Without the right it still sends into the own channel with the hint of today. The talk key tones (Package 131) play on the edges of "a talk key is held and its frames are sent", so not while muted, server muted, in a muted channel or with link push-to-talk without a link; the self test keeps its tones.
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -10624,3 +10641,343 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 ### Out of Scope
 
 - Server side (Package 181)
+
+---
+
+## Package 183: Default quality 128 kbps
+
+**Goal:** New channels and every voice channel stored at 64 kbps encode with 128 kbps (A194).
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/ProtocolDefaults.cs` (change): `Bitrate = 128`
+- `src/OVS.Server/Data/Records/ServerData.cs` (change): `CurrentVersion = 8`; `Migrate` lifts voice channels with `Bitrate == 64` to `ProtocolDefaults.Bitrate`
+- `src/OVS.Server/Data/Records/ChannelRecord.cs` (change): the comment of `Bitrate` (a file without the value now loads as 128)
+- `tests/OVS.Tests/Server/Data/Records/ServerDataTests.cs`, `tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs`, `tests/OVS.Tests/Client/Services/EngineSyncTests.cs` (change)
+
+### Context
+
+`ProtocolDefaults.Bitrate` is 64 (`ProtocolDefaults.cs:10`). It is the default of `ChannelInfo`, `CreateChannel`, `EditChannel`, `ChannelEdit` and `ChannelRecord.Bitrate`, the engine's start value (`AudioEngine.cs:141`) and the fallback of `EngineSync` (`EngineSync.cs:50`). Package 132 moved stored channels from 32 to 64 through the record's default without a data version; stored 64s now need a migration (`ServerData.Migrate`, today up to version 7 for Package 181).
+
+### Acceptance Criteria
+
+- [ ] AC1: The create dialog of a new voice channel shows "Qualität" 128 kbps; a channel created without a value gets 128.
+- [ ] AC2: On the first start with this version, every voice channel stored at 64 kbps has 128 afterwards; channels stored with another value keep it; separators keep 0.
+- [ ] AC3: A stored channel without a bitrate value loads as 128.
+- [ ] AC4: A client in a channel whose bitrate it does not know yet encodes with 128 kbps.
+- [ ] AC5: A data file of version 8 is not migrated again (a channel set to 64 after the update stays at 64).
+
+### Planned tests (TDD)
+
+1. `ServerDataTests > "Migrate_Version7_Channels64BecomeTheNewDefault"` - Given: version 7 with channels at 64, 96 and a separator; Expected: 128, 96, 0 and version 8 (AC2)
+2. `ServerDataTests > "Migrate_Version8_Channel64Kept"` (AC5)
+3. `ServerDataTests > "Load_ChannelWithoutBitrate_Default128"` (AC3)
+4. `ChannelDialogViewModelTests > "NewChannel_Quality_Default128"` (AC1)
+5. `EngineSyncTests > "SyncConnection_BitrateUnknown_UsesTheDefault"` - Expected: 128 (AC4)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1 to 3 (red), then the migration and the default.
+2. Tests 4 and 5 (red, they still expect 64), then fix any test that fixed 64 as the default.
+3. Full suite and rule-lint.
+
+### Out of Scope
+
+- The range above 128 kbps and the copy (Package 184)
+
+---
+
+## Package 184: Quality up to 510 kbps
+
+**Goal:** A channel's "Qualität" goes up to 510 kbps, a lost frame above 256 kbps is replaced by a lower-rate copy that always fits the packet, and the channel dialog warns about that copy (A195 to A197).
+
+**Dependencies:** Package 183
+
+**Affected files:**
+- `src/OVS.Shared/Protocol/ProtocolLimits.cs` (change): `MaxBitrate = 510`, its comment
+- `src/OVS.Shared/Protocol/WireProtocol.cs` (change): `Version = 22`
+- `src/OVS.Shared/Voice/RelayPayload.cs` (change): `FullCopyUpToKbps = 256`, `MaxCopyKbps = 64`, and the byte budget of a frame and of its copy at a bitrate (`FrameBudget(kbps)`, `CopyBudget(currentLength)`)
+- `src/OVS.Client/Audio/Codec/VoiceEncoder.cs` (change): `Encode(frame, maxBytes)`, the packet capped through the length Opus may write (`max_data_bytes`)
+- `src/OVS.Client/Audio/Capture/CapturePipeline.cs` (change): a second `VoiceEncoder` of the same mode for the copy, created on the first frame above 256 kbps, fed every frame while above it, dropped below it; `FrameEncoded` carries the low-rate copy of the previous frame
+- `src/OVS.Client/Audio/AudioEngine.cs`, `src/OVS.Client/Net/VoiceClient.cs` (change): `SendVoice(opus, copy, target)`; above 256 kbps the given copy always rides along, at or below it the rule of Package 136 as today; over TCP never
+- `src/OVS.Server/Voice/UdpVoiceServer.cs` (check): `RelayAsync` already prefers the sender's copy and strips it for listeners without copies; a test pins that for a large frame
+- `src/OVS.Client/ViewModels/ChannelDialogViewModel.cs`, `src/OVS.Client/Views/ChannelDialogView.axaml` (change): `ShowsLowCopyWarning` (Bitrate above 256) and the warning banner under "Qualität"
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Dialog_LowCopyWarning` ("Über 256 kbps werden verlorene Pakete durch eine Kopie in geringerer Qualität ersetzt." / "Above 256 kbps lost packets are replaced by a copy of lower quality.")
+- `tests/OVS.Tests/Shared/Voice/VoicePacketTests.cs`, `tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs`, `tests/OVS.Tests/Client/Services/VoiceLinkTests.cs`, `tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs`, `tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs`, `tests/OVS.Tests/Client/Services/EngineSyncTests.cs`, `tests/OVS.Tests/Shared/Protocol/WireFreezeTests.cs` (change)
+
+### Context
+
+`MaxBitrate = 128` (`ProtocolLimits.cs:10`) is the choice of A141, not a limit of Opus, which goes to 510 kbps. The real ceiling is the copy of Package 136: a packet carries at most `RelayPayload.MaxSize` (1374) bytes, 1368 of them Opus for the current frame and its copy (`RelayPayload.cs:15`). Two full frames fit up to about 270 kbps; above that `RelayPayload.Build` drops the copy without a word (`RelayPayload.cs:29`). The server cannot make a smaller copy, it never transcodes, so the sender has to send it. Packets above 1400 bytes are out: IP fragmentation would lose more on exactly the lines that need the copy.
+
+### Acceptance Criteria
+
+- [ ] AC1: The channel dialog takes 16 to 510 kbps; the server accepts 510 and refuses 511 with "Bitrate: 16 to 510 kbps."; a client clamps to 510.
+- [ ] AC2: Up to 256 kbps sending is unchanged: the full previous frame rides along from 2 % uplink loss.
+- [ ] AC3: Above 256 kbps every UDP voice packet after the first of a talk spurt carries a copy of the previous frame, whose length never exceeds the room the current frame leaves; at 510 kbps no copy is dropped over a talk spurt of 10 s with a speech-like signal.
+- [ ] AC4: A listener with at least 2 % downlink loss gets the copy and plays a lost frame from it (counted as rebuilt, Package 133); a listener without loss gets the frame alone.
+- [ ] AC5: The copy encoder exists only while the channel is above 256 kbps; it is dropped when the channel goes to 256 or below; in music mode it is a music encoder in mono.
+- [ ] AC6: The channel dialog shows the warning under "Qualität" exactly while more than 256 kbps are set, in both languages, and it fits from 360 px.
+- [ ] AC7: A client and a server of the old protocol version refuse each other with the usual version message.
+- [ ] AC8: Over TCP (Package 141) no copy is sent at any bitrate.
+
+### Planned tests (TDD)
+
+1. `VoicePacketTests > "Budget_At510_CurrentAndCopyFitTheMaxSize"` and `"Budget_At256_TwoFullFramesFit"` (AC3)
+2. `SendPathTests > "Encoder_Above256_CopyEncodedAtMost64Kbps"`, `"Encoder_At256_NoCopyEncoder"`, `"Encoder_Music_CopyEncoderMono"`, `"Encoder_ChannelDownTo256_CopyEncoderDropped"` (AC2, AC5)
+3. `SendPathTests > "Encode_At510_CopyNeverDroppedOverTenSeconds"` - Given: 500 frames of the speech-like test signal at 510 kbps; Expected: every packet after the first carries a copy, each at most `MaxSize` (AC3)
+4. `VoiceLinkTests > "SendVoice_Above256_CopyAlwaysAlong"`, `"SendVoice_At256_CopyOnlyFromLoss"`, `"SendVoice_OverTcp_NeverACopy"` (AC2, AC3, AC8)
+5. `VoiceRelayTests > "Relay_LargeFrameWithLowCopy_CopyToLossyListenerOnly"` (AC4)
+6. `ChannelDialogViewModelTests > "Bitrate_Above256_ShowsLowCopyWarning"` and `"Bitrate_510_Accepted511_Clamped"`; `ChannelSettingsRuleTests` or the existing server channel test: `"Bitrate_511_Refused"` (AC1, AC6)
+7. `EngineSyncTests > "SyncConnection_BitrateAboveTheMaximum_SetsTheMaximum"` with 510 (AC1)
+8. `WireFreezeTests` with version 22 (AC7)
+9. `ResponsiveTests > "Dialogs_At360_Fit"` with the warning shown (AC6)
+10. Manual check, muted and without sound: two clients on the test server at 510 kbps over `LossyUdpRelay` with 5 % loss; the receiving statistics count rebuilt frames, none concealed for a single loss.
+
+Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Test 1 (red), the budgets in `RelayPayload`.
+2. Tests 2 and 3 (red), `VoiceEncoder.Encode` with a byte cap and the copy encoder in `CapturePipeline`.
+3. Test 4 (red), `VoiceClient.SendVoice` with the copy.
+4. Test 5, server check (only a test if `RelayAsync` already does it).
+5. Tests 6 to 9 (red), the limit, the protocol version, the dialog warning and the strings.
+6. Full suite, rule-lint, manual check.
+
+### Out of Scope
+
+- A live notice while talking (A197), packets above 1400 bytes, a copy for listeners over TCP
+
+---
+
+## Package 185: Find devices taken from Discord
+
+**Goal:** "Aus Discord übernehmen" finds the microphone and the speaker Discord uses also when Windows gave the same device a new endpoint id (A198).
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Audio/Devices/IAudioHardware.cs`, `WasapiHardware.cs` (change): `string? NameOf(string deviceId)`, the friendly name of an endpoint in any state (`MMDeviceEnumerator.GetDevice`, also not present or disabled), null for an unknown id
+- `tests/OVS.Tests/TestSupport/FakeAudioHardware.cs` (change): known names for gone ids
+- `src/OVS.Client/Services/ImportMapping.cs` (change): `Device` compares ids ignoring case, then falls back to the one active option of that name
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (change): `DeviceNameOf`, handed to the mapping; wired where the page gets `ReadImport`
+- `tests/OVS.Tests/Client/ViewModels/ImportMappingTests.cs` (change)
+
+### Context
+
+`ImportMapping.Device` takes the option whose id equals Discord's stored id exactly (`ImportMapping.cs:47`); otherwise the device is left out with "Gerät nicht gefunden". The lists hold only active devices (`WasapiHardware.ListActive`, `DeviceState.Active`). On the developer's PC Windows lists 32 endpoints, among them "Ingame Mic (Elgato Virtual Audio)" four times with different ids, three not present: drivers and USB devices that are set up again get a new endpoint id, so Discord's id can point to an endpoint that no longer works. USB microphones and headsets need nothing extra: they are WASAPI endpoints like any other and appear when active; a plug-in refreshes the lists through `DeviceWatcher` (Package 137). Comparing Discord's stored ids with the current endpoints on a real installation is open: reading Discord's local storage for it was refused in the planning session, so it is step 1 here (only the two device keys, never other values).
+
+### Acceptance Criteria
+
+- [ ] AC1: A stored id that differs from an active device's id only in case finds that device.
+- [ ] AC2: A stored id of a not present or disabled endpoint finds the one active device of the same direction and the same name; the dialog shows that device as "after".
+- [ ] AC3: Two active devices with that name, or none, leave the device out with "Gerät nicht gefunden" as today.
+- [ ] AC4: A stored id Windows does not know at all leaves the device out as today; "default" still maps to "Standard".
+- [ ] AC5 (manual): On the developer's PC Discord's stored microphone and speaker ids are compared with the endpoint list, and the import takes over both devices.
+
+### Planned tests (TDD)
+
+1. `ImportMappingTests > "Map_DeviceIdOtherCase_Found"` (AC1)
+2. `ImportMappingTests > "Map_GoneDeviceSameName_ActiveOneTaken"` (AC2)
+3. `ImportMappingTests > "Map_GoneDeviceNameTwiceOrNever_LeftOutWithNote"` (AC3)
+4. `ImportMappingTests > "Map_UnknownDevice_LeftOutWithNote"` (existing, still green) and `"Map_DefaultDevice_Standard"` (AC4)
+5. Manual check AC5 (no sound).
+
+Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Manual: read only Discord's `inputDeviceId` and `outputDeviceId`, compare with `Get-PnpDevice -Class AudioEndpoint`; note the result here.
+2. Tests 1 to 4 (red), then `NameOf` and the fallback in `ImportMapping`.
+3. Full suite, rule-lint, manual check AC5.
+
+### Out of Scope
+
+- Listing not present or disabled devices, mapping Fluxer's browser device ids, the native device layer (A186, A189)
+
+---
+
+## Package 186: Audio and transmit mode on one page
+
+**Goal:** The settings page "Sendemodus" is gone and its content is the section "Sendemodus" directly below "Sprachfilter" on the page "Audio" (A199).
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Views/SettingsView.axaml` (change): the card of `TransmitPage` (lines 155 to 211) moves below the voice filter section of `AudioPage` with a section title; the `TabItem` goes
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Ui_TransmitSection` ("Sendemodus" / "Transmit mode"); `Nav_Transmit` goes if nothing else uses it
+- `tests/OVS.Tests/Client/Views/SettingsSearchTests.cs`, `UiSmokeTests.cs`, `tests/OVS.Tests/Client/Settings/SettingsTests.cs`, `tests/OVS.Tests/Client/Layout/ResponsiveTests.cs`, `tests/OVS.Tests/Client/Animations/LiveMotionTests.cs`, `tests/OVS.Tests/Website/WebsiteShots.cs` (change): open "Audio" instead of "Sendemodus"
+
+### Context
+
+The settings have the pages Audio, Sendemodus, Tasten and Sounds in the voice group (`SettingsView.axaml:51` to `:274`). Audio holds the import button, devices, volume and voice filters; Sendemodus holds one card with push-to-talk, voice activation (automatic sensitivity, threshold, meter) and the self test. The settings search (Package 158) finds controls per page.
+
+### Acceptance Criteria
+
+- [ ] AC1: The side navigation of the voice group lists Audio, Tasten and Sounds, no "Sendemodus".
+- [ ] AC2: The page "Audio" shows, in this order, the import, devices, volume, voice filters and the section "Sendemodus" with everything the old page had (modes, push-to-talk key hint, automatic sensitivity, threshold with meter, self test); each works as before.
+- [ ] AC3: The settings search finds "Push-to-Talk", "Schwelle" and "Selbsttest" on "Audio" and scrolls to the section.
+- [ ] AC4: The level meter runs while the Audio page is shown (it ran on the Sendemodus page) and stops when the page is left, as before.
+- [ ] AC5: The page fits from 360 px in both languages.
+
+### Planned tests (TDD)
+
+1. `SettingsSearchTests > "Find_Push_OnAudio"` (replaces the hit on `Nav_Transmit`) (AC3)
+2. `UiSmokeTests > "Settings_VoiceGroup_NoTransmitPage"` (AC1)
+3. `SettingsTests > "AudioPage_TransmitSection_BelowVoiceFilters"` (AC2)
+4. `LiveMotionTests` and `SettingsTests` that opened "Sendemodus" open "Audio" and stay green; `"LevelMeter_AudioPage_RunsAndStops"` (AC2, AC4)
+5. `ResponsiveTests > "SettingsPages_At360_Fit"` (AC5)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1 to 3 (red), then move the card and remove the page.
+2. Test 4: find what starts the level meter on the old page and move it to Audio.
+3. Test 5, full suite, rule-lint, website shots (`WebsiteShots`).
+
+### Out of Scope
+
+- The buttons for Fluxer (Package 187), other pages
+
+---
+
+## Package 187: Take over from Fluxer
+
+**Goal:** The Audio page has one take-over button per chat app, so Fluxer's audio settings can be taken over while Discord is installed (A200).
+
+**Dependencies:** Package 186 (same page)
+
+**Affected files:**
+- `src/OVS.Client/Settings/AudioImportSource.cs` (change): one source per `ChatAppAudioImport` (name, installed, read)
+- `src/OVS.Client/Settings/ChatAppAudioImport.cs` (change): `ReadFirst` and `AnyInstalled` go if nothing else uses them
+- `src/OVS.Client/ViewModels/ChatAppImportViewModel.cs` (new): one button: app name, `CanImport`, tooltip, `ImportCommand`, error text
+- `src/OVS.Client/ViewModels/SettingsViewModel.cs` (change): `Imports` (one per source) instead of `ImportFromDiscordCommand`, `CanImport`, `ImportTip`, `ImportError`
+- `src/OVS.Client/Views/SettingsView.axaml` (change): an `ItemsControl` of buttons where `ImportFromDiscordButton` is
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Import_ButtonFmt` ("Aus {0} übernehmen" / "Take over from {0}"), `Import_NoneFoundFmt`, `Import_FailedFmt` with the app's name
+- `tests/OVS.Tests/Client/Settings/SettingsTests.cs`, `tests/OVS.Tests/Client/Views/UiSmokeTests.cs`, `tests/OVS.Tests/Client/Settings/DiscordAudioImportTests.cs` (change), `tests/OVS.Tests/Client/ViewModels/ChatAppImportViewModelTests.cs` (new)
+
+### Context
+
+The page has one button "Aus Discord übernehmen" (`SettingsView.axaml:57`). It runs `ChatAppAudioImport.ReadFirst` (`AudioImportSource.cs:16`), which reads Discord first and takes Fluxer only when Discord yields nothing (`ChatAppAudioImport.cs:59`). With Discord installed Fluxer's settings are never reached, which is the user's report. `ChatAppAudioImport.All` already lists both apps with a class each, so a button per entry needs no new list.
+
+### Acceptance Criteria
+
+- [ ] AC1: The Audio page shows "Aus Discord übernehmen" and "Aus Fluxer übernehmen"; a new subclass in `All` adds its button without another change.
+- [ ] AC2: "Aus Fluxer übernehmen" reads only Fluxer, also while Discord is installed; "Aus Discord übernehmen" reads only Discord.
+- [ ] AC3: A button whose app is not installed is off with the tooltip "Fluxer wurde auf diesem PC nicht gefunden." (and the same for Discord).
+- [ ] AC4: A storage that cannot be read shows the error under that app's button only, with the reason in the client log.
+- [ ] AC5: The dialog, the preview and the unsaved-changes bar behave as in Package 171.
+- [ ] AC6: The buttons wrap and fit from 360 px in both languages.
+
+### Planned tests (TDD)
+
+1. `ChatAppImportViewModelTests > "Import_Fluxer_ReadsOnlyFluxerWhileDiscordInstalled"` (AC2)
+2. `ChatAppImportViewModelTests > "NotInstalled_ButtonOffWithAppNameInTip"` (AC3)
+3. `ChatAppImportViewModelTests > "Import_Unreadable_ErrorUnderThisButtonOnly"` (AC4)
+4. `SettingsTests > "AudioPage_OneImportButtonPerApp"` (AC1)
+5. `SettingsTests > "ImportFromDiscord_Checked_SetOnPageNotSaved"` and `"ImportFromDiscord_Cancelled_NothingChanges"` moved to the new view model, still green (AC5)
+6. `ResponsiveTests > "SettingsPages_At360_Fit"` with both buttons (AC6)
+
+Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1 to 3 (red), the per-app source and `ChatAppImportViewModel`.
+2. Tests 4 and 5 (red), the page and the strings; remove what became unused.
+3. Test 6, full suite, rule-lint.
+
+### Out of Scope
+
+- Fluxer's devices (its ids are browser hashes, A198), other chat apps
+
+---
+
+## Package 188: Status beside the server link
+
+**Goal:** "Verbunden" and "Nicht verbunden" sit vertically centred beside the green status dot, also while the "Serverlink kopieren" button shows.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Views/MainWindow.axaml` (change): `VerticalAlignment="Center"` on the two status texts (lines 69 and 70)
+- `tests/OVS.Tests/Client/Views/UiSmokeTests.cs` (change)
+
+### Context
+
+In the server header the dot, the status texts and the `CopyServerLink` button share a horizontal `StackPanel` (`MainWindow.axaml:67` to `:74`). The dot and the button are centred, the texts are not; the button is taller than a caption, so the row grows and the text stays at its top while the dot moves to the middle (the user's two screenshots).
+
+### Acceptance Criteria
+
+- [ ] AC1: With the server link button shown, the vertical centre of "Verbunden" equals the dot's within 1 px.
+- [ ] AC2: Without the button (no link, streamer mode) the layout is as before.
+- [ ] AC3 (manual): Both screenshots of the user's report look aligned.
+
+### Planned tests (TDD)
+
+1. `UiSmokeTests > "ServerHeader_WithServerLink_StatusCentredOnDot"` - Given: a connected server with a link; Expected: the centres of text and dot differ by at most 1 px (red today) (AC1)
+2. `UiSmokeTests > "ServerHeader_WithoutServerLink_StatusCentredOnDot"` (AC2)
+3. Manual check AC3.
+
+Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1 and 2 (1 red), then the alignment.
+2. Full suite, manual check.
+
+### Out of Scope
+
+- Other rows of the header
+
+---
+
+## Package 189: Link push-to-talk only with a link
+
+**Goal:** Link push-to-talk in a channel without links sends nothing, and the talk key tones play only while a held talk key really sends (A201).
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Client/Audio/Transmit/TransmitRule.cs` (change): `ChooseTarget` gets `channelLinked`; link push-to-talk with the right but no link returns null
+- `src/OVS.Client/Services/EngineConnectionState.cs`, `src/OVS.Client/Services/EngineSync.cs`, `src/OVS.Client/ViewModels/MainViewModel.cs` (change): `ChannelLinked` from `CurrentChannel.IsLinked` into the engine
+- `src/OVS.Client/Audio/AudioEngine.cs` (change): `ChannelLinked`; `OnKeysChanged` tones on the edges of "a talk key is held and `ChooseTarget` would send" instead of "a talk key is held" (`AudioEngine.cs:90`, `:101`); a change of mute or links while a key is held gives the matching edge; the self test keeps its tones
+- `tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs`, `tests/OVS.Tests/Client/Audio/Sounds/SoundTests.cs`, `tests/OVS.Tests/Client/Services/EngineSyncTests.cs` (change)
+
+### Context
+
+`TransmitRule.ChooseTarget` returns `TargetLinked` for link push-to-talk with the right (`TransmitRule.cs:16`); in a channel without links the server routes that to the own channel only, so it sends like push-to-talk. The tone "Sprechtaste gedrückt" plays on the key's own edge while connected (`AudioEngine.cs:101`), from `TalkKeyHeld` (`AudioEngine.cs:90`), which ignores mute, server mute and a muted channel. So the tone says "sending" when nothing or not what the user expects goes out.
+
+### Acceptance Criteria
+
+- [ ] AC1: With the right and no link from the own channel, link push-to-talk sends no frame and plays no tone.
+- [ ] AC2: With the right and a link it sends to the channel and its links with the tone, as today.
+- [ ] AC3: Without the right it sends into the own channel with the hint "VoiceHint_NoLinkRight", as today.
+- [ ] AC4: While muted, server muted or in a muted channel, pressing a talk key plays no tone.
+- [ ] AC5: A link added while link push-to-talk is held starts sending and plays the down tone; unmuting while push-to-talk is held does the same; the release tone follows when sending ends.
+- [ ] AC6: In the self test the tones play as today.
+
+### Planned tests (TDD)
+
+1. `SendPathTests > "LinkPtt_RightNoLink_SendsNothing"` (red today) (AC1)
+2. `SendPathTests > "LinkPtt_RightAndLink_SendsLinked"` and `"LinkPtt_NoRight_SendsToChannel"` (AC2, AC3)
+3. `SoundTests > "TalkKeyTone_LinkPttWithoutLink_Silent"` (red today) (AC1)
+4. `SoundTests > "TalkKeyTone_MutedServerMutedOrMutedChannel_Silent"` (red today) (AC4)
+5. `SoundTests > "TalkKeyTone_SendingStartsWhileHeld_DownThenUp"` (AC5)
+6. `SoundTests > "TalkKeyTone_SelfTest_Plays"` (AC6)
+7. `EngineSyncTests > "SyncConnection_ChannelLinked_ReachesTheEngine"`
+
+Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1, 2 and 7 (1 red), `ChannelLinked` and the rule.
+2. Tests 3 to 6 (red), the tone edges in `AudioEngine`.
+3. Full suite, rule-lint; a manual check muted and without audible tones (the tone check runs on the test sound sink).
+
+### Out of Scope
+
+- A new hint for link push-to-talk without a link, the link tone of Package 60
