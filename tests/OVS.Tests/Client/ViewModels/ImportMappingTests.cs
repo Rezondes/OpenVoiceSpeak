@@ -12,8 +12,11 @@ namespace OVS.Tests.Client.ViewModels;
 /// <summary>Package 171: Discord's values onto the Audio page's scales; equal ones and ones OVS cannot hold stay out.</summary>
 public sealed class ImportMappingTests
 {
-    static SettingsViewModel Page(ClientSettings? settings = null) =>
-        new(settings ?? new ClientSettings(), [new AudioDevice("mic-1", "Headset"), new AudioDevice("mic-2", "Studio")], [new AudioDevice("out-1", "Boxen")], TimeProvider.System);
+    static SettingsViewModel Page(ClientSettings? settings = null, Func<string, string?>? nameOf = null, List<AudioDevice>? inputs = null) =>
+        new(settings ?? new ClientSettings(), inputs ?? [new AudioDevice("mic-1", "Headset"), new AudioDevice("mic-2", "Studio")], [new AudioDevice("out-1", "Boxen")], TimeProvider.System)
+        {
+            DeviceNameOf = nameOf,
+        };
 
     static ImportedAudio Everything() => new("Discord")
     {
@@ -59,6 +62,53 @@ public sealed class ImportMappingTests
         Assert.Equal(TextFormat.Of(Strings.Import_DeviceMissingFmt, Strings.Ui_Microphone), Assert.Single(plan.Notes));
         var speaker = Assert.Single(plan.Changes);
         Assert.Equal((Strings.Ui_Speaker, "Boxen", Strings.Device_Default), (speaker.Name, speaker.Before, speaker.After));
+    }
+
+    /// <summary>Package 185 (AC1): an id that differs only in case is the same device.</summary>
+    [Fact]
+    public void Map_DeviceIdOtherCase_Found()
+    {
+        var change = Assert.Single(ImportMapping.Map(new ImportedAudio("Discord") { InputDeviceId = "MIC-2" }, Page()).Changes);
+        Assert.Equal((Strings.Ui_Microphone, "Studio"), (change.Name, change.After));
+    }
+
+    /// <summary>
+    /// Package 185 (AC2, A198): Windows set the device up again with a new id; the old id still names it, and the one
+    /// active device of that name is taken.
+    /// </summary>
+    [Fact]
+    public void Map_GoneDeviceSameName_ActiveOneTaken()
+    {
+        var page = Page(nameOf: id => id == "{0.0.1.00000000}.{alt}" ? "Studio" : null);
+
+        var plan = ImportMapping.Map(new ImportedAudio("Discord") { InputDeviceId = "{0.0.1.00000000}.{alt}" }, page);
+
+        Assert.Empty(plan.Notes);
+        Assert.Single(plan.Changes).Apply(page);
+        Assert.Equal("mic-2", page.SelectedInput!.Id);
+    }
+
+    /// <summary>Package 185 (AC3): two active devices of that name, or none, leave the device out with the note.</summary>
+    [Theory]
+    [InlineData("Headset")]
+    [InlineData("Weg")]
+    public void Map_GoneDeviceNameTwiceOrNever_LeftOutWithNote(string knownName)
+    {
+        var page = Page(nameOf: _ => knownName, inputs: [new AudioDevice("mic-1", "Headset"), new AudioDevice("mic-3", "Headset")]);
+
+        var plan = ImportMapping.Map(new ImportedAudio("Discord") { InputDeviceId = "{0.0.1.00000000}.{alt}" }, page);
+
+        Assert.Empty(plan.Changes);
+        Assert.Equal(TextFormat.Of(Strings.Import_DeviceMissingFmt, Strings.Ui_Microphone), Assert.Single(plan.Notes));
+    }
+
+    /// <summary>Package 185 (AC4): Discord's "default" is the system default, "Standard".</summary>
+    [Fact]
+    public void Map_DefaultDevice_Standard()
+    {
+        var change = Assert.Single(ImportMapping.Map(new ImportedAudio("Discord") { InputDeviceId = ImportedAudio.DefaultDevice },
+            Page(new ClientSettings { InputDeviceId = "mic-1" })).Changes);
+        Assert.Equal(("Headset", Strings.Device_Default), (change.Before, change.After));
     }
 
     [Fact]

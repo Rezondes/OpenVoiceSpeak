@@ -7,12 +7,15 @@ namespace OVS.Client.Settings;
 /// <param name="IsInstalled">Discord or Fluxer is installed.</param>
 /// <param name="Read">Reads their settings.</param>
 /// <param name="LogProblem">Writes why nothing was read into the client log.</param>
-internal sealed record AudioImportSource(Func<bool> IsInstalled, Func<AudioImportResult> Read, Action<string> LogProblem)
+/// <param name="DeviceNameOf">Package 185 (A198): the name Windows knows for a device id, also of a device that is gone; null without hardware.</param>
+internal sealed record AudioImportSource(Func<bool> IsInstalled, Func<AudioImportResult> Read, Action<string> LogProblem, Func<string, string?>? DeviceNameOf = null)
 {
     /// <summary>The apps of the current Windows user, under its roaming application data.</summary>
-    public static AudioImportSource ForUser(ILogger log)
+    /// <param name="log">Where the reason goes when nothing could be read.</param>
+    /// <param name="deviceNameOf">Package 185: the hardware's name of a device id.</param>
+    public static AudioImportSource ForUser(ILogger log, Func<string, string?>? deviceNameOf = null)
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        return new AudioImportSource(() => ChatAppAudioImport.AnyInstalled(appData), () => ChatAppAudioImport.ReadFirst(appData), log.AudioImportFailed);
+        return new AudioImportSource(() => ChatAppAudioImport.AnyInstalled(appData), () => ChatAppAudioImport.ReadFirst(appData), log.AudioImportFailed, deviceNameOf);
     }
 }

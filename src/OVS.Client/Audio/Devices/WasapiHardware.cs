@@ -75,6 +75,21 @@ sealed class WasapiHardware(string audioLibrary = NativeAudio.Library) : IAudioH
         }
     }
 
+    /// <summary>Package 185 (A198): the endpoint's friendly name in any state, straight by its id; null for an unknown one.</summary>
+    public string? NameOf(string deviceId)
+    {
+        try
+        {
+            using var enumerator = new MMDeviceEnumerator();
+            using var device = enumerator.GetDevice(deviceId);
+            return device.FriendlyName;
+        }
+        catch (Exception exception) when (exception is COMException or ArgumentException)
+        {
+            return null; // unknown id, or no audio service
+        }
+    }
+
     /// <summary>Package 177: the native library's microphone on the chosen device, or on the default one with the fallback warning.</summary>
     public CapturePipeline OpenInput(string? deviceId, List<string> warnings)
     {

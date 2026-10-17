@@ -114,6 +114,11 @@ internal sealed class FakeAudioHardware : IAudioHardware
 
     public string? FindCurrentDeviceId(string? deviceId, AudioDirection direction) => Resolve(deviceId, direction, []);
 
+    /// <summary>Package 185: the names Windows still knows, also of devices that are gone.</summary>
+    public Dictionary<string, string> Names { get; init; } = [];
+
+    public string? NameOf(string deviceId) => Names.GetValueOrDefault(deviceId);
+
     public int Subscribers
     {
         get { lock (captures) return changed?.GetInvocationList().Length ?? 0; }

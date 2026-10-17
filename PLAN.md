@@ -10777,19 +10777,21 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 
 ### Acceptance Criteria
 
-- [ ] AC1: A stored id that differs from an active device's id only in case finds that device.
-- [ ] AC2: A stored id of a not present or disabled endpoint finds the one active device of the same direction and the same name; the dialog shows that device as "after".
-- [ ] AC3: Two active devices with that name, or none, leave the device out with "Gerät nicht gefunden" as today.
-- [ ] AC4: A stored id Windows does not know at all leaves the device out as today; "default" still maps to "Standard".
+- [x] AC1: A stored id that differs from an active device's id only in case finds that device.
+- [x] AC2: A stored id of a not present or disabled endpoint finds the one active device of the same direction and the same name; the dialog shows that device as "after".
+- [x] AC3: Two active devices with that name, or none, leave the device out with "Gerät nicht gefunden" as today.
+- [x] AC4: A stored id Windows does not know at all leaves the device out as today; "default" still maps to "Standard".
 - [ ] AC5 (manual): On the developer's PC Discord's stored microphone and speaker ids are compared with the endpoint list, and the import takes over both devices.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `ImportMappingTests > "Map_DeviceIdOtherCase_Found"` (AC1)
 2. `ImportMappingTests > "Map_GoneDeviceSameName_ActiveOneTaken"` (AC2)
 3. `ImportMappingTests > "Map_GoneDeviceNameTwiceOrNever_LeftOutWithNote"` (AC3)
 4. `ImportMappingTests > "Map_UnknownDevice_LeftOutWithNote"` (existing, still green) and `"Map_DefaultDevice_Standard"` (AC4)
-5. Manual check AC5 (no sound).
+5. Manual check AC5 (no sound), open: reading Discord's two device keys was refused in this session too.
+
+(as built: the name comes from `IAudioHardware.NameOf` (`MMDeviceEnumerator.GetDevice`, any state); `ClientServices` hands it through `MainViewModel` and `AudioImportSource.DeviceNameOf` to `SettingsViewModel.DeviceNameOf`, which `ImportMapping` asks when no active id matches. Step 1, comparing Discord's stored ids with the endpoints, still needs the user's permission to read those two keys.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 

@@ -18,8 +18,8 @@ internal static class ImportMapping
     {
         var changes = new List<ImportChange>();
         var notes = new List<string>();
-        Device(Strings.Ui_Microphone, audio.InputDeviceId, page.Inputs, page.SelectedInput, (target, option) => target.SelectedInput = option, changes, notes);
-        Device(Strings.Ui_Speaker, audio.OutputDeviceId, page.Outputs, page.SelectedOutput, (target, option) => target.SelectedOutput = option, changes, notes);
+        Device(Strings.Ui_Microphone, audio.InputDeviceId, page.Inputs, page.SelectedInput, (target, option) => target.SelectedInput = option, page.DeviceNameOf, changes, notes);
+        Device(Strings.Ui_Speaker, audio.OutputDeviceId, page.Outputs, page.SelectedOutput, (target, option) => target.SelectedOutput = option, page.DeviceNameOf, changes, notes);
         if (audio.VoiceActivation is { } voice && voice != page.VoiceActivation)
             changes.Add(new ImportChange(Strings.Import_Mode, Mode(page.VoiceActivation), Mode(voice), target => target.VoiceActivation = voice));
         Switch(Strings.Import_VadAutomatic, audio.VadAutomatic, page.VadAutomatic, (target, on) => target.VadAutomatic = on, changes);
@@ -40,11 +40,16 @@ internal static class ImportMapping
         return new ImportPlan(audio.Source, changes, notes);
     }
 
+    /// <summary>
+    /// Package 185 (A198): by id ignoring case, else by the name Windows still knows for that id: the one active device of
+    /// that name; none or two of them leave the device out.
+    /// </summary>
     static void Device(string name, string? id, IReadOnlyList<AudioDeviceOption> options, AudioDeviceOption? now, Action<SettingsViewModel, AudioDeviceOption> set,
-        List<ImportChange> changes, List<string> notes)
+        Func<string, string?>? nameOf, List<ImportChange> changes, List<string> notes)
     {
         if (id is null) return;
-        var wanted = id == ImportedAudio.DefaultDevice ? options[0] : options.FirstOrDefault(option => option.Id == id);
+        var wanted = id == ImportedAudio.DefaultDevice ? options[0]
+            : options.FirstOrDefault(option => string.Equals(option.Id, id, StringComparison.OrdinalIgnoreCase)) ?? ByName(options, nameOf?.Invoke(id));
         if (wanted is null)
         {
             notes.Add(TextFormat.Of(Strings.Import_DeviceMissingFmt, name));
@@ -52,6 +57,9 @@ internal static class ImportMapping
         }
         if (wanted.Id != now?.Id) changes.Add(new ImportChange(name, now?.Name ?? Strings.Device_Default, wanted.Name, target => set(target, wanted)));
     }
+
+    static AudioDeviceOption? ByName(IReadOnlyList<AudioDeviceOption> options, string? deviceName) =>
+        deviceName is null ? null : options.Where(option => option.Id is not null && option.Name == deviceName).ToList() is [var single] ? single : null;
 
     static void Switch(string name, bool? imported, bool now, Action<SettingsViewModel, bool> set, List<ImportChange> changes)
     {

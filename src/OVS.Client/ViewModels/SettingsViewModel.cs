@@ -149,6 +149,9 @@ internal sealed partial class SettingsViewModel : ObservableObject, IPageViewMod
     /// <summary>Writes why nothing could be read into the client log.</summary>
     public Action<string>? LogImportProblem { get; init; }
 
+    /// <summary>Package 185 (A198): the name Windows knows for a device id, also of a device that is gone.</summary>
+    public Func<string, string?>? DeviceNameOf { get; init; }
+
     /// <summary>Shown under the button when nothing could be read.</summary>
     [ObservableProperty] string? importError;
 

@@ -26,6 +26,12 @@ internal interface IAudioHardware
     string? FindCurrentDeviceId(string? deviceId, AudioDirection direction);
 
     /// <summary>
+    /// Package 185 (A198): the name of the device with this id in any state (also unplugged or disabled), null for an id
+    /// Windows does not know; another app's stored id may point to an endpoint Windows has set up again with a new id.
+    /// </summary>
+    string? NameOf(string deviceId);
+
+    /// <summary>
     /// Package 137: a device was added, removed, enabled or disabled, or the default changed. Raised on any thread (COM
     /// threads too); a handler must return at once.
     /// </summary>

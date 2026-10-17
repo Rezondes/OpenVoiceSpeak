@@ -54,7 +54,7 @@ internal static class ClientServices
         services.AddSingleton(provider => new MainViewModel(storageDir, post, time, log, settings, settingsWarning,
             provider.GetRequiredService<ServerIconCache>(), provider.GetRequiredService<SoundLibrary>(), provider.GetRequiredService<LeaveTimer>(),
             provider.GetRequiredService<KeyPoller>(), provider.GetRequiredService<AudioEngine>(), connect ?? provider.GetRequiredService<ServerConnector>().OpenAsync,
-            hardware is null ? null : hardware.ListActive));
+            hardware is null ? null : hardware.ListActive, hardware is null ? null : hardware.NameOf));
         // The provider is not disposed: the view model owns the key poller and the engine and disposes them itself.
         var provider = services.BuildServiceProvider();
         try

@@ -49,6 +49,7 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// </param>
     /// <param name="soundLibrary">The own tones; cleaned up after each save (the engine plays them, <see cref="ClientServices.CreateMainViewModel"/> hands it the same library).</param>
     /// <param name="listDevices">The active devices of a direction, for the settings page; null: none, an empty list.</param>
+    /// <param name="deviceNameOf">Package 185: the name of a device id in any state, for the import of Discord's devices; null without hardware.</param>
     /// <param name="connect">
     /// Opens the connection of every connect and every reconnect attempt (the attempts pass <see cref="CancellationToken.None"/>);
     /// the real one is <see cref="ServerConnector.OpenAsync"/>, which asks <see cref="ConfirmTofu"/>.
@@ -60,7 +61,7 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
     /// <param name="leave">How long a removed entry stays in its list.</param>
     public MainViewModel(string storageDir, Action<Action> post, TimeProvider time, ClientLog log, ClientSettings settings, string? settingsWarning,
         ServerIconCache icons, SoundLibrary soundLibrary, LeaveTimer leave, KeyPoller keys, AudioEngine audio, OpenConnection connect,
-        Func<AudioDirection, List<AudioDevice>>? listDevices)
+        Func<AudioDirection, List<AudioDevice>>? listDevices, Func<string, string?>? deviceNameOf = null)
     {
         this.storageDir = storageDir;
         this.post = post;
@@ -109,7 +110,7 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
                 audio.InputLevel -= handler;
                 audio.LevelMeter = false;
             },
-            readThresholdDb: () => audio.InputThresholdDb, shownServer: () => Server, audioImport: AudioImportSource.ForUser(Log)); // Package 171
+            readThresholdDb: () => audio.InputThresholdDb, shownServer: () => Server, audioImport: AudioImportSource.ForUser(Log, deviceNameOf)); // Package 171, 185
         var voiceLink = new VoiceLink(hear: audio.OnVoice, setSend: send => audio.Send = send, time: time, log: Log,
             reportUplink: loss => audio.Loss.Report(loss), endLossStreaks: () => audio.Loss.EndStreaks());
         Stats = new ConnectionStatsViewModel(time,

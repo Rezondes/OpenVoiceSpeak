@@ -126,6 +126,7 @@ internal sealed partial class PageFlowViewModel : ObservableObject
             CanImport = audioImport?.IsInstalled() ?? false, // Package 171
             ReadImport = audioImport?.Read,
             LogImportProblem = audioImport?.LogProblem,
+            DeviceNameOf = audioImport?.DeviceNameOf, // Package 185
             AskImport = dialogs().AskImport,
             CheckNow = checkNow,
             ImportSound = importSound,
