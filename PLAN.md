@@ -41,6 +41,8 @@
 > **Packages 151 to 170 (settings and administration like Discord, and the features found on the way):** 151 to 157 change only the client's UI for features that exist (the user's condition); 158 to 164 are client-only features, 165 to 170 need the server, in that order (the user's decision). 151 (side navigation) comes first; 152 (settings pages) and 154 (administration) build on it and can run in parallel; 153 needs 152, 155 needs 154, 156 needs 155, 157 needs 153 and 154. 158 to 162 need 152; 163 and 164 can start at once. 165, 167 and 169 need 154; 166, 168 and 170 can start at once. Packages 166 to 169 each raise the protocol version by one, so they are built one after the other. 171 (taking over Discord's audio settings) came later at the user's request and needs 152 and 153. Dropped at the user's request: per-user volume (exists since Package 51), rights per channel, friends and blocking, invite links with expiry, profile status text and bio.
 >
 > **Packages 172 to 180 (native audio engine in Rust):** the measurement of 15 October 2026 (`MESSUNG-VERBUNDEN-STOCKEN.md`) found the stutter of the "Verbunden" sound: a garbage collection of about 50 ms stops the managed playback loop and NAudio's managed render thread, and 40 ms of buffer do not cover it. TeamSpeak, Discord and Fluxer all render audio on native threads. The audio path moves into one native Rust library in three stages, in the user's words: stage 1 output and sounds (172 to 174), stage 2 jitter buffer, decoding and mixing (175, 176), stage 3 the microphone path (177 to 179); 180 removes the old managed path. The order is strictly linear: each package builds on the one before and ends green and committable, the old managed path stays where the native one does not exist yet (A180). Later platforms (Linux, macOS, Android, iOS) come as own packages over cpal (A189) and are not planned here. Their test sections are headed "Planned tests (TDD)" so that `PlanReferenceTests` does not try to resolve tests that do not exist yet; each package renames its heading to "Tests (TDD)" when it is built, and 172 teaches the check to resolve the Rust tests (`file.rs > name`).
+>
+> **Packages 181 and 182 (server admin):** the question "how do I add a server admin later" showed that no role above Admin exists: admins cannot act on each other, and the token only comes without any admin. 181 adds the role on the server (group, rank, token), 182 the client; 182 needs 181.
 
 ## Überblick
 
@@ -223,6 +225,8 @@
 | 178 | Native capture filters | Echo cancellation (AEC3), noise suppression, automatic gain and the voice gate run in Rust on the capture thread. | 177 |
 | 179 | Native send decision and encoding | Rust decides per frame whether and where to send, encodes with libopus and hands finished packets to C# through an event, also in the self test and in music mode. | 178 |
 | 180 | Remove the managed audio path | The old managed audio path, NAudio's wave output and capture, Concentus and the separate native DLLs are gone, and the client has exactly one native audio library. | 179 |
+| 181 | Server admin role (server) | One server admin outranks every admin, is protected from them and gets the role only through the one-time token, which existing servers print at their next start. | - |
+| 182 | Server admin role (client) | The client offers the server admin token only while the server has none and shows the Server-Admin group as fixed. | 181 |
 
 ## Annahmen
 
@@ -426,6 +430,10 @@ Die offenen Fragen aus der Besprechung wurden nicht beantwortet. Deshalb gelten 
 - **A187 Echo delay (Package 178).** Once both ends are native, the echo delay hint comes from the real figures (ring fill plus `IAudioClient::GetStreamLatency` of both streams) instead of `AudioEngine.EchoDelayMs` (40 + 30 + 20 ms); AEC3's own estimator stays the authority.
 - **A188 Measurement (Package 174).** The probe of 15 October 2026 (`Diagnostics/PlaybackProbe.cs`, `PlaybackProbeRuns.cs`, the hooks in four audio files) was never committed. 174 adds a native underrun counter instead and repeats run B (real connect, 12 times) as a manual check, muted like the measurement (the process's audio session muted through `SimpleAudioVolume` before the stream starts).
 - **A189 Later platforms.** Linux, macOS, Android and iOS get their device layer over cpal in own packages later (own resampler, device ids, one library per target triple, Android through cargo-ndk); the core of 172 to 180 is written so that only the device layer changes.
+- **A190 Server admin as a group with a rank flag (Packages 181, 182).** The role is a third protected group "Server-Admin" (`...0c`, beside Guest and Admin) with all rights, never editable, deletable or assignable. Its rank is a permission flag `ServerAdminRank` outside `All`, which only `Effective` adds for members; so the existing strict-subset rule (A102) puts it above Admin on server and client without a second rank rule.
+- **A191 Exactly one server admin.** The token exists only while nobody is in Server-Admin; a second server admin is not possible.
+- **A192 One token.** The admin token becomes the server admin token and appears at every start without a server admin, even with admins; an existing server gets it at its next start. A backup without a server admin restores, the token comes at the next start.
+- **A193 No hand-over in the client.** The role cannot be given away in the client; a change goes through `server-data.json` (remove `...0c` from the user's `GroupIds`, restart, new token).
 - **A50 Screenshots.** Echte Bilder des headless gerenderten Clients, je Sprache, einmal erzeugt und in `website/public/screenshots/` eingecheckt. Der Nutzer kann eigene nachreichen, die gleichnamig ersetzt werden.
 
 ### Projektstruktur (Zielbild)
@@ -10482,3 +10490,132 @@ Test command: `cargo test --manifest-path native/ovs_audio/Cargo.toml` and `dotn
 
 - Device listing and the watcher without NAudio (with the platform packages, A186, A189)
 - Linux, macOS, Android, iOS (A189)
+
+---
+
+## Package 181: Server admin role (server)
+
+**Goal:** A server has exactly one server admin, who outranks every admin, is protected from every action of others and gets the role only through the one-time token, which an existing server prints at its next start.
+
+**Dependencies:** none
+
+**Affected files:**
+- `src/OVS.Shared/Permissions/WellKnownGroups.cs` (change): `ServerAdmin = 00000000-0000-0000-0000-00000000000c`
+- `src/OVS.Shared/Permissions/Permission.cs` (change): `ServerAdminRank = 1 << 27`, outside `All` (A190)
+- `src/OVS.Shared/Permissions/GroupRules.cs` (change): Server-Admin protected, never saved, deleted or assigned
+- `src/OVS.Shared/Permissions/ChannelAccess.cs` (change): Server-Admin passes group and password locks like Admin
+- `src/OVS.Server/Permissions/PermissionRules.cs` (change): `DefaultGroups` with "Server-Admin", `Effective` gives `All | ServerAdminRank`
+- `src/OVS.Server/Data/Records/ServerData.cs` (change): `CurrentVersion = 7`, `Migrate` adds the group, `FindProblem` checks it
+- `src/OVS.Server/State/ServerState.cs` (change): the token while nobody is server admin; `HasServerAdmin` in the snapshot
+- `src/OVS.Server/State/ServerState.Admin.cs` (change): `OnRedeemAdminToken` gives Server-Admin and broadcasts `ServerAdminClaimed`
+- `src/OVS.Server/State/ServerState.Backup.cs` (change): `RequireAdminGroup` also accepts Server-Admin
+- `src/OVS.Shared/Protocol/Messages/Connection/ServerSnapshot.cs` (change): `bool HasServerAdmin`
+- `src/OVS.Shared/Protocol/Messages/Groups/ServerAdminClaimed.cs` (new), `src/OVS.Shared/Protocol/Messages/Message.cs` (change): registration
+- `src/OVS.Server/Logging/ServerLogLines.cs` (change): `Server admin token: {Token}  (enter it in the client under 'Redeem server admin token')`
+- `README.md` (change): the token section and the recovery through `server-data.json` (A193)
+- `tests/OVS.Tests/Shared/Permissions/GroupRulesTests.cs`, `ChannelAccessTests.cs`, `tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs`, `tests/OVS.Tests/Server/State/AdminCommandTests.cs`, `ModerationTests.cs`, `tests/OVS.Tests/Server/Data/Records/` (change), `tests/OVS.Tests/TestSupport/RequestSamples.cs` (change if the new message needs a sample)
+
+### Context
+
+The rank between users is only the set of rights: an action on another user needs the target's rights to be a strict subset of the actor's (`PermissionExtensions.CanActOn`, Package 84, A102). Admin holds `Permission.All`, so admins can never act on each other, and nobody can take Admin from an admin. The admin token (`ServerState.cs:89`) only exists while nobody is in the Admin group, so a server with admins never gets one again. The user wants one role above Admin that only the token gives (A190 to A193).
+
+This changes the rights model itself, so the existing classes are changed (the exception of rule 26 for deep logic changes).
+
+### Acceptance Criteria
+
+- [ ] AC1: A new server and an existing server after migration (data version 7) have the protected group "Server-Admin" (`...0c`) with all rights; it cannot be renamed, changed, deleted, assigned or unassigned through the protocol (`ProtectedGroup` or `PermissionDenied`).
+- [ ] AC2: At every start without a member of Server-Admin the server prints `Server admin token: ...` on the console only, also when admins exist; with a server admin it prints none.
+- [ ] AC3: Redeeming the token puts the redeemer into Server-Admin (keeping their other groups), invalidates the token, persists, recomputes the rights, writes the audit line and broadcasts `ServerAdminClaimed` to every session. A second token never exists while a server admin exists (A191).
+- [ ] AC4: A server admin can kick, ban, mute, move, delete and change the groups of any admin, including taking Admin away (the last-admin rule still holds for Admin itself).
+- [ ] AC5: No admin can kick, ban, mute, move, delete or change the groups of the server admin; each is refused with `PermissionDenied`.
+- [ ] AC6: The server admin passes group and password locks like Admin and may upload and restore backups.
+- [ ] AC7: The snapshot carries `HasServerAdmin`, true exactly when a member of Server-Admin exists.
+- [ ] AC8: A backup without a server admin restores; the token appears at the next start. A backup without the Server-Admin group is migrated like an old data file.
+
+### Tests (TDD)
+
+Order: test first -> red -> minimal implementation -> green -> refactor.
+
+1. `GroupRulesTests > "ServerAdmin_IsProtected_NeverSavedDeletedOrAssigned"` - AC1
+   - Given: an actor with `All | ServerAdminRank`
+   - Expected: `IsProtected` true, `CanSave`, `CanDelete`, `CanAssign` false for `...0c`
+2. `PermissionRulesTests > "Effective_ServerAdmin_AllPlusRank"` and `"DefaultGroups_ContainServerAdmin"` - AC1
+3. `PermissionRulesTests > "CanActOn_ServerAdminOverAdmin_TrueAndNotBack"` - AC4, AC5
+   - Given: `All | ServerAdminRank` and `All`
+   - Expected: `CanActOn` true one way, false the other
+4. `ServerDataTests` (under `Server/Data/Records`) `> "Migrate_Version6_AddsServerAdminGroup"` - AC1, AC8
+5. `AdminCommandTests > "ServerAdminToken_AdminsButNoServerAdmin_Generated"` and `"ServerAdminToken_ServerAdminExists_None"` - AC2 (the existing `AdminToken_AdminExistsOrNot_GeneratedOnlyWithout` becomes these two)
+6. `AdminCommandTests > "Redeem_GivesServerAdmin_BroadcastsClaimed_ThenTokenInvalid"` - AC3 (extends `Redeem_BroadcastsNewPermissions_ThenTokenInvalid`)
+7. `AdminCommandTests > "AssignOrUnassign_ServerAdminGroup_Refused"` and `"UpdateOrDelete_ServerAdminGroup_ProtectedGroup"` - AC1
+8. `ModerationTests > "ServerAdmin_KickBanMuteDeleteAdmin_Works"` and `"UnassignAdmin_ByServerAdmin_Works"` - AC4
+9. `ModerationTests > "Admin_KickBanMuteMoveDeleteOrUnassign_ServerAdmin_PermissionDenied"` (a theory over the actions) - AC5
+10. `ChannelAccessTests > "ServerAdmin_PassesGroupAndPasswordLock"` and `BackupTests > "Restore_ByServerAdmin_Allowed"` - AC6
+11. `StateSyncTests > "Snapshot_HasServerAdmin_FollowsMembers"` - AC7
+12. `BackupTests > "Restore_WithoutServerAdmin_TokenAtNextStart"` - AC8
+13. `ServerTelemetryTests > "Log_ChannelAndAdminToken_NeverExported"` stays green with the new text.
+
+Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s` (covers rule-lint too)
+
+### Steps
+
+1. Tests 1 to 3 (red), then `WellKnownGroups`, `Permission.ServerAdminRank`, `GroupRules`, `PermissionRules` (green).
+2. Test 4, then the migration to version 7 and `FindProblem`.
+3. Tests 5 to 7, then the token condition, `OnRedeemAdminToken`, `ServerAdminClaimed`, the log line.
+4. Tests 8 to 12, then `ChannelAccess`, `RequireAdminGroup`, the snapshot field.
+5. README, full suite, rule-lint.
+
+### Out of Scope
+
+- The button, its text and the display in the client (Package 182)
+- Giving the role away or a second server admin in the client (A191, A193)
+
+---
+
+## Package 182: Server admin role (client)
+
+**Goal:** The client offers "Server-Admin-Token einlösen" only while the server has no server admin and shows the Server-Admin group like Admin as fixed.
+
+**Dependencies:** Package 181
+
+**Affected files:**
+- `src/OVS.Client/ViewModels/ServerViewModel.cs` (change): `IsServerAdmin`, `HasServerAdmin` from the snapshot and `ServerAdminClaimed`, `CanRedeemToken`
+- `src/OVS.Client/Services/AnswerRoutes.cs` (change if needed): route `ServerAdminClaimed`
+- `src/OVS.Client/ViewModels/GroupEditViewModel.cs` (change): fixed-group note for Server-Admin
+- `src/OVS.Client/ViewModels/UsersAndBansViewModel.cs` (check): no group change offered for Server-Admin (follows `GroupRules.CanAssign`)
+- `src/OVS.Client/Localization/Strings.resx`, `Strings.en.resx` (change): `Ui_RedeemTokenMenu`, `Dialog_RedeemToken`, `Error_InvalidToken` name the server admin token; new `Ui_ServerAdminGroupFixed`
+- `src/OVS.Client/Logging/ProtocolLogText.cs` (change): text for `ServerAdminClaimed`
+- `tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs`, `GroupListViewModelTests.cs`, `UsersAndBansViewModelTests.cs`, `tests/OVS.Tests/Client/Logging/ProtocolLogTextTests.cs` (change)
+
+### Context
+
+`ServerViewModel.CanRedeemToken` is `!IsAdmin` (`ServerViewModel.cs:94`), so every non-admin sees the button although a token only exists without admins. With 181 the token exists exactly while `HasServerAdmin` is false.
+
+### Acceptance Criteria
+
+- [ ] AC1: The button "Server-Admin-Token einlösen ..." is visible exactly when the server has no server admin and the own user is not server admin; after `ServerAdminClaimed` it disappears in every connected client without reconnecting.
+- [ ] AC2: Redeeming works as before (dialog, `RedeemAdminToken`, confirmation by `UserUpdated`); a wrong token shows "Das Server-Admin-Token ist ungültig oder wurde bereits eingelöst."
+- [ ] AC3: In the group editor Server-Admin is fixed with the note "Die Server-Admin-Gruppe hat immer alle Rechte, ist nicht änderbar und wird nur per Token vergeben."; in the member administration it is never offered to give or take.
+- [ ] AC4: An admin sees no moderation actions on the server admin; the server admin sees them on admins (both from `CanModerate` with the new rank).
+- [ ] AC5 (manual): On the user's server with three admins, after a restart the token is in the console, redeeming it in the client makes the user server admin, and the user can take Admin away from another admin.
+
+### Tests (TDD)
+
+1. `ServerViewModelTests > "CanRedeemToken_NoServerAdmin_True_AfterClaimed_False"` - AC1
+2. `ServerViewModelTests > "CanRedeemToken_SelfServerAdmin_False"` - AC1
+3. `ServerViewModelTests > "Redeem_WrongToken_ShowsServerAdminText"` - AC2
+4. `GroupListViewModelTests > "ServerAdminGroup_FixedWithNote"` and `UsersAndBansViewModelTests > "ServerAdminGroup_NeverOffered"` - AC3
+5. `UsersAndBansViewModelTests > "Actions_OnServerAdmin_HiddenForAdmin_ShownForServerAdmin"` - AC4
+6. `ProtocolLogTextTests` with the new message.
+7. Manual check AC5 (muted, no sound).
+
+Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
+
+### Steps
+
+1. Tests 1 to 3 (red), then `ServerViewModel` and the strings.
+2. Tests 4 to 6, then group editor, member administration, protocol log text.
+3. Full suite, rule-lint, manual check.
+
+### Out of Scope
+
+- Server side (Package 181)
