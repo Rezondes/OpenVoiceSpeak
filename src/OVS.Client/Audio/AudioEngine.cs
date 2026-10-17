@@ -35,7 +35,8 @@ internal sealed class AudioEngine : IDisposable
     readonly PlaybackLoop playbackLoop;
     readonly ConcurrentDictionary<uint, long> framesReceived = new();
     volatile bool selfMuted = true, deafened, hasSpeakLinked, connected, connecting, channelMuted, selfTest, levelMeter, micWanted, voiceDetected;
-    bool talkKeyHeld; // key thread only (Package 131)
+    volatile bool channelLinked, serverMuted; // Package 189 (A201)
+    readonly TalkKeyTone talkTone;
     bool loopbackFrame; // capture thread only: the frame just decided goes to the own ears
     uint loopbackSeq;
     ClientSettings settings = new();
@@ -71,7 +72,8 @@ internal sealed class AudioEngine : IDisposable
             () => voiceDetected = false, Report);
         playbackLoop = new PlaybackLoop(gate, DeviceLifecycle, Mixer, soundQueue, () => PlaybackNeeded, () => selfTest, () => deafened);
         Sounds = new SoundPlayer(soundQueue, () => settings, () => deafened, playbackLoop.Kick, samples); // before the keys' tones can ask for it
-        keys.Changed += OnKeysChanged;
+        talkTone = new TalkKeyTone(() => TalkKeySends, () => connected || selfTest, Sounds);
+        keys.Changed += talkTone.Refresh;
     }
 
     /// <summary>
@@ -92,23 +94,22 @@ internal sealed class AudioEngine : IDisposable
     /// <summary>Package 131: the voice gate heard voice in the last frame, also while muted (it runs anyway, nothing is sent).</summary>
     public bool VoiceDetected => voiceDetected;
 
-    /// <summary>Package 131: the talk key tones on the key's own edges, while the keys can talk (connected or self test).</summary>
-    void OnKeysChanged()
-    {
-        bool held = TalkKeyHeld;
-        if (held == talkKeyHeld) return;
-        talkKeyHeld = held;
-        if (connected || selfTest) Sounds.Play(held ? SoundEvent.TalkKeyDown : SoundEvent.TalkKeyUp);
-    }
+    /// <summary>Package 189 (A201): a held talk key sends (not muted, server or channel muted, nor link push-to-talk without a link); in the self test the key alone.</summary>
+    bool TalkKeySends => selfTest ? TalkKeyHeld : TalkKeyHeld && !serverMuted && TransmitRule.ChooseTarget(mode: Mode, pttDown: keys.IsDown(KeyAction.PushToTalk),
+        linkPttDown: keys.IsDown(KeyAction.LinkPushToTalk), vadActive: false, muted: selfMuted || !connected || keys.MuteHeld || channelMuted, hasSpeakLinked: hasSpeakLinked, channelLinked: channelLinked) is not null;
 
     /// <summary>Decodes, buffers and mixes the voices of the others.</summary>
     public VoiceMixer Mixer { get; } = new();
     /// <summary>Push-to-talk or voice activation.</summary>
     public TransmitMode Mode { get; set; }
     /// <summary>The own microphone is muted: nothing is sent.</summary>
-    public bool SelfMuted { get => selfMuted; set => selfMuted = value; }
+    public bool SelfMuted { get => selfMuted; set { selfMuted = value; talkTone.Refresh(); } } // Package 189: the tone follows
     /// <summary>The own user may talk over links.</summary>
     public bool HasSpeakLinked { get => hasSpeakLinked; set => hasSpeakLinked = value; }
+    /// <summary>Package 189 (A201): the own channel has a link; without one link push-to-talk sends nothing.</summary>
+    public bool ChannelLinked { get => channelLinked; set { channelLinked = value; talkTone.Refresh(); } }
+    /// <summary>Package 189 (A201): the server mutes the own user; the talk key tone stays silent (the server drops the frames).</summary>
+    public bool ServerMuted { get => serverMuted; set { serverMuted = value; talkTone.Refresh(); } }
 
     /// <summary>A voice link is up; while false nothing is sent and the mixer is cleared.</summary>
     public bool Connected
@@ -136,7 +137,7 @@ internal sealed class AudioEngine : IDisposable
     }
 
     /// <summary>Package 34: in a muted channel nobody would hear it, so nothing is sent.</summary>
-    public bool ChannelMuted { get => channelMuted; set => channelMuted = value; }
+    public bool ChannelMuted { get => channelMuted; set { channelMuted = value; talkTone.Refresh(); } } // Package 189: the tone follows
 
     volatile int channelBitrate = ProtocolDefaults.Bitrate;
 
@@ -380,11 +381,11 @@ internal sealed class AudioEngine : IDisposable
                 lastTarget = null;
                 TransmitChanged?.Invoke(null);
             }
-            loopbackFrame = TransmitRule.ChooseTarget(mode: Mode, pttDown: keys.PttDown, linkPttDown: keys.LinkPttDown, vadActive: voiceActive, muted: keys.MuteHeld, hasSpeakLinked: hasSpeakLinked) is not null;
+            loopbackFrame = TransmitRule.ChooseTarget(mode: Mode, pttDown: keys.PttDown, linkPttDown: keys.LinkPttDown, vadActive: voiceActive, muted: keys.MuteHeld, hasSpeakLinked: hasSpeakLinked, channelLinked: channelLinked) is not null;
             return loopbackFrame ? VoiceHeader.TargetChannel : null;
         }
         // Push-to-mute counts like the own mute: it beats every way of sending (Package 29).
-        var target = TransmitRule.ChooseTarget(mode: Mode, pttDown: keys.PttDown, linkPttDown: keys.LinkPttDown, vadActive: voiceActive, muted: selfMuted || !connected || keys.MuteHeld || channelMuted, hasSpeakLinked: hasSpeakLinked);
+        var target = TransmitRule.ChooseTarget(mode: Mode, pttDown: keys.PttDown, linkPttDown: keys.LinkPttDown, vadActive: voiceActive, muted: selfMuted || !connected || keys.MuteHeld || channelMuted, hasSpeakLinked: hasSpeakLinked, channelLinked: channelLinked);
         if (target != lastTarget)
         {
             lastTarget = target;
@@ -413,7 +414,7 @@ internal sealed class AudioEngine : IDisposable
     /// <summary>Stops capture and playback and releases the devices.</summary>
     public void Dispose()
     {
-        keys.Changed -= OnKeysChanged;
+        keys.Changed -= talkTone.Refresh;
         DeviceLifecycle.StopWatching(); // Windows stops notifying (Package 137); a microphone open still queued finds the devices gone
         playbackLoop.Stop();
         lock (gate) DeviceLifecycle.Close();

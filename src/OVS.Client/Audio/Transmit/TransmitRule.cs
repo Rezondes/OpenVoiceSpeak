@@ -8,12 +8,14 @@ internal static class TransmitRule
     /// <returns>Voice target to send with, or null to stay silent. Voice activation never uses links.</returns>
     /// <remarks>
     /// The PTT key only counts in push-to-talk mode: with voice activation the voice alone opens the microphone.
-    /// Link-PTT works in both modes, it is the only way to reach linked channels.
+    /// Link-PTT works in both modes, it is the only way to reach linked channels. Package 189 (A201): with the right but no
+    /// link from the own channel it sends nothing (the other rules still apply); without the right it sends into the own one.
     /// </remarks>
-    public static byte? ChooseTarget(TransmitMode mode, bool pttDown, bool linkPttDown, bool vadActive, bool muted, bool hasSpeakLinked)
+    public static byte? ChooseTarget(TransmitMode mode, bool pttDown, bool linkPttDown, bool vadActive, bool muted, bool hasSpeakLinked, bool channelLinked)
     {
         if (muted) return null;
-        if (linkPttDown) return hasSpeakLinked ? VoiceHeader.TargetLinked : VoiceHeader.TargetChannel;
+        if (linkPttDown && !hasSpeakLinked) return VoiceHeader.TargetChannel;
+        if (linkPttDown && channelLinked) return VoiceHeader.TargetLinked;
         return mode switch
         {
             TransmitMode.PushToTalk when pttDown => VoiceHeader.TargetChannel,

@@ -81,7 +81,8 @@ internal sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
         EngineSync = new EngineSync(audio,
             connectionState: () => Server is { } connected
                 ? new EngineConnectionState(true, connected.SelfState.SelfMuted, connected.SelfState.SelfDeafened, connected.HasSpeakLinked, connected.InMutedChannel,
-                    connected.CurrentChannel?.Id, connected.CurrentChannel?.Bitrate)
+                    connected.CurrentChannel?.Id, connected.CurrentChannel?.Bitrate, ChannelLinked: connected.CurrentChannel?.IsLinked == true, // Package 189
+                    ServerMuted: connected.Mirror.Self?.ServerMuted == true)
                 : EngineConnectionState.Disconnected,
             mirror: () => Server?.Mirror,
             volumeFor: fingerprint => Settings.VolumeFor(fingerprint));

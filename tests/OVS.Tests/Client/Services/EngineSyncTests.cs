@@ -131,6 +131,22 @@ public sealed class EngineSyncTests : IDisposable
         Assert.Equal(new EngineSwitches(Connected: false, SelfMuted: true, Deafened: false, HasSpeakLinked: false, ChannelMuted: true), ReadEngineSwitches(engine));
     }
 
+    /// <summary>Package 189 (A201): whether the own channel has a link, and the server mute, reach the engine and go again.</summary>
+    [Fact]
+    public void SyncConnection_ChannelLinked_ReachesTheEngine()
+    {
+        SetEngineDisconnected();
+        connectionState = EngineConnectionState.Disconnected with { ChannelLinked = true, ServerMuted = true };
+        var sync = CreateSync();
+
+        sync.SyncConnection();
+        Assert.Equal((true, true), (engine.ChannelLinked, engine.ServerMuted));
+
+        connectionState = EngineConnectionState.Disconnected;
+        sync.SyncConnection();
+        Assert.Equal((false, false), (engine.ChannelLinked, engine.ServerMuted));
+    }
+
     // ---- SyncConnection: the channel's bitrate ----
 
     [Fact]

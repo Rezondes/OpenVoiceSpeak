@@ -102,7 +102,7 @@ public class SoundTests
         Assert.True(rows[0].Muted);
 
         using var keys = new KeyPoller(TimeProvider.System);
-        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null);
+        using var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { SelfMuted = false, HasSpeakLinked = true, ChannelLinked = true };
         engine.Configure(new ClientSettings());
         engine.Connected = true;
         async Task PressAndReleaseAsync(KeyAction action, int expected)
@@ -124,6 +124,95 @@ public class SoundTests
         engine.Connected = false; // not connected: the keys do nothing, so no tone
         await PressAndReleaseAsync(KeyAction.PushToTalk, 4);
         Assert.Equal(4, engine.Sounds.Recent.Count);
+    }
+
+    // ---- Package 189 (A201): the talk key tone only while a held key really sends ----
+
+    static readonly ClientSettings TalkTonesOn = new()
+    {
+        Sounds = { [SoundEvent.TalkKeyDown] = new SoundSetting(), [SoundEvent.TalkKeyUp] = new SoundSetting() },
+    };
+
+    /// <summary>A connected, unmuted engine with the talk key tones on, in a channel with a link and the right to use it.</summary>
+    static AudioEngine TalkEngine(KeyPoller keys)
+    {
+        var engine = new AudioEngine(keys, TimeProvider.System, hardware: null) { SelfMuted = false, HasSpeakLinked = true, ChannelLinked = true };
+        engine.Configure(TalkTonesOn);
+        engine.Connected = true;
+        return engine;
+    }
+
+    static async Task HoldAsync(KeyPoller keys, KeyAction action, bool down)
+    {
+        keys.Simulate(action, down);
+        await AsyncWait.UntilAsync(() => keys.IsDown(action) == down);
+    }
+
+    /// <summary>Package 189 (AC1): link push-to-talk in a channel without a link sends nothing, so no tone.</summary>
+    [Fact]
+    public async Task TalkKeyTone_LinkPttWithoutLink_Silent()
+    {
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = TalkEngine(keys);
+        engine.ChannelLinked = false;
+
+        await HoldAsync(keys, KeyAction.LinkPushToTalk, true);
+        await HoldAsync(keys, KeyAction.LinkPushToTalk, false);
+
+        await AsyncWait.AssertStaysFalseAsync(() => engine.Sounds.Recent.Count > 0, TimeSpan.FromMilliseconds(50), "no tone without a link");
+    }
+
+    /// <summary>Package 189 (AC4): muted, server muted or in a muted channel, a talk key plays no tone.</summary>
+    [Theory]
+    [InlineData("self")]
+    [InlineData("server")]
+    [InlineData("channel")]
+    public async Task TalkKeyTone_MutedServerMutedOrMutedChannel_Silent(string muted)
+    {
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = TalkEngine(keys);
+        engine.SelfMuted = muted == "self";
+        engine.ServerMuted = muted == "server";
+        engine.ChannelMuted = muted == "channel";
+
+        await HoldAsync(keys, KeyAction.PushToTalk, true);
+        await HoldAsync(keys, KeyAction.PushToTalk, false);
+
+        await AsyncWait.AssertStaysFalseAsync(() => engine.Sounds.Recent.Count > 0, TimeSpan.FromMilliseconds(50), $"no tone while muted ({muted})");
+    }
+
+    /// <summary>Package 189 (AC5): unmuting while push-to-talk is held starts sending, so the down tone, and the up tone on release.</summary>
+    [Fact]
+    public async Task TalkKeyTone_SendingStartsWhileHeld_DownThenUp()
+    {
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = TalkEngine(keys);
+        engine.SelfMuted = true;
+        await HoldAsync(keys, KeyAction.PushToTalk, true);
+        Assert.Empty(engine.Sounds.Recent);
+
+        engine.SelfMuted = false;
+        Assert.Equal([SoundEvent.TalkKeyDown], engine.Sounds.Recent);
+        await HoldAsync(keys, KeyAction.PushToTalk, false);
+        await AsyncWait.UntilAsync(() => engine.Sounds.Recent.Count == 2);
+
+        Assert.Equal([SoundEvent.TalkKeyDown, SoundEvent.TalkKeyUp], engine.Sounds.Recent);
+    }
+
+    /// <summary>Package 189 (AC6): in the self test the tones play on the key as before, also while muted.</summary>
+    [Fact]
+    public async Task TalkKeyTone_SelfTest_Plays()
+    {
+        using var keys = new KeyPoller(TimeProvider.System);
+        using var engine = TalkEngine(keys);
+        engine.SelfMuted = true;
+        engine.SelfTest = true;
+
+        await HoldAsync(keys, KeyAction.PushToTalk, true);
+        await HoldAsync(keys, KeyAction.PushToTalk, false);
+        await AsyncWait.UntilAsync(() => engine.Sounds.Recent.Count == 2);
+
+        Assert.Equal([SoundEvent.TalkKeyDown, SoundEvent.TalkKeyUp], engine.Sounds.Recent);
     }
     /// <summary>Package 159: a speaker test player on a queue, with all sounds off and deafened, so only the test can play.</summary>
     static SoundPlayer TestPlayer(SoundQueue queue, Action woken) =>

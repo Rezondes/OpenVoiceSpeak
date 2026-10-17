@@ -11,7 +11,10 @@ namespace OVS.Client.Services;
 /// <param name="ChannelMuted">The own channel is muted, so nothing is sent.</param>
 /// <param name="ChannelId">The own channel; null when in no channel.</param>
 /// <param name="ChannelBitrate">The own channel's kbps as the server sent it; null when in no channel.</param>
-internal readonly record struct EngineConnectionState(bool Connected, bool SelfMuted, bool Deafened, bool HasSpeakLinked, bool ChannelMuted, Guid? ChannelId, int? ChannelBitrate)
+/// <param name="ChannelLinked">Package 189 (A201): the own channel has a link.</param>
+/// <param name="ServerMuted">Package 189 (A201): the server mutes the own user.</param>
+internal readonly record struct EngineConnectionState(bool Connected, bool SelfMuted, bool Deafened, bool HasSpeakLinked, bool ChannelMuted, Guid? ChannelId, int? ChannelBitrate,
+    bool ChannelLinked = false, bool ServerMuted = false)
 {
     /// <summary>No connection: muted, no right to speak, no channel.</summary>
     internal static readonly EngineConnectionState Disconnected = new(false, true, false, false, false, null, null);

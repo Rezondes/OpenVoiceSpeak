@@ -26,27 +26,32 @@ public class SendPathTests
     const byte Ch = VoiceHeader.TargetChannel;
     const byte Link = VoiceHeader.TargetLinked;
 
-    public static TheoryData<TransmitMode, bool, bool, bool, bool, bool, byte?> Cases => new()
+    public static TheoryData<TransmitMode, bool, bool, bool, bool, bool, bool, byte?> Cases => new()
     {
-        // mode, ptt, linkPtt, vad, muted, hasSpeakLinked, expected
-        { PushToTalk, true, true, false, true, true, null },         // muted beats everything
-        { PushToTalk, false, true, false, false, true, Link },        // link ptt with right
-        { PushToTalk, false, true, false, false, false, Ch },         // link ptt without right
-        { PushToTalk, true, false, false, false, true, Ch },          // ptt
-        { PushToTalk, false, false, true, false, true, null },        // vad ignored in ptt mode
-        { VoiceActivation, false, false, true, false, true, Ch },     // vad never uses links
-        { VoiceActivation, false, false, false, false, true, null },
-        { PushToTalk, true, true, false, false, true, Link },         // both keys: link wins
-        { VoiceActivation, false, true, true, false, true, Link },    // link ptt in vad mode
-        { VoiceActivation, true, false, false, false, true, null },   // ptt key does nothing in vad mode (Package 25)
-        { VoiceActivation, true, false, true, false, true, Ch },      // vad decides, not the key
-        { VoiceActivation, false, true, false, false, false, Ch },    // link ptt in vad mode without the right
+        // mode, ptt, linkPtt, vad, muted, hasSpeakLinked, channelLinked, expected
+        { PushToTalk, true, true, false, true, true, true, null },         // muted beats everything
+        { PushToTalk, false, true, false, false, true, true, Link },        // link ptt with right
+        { PushToTalk, false, true, false, false, false, true, Ch },         // link ptt without right
+        { PushToTalk, true, false, false, false, true, true, Ch },          // ptt
+        { PushToTalk, false, false, true, false, true, true, null },        // vad ignored in ptt mode
+        { VoiceActivation, false, false, true, false, true, true, Ch },     // vad never uses links
+        { VoiceActivation, false, false, false, false, true, true, null },
+        { PushToTalk, true, true, false, false, true, true, Link },         // both keys: link wins
+        { VoiceActivation, false, true, true, false, true, true, Link },    // link ptt in vad mode
+        { VoiceActivation, true, false, false, false, true, true, null },   // ptt key does nothing in vad mode (Package 25)
+        { VoiceActivation, true, false, true, false, true, true, Ch },      // vad decides, not the key
+        { VoiceActivation, false, true, false, false, false, true, Ch },    // link ptt in vad mode without the right
+        // Package 189 (A201): with the right but no link from the own channel the link key sends nothing by itself
+        { PushToTalk, false, true, false, false, true, false, null },
+        { PushToTalk, true, true, false, false, true, false, Ch },          // the ptt key still sends into the channel
+        { PushToTalk, false, true, false, false, false, false, Ch },        // without the right as before
+        { VoiceActivation, false, true, true, false, true, false, Ch },     // the voice still decides
     };
 
     [Theory]
     [MemberData(nameof(Cases))]
-    public void ChooseTarget_EachRuleRow_ReturnsExpectedTarget(TransmitMode mode, bool ptt, bool link, bool vad, bool muted, bool speakLinked, byte? expected) =>
-        Assert.Equal(expected, TransmitRule.ChooseTarget(mode, ptt, link, vad, muted, speakLinked));
+    public void ChooseTarget_EachRuleRow_ReturnsExpectedTarget(TransmitMode mode, bool ptt, bool link, bool vad, bool muted, bool speakLinked, bool channelLinked, byte? expected) =>
+        Assert.Equal(expected, TransmitRule.ChooseTarget(mode, ptt, link, vad, muted, speakLinked, channelLinked));
 
     /// <summary>Package 25: with voice activation only the voice opens the microphone, not the PTT key.</summary>
     [Theory]
@@ -1492,7 +1497,7 @@ public class SendPathTests
                     new KeyBinding(KeyAction.PushToMute, new KeyChord(Mute)),
                 ],
             };
-            Engine = new AudioEngine(Keys, Time, hardware: null) { Connected = true, SelfMuted = false, HasSpeakLinked = true };
+            Engine = new AudioEngine(Keys, Time, hardware: null) { Connected = true, SelfMuted = false, HasSpeakLinked = true, ChannelLinked = true };
             Engine.Configure(new ClientSettings { Mode = PushToTalk, PttReleaseDelayMs = releaseDelayMs });
             Pipeline.ChooseTarget = Engine.ChooseTarget;
             Pipeline.Bitrate = () => Engine.EncoderBitrate; // as StartCapture wires it

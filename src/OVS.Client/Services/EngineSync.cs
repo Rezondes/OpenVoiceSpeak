@@ -37,7 +37,7 @@ internal sealed class EngineSync
     /// <summary>Package 122: how often the speaker gain table was built (tests count them).</summary>
     internal int GainTableBuilds { get; private set; }
 
-    /// <summary>The engine follows the connection: connected, muted, deafened, the speak right, the channel's mute and bitrate; the gains of a server not seen yet.</summary>
+    /// <summary>The engine follows the connection: connected, muted, deafened, the speak right, the channel's mute, links (189) and bitrate, the server mute (189); the gains of a server not seen yet.</summary>
     internal void SyncConnection()
     {
         var current = connectionState();
@@ -46,6 +46,8 @@ internal sealed class EngineSync
         audio.Deafened = current.Deafened;
         audio.HasSpeakLinked = current.HasSpeakLinked;
         audio.ChannelMuted = current.ChannelMuted;
+        audio.ChannelLinked = current.ChannelLinked; // Package 189
+        audio.ServerMuted = current.ServerMuted;
         // Package 132: join, move, edit; clamped, so a hand-edited server file cannot hand Opus an invalid bitrate
         audio.ChannelBitrate = Math.Clamp(current.ChannelBitrate ?? ProtocolDefaults.Bitrate, ProtocolLimits.MinBitrate, ProtocolLimits.MaxBitrate);
         if (current.ChannelId != bitrateChannel)

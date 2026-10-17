@@ -10965,22 +10965,23 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 
 ### Acceptance Criteria
 
-- [ ] AC1: With the right and no link from the own channel, link push-to-talk sends no frame and plays no tone.
-- [ ] AC2: With the right and a link it sends to the channel and its links with the tone, as today.
-- [ ] AC3: Without the right it sends into the own channel with the hint "VoiceHint_NoLinkRight", as today.
-- [ ] AC4: While muted, server muted or in a muted channel, pressing a talk key plays no tone.
-- [ ] AC5: A link added while link push-to-talk is held starts sending and plays the down tone; unmuting while push-to-talk is held does the same; the release tone follows when sending ends.
-- [ ] AC6: In the self test the tones play as today.
+- [x] AC1: With the right and no link from the own channel, link push-to-talk sends no frame and plays no tone.
+- [x] AC2: With the right and a link it sends to the channel and its links with the tone, as today.
+- [x] AC3: Without the right it sends into the own channel with the hint "VoiceHint_NoLinkRight", as today.
+- [x] AC4: While muted, server muted or in a muted channel, pressing a talk key plays no tone.
+- [x] AC5: A link added while link push-to-talk is held starts sending and plays the down tone; unmuting while push-to-talk is held does the same; the release tone follows when sending ends.
+- [x] AC6: In the self test the tones play as today.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `SendPathTests > "LinkPtt_RightNoLink_SendsNothing"` (red today) (AC1)
-2. `SendPathTests > "LinkPtt_RightAndLink_SendsLinked"` and `"LinkPtt_NoRight_SendsToChannel"` (AC2, AC3)
-3. `SoundTests > "TalkKeyTone_LinkPttWithoutLink_Silent"` (red today) (AC1)
-4. `SoundTests > "TalkKeyTone_MutedServerMutedOrMutedChannel_Silent"` (red today) (AC4)
-5. `SoundTests > "TalkKeyTone_SendingStartsWhileHeld_DownThenUp"` (AC5)
-6. `SoundTests > "TalkKeyTone_SelfTest_Plays"` (AC6)
-7. `EngineSyncTests > "SyncConnection_ChannelLinked_ReachesTheEngine"`
+1. `SendPathTests > "ChooseTarget_EachRuleRow_ReturnsExpectedTarget"` with four new rows: the link key with the right and no link sends nothing, the push-to-talk key or the voice still send into the channel, without the right as before (AC1, AC2, AC3)
+2. `SoundTests > "TalkKeyTone_LinkPttWithoutLink_Silent"` (AC1)
+3. `SoundTests > "TalkKeyTone_MutedServerMutedOrMutedChannel_Silent"` (AC4)
+4. `SoundTests > "TalkKeyTone_SendingStartsWhileHeld_DownThenUp"` (AC5)
+5. `SoundTests > "TalkKeyTone_SelfTest_Plays"` and `"TalkKeySounds_OffByDefault_PlayWhenOn"` (AC2, AC6)
+6. `EngineSyncTests > "SyncConnection_ChannelLinked_ReachesTheEngine"` and `VoiceHintsTests` unchanged (AC3)
+
+(as built: `TransmitRule.ChooseTarget` takes `channelLinked`; the link key without a link falls through to the other rules, so a held push-to-talk key still sends into the channel. `EngineConnectionState` carries `ChannelLinked` and `ServerMuted` (the engine knew no server mute before; it only silences the tone, the server drops the frames). The tone's edge moved into `TalkKeyTone`, refreshed by the keys and by the setters of the mutes and the link flag, which also keeps `AudioEngine` under 400 lines.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 
