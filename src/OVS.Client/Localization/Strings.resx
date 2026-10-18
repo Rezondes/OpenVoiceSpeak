@@ -531,7 +531,6 @@
   <data name="Ui_Theme" xml:space="preserve"><value>Design</value></data>
   <data name="Ui_Threshold" xml:space="preserve"><value>Schwelle</value></data>
   <data name="Ui_ThresholdName" xml:space="preserve"><value>Schwelle der Sprachaktivierung</value></data>
-  <data name="Ui_TransmitSection" xml:space="preserve"><value>ÜBERTRAGUNG</value></data>
   <data name="Ui_Unban" xml:space="preserve"><value>Entbannen</value></data>
   <data name="Ui_Unknown" xml:space="preserve"><value>unbekannt</value></data>
   <data name="Ui_UnlinkMenu" xml:space="preserve"><value>Link entfernen ...</value></data>

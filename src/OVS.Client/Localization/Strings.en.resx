@@ -531,7 +531,6 @@
   <data name="Ui_Theme" xml:space="preserve"><value>Theme</value></data>
   <data name="Ui_Threshold" xml:space="preserve"><value>Threshold</value></data>
   <data name="Ui_ThresholdName" xml:space="preserve"><value>Voice activation threshold</value></data>
-  <data name="Ui_TransmitSection" xml:space="preserve"><value>TRANSMISSION</value></data>
   <data name="Ui_Unban" xml:space="preserve"><value>Unban</value></data>
   <data name="Ui_Unknown" xml:space="preserve"><value>unknown</value></data>
   <data name="Ui_UnlinkMenu" xml:space="preserve"><value>Remove link ...</value></data>
