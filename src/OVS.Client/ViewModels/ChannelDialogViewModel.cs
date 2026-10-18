@@ -80,9 +80,27 @@ internal sealed partial class ChannelDialogViewModel(ChannelEdit current, Channe
     public decimal MaxBitrate => ProtocolLimits.MaxBitrate;
     #pragma warning restore CA1822
 
-    partial void OnBitrateChanged(decimal? value)
+    /// <summary>Package 184 (review): the label with the limits from the protocol, so it never names old ones.</summary>
+    #pragma warning disable CA1822 // bound from XAML, which reads instance properties
+    public string BitrateLabel => TextFormat.Of(Strings.Dlg_BitrateFmt, ProtocolLimits.MinBitrate, ProtocolLimits.MaxBitrate);
+    /// <summary>Package 184 (review): the hint with the protocol's default.</summary>
+    public string BitrateHint => TextFormat.Of(Strings.Dlg_BitrateHintFmt, ProtocolDefaults.Bitrate);
+    /// <summary>The arrows' step in kbps.</summary>
+    public decimal BitrateStep => Step;
+    #pragma warning restore CA1822
+    const int Step = 8;
+
+    partial void OnBitrateChanged(decimal? oldValue, decimal? newValue)
     {
-        if (value is { } rate && (rate < MinBitrate || rate > MaxBitrate)) Bitrate = Math.Clamp(rate, MinBitrate, MaxBitrate);
+        if (newValue is not { } rate) return;
+        if (rate < MinBitrate || rate > MaxBitrate)
+        {
+            Bitrate = Math.Clamp(rate, MinBitrate, MaxBitrate);
+            return;
+        }
+        // Package 184 (review): an arrow step from a value off the grid (510, or one typed) lands on the grid in its direction
+        if (oldValue is { } old && old % Step != 0 && Math.Abs(rate - old) == Step)
+            Bitrate = rate < old ? Math.Floor(old / Step) * Step : Math.Min(MaxBitrate, Math.Ceiling(old / Step) * Step);
     }
 
     /// <summary>

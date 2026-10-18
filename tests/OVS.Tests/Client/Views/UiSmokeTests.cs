@@ -387,6 +387,33 @@ public sealed class UiSmokeTests() : TempDirectoryTest("ovs-ui-", quiet: true)
         Dialog(overlayHost => TextDialog.ShowAsync(overlayHost, "Admin-Token einlösen", "Token:"), "Admin-Token einlösen");
     }
 
+    /// <summary>
+    /// Package 184 (review): the quality field names 16 to 510, and its down arrow from 510 lands on 504, not 502 (the
+    /// arrow sets the value minus the step, the view model puts it on the grid).
+    /// </summary>
+    [AvaloniaFact]
+    public void ChannelDialog_ArrowDownFrom510_LandsOn504()
+    {
+        var viewModel = MainViewModelSetup.Create(dir, action => action());
+        var main = new MainWindow { DataContext = viewModel, Width = 1100, Height = 800 };
+        main.Show();
+        _ = ChannelDialogView.ShowAsync(main.Overlay, new ChannelEdit("Raid", "", Bitrate: 510), ChannelDialogMode.Edit);
+        Dispatcher.UIThread.RunJobs();
+        var quality = main.Overlay.GetVisualDescendants().OfType<NumericUpDown>().ToList()[1];
+        Assert.Contains(main.Overlay.GetVisualDescendants().OfType<TextBlock>(), textBlock => textBlock.Text == "Qualität (kbps, 16 bis 510)");
+
+        var spinner = quality.GetVisualDescendants().OfType<ButtonSpinner>().Single();
+        spinner.RaiseEvent(new SpinEventArgs(Spinner.SpinEvent, SpinDirection.Decrease));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(504m, quality.Value);
+        spinner.RaiseEvent(new SpinEventArgs(Spinner.SpinEvent, SpinDirection.Decrease));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(496m, quality.Value);
+        main.Overlay.Close();
+        main.Close();
+    }
+
     /// <summary>A20: settings, administration and all dialogs live inside the one main window.</summary>
     [AvaloniaFact]
     public void Pages_AllOpened_NoSecondWindow()

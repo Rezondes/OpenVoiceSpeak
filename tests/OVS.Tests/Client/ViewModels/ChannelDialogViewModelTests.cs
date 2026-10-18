@@ -186,6 +186,36 @@ public class ChannelDialogViewModelTests
         Assert.False(dialog.ShowsLowCopyWarning);
     }
 
+    /// <summary>Package 184 (review): the label and the hint name the limits and the default from the protocol, never fixed numbers.</summary>
+    [Fact]
+    public void BitrateLabel_Limits_FromTheProtocol()
+    {
+        var dialog = new ChannelDialogViewModel(new ChannelEdit("Raid", ""), ChannelDialogMode.Edit);
+
+        Assert.Equal(TextFormat.Of(Strings.Dlg_BitrateFmt, ProtocolLimits.MinBitrate, ProtocolLimits.MaxBitrate), dialog.BitrateLabel);
+        Assert.Contains("510", dialog.BitrateLabel, StringComparison.Ordinal);
+        Assert.Equal(TextFormat.Of(Strings.Dlg_BitrateHintFmt, ProtocolDefaults.Bitrate), dialog.BitrateHint);
+    }
+
+    /// <summary>
+    /// Package 184 (review): the arrows step by 8 kbps; a step from a value off that grid (510, or one typed) lands on the
+    /// grid in its direction, so 510 down is 504, not 502.
+    /// </summary>
+    [Theory]
+    [InlineData(510, 502, 504)]
+    [InlineData(101, 93, 96)]
+    [InlineData(101, 109, 104)]
+    [InlineData(504, 512, 510)]
+    [InlineData(504, 496, 496)]
+    public void Bitrate_StepFromOffTheGrid_LandsOnTheGrid(int from, int stepped, int expected)
+    {
+        var dialog = new ChannelDialogViewModel(new ChannelEdit("Raid", "", Bitrate: from), ChannelDialogMode.Edit);
+
+        dialog.Bitrate = stepped; // what the arrow sets: the value plus or minus the step
+
+        Assert.Equal((8m, (decimal)expected), (dialog.BitrateStep, dialog.Bitrate));
+    }
+
     /// <summary>Package 132: the channel's bitrate goes into the dialog and the edited one to the server.</summary>
     [Fact]
     public async Task Bitrate_FromChannelIntoDialog_SentWithEdit()

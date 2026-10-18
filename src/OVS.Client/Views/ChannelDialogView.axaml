@@ -41,10 +41,10 @@
     </StackPanel>
     <!-- Package 132: the bitrate everyone in the channel sends with -->
     <StackPanel Spacing="4">
-      <TextBlock Classes="label" Text="{x:Static l:Strings.Dlg_Bitrate}" />
-      <NumericUpDown Value="{Binding Bitrate}" Minimum="{Binding MinBitrate}" Maximum="{Binding MaxBitrate}" Increment="8" FormatString="0"
-                     Width="140" HorizontalAlignment="Left" AutomationProperties.Name="{x:Static l:Strings.Dlg_Bitrate}" />
-      <TextBlock Classes="caption" TextWrapping="Wrap" Text="{x:Static l:Strings.Dlg_BitrateHint}" />
+      <TextBlock Classes="label" Text="{Binding BitrateLabel}" />
+      <NumericUpDown Value="{Binding Bitrate}" Minimum="{Binding MinBitrate}" Maximum="{Binding MaxBitrate}" Increment="{Binding BitrateStep}" FormatString="0"
+                     Width="140" HorizontalAlignment="Left" AutomationProperties.Name="{Binding BitrateLabel}" />
+      <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding BitrateHint}" />
       <!-- Package 184 (A197): above 256 kbps a lost packet comes back from a copy of lower quality -->
       <Border x:Name="LowCopyWarning" Classes="banner warning" IsVisible="{Binding ShowsLowCopyWarning}">
         <DockPanel>

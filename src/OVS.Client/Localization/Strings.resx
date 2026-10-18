@@ -100,8 +100,8 @@
   <data name="Dlg_MaxUsers" xml:space="preserve"><value>Maximale Nutzer (0 = unbegrenzt)</value></data>
   <data name="Dlg_MaxUsersDefault" xml:space="preserve"><value>Der Standard-Channel bleibt unbegrenzt: dort landet jeder beim Verbinden.</value></data>
   <data name="Dlg_MaxUsersHint" xml:space="preserve"><value>Wer drin ist, bleibt auch bei einem kleineren Limit. Das Recht "Volle Channel betreten" umgeht es.</value></data>
-  <data name="Dlg_Bitrate" xml:space="preserve"><value>Qualität (kbps, 16 bis 128)</value></data>
-  <data name="Dlg_BitrateHint" xml:space="preserve"><value>Jeder im Channel sendet mit dieser Bitrate. Mehr klingt besser und braucht mehr Bandbreite; 128 ist der Standard.</value></data>
+  <data name="Dlg_BitrateFmt" xml:space="preserve"><value>Qualität (kbps, {0} bis {1})</value></data>
+  <data name="Dlg_BitrateHintFmt" xml:space="preserve"><value>Jeder im Channel sendet mit dieser Bitrate. Mehr klingt besser und braucht mehr Bandbreite; {0} ist der Standard.</value></data>
   <data name="Dlg_LowCopyWarning" xml:space="preserve"><value>Über 256 kbps werden verlorene Pakete durch eine Kopie in geringerer Qualität ersetzt.</value></data>
   <data name="Dlg_MutedChannel" xml:space="preserve"><value>Stummer Channel: niemand wird gehört</value></data>
   <data name="Dlg_MutedHint" xml:space="preserve"><value>Auch Link-PTT aus diesem Channel wird nicht übertragen. Sprache aus verlinkten Channels ist hörbar.</value></data>
