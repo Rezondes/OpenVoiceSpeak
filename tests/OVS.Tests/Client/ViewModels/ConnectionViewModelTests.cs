@@ -632,21 +632,27 @@ public sealed class ConnectionViewModelTests() : TempDirectoryTest("ovs-connvm-"
             if (sound == SoundEvent.Connected) throw new InvalidOperationException("Testfehler"); // the last step of the attach
         };
         server.State.FindSession(session)!.Outbox.Abort("Test");
-        Assert.True(await rig.ReadUntilAsync(() => rig.Connection.IsReconnecting, reconnecting => reconnecting));
+        Assert.True(await rig.ReadUntilAsync(() => rig.Connection.IsReconnecting, reconnecting => reconnecting), "step 1: the abort did not start reconnecting");
 
         rig.Time.Advance(TimeSpan.FromSeconds(1));
         await HangGuard.BoundAsync(rig.Seam.WaitForAttemptAsync(2));
 
-        Assert.True(await rig.ReadUntilAsync(() => rig.LogLines.Contains("Reconnect failed: InvalidOperationException: Testfehler"), logged => logged));
+        // the steps name themselves and the state seen, so a rare failure under load says where it stood (flaky once on 17 October 2026)
+        string State() => $"attempts {rig.Seam.Attempts.Count}, shown {rig.Shown is not null}, reconnecting {rig.Connection.IsReconnecting}, "
+            + $"connection time {rig.Connection.ConnectionTime is not null}, voice client {rig.Connection.VoiceLink.Client is not null}, "
+            + $"played [{string.Join(", ", rig.Played)}], log [{string.Join(" | ", rig.LogLines.TakeLast(6))}]";
+        Assert.True(await rig.ReadUntilAsync(() => rig.LogLines.Contains("Reconnect failed: InvalidOperationException: Testfehler"), logged => logged),
+            $"step 2: the failed attach was not logged; {await rig.ReadAsync(State)}");
         Assert.True(await rig.ReadUntilAsync(() => rig.Shown is null && rig.Connection.ConnectionTime is null && rig.Connection.VoiceLink.Client is null,
-            tornDown => tornDown));
-        Assert.True(await rig.ReadAsync(() => rig.Connection.IsReconnecting));
+            tornDown => tornDown), $"step 3: the failed connection was not torn down; {await rig.ReadAsync(State)}");
+        Assert.True(await rig.ReadAsync(() => rig.Connection.IsReconnecting), $"step 4: reconnecting stopped after the failed attach; {await rig.ReadAsync(State)}");
         Assert.DoesNotContain(SoundEvent.Disconnected, await rig.ReadAsync(() => rig.Played.ToList()));
 
         rig.OnPlay = null;
         rig.Time.Advance(TimeSpan.FromSeconds(2));
-        Assert.True(await rig.ReadUntilAsync(() => rig.Shown is not null && !rig.Connection.IsReconnecting, back => back));
-        Assert.Equal(3, rig.Seam.Attempts.Count);
+        Assert.True(await rig.ReadUntilAsync(() => rig.Shown is not null && !rig.Connection.IsReconnecting, back => back),
+            $"step 5: the next attempt did not come back; {await rig.ReadAsync(State)}");
+        Assert.True(rig.Seam.Attempts.Count == 3, $"step 6: expected 3 attempts; {await rig.ReadAsync(State)}");
     }
 
     // ---- Tick: the ping text ----
