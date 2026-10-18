@@ -10781,7 +10781,7 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 - [x] AC2: A stored id of a not present or disabled endpoint finds the one active device of the same direction and the same name; the dialog shows that device as "after".
 - [x] AC3: Two active devices with that name, or none, leave the device out with "Gerät nicht gefunden" as today.
 - [x] AC4: A stored id Windows does not know at all leaves the device out as today; "default" still maps to "Standard".
-- [ ] AC5 (manual): On the developer's PC Discord's stored microphone and speaker ids are compared with the endpoint list, and the import takes over both devices.
+- [x] AC5 (manual): On the developer's PC Discord's stored microphone and speaker ids are compared with the endpoint list, and the import takes over both devices.
 
 ### Tests (TDD)
 
@@ -10789,9 +10789,9 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 2. `ImportMappingTests > "Map_GoneDeviceSameName_ActiveOneTaken"` (AC2)
 3. `ImportMappingTests > "Map_GoneDeviceNameTwiceOrNever_LeftOutWithNote"` (AC3)
 4. `ImportMappingTests > "Map_UnknownDevice_LeftOutWithNote"` (existing, still green) and `"Map_DefaultDevice_Standard"` (AC4)
-5. Manual check AC5 (no sound), open: reading Discord's two device keys was refused in this session too.
+5. Manual check AC5 (no sound), done on 18 Oct 2026 with the user's permission: Discord stores both ids in lower case (`{0.0.1.00000000}.{12d27ac1-...}`, `{0.0.0.00000000}.{19e71eb6-...}`), Windows lists them in upper case, so the exact comparison of Package 171 missed both; ignoring case (AC1) finds "XLR Mic 1" and "Voice chat" of the Elgato Wave XLR Pro, both active.
 
-(as built: the name comes from `IAudioHardware.NameOf` (`MMDeviceEnumerator.GetDevice`, any state); `ClientServices` hands it through `MainViewModel` and `AudioImportSource.DeviceNameOf` to `SettingsViewModel.DeviceNameOf`, which `ImportMapping` asks when no active id matches. Step 1, comparing Discord's stored ids with the endpoints, still needs the user's permission to read those two keys.)
+(as built: the name comes from `IAudioHardware.NameOf` (`MMDeviceEnumerator.GetDevice`, any state); `ClientServices` hands it through `MainViewModel` and `AudioImportSource.DeviceNameOf` to `SettingsViewModel.DeviceNameOf`, which `ImportMapping` asks when no active id matches. Step 1 found the real cause of "sometimes": Discord writes the ids in lower case, Windows in upper case (test 5).)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 
