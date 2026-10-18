@@ -246,18 +246,20 @@ internal sealed class ClientConnection : IAsyncDisposable
     }
 
     /// <summary>
-    /// TLS close_notify, so the server sees an orderly end ("vom Client beendet") and not a dropped connection.
+    /// Ends the sending side with a TCP FIN, so the server reads the end of the stream and sees an orderly end ("ended by
+    /// the client") and not a dropped connection. Not the TLS close_notify (<c>SslStream.ShutdownAsync</c>): it changes the
+    /// TLS context while the receive loop may be decrypting on another thread, which crashed the test host inside SSPI's
+    /// DecryptMessage on CI (0xC0000005, 18 October 2026).
     /// </summary>
-    public static async Task CloseGracefullyAsync(SslStream ssl)
+    public static void CloseGracefully(TcpClient tcp)
     {
         try
         {
-            await ssl.ShutdownAsync().WaitAsync(TimeSpan.FromSeconds(1)); // clock: real time
+            tcp.Client?.Shutdown(SocketShutdown.Send); // null once the client was disposed (a second dispose)
         }
-        catch (Exception exception) when (exception is IOException or ObjectDisposedException or NotSupportedException
-                                      or InvalidOperationException or TimeoutException)
+        catch (Exception exception) when (exception is SocketException or ObjectDisposedException)
         {
-            // already broken or busy: the socket close below still ends the connection
+            // already broken or closed: the socket close below still ends the connection
         }
     }
 
@@ -269,8 +271,8 @@ internal sealed class ClientConnection : IAsyncDisposable
         await pingCts.CancelAsync();
         if (pingLoop is not null) await pingLoop;
         if (voiceLoop is not null) await voiceLoop; // Package 141: like the pings, nothing is written after the TLS shutdown
-        await CloseGracefullyAsync(ssl);
-        // Wait until the server has read the close_notify and closed its side. Closing the socket while its last
+        CloseGracefully(tcp);
+        // Wait until the server has read the end of the stream and closed its side. Closing the socket while its last
         // messages are still unread makes Windows send a reset, and the server logs "Verbindung abgebrochen".
         if (receiveLoop is not null) await Task.WhenAny(receiveLoop, Task.Delay(TimeSpan.FromSeconds(1))); // clock: real time
         await stopping.CancelAsync();
