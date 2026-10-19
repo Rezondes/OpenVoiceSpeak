@@ -113,6 +113,11 @@
   <data name="Bans_Title" xml:space="preserve"><value>Bans</value></data>
   <data name="Bans_Unban" xml:space="preserve"><value>Entbannen</value></data>
   <data name="Chart_Csv" xml:space="preserve"><value>CSV</value></data>
+  <data name="Clone_Bans" xml:space="preserve"><value>Banns mitkopieren</value></data>
+  <data name="Clone_Failed" xml:space="preserve"><value>{0} wurde angelegt, aber nicht befüllt: {1}</value></data>
+  <data name="Clone_From" xml:space="preserve"><value>Aus Server kopieren</value></data>
+  <data name="Clone_None" xml:space="preserve"><value>keinem</value></data>
+  <data name="Clone_Users" xml:space="preserve"><value>Nutzer mitkopieren</value></data>
   <data name="Dashboard_Bandwidth" xml:space="preserve"><value>Bandbreite ein / aus</value></data>
   <data name="Dashboard_Ports" xml:space="preserve"><value>Ports belegt</value></data>
   <data name="Dashboard_Status" xml:space="preserve"><value>Server</value></data>

@@ -1339,15 +1339,17 @@ The backup of a server holds channels, groups, settings and users; a clone creat
 
 ### Acceptance Criteria
 
-- [ ] AC1: Creating a server can copy another server; channels, links, groups and settings arrive, users and bans only when ticked.
-- [ ] AC2: The clone has its own port, identity, certificate and name; the manager is its server admin.
-- [ ] AC3: Audit line with source and clone.
+- [x] AC1: Creating a server can copy another server; channels, links, groups and settings arrive, users and bans only when ticked.
+- [x] AC2: The clone has its own port, identity, certificate and name; the manager is its server admin.
+- [x] AC3: Audit line with source and clone.
 
 ### Planned tests (TDD)
 
 1. `ServerCloneTests > "Clone_ChannelsGroupsSettings_UsersOnlyTicked"` - AC1
-2. `ServerCloneTests > "Clone_OwnPortIdentityAdmin"` - AC2
-3. `ServerCloneTests > "Clone_Audit"` - AC3
+2. `ServerCloneTests > "Clone_Restored_OwnNameCertificateAdmin"` - AC2
+3. `ServerCloneTests > "Clone_Done_AuditNamesBoth"` - AC3
+
+(as built: the form at `/servers/new` has "Aus Server kopieren" with "Nutzer mitkopieren" and "Banns mitkopieren"; the clone gets the source's version unless another is given. After `ServerFactory` made it, `ServerClone` waits up to the health timeout for its service session, makes and downloads a fresh backup of source and clone, and `CloneArchive` merges them: the source's data, logo and (with users) profile pictures, the clone's name in the settings and the clone's own certificate (a plain restore would carry the source's certificate and fingerprint). The source's users lose the Server-Admin group and the clone's own users join, so the manager's identity for the clone is its only server admin (A191). The archive is uploaded to the clone and restored there; the server checks it like every restore. Audit line `ServerCloned` "source (id) -> clone (id)". When the copy fails, the new server stays empty and the form says so.)
 
 ### Steps
 

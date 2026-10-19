@@ -17,6 +17,9 @@ sealed partial class CreateServer
     ServerFactory Factory { get; set; } = null!;
 
     [Inject]
+    ServerClone Clone { get; set; } = null!;
+
+    [Inject]
     ManagerDbContext Database { get; set; } = null!;
 
     [Inject]
@@ -41,6 +44,9 @@ sealed partial class CreateServer
 
     string DefaultTimeZone => Options.TimeZone;
 
+    /// <summary>Package M30: the servers a new one can copy.</summary>
+    List<ManagedServer> Sources { get; set; } = [];
+
     /// <summary>Why the server was not made, null before a try.</summary>
     string? Error { get; set; }
 
@@ -51,14 +57,19 @@ sealed partial class CreateServer
         var free = PortPool.FindFree(await Database.Servers.Select(server => server.Port).ToListAsync());
         NoFreePort = free is null;
         DefaultPort = free?.ToString(CultureInfo.InvariantCulture) ?? "";
+        Sources = await Database.Servers.AsNoTracking().Where(server => server.DeletedAtUtc == null).OrderBy(server => server.Name).ToListAsync();
     }
 
     async Task CreateAsync()
     {
+        var actor = HttpContext.User.Identity?.Name ?? "";
+        var source = Sources.FirstOrDefault(server => server.Id == Model!.SourceId);
+        ManagedServer created;
         try
         {
-            await Factory.CreateAsync(new CreateServerRequest(Model!.Name, Model.MaxUsers, Model.Password, Model.Version, Model.TimeZone, Model.Port, new OVS.Manager.Docker.ResourceLimits(Model.CpuCores, Model.MemoryMb)),
-                HttpContext.User.Identity?.Name ?? "");
+            // Package M30: a clone runs the source's version unless another is given, so the source's data fits it
+            created = await Factory.CreateAsync(new CreateServerRequest(Model!.Name, Model.MaxUsers, Model.Password, Model.Version ?? source?.Version, Model.TimeZone, Model.Port,
+                new OVS.Manager.Docker.ResourceLimits(Model.CpuCores, Model.MemoryMb)), actor);
         }
         catch (ServerRequestException exception)
         {
@@ -68,6 +79,11 @@ sealed partial class CreateServer
         catch (DockerCallException)
         {
             Error = Strings.Docker_CallFailed;
+            return;
+        }
+        if (source is not null && await Clone.CopyAsync(source.Id, created.Id, Model.CopyUsers, Model.CopyBans, actor) is { } failed)
+        {
+            Error = TextFormat.Of(Strings.Clone_Failed, created.Name, failed);
             return;
         }
         Navigation.NavigateTo("/");
@@ -86,5 +102,12 @@ sealed partial class CreateServer
         public double? CpuCores { get; set; }
 
         public int? MemoryMb { get; set; }
+
+        /// <summary>Package M30: the server to copy, null or empty for none.</summary>
+        public string? SourceId { get; set; }
+
+        public bool CopyUsers { get; set; }
+
+        public bool CopyBans { get; set; }
     }
 }

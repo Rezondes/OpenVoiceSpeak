@@ -66,8 +66,7 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
         return server;
     }
 
-    /// <summary>AC3: exactly the start values, the time zone, the server admin and the telemetry to the manager (D6).</summary>
-    /// <summary>The variables of <paramref name="server"/>'s container (M7); Package M29 gives them to an adopted server too.</summary>
+    /// <summary>AC3: exactly the start values, the time zone, the server admin and the telemetry to the manager (D6); Package M29 gives them to an adopted server too.</summary>
     internal static Dictionary<string, string> Environment(ManagedServer server, string? password)
     {
         var port = server.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);

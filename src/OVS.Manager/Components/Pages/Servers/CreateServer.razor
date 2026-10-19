@@ -19,5 +19,16 @@
     <label>@Strings.Servers_Port <InputNumber @bind-Value="Model!.Port" placeholder="@DefaultPort" /></label>
     <label>@Strings.Resources_CpuCores <InputNumber @bind-Value="Model!.CpuCores" data-cpu /></label>
     <label>@Strings.Resources_MemoryMb <InputNumber @bind-Value="Model!.MemoryMb" data-memory /></label>
+    <label>@Strings.Clone_From
+        <InputSelect @bind-Value="Model!.SourceId" data-source>
+            <option value="">@Strings.Clone_None</option>
+            @foreach (var source in Sources)
+            {
+                <option value="@source.Id">@source.Name</option>
+            }
+        </InputSelect>
+    </label>
+    <label><InputCheckbox @bind-Value="Model!.CopyUsers" data-copy-users /> @Strings.Clone_Users</label>
+    <label><InputCheckbox @bind-Value="Model!.CopyBans" data-copy-bans /> @Strings.Clone_Bans</label>
     <button type="submit" disabled="@NoFreePort">@Strings.Servers_Create</button>
 </EditForm>
