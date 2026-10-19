@@ -34,6 +34,9 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
     /// <summary>Package M15: the backups the manager made for a reason.</summary>
     public DbSet<BackupMark> BackupMarks => Set<BackupMark>();
 
+    /// <summary>Package M18: the maintenance window of each server with automatic updates.</summary>
+    public DbSet<UpdateWindow> UpdateWindows => Set<UpdateWindow>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -51,6 +54,12 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
             schedule.HasKey(value => value.ServerId);
             schedule.Property(value => value.LastRunUtc).HasConversion(value => value, value => value == null ? null : DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
             schedule.HasOne<ManagedServer>().WithMany().HasForeignKey(value => value.ServerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<UpdateWindow>(window =>
+        {
+            window.HasKey(value => value.ServerId);
+            window.Property(value => value.LastRunUtc).HasConversion(value => value, value => value == null ? null : DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
+            window.HasOne<ManagedServer>().WithMany().HasForeignKey(value => value.ServerId).OnDelete(DeleteBehavior.Cascade);
         });
         builder.Entity<BackupMark>(mark =>
         {

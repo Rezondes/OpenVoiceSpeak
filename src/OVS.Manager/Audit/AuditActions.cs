@@ -97,4 +97,12 @@ internal static class AuditActions
     public const string BackupScheduleChanged = "BackupScheduleChanged";
     /// <summary>A server log file was downloaded (M16).</summary>
     public const string LogDownloaded = "LogDownloaded";
+    /// <summary>A step of an update (M18); the detail names it with the versions.</summary>
+    public const string ServerUpdateStep = "ServerUpdateStep";
+    /// <summary>A server was updated (M18); the detail is "old -> new".</summary>
+    public const string ServerUpdated = "ServerUpdated";
+    /// <summary>An update failed and was rolled back (M18); the detail has the reason.</summary>
+    public const string ServerUpdateFailed = "ServerUpdateFailed";
+    /// <summary>A server's maintenance window changed (M18); the target is "on" or "off".</summary>
+    public const string UpdateWindowChanged = "UpdateWindowChanged";
 }

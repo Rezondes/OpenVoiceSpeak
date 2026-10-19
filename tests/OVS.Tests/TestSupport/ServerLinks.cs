@@ -16,9 +16,9 @@ internal static class ServerLinks
     /// <summary>How long a test waits for a link's state.</summary>
     public static readonly TimeSpan Within = TimeSpan.FromSeconds(15);
 
-    /// <summary>The manager with the admin "chef" that reaches every server on 127.0.0.1.</summary>
-    public static ManagerFactory Manager() =>
-        new((FirstAdmin.UserVariable, "chef"), (FirstAdmin.PasswordVariable, FirstAdminTests.Password), ("OVS_MANAGER_SERVER_HOST", "127.0.0.1"));
+    /// <summary>The manager with the admin "chef" that reaches every server on 127.0.0.1, with <paramref name="more"/> settings (M18).</summary>
+    public static ManagerFactory Manager(params (string Key, string Value)[] more) =>
+        new([(FirstAdmin.UserVariable, "chef"), (FirstAdmin.PasswordVariable, FirstAdminTests.Password), ("OVS_MANAGER_SERVER_HOST", "127.0.0.1"), .. more]);
 
     /// <summary>A managed server row "Raid" with the manager's identity for it, its port not yet known (-1 until <see cref="RunAtAsync"/>).</summary>
     public static async Task<AddedServer> AddAsync(ManagerFactory manager)

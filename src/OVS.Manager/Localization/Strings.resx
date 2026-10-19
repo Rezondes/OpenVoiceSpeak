@@ -237,6 +237,29 @@
   <data name="Trash_Empty" xml:space="preserve"><value>Der Papierkorb ist leer.</value></data>
   <data name="Trash_Restore" xml:space="preserve"><value>Wiederherstellen</value></data>
   <data name="Trash_Title" xml:space="preserve"><value>Papierkorb</value></data>
+  <data name="UpdateStep_Announce" xml:space="preserve"><value>Nutzer benachrichtigen</value></data>
+  <data name="UpdateStep_Backup" xml:space="preserve"><value>Backup vor dem Update</value></data>
+  <data name="UpdateStep_Done" xml:space="preserve"><value>Fertig</value></data>
+  <data name="UpdateStep_Health" xml:space="preserve"><value>Prüfen, ob der Server antwortet</value></data>
+  <data name="UpdateStep_Pull" xml:space="preserve"><value>Image laden</value></data>
+  <data name="UpdateStep_Recreate" xml:space="preserve"><value>Container mit der neuen Version anlegen</value></data>
+  <data name="UpdateStep_RollBack" xml:space="preserve"><value>Alte Version und Backup zurückholen</value></data>
+  <data name="UpdateStep_Start" xml:space="preserve"><value>Server starten</value></data>
+  <data name="UpdateStep_Stop" xml:space="preserve"><value>Server stoppen</value></data>
+  <data name="Update_All" xml:space="preserve"><value>Alle aktualisieren</value></data>
+  <data name="Update_AllDone" xml:space="preserve"><value>{0} Server aktualisiert.</value></data>
+  <data name="Update_AllStopped" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Update_Auto" xml:space="preserve"><value>Automatische Updates im Wartungsfenster (Tag und Uhrzeit, eine Stunde)</value></data>
+  <data name="Update_Busy" xml:space="preserve"><value>Mit diesem Server läuft gerade eine andere Aktion.</value></data>
+  <data name="Update_Done" xml:space="preserve"><value>Aktualisiert auf {0}.</value></data>
+  <data name="Update_HealthFailed" xml:space="preserve"><value>Der Server hat nicht rechtzeitig geantwortet.</value></data>
+  <data name="Update_NoBackup" xml:space="preserve"><value>Update abgebrochen, das Backup davor ging nicht: {0}</value></data>
+  <data name="Update_NoEnvironment" xml:space="preserve"><value>Die Variablen des Containers sind nicht lesbar; das Update bricht ab.</value></data>
+  <data name="Update_None" xml:space="preserve"><value>Kein Update verfügbar.</value></data>
+  <data name="Update_RolledBack" xml:space="preserve"><value>Update fehlgeschlagen, alte Version wiederhergestellt: {0}</value></data>
+  <data name="Update_RolledBackWithoutBackup" xml:space="preserve"><value>Update fehlgeschlagen, alte Version wiederhergestellt, das Backup aber nicht: {0}</value></data>
+  <data name="Update_Title" xml:space="preserve"><value>Update</value></data>
+  <data name="Update_To" xml:space="preserve"><value>Aktualisieren auf {0}</value></data>
   <data name="Users_Act" xml:space="preserve"><value>Aktion …</value></data>
   <data name="Users_Assign" xml:space="preserve"><value>Gruppe geben</value></data>
   <data name="Users_Ban" xml:space="preserve"><value>Bannen</value></data>

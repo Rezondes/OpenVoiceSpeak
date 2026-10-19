@@ -852,19 +852,21 @@ Data migrations of the server only go forward (`ServerData.CurrentVersion`), so 
 
 ### Acceptance Criteria
 
-- [ ] AC1: An update runs: pull the image, backup (M15), announcement (M19, when chosen), stop, recreate with the same variables, port, volume and labels and the new tag, start, health check (handshake within 60 s, version as expected).
-- [ ] AC2: A failed health check recreates the old version, restores the backup and reports "Update fehlgeschlagen, alte Version wiederhergestellt" with the reason.
-- [ ] AC3: "Alle aktualisieren" updates one server after the other and stops at the first failure.
-- [ ] AC4: A maintenance window per server (day and time) runs pending updates then; automatic updates are off for every server until the admin turns them on (D14).
-- [ ] AC5: Every step is shown live and writes audit lines.
+- [x] AC1: An update runs: pull the image, backup (M15), announcement (M19, when chosen), stop, recreate with the same variables, port, volume and labels and the new tag, start, health check (handshake within 60 s, version as expected).
+- [x] AC2: A failed health check recreates the old version, restores the backup and reports "Update fehlgeschlagen, alte Version wiederhergestellt" with the reason.
+- [x] AC3: "Alle aktualisieren" updates one server after the other and stops at the first failure.
+- [x] AC4: A maintenance window per server (day and time) runs pending updates then; automatic updates are off for every server until the admin turns them on (D14).
+- [x] AC5: Every step is shown live and writes audit lines.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `ServerUpdateTests > "Update_StepsInOrder_SameSpecNewTag"` (`FakeDockerEngine`) - AC1
-2. `ServerUpdateTests > "HealthFails_OldVersionAndBackupBack"` - AC2
-3. `ServerUpdateTests > "All_StopsAtFirstFailure"` - AC3
-4. `UpdateWindowTests > "Window_PendingUpdateRuns"` (with `ManualTimeProvider`) and `"AutoUpdate_DefaultOff"` - AC4
-5. `ServerUpdateTests > "Steps_LiveAndAudit"` - AC5
+1. `ServerUpdateTests > "Update_StepsInOrder_SameSpecNewTag"` (`FakeDockerEngine`) - AC1, AC5
+2. `ServerUpdateTests > "Update_HealthFails_OldVersionAndBackupBack"` - AC2
+3. `ServerUpdateTests > "UpdateAll_OneFails_StopsAtFirstFailure"` - AC3
+4. `UpdateWindowTests > "Window_MondayFourToFive_OpenOnce"` and `"Window_PendingUpdate_DueOnlyWhenTurnedOn"` (with `ManualTimeProvider`) - AC4
+5. `ServerUpdateTests > "Dialog_Update_StepsShownLive"` (bUnit) - AC5
+
+(as built: `ServerUpdate` (scoped) runs pull, backup (`BackupCommands.CreateBeforeUpdateAsync`), stop and remove, create with the old container's variables (read by `InspectAsync`), port, network and labels and the new tag, start and the health check: the container of the new tag runs and the TLS handshake answers within `OVS_MANAGER_UPDATE_HEALTH_SECONDS` (60 s). The server sends no build version, so "version as expected" is the running container's tag. A failed check removes the new container, starts the old tag, waits for the service session and restores the backup; the result is "Update fehlgeschlagen, alte Version wiederhergestellt" with the reason (or without backup when the session never came). "Alle aktualisieren" in the overview (admin) goes by port and stops at the first failure. `UpdateWindow` (table `UpdateWindows`, migration `AddUpdateWindows`) holds day and time of a one-hour weekly window in the server's time zone with `AutoUpdate` off by default; `UpdateWindowRunner` checks each minute and runs a due update once per window as user "system". Each step goes live to the `UpdateDialog` on the server page and to the audit log (`ServerUpdateStep`, `ServerUpdated`, `ServerUpdateFailed`, `UpdateWindowChanged`). The announcement step (`UpdateStep.Announce`) comes with M19.)
 
 ### Steps
 

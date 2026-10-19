@@ -405,6 +405,28 @@ namespace OVS.Manager.Data.Migrations
                     b.ToTable("ServerIdentities");
                 });
 
+            modelBuilder.Entity("OVS.Manager.Servers.UpdateWindow", b =>
+                {
+                    b.Property<string>("ServerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("AutoUpdate")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Day")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastRunUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeOnly>("Time")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ServerId");
+
+                    b.ToTable("UpdateWindows");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -494,6 +516,15 @@ namespace OVS.Manager.Data.Migrations
                     b.HasOne("OVS.Manager.Accounts.ManagerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OVS.Manager.Servers.UpdateWindow", b =>
+                {
+                    b.HasOne("OVS.Manager.Servers.ManagedServer", null)
+                        .WithMany()
+                        .HasForeignKey("ServerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

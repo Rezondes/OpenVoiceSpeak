@@ -36,6 +36,9 @@ internal sealed record ManagerOptions(string DataDir)
     /// </summary>
     public string? ServerHost { get; init; }
 
+    /// <summary>Package M18 (AC1): how long an updated server has to answer, <c>OVS_MANAGER_UPDATE_HEALTH_SECONDS</c>, 60 s by default.</summary>
+    public TimeSpan UpdateHealthTimeout { get; init; } = TimeSpan.FromSeconds(60);
+
     /// <summary>Package M14 (MA8): the host clients use, <c>OVS_MANAGER_PUBLIC_HOST</c>; without it the host of the request.</summary>
     public string? PublicHost { get; init; }
 
@@ -58,5 +61,7 @@ internal sealed record ManagerOptions(string DataDir)
             TimeZone = configuration["TZ"] is { Length: > 0 } zone ? zone : "UTC",
             ServerHost = configuration["OVS_MANAGER_SERVER_HOST"] is { Length: > 0 } serverHost ? serverHost : null,
             PublicHost = configuration["OVS_MANAGER_PUBLIC_HOST"] is { Length: > 0 } publicHost ? publicHost : null,
+            UpdateHealthTimeout = int.TryParse(configuration["OVS_MANAGER_UPDATE_HEALTH_SECONDS"], System.Globalization.CultureInfo.InvariantCulture, out var seconds) && seconds > 0
+                ? TimeSpan.FromSeconds(seconds) : TimeSpan.FromSeconds(60),
         };
 }

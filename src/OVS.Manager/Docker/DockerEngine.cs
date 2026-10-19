@@ -54,7 +54,8 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
         if (!ManagedLabels.IsManaged(inspected.Config?.Labels))
             throw new ForeignContainerException($"Container {containerId} is not managed by the OVS manager.");
         var started = DateTimeOffset.TryParse(inspected.State.StartedAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var at) && at.Year > 1 ? at : (DateTimeOffset?)null;
-        return new InspectedContainer(inspected.State.Status, (int)inspected.State.ExitCode, (int)inspected.RestartCount, started);
+        var environment = inspected.Config?.Env?.Select(variable => variable.Split('=', 2)).Where(pair => pair.Length == 2).ToDictionary(pair => pair[0], pair => pair[1]);
+        return new InspectedContainer(inspected.State.Status, (int)inspected.State.ExitCode, (int)inspected.RestartCount, started, environment);
     });
 
     /// <inheritdoc/>
@@ -157,6 +158,13 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
             }
         }
     }
+
+    /// <inheritdoc/>
+    public Task PullImageAsync(string image, string tag, CancellationToken cancellation = default) => CallAsync(async () =>
+    {
+        await client.Images.CreateImageAsync(new ImagesCreateParameters { FromImage = image, Tag = tag }, null, new Progress<JSONMessage>(), cancellation);
+        return true;
+    });
 
     /// <summary>Ends the client.</summary>
     public void Dispose() => client.Dispose();

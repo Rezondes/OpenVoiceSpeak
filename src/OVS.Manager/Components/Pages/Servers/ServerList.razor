@@ -7,6 +7,15 @@
 {
     <p class="banner-error" role="alert">@Strings.Docker_Unreachable</p>
 }
+<AuthorizeView Roles="@ManagerRoles.Admin">
+    <p>
+        <button type="button" data-update-all disabled="@UpdatingAll" @onclick="UpdateAllAsync">@Strings.Update_All</button>
+        @if (UpdateAllText is not null)
+        {
+            <span class="form-hint" role="status" data-update-all-result>@UpdateAllText</span>
+        }
+    </p>
+</AuthorizeView>
 @if (!VisibleServers.Any())
 {
     <p>@Strings.Servers_Empty</p>

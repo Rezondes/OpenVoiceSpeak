@@ -8,10 +8,13 @@ sealed class FakeHttp(Func<HttpRequestMessage, HttpResponseMessage> respond) : H
 {
     public List<Uri> Requests { get; } = [];
 
+    /// <summary>Package M18: the answer, changeable after the handler was handed out.</summary>
+    public Func<HttpRequestMessage, HttpResponseMessage> Respond { get; set; } = respond;
+
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Requests.Add(request.RequestUri!);
-        return Task.FromResult(respond(request));
+        return Task.FromResult(Respond(request));
     }
 
     public static HttpResponseMessage Json(object value) => new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(value)) };

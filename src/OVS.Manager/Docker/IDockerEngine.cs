@@ -34,6 +34,9 @@ internal interface IDockerEngine
     /// <summary>Package M16: the last <paramref name="tail"/> lines of a managed container's output and then every new one, until <paramref name="cancellation"/>.</summary>
     IAsyncEnumerable<string> FollowLogsAsync(string containerId, int tail, CancellationToken cancellation = default);
 
+    /// <summary>Package M18: pulls <paramref name="image"/>:<paramref name="tag"/> (the proxy allows <c>images/create</c>).</summary>
+    Task PullImageAsync(string image, string tag, CancellationToken cancellation = default);
+
     /// <summary>Package M9: removes the volume of the server <paramref name="serverId"/> (only a manager's volume name ovs-&lt;id&gt;-data).</summary>
     Task RemoveVolumeAsync(string serverId, CancellationToken cancellation = default);
 }

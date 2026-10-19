@@ -237,6 +237,29 @@
   <data name="Trash_Empty" xml:space="preserve"><value>The trash is empty.</value></data>
   <data name="Trash_Restore" xml:space="preserve"><value>Restore</value></data>
   <data name="Trash_Title" xml:space="preserve"><value>Trash</value></data>
+  <data name="UpdateStep_Announce" xml:space="preserve"><value>Tell the users</value></data>
+  <data name="UpdateStep_Backup" xml:space="preserve"><value>Backup before the update</value></data>
+  <data name="UpdateStep_Done" xml:space="preserve"><value>Done</value></data>
+  <data name="UpdateStep_Health" xml:space="preserve"><value>Check that the server answers</value></data>
+  <data name="UpdateStep_Pull" xml:space="preserve"><value>Pull the image</value></data>
+  <data name="UpdateStep_Recreate" xml:space="preserve"><value>Make the container with the new version</value></data>
+  <data name="UpdateStep_RollBack" xml:space="preserve"><value>Bring back the old version and the backup</value></data>
+  <data name="UpdateStep_Start" xml:space="preserve"><value>Start the server</value></data>
+  <data name="UpdateStep_Stop" xml:space="preserve"><value>Stop the server</value></data>
+  <data name="Update_All" xml:space="preserve"><value>Update all</value></data>
+  <data name="Update_AllDone" xml:space="preserve"><value>{0} servers updated.</value></data>
+  <data name="Update_AllStopped" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Update_Auto" xml:space="preserve"><value>Automatic updates in the maintenance window (day and time, one hour)</value></data>
+  <data name="Update_Busy" xml:space="preserve"><value>Another action runs on this server right now.</value></data>
+  <data name="Update_Done" xml:space="preserve"><value>Updated to {0}.</value></data>
+  <data name="Update_HealthFailed" xml:space="preserve"><value>The server did not answer in time.</value></data>
+  <data name="Update_NoBackup" xml:space="preserve"><value>Update stopped, the backup before it failed: {0}</value></data>
+  <data name="Update_NoEnvironment" xml:space="preserve"><value>The container's variables cannot be read; the update stops.</value></data>
+  <data name="Update_None" xml:space="preserve"><value>No update available.</value></data>
+  <data name="Update_RolledBack" xml:space="preserve"><value>Update failed, old version restored: {0}</value></data>
+  <data name="Update_RolledBackWithoutBackup" xml:space="preserve"><value>Update failed, old version restored but not the backup: {0}</value></data>
+  <data name="Update_Title" xml:space="preserve"><value>Update</value></data>
+  <data name="Update_To" xml:space="preserve"><value>Update to {0}</value></data>
   <data name="Users_Act" xml:space="preserve"><value>Act …</value></data>
   <data name="Users_Assign" xml:space="preserve"><value>Give group</value></data>
   <data name="Users_Ban" xml:space="preserve"><value>Ban</value></data>

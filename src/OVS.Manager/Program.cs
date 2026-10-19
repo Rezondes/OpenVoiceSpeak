@@ -89,6 +89,8 @@ builder.Services.AddHttpClient(nameof(ReleaseCatalog));
 builder.Services.AddSingleton(services => new ReleaseCatalog(services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ReleaseCatalog)),
     BuildInfo.Current, services.GetRequiredService<TimeProvider>(), services.GetRequiredService<ILogger<ReleaseCatalog>>()));
 builder.Services.AddHostedService(services => services.GetRequiredService<ReleaseCatalog>());
+builder.Services.AddScoped<ServerUpdate>(); // Package M18
+builder.Services.AddHostedService<UpdateWindowRunner>();
 builder.Services.AddScoped<ConsoleLog>();
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();

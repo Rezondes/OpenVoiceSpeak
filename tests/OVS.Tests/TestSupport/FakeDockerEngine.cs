@@ -21,6 +21,9 @@ internal sealed class FakeDockerEngine : IDockerEngine
     /// <summary>Package M8: while set, start, stop and restart wait for it (an action that takes its time).</summary>
     public TaskCompletionSource? Hold { get; set; }
 
+    /// <summary>Package M18: the images pulled, in order, as "image:tag".</summary>
+    public ConcurrentQueue<string> Pulled { get; } = new();
+
     /// <summary>Package M16: the console output per container id, given out once and then followed until cancelled.</summary>
     public ConcurrentDictionary<string, string[]> ConsoleLines { get; } = new();
 
@@ -42,7 +45,9 @@ internal sealed class FakeDockerEngine : IDockerEngine
     {
         EnsureReachable();
         if (!Containers.TryGetValue(containerId, out var container)) throw new ForeignContainerException(containerId);
-        return Task.FromResult(Inspected.TryGetValue(containerId, out var inspected) ? inspected : new InspectedContainer(container.State, 0, 0, null));
+        if (Inspected.TryGetValue(containerId, out var inspected)) return Task.FromResult(inspected);
+        var environment = Created.LastOrDefault(spec => spec.ServerId == container.ServerId && spec.Version == container.Version)?.Environment;
+        return Task.FromResult(new InspectedContainer(container.State, 0, 0, container.State == "running" ? DateTimeOffset.UtcNow : null, environment));
     }
 
     public Task<string> CreateAsync(ContainerSpec spec, CancellationToken cancellation = default)
@@ -64,6 +69,7 @@ internal sealed class FakeDockerEngine : IDockerEngine
     {
         EnsureReachable();
         if (!Containers.TryRemove(containerId, out _)) throw new ForeignContainerException(containerId);
+        Inspected.TryRemove(containerId, out _);
         return Task.CompletedTask;
     }
 
@@ -72,6 +78,13 @@ internal sealed class FakeDockerEngine : IDockerEngine
         EnsureReachable();
         foreach (var line in ConsoleLines.GetValueOrDefault(containerId, []).TakeLast(tail)) yield return line;
         await Task.Delay(Timeout.Infinite, cancellation); // following: no more lines until the page leaves
+    }
+
+    public Task PullImageAsync(string image, string tag, CancellationToken cancellation = default)
+    {
+        EnsureReachable();
+        Pulled.Enqueue($"{image}:{tag}");
+        return Task.CompletedTask;
     }
 
     public Task RemoveVolumeAsync(string serverId, CancellationToken cancellation = default)
@@ -87,6 +100,7 @@ internal sealed class FakeDockerEngine : IDockerEngine
         EnsureReachable();
         if (!Containers.TryGetValue(containerId, out var container)) throw new ForeignContainerException(containerId);
         Containers[containerId] = container with { State = state };
+        if (Inspected.TryGetValue(containerId, out var inspected)) Inspected[containerId] = inspected with { State = state }; // Package M18: a set state stays true
     }
 
     void EnsureReachable()

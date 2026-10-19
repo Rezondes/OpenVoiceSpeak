@@ -1,0 +1,39 @@
+<section class="update-dialog">
+    <h2>@Strings.Update_Title</h2>
+    @if (Offer is { } offer)
+    {
+        <button type="button" data-update disabled="@Running" @onclick="UpdateAsync">@OfferText(offer)</button>
+    }
+    else
+    {
+        <p class="form-hint">@Strings.Update_None</p>
+    }
+    @if (Steps.Count > 0)
+    {
+        <ol class="update-steps" data-steps>
+            @foreach (var step in Steps)
+            {
+                <li>@StepText(step)</li>
+            }
+        </ol>
+    }
+    @if (Result is not null)
+    {
+        <p class="@ResultClass" role="status" data-result>@Result</p>
+    }
+    <AuthorizeView Roles="@ManagerRoles.Admin">
+        <div class="account-form">
+            <label><input type="checkbox" @bind="Window.AutoUpdate" /> @Strings.Update_Auto</label>
+            <label>@Strings.Backups_Day
+                <select @bind="Window.Day">
+                    @foreach (var day in Days)
+                    {
+                        <option value="@day">@DayName(day)</option>
+                    }
+                </select>
+            </label>
+            <label>@Strings.Settings_AutoRestartTime <input type="time" @bind="Window.Time" @bind:format="HH:mm" /></label>
+            <button type="button" data-save-window @onclick="SaveWindowAsync">@Strings.Settings_Save</button>
+        </div>
+    </AuthorizeView>
+</section>
