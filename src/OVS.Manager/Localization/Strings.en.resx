@@ -43,6 +43,30 @@
   <data name="Audit_Title" xml:space="preserve"><value>Audit log</value></data>
   <data name="Audit_To" xml:space="preserve"><value>to</value></data>
   <data name="Audit_User" xml:space="preserve"><value>User</value></data>
+  <data name="Backups_BeforeUpdate" xml:space="preserve"><value>before update {0}</value></data>
+  <data name="Backups_Create" xml:space="preserve"><value>Make a backup now</value></data>
+  <data name="Backups_Daily" xml:space="preserve"><value>daily</value></data>
+  <data name="Backups_Day" xml:space="preserve"><value>Weekday (weekly)</value></data>
+  <data name="Backups_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Backups_DeleteConfirm" xml:space="preserve"><value>Really delete</value></data>
+  <data name="Backups_Download" xml:space="preserve"><value>Download</value></data>
+  <data name="Backups_Interval" xml:space="preserve"><value>How often</value></data>
+  <data name="Backups_Keep" xml:space="preserve"><value>Scheduled backups to keep</value></data>
+  <data name="Backups_Manual" xml:space="preserve"><value>by hand</value></data>
+  <data name="Backups_Mark" xml:space="preserve"><value>Kind</value></data>
+  <data name="Backups_Megabytes" xml:space="preserve"><value>{0} MB</value></data>
+  <data name="Backups_Name" xml:space="preserve"><value>File</value></data>
+  <data name="Backups_Off" xml:space="preserve"><value>off</value></data>
+  <data name="Backups_Restore" xml:space="preserve"><value>Restore</value></data>
+  <data name="Backups_RestoreConfirm" xml:space="preserve"><value>Yes, restore</value></data>
+  <data name="Backups_RestoreWarning" xml:space="preserve"><value>Everyone is disconnected, and the server takes the backup's state.</value></data>
+  <data name="Backups_Schedule" xml:space="preserve"><value>Schedule</value></data>
+  <data name="Backups_Scheduled" xml:space="preserve"><value>scheduled</value></data>
+  <data name="Backups_Size" xml:space="preserve"><value>Size</value></data>
+  <data name="Backups_Time" xml:space="preserve"><value>Made</value></data>
+  <data name="Backups_Title" xml:space="preserve"><value>Backups</value></data>
+  <data name="Backups_Upload" xml:space="preserve"><value>Upload a backup</value></data>
+  <data name="Backups_Weekly" xml:space="preserve"><value>weekly</value></data>
   <data name="Bans_Active" xml:space="preserve"><value>active</value></data>
   <data name="Bans_By" xml:space="preserve"><value>Banned by</value></data>
   <data name="Bans_Empty" xml:space="preserve"><value>No bans.</value></data>

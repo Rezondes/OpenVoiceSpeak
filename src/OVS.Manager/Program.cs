@@ -81,6 +81,8 @@ builder.Services.AddHostedService(services => services.GetRequiredService<Server
 builder.Services.AddScoped<SettingsCommands>(); // Package M12
 builder.Services.AddScoped<ModerationCommands>(); // Package M13
 builder.Services.AddScoped<GroupCommands>();
+builder.Services.AddScoped<BackupCommands>(); // Package M15
+builder.Services.AddHostedService<BackupScheduler>();
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();
 
@@ -106,5 +108,6 @@ app.MapGet("/healthz", async (IDockerEngine docker, CancellationToken cancellati
 AppearanceEndpoints.Map(app);
 AccountEndpoints.Map(app);
 AuditEndpoints.Map(app);
+BackupEndpoints.Map(app);
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 await app.RunAsync();

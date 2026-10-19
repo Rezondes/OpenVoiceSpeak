@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using OVS.Manager.Accounts;
 using OVS.Manager.Audit;
+using OVS.Manager.Control;
 using OVS.Manager.Servers;
 
 namespace OVS.Manager.Data;
@@ -27,6 +28,12 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
     /// <summary>Package M10: which manager may operate which server.</summary>
     public DbSet<ServerAssignment> ServerAssignments => Set<ServerAssignment>();
 
+    /// <summary>Package M15: the backup schedule of each server.</summary>
+    public DbSet<BackupSchedule> BackupSchedules => Set<BackupSchedule>();
+
+    /// <summary>Package M15: the backups the manager made for a reason.</summary>
+    public DbSet<BackupMark> BackupMarks => Set<BackupMark>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -39,6 +46,17 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
             server.Property(value => value.DeletedAtUtc).HasConversion(value => value, value => value == null ? null : DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
         });
         builder.Entity<ServerIdentity>(identity => identity.HasKey(value => value.ServerId));
+        builder.Entity<BackupSchedule>(schedule =>
+        {
+            schedule.HasKey(value => value.ServerId);
+            schedule.Property(value => value.LastRunUtc).HasConversion(value => value, value => value == null ? null : DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
+            schedule.HasOne<ManagedServer>().WithMany().HasForeignKey(value => value.ServerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<BackupMark>(mark =>
+        {
+            mark.HasKey(value => new { value.ServerId, value.FileName });
+            mark.HasOne<ManagedServer>().WithMany().HasForeignKey(value => value.ServerId).OnDelete(DeleteBehavior.Cascade);
+        });
         builder.Entity<ServerAssignment>(assignment =>
         {
             assignment.HasKey(value => new { value.UserId, value.ServerId });

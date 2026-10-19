@@ -281,6 +281,50 @@ namespace OVS.Manager.Data.Migrations
                     b.ToTable("AuditEntries");
                 });
 
+            modelBuilder.Entity("OVS.Manager.Control.BackupMark", b =>
+                {
+                    b.Property<string>("ServerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ServerId", "FileName");
+
+                    b.ToTable("BackupMarks");
+                });
+
+            modelBuilder.Entity("OVS.Manager.Control.BackupSchedule", b =>
+                {
+                    b.Property<string>("ServerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Day")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Interval")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Keep")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastRunUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeOnly>("Time")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ServerId");
+
+                    b.ToTable("BackupSchedules");
+                });
+
             modelBuilder.Entity("OVS.Manager.Servers.ManagedServer", b =>
                 {
                     b.Property<string>("Id")
@@ -417,6 +461,24 @@ namespace OVS.Manager.Data.Migrations
                     b.HasOne("OVS.Manager.Accounts.ManagerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OVS.Manager.Control.BackupMark", b =>
+                {
+                    b.HasOne("OVS.Manager.Servers.ManagedServer", null)
+                        .WithMany()
+                        .HasForeignKey("ServerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OVS.Manager.Control.BackupSchedule", b =>
+                {
+                    b.HasOne("OVS.Manager.Servers.ManagedServer", null)
+                        .WithMany()
+                        .HasForeignKey("ServerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

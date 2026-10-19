@@ -83,4 +83,16 @@ internal static class AuditActions
     public const string GroupDeleted = "GroupDeleted";
     /// <summary>The order of the groups changed (M13); the target is the moved group.</summary>
     public const string GroupsReordered = "GroupsReordered";
+    /// <summary>A backup was made (M15); the target is its file, the detail its mark.</summary>
+    public const string BackupCreated = "BackupCreated";
+    /// <summary>A backup was deleted (M15).</summary>
+    public const string BackupDeleted = "BackupDeleted";
+    /// <summary>A backup was restored (M15); everyone on the server was disconnected.</summary>
+    public const string BackupRestored = "BackupRestored";
+    /// <summary>A backup was downloaded (M15).</summary>
+    public const string BackupDownloaded = "BackupDownloaded";
+    /// <summary>A backup was uploaded (M15).</summary>
+    public const string BackupUploaded = "BackupUploaded";
+    /// <summary>A server's backup schedule changed (M15).</summary>
+    public const string BackupScheduleChanged = "BackupScheduleChanged";
 }

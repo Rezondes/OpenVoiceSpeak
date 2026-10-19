@@ -728,17 +728,19 @@ The protocol has create, list, download, upload, restore and delete of backups w
 
 ### Acceptance Criteria
 
-- [ ] AC1: The list shows name, time and size; create, download (streamed through the manager), upload, restore (after a confirmation that names the effect: everyone is disconnected) and delete work.
-- [ ] AC2: A schedule per server (off, daily at a time, weekly) keeps the newest N scheduled backups and deletes older scheduled ones; manual ones stay.
-- [ ] AC3: `CreateBeforeUpdateAsync` makes a backup marked "vor Update <Version>" for M18; a full quota is reported as an error, not ignored.
-- [ ] AC4: Each action writes an audit line.
+- [x] AC1: The list shows name, time and size; create, download (streamed through the manager), upload, restore (after a confirmation that names the effect: everyone is disconnected) and delete work.
+- [x] AC2: A schedule per server (off, daily at a time, weekly) keeps the newest N scheduled backups and deletes older scheduled ones; manual ones stay.
+- [x] AC3: `CreateBeforeUpdateAsync` makes a backup marked "vor Update <Version>" for M18; a full quota is reported as an error, not ignored.
+- [x] AC4: Each action writes an audit line.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `BackupCommandsTests > "List_Create_Download_Upload_Restore_Delete"` - AC1
-2. `BackupScheduleTests > "Daily_KeepsNewestN_ManualStay"` (with `ManualTimeProvider`) - AC2
-3. `BackupCommandsTests > "BeforeUpdate_Marked"` and `"QuotaFull_Error"` - AC3
-4. `BackupCommandsTests > "Actions_AuditLines"` - AC4
+1. `BackupCommandsTests > "Backups_EachAction_DoneOnServer"` - AC1
+2. `BackupScheduleTests > "Daily_KeepsNewestN_ManualStay"` (with `ManualTimeProvider` for manager and server) and `"LastDue_DailyAndWeekly_InServerZone"` - AC2
+3. `BackupCommandsTests > "BeforeUpdate_QuotaFull_MarkedThenRefused"` - AC3
+4. `BackupCommandsTests > "Actions_EachOne_AuditLine"` - AC4
+
+(as built: `BackupCommands` lists (first page of 200), makes (`CreateBackup`, whose answer is the new list; the server allows one in 10 s per session, so the manager asks for no list before it), deletes, restores (the server disconnects everyone, the manager too, so the answer is the `Disconnected` with `Restoring`; pending requests of a link end with it), downloads chunk by chunk (`DownloadBackup`, 512 KB) into a stream and uploads chunk by chunk (`UploadBackupChunk`, answered by `UploadBackupAck` and at the end `BackupUploaded`). `GET /servers/{id}/backups/download?file=` streams a backup to the browser (policy `ServerAccess`). `BackupMark` rows (migration `AddBackupSchedules`) mark scheduled backups and those before an update ("vor Update <version>", `CreateBeforeUpdateAsync` for M18); a backup without a mark was made by hand and is never deleted by the schedule. `BackupSchedule` per server: off, daily at a time or weekly on a day, in the server's time zone, keeping 1 to 100 scheduled backups; `BackupScheduler` checks once a minute and makes the due ones, then deletes the oldest scheduled ones beyond the number. A full quota is the server's refusal ("at most 50 backups"). Each step writes `BackupCreated`, `BackupDeleted`, `BackupRestored`, `BackupDownloaded`, `BackupUploaded` or `BackupScheduleChanged`; the schedule as "system". The page `/servers/{id}/backups` (`ServerBackupPage`; `ServerBackups` clashes with the protocol's namespace) asks a second time before restore (naming that everyone is disconnected) and delete. In the tests the in-process server stays closed after a restore; the server's host restarts it in production.)
 
 ### Steps
 

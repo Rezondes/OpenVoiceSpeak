@@ -12,6 +12,7 @@ using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.Moderation;
+using OVS.Shared.Protocol.Messages.ServerBackups;
 using OVS.Shared.Protocol.Messages.Users;
 
 namespace OVS.Manager.Control;
@@ -233,7 +234,13 @@ internal sealed partial class ServerLink : IAsyncDisposable
             if (changed) Changed?.Invoke();
             foreach (var request in answered) request.Result.TrySetResult(received.Message);
         }
-        void OnDisconnected(object? sender, DisconnectedEventArgs disconnected) => ended.TrySetResult();
+        void OnDisconnected(object? sender, DisconnectedEventArgs disconnected)
+        {
+            List<PendingRequest> waiting;
+            lock (gate) waiting = [.. pending];
+            foreach (var request in waiting) request.Result.TrySetResult(new Disconnected(disconnected.Reason, disconnected.Detail)); // M15: a restore ends the session
+            ended.TrySetResult();
+        }
         open.MessageReceived += OnMessage;
         open.Disconnected += OnDisconnected;
         lock (gate)
@@ -285,6 +292,10 @@ internal sealed partial class ServerLink : IAsyncDisposable
             UserList list => list.RequestId == requestId,
             BanList list => list.RequestId == requestId,
             Avatar avatar => avatar.RequestId == requestId,
+            BackupList list => list.RequestId == requestId,
+            BackupChunk chunk => chunk.RequestId == requestId,
+            UploadBackupAck ack => ack.RequestId == requestId,
+            BackupUploaded uploaded => uploaded.RequestId == requestId,
             _ => done?.Invoke(message) ?? false,
         };
     }

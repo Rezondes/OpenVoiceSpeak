@@ -1,0 +1,74 @@
+@page "/servers/{Id}/backups"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = ServerAccessHandler.Policy)]
+
+<h1>@Strings.Backups_Title</h1>
+@if (Message is not null)
+{
+    <p class="form-ok" role="status">@Message</p>
+}
+@if (Error is not null)
+{
+    <p class="form-error" role="alert">@Error</p>
+}
+<p>
+    <button type="button" data-create @onclick="CreateAsync">@Strings.Backups_Create</button>
+    <label>@Strings.Backups_Upload <InputFile OnChange="UploadAsync" accept=".zip" /></label>
+</p>
+<table class="list">
+    <thead>
+        <tr><th>@Strings.Backups_Name</th><th>@Strings.Backups_Time</th><th>@Strings.Backups_Size</th><th>@Strings.Backups_Mark</th><th></th></tr>
+    </thead>
+    <tbody>
+        @foreach (var backup in Backups)
+        {
+            <tr @key="backup.FileName" data-backup="@backup.FileName">
+                <td>@backup.FileName</td>
+                <td>@Local(backup.CreatedAt)</td>
+                <td>@Size(backup.Size)</td>
+                <td>@MarkText(backup)</td>
+                <td>
+                    <a href="@DownloadLink(backup)" data-download>@Strings.Backups_Download</a>
+                    @if (Confirm == new PendingConfirm("restore", backup.FileName))
+                    {
+                        <span class="form-error">@Strings.Backups_RestoreWarning</span>
+                        <button type="button" class="danger" data-confirm-restore @onclick="@Restore(backup)">@Strings.Backups_RestoreConfirm</button>
+                    }
+                    else
+                    {
+                        <button type="button" data-restore @onclick="@Ask(backup, "restore")">@Strings.Backups_Restore</button>
+                    }
+                    @if (Confirm == new PendingConfirm("delete", backup.FileName))
+                    {
+                        <button type="button" class="danger" data-confirm-delete @onclick="@Delete(backup)">@Strings.Backups_DeleteConfirm</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="danger" data-delete @onclick="@Ask(backup, "delete")">@Strings.Backups_Delete</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<section class="account-form">
+    <h2>@Strings.Backups_Schedule</h2>
+    <label>@Strings.Backups_Interval
+        <select @bind="Schedule.Interval">
+            <option value="@BackupInterval.Off">@Strings.Backups_Off</option>
+            <option value="@BackupInterval.Daily">@Strings.Backups_Daily</option>
+            <option value="@BackupInterval.Weekly">@Strings.Backups_Weekly</option>
+        </select>
+    </label>
+    <label>@Strings.Backups_Day
+        <select @bind="Schedule.Day">
+            @foreach (var day in Days)
+            {
+                <option value="@day">@DayName(day)</option>
+            }
+        </select>
+    </label>
+    <label>@Strings.Settings_AutoRestartTime <input type="time" @bind="Schedule.Time" @bind:format="HH:mm" /></label>
+    <label>@Strings.Backups_Keep <input type="number" @bind="Schedule.Keep" /></label>
+    <button type="button" data-save-schedule @onclick="SaveScheduleAsync">@Strings.Settings_Save</button>
+</section>

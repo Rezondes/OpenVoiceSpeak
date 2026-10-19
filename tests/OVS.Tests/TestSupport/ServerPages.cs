@@ -23,6 +23,7 @@ internal static class ServerPages
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<SettingsCommands>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ModerationCommands>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<GroupCommands>());
+        context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<BackupCommands>());
         context.Services.AddSingleton<IDockerEngine>(manager.Docker);
         context.Services.AddSingleton(TimeProvider.System);
         context.Services.AddSingleton(manager.Services.GetRequiredService<OVS.Manager.ManagerOptions>());

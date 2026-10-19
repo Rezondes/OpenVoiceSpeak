@@ -57,10 +57,11 @@ internal static class ServerLinks
     /// <summary>A started in-process server with the manager as its server admin and the manager's open service session to it.</summary>
     /// <param name="manager">The manager.</param>
     /// <param name="seed">Package M13: the server's data before its start (a channel, a user).</param>
-    public static async Task<LinkedServer> StartAsync(ManagerFactory manager, Action<ServerData>? seed = null)
+    /// <param name="serverTime">Package M15: the server's clock (its throttles), the system's when null.</param>
+    public static async Task<LinkedServer> StartAsync(ManagerFactory manager, Action<ServerData>? seed = null, TimeProvider? serverTime = null)
     {
         var added = await AddAsync(manager);
-        var server = await TestServer.StartAsync(seed, serverAdminFingerprint: added.AdminFingerprint);
+        var server = await TestServer.StartAsync(seed, time: serverTime, serverAdminFingerprint: added.AdminFingerprint);
         await RunAtAsync(manager, added.Id, server.Port);
         await ConnectedAsync(manager, added.Id);
         return new LinkedServer(added.Id, server);
