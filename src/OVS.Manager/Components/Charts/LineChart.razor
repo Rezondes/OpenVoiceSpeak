@@ -1,5 +1,5 @@
 <figure class="line-chart" data-chart="@Title">
-    <figcaption>@Title (@Unit)</figcaption>
+    <figcaption>@Title (@Unit) <a class="chart-csv" href="@CsvHref" download="@CsvName" data-csv>@Strings.Chart_Csv</a></figcaption>
     <svg viewBox="0 0 600 180" role="img" aria-label="@Title">
         @foreach (var tick in YTicks)
         {

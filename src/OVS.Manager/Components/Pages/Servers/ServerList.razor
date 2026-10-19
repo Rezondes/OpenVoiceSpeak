@@ -11,6 +11,13 @@
 {
     <p class="banner-error" role="alert" data-telemetry-limit>@LimitText</p>
 }
+<section class="dashboard stat-tiles" data-dashboard>
+    <StatTile Name="users" Label="@Strings.Live_Users" Value="@UsersText" />
+    <StatTile Name="bandwidth" Label="@Strings.Dashboard_Bandwidth" Value="@BandwidthText" Unit="kbit/s" />
+    <StatTile Name="ports" Label="@Strings.Dashboard_Ports" Value="@PortsText" />
+    <StatTile Name="status" Label="@Strings.Dashboard_Status" Value="@StatusText" />
+    <StatTile Name="updates" Label="@Strings.Dashboard_Updates" Value="@UpdatesText" />
+</section>
 <AuthorizeView Roles="@ManagerRoles.Admin">
     <p>
         <button type="button" data-update-all disabled="@UpdatingAll" @onclick="UpdateAllAsync">@Strings.Update_All</button>

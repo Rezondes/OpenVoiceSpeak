@@ -1,0 +1,27 @@
+<figure class="line-chart" data-chart="@Title">
+    <figcaption>@Title (@Unit) <a class="chart-csv" href="@CsvHref" download="@CsvName" data-csv>@Strings.Chart_Csv</a></figcaption>
+    <svg viewBox="0 0 600 200" role="img" aria-label="@Title">
+        @foreach (var tick in YTicks)
+        {
+            <line x1="56" x2="592" y1="@tick.Position" y2="@tick.Position" stroke="var(--border)" />
+            <g><text x="52" y="@tick.Position" text-anchor="end" dominant-baseline="middle" fill="var(--muted)" font-size="11" data-y-tick>@tick.Label</text></g>
+        }
+        @foreach (var bar in Bars)
+        {
+            <rect x="@bar.Across" y="@bar.Down" width="@bar.Wide" height="@bar.High" fill="@bar.Color" data-bar><title>@bar.Tooltip</title></rect>
+        }
+        @foreach (var label in XLabels)
+        {
+            <g><text x="@label.Position" y="196" text-anchor="middle" fill="var(--muted)" font-size="10" data-x-tick>@label.Label</text></g>
+        }
+    </svg>
+    @if (Series.Count > 1)
+    {
+        <p class="chart-legend">
+            @foreach (var series in Series)
+            {
+                <span style="@LegendStyle(series)">@series.Name</span>
+            }
+        </p>
+    }
+</figure>

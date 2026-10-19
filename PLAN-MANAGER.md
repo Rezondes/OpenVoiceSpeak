@@ -1056,17 +1056,19 @@ From `DailyStats` and the hourly values of M21. The dashboard is the start page 
 
 ### Acceptance Criteria
 
-- [ ] AC1: Per server: connections per day, users per day (new and total), bandwidth per day and per month, peak users per day, for 7 days, 30 days, 12 months and a free range.
-- [ ] AC2: The dashboard shows users online over all visible servers, bandwidth now, ports in use (e.g. "37 / 100"), servers by status and updates available.
-- [ ] AC3: A manager's dashboard counts only assigned servers.
-- [ ] AC4: Every chart can be downloaded as CSV.
+- [x] AC1: Per server: connections per day, users per day (new and total), bandwidth per day and per month, peak users per day, for 7 days, 30 days, 12 months and a free range.
+- [x] AC2: The dashboard shows users online over all visible servers, bandwidth now, ports in use (e.g. "37 / 100"), servers by status and updates available.
+- [x] AC3: A manager's dashboard counts only assigned servers.
+- [x] AC4: Every chart can be downloaded as CSV.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `HistoryTests > "Ranges_ValuesFromDailyStats"` - AC1
-2. `DashboardTests > "Totals_PortsStatusUpdates"` - AC2
-3. `DashboardTests > "Manager_OnlyAssigned"` - AC3
-4. `HistoryTests > "Csv_Download"` - AC4
+1. `HistoryTests > "History_Ranges_ValuesFromDailyStats"` - AC1
+2. `DashboardTests > "Dashboard_TwoServers_TotalsPortsStatusUpdates"` - AC2
+3. `DashboardTests > "Dashboard_Manager_OnlyAssignedCounted"` - AC3
+4. `HistoryTests > "Csv_Download_LabelsAndValues"` - AC4
+
+(as built: the page `/servers/{id}/history` (linked from the server page) shows four `BarChart`s, connections, users (total and new), most users online at once, and bandwidth in and out in MB, per day for 7 or 30 finished days or a free range, and per month for 12 months or a free range over 62 days. `HistoryQuery` reads `DailyStats` and the hourly `ovs.sessions` maxima (the peak), in the server's time zone; a day without data is 0, a month adds up its days (users: its highest day). The dashboard sits on top of the start page (the overview) rather than in a page of its own, as tiles: users online and bandwidth in / out now over the visible servers (`DashboardQuery`, the newest data of the last 2 minutes), the ports they take of 100, the servers by status, and the updates offered; a manager's visible servers are the assigned ones, so their dashboard counts only those. Every `BarChart` and `LineChart` has a "CSV" link with its data as a data URI (`ChartCsv`, invariant numbers), so no endpoint is needed.)
 
 ### Steps
 

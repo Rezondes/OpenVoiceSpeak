@@ -48,6 +48,12 @@ sealed partial class LineChart
         string.Join(" ", series.Points.Select(point => $"{Number(X(point.AtUnixMs))},{Number(Y(point.Value))}")),
         [.. series.Points.Select(point => new ChartDot(Number(X(point.AtUnixMs)), Number(Y(point.Value)), $"{series.Name} {Clock(point.AtUnixMs, "HH:mm:ss")}: {Value(point.Value)} {Unit}"))]));
 
+    /// <summary>Package M23 (AC4): one row per point, with its series and its time in UTC.</summary>
+    string CsvHref => ChartCsv.Href(["series", "time_utc", "value"], Series.SelectMany(series => series.Points.Select(point =>
+        (IEnumerable<string>)[series.Name, DateTimeOffset.FromUnixTimeMilliseconds(point.AtUnixMs).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture), ChartCsv.Number(point.Value)])));
+
+    string CsvName => ChartCsv.FileName(Title);
+
     double X(long at) => Left + (at - FromUnixMs) / (double)Math.Max(1, ToUnixMs - FromUnixMs) * (Width - Left - Right);
 
     double Y(double value) => Top + (1 - value / MaxValue) * (Height - Top - Bottom);

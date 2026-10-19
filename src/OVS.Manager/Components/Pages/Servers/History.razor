@@ -1,0 +1,17 @@
+@page "/servers/{Id}/history"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = ServerAccessHandler.Policy)]
+
+<h1>@Strings.History_Title</h1>
+<p class="history-ranges">
+    <button type="button" data-range="7" @onclick="ShowWeekAsync">@Strings.History_Days7</button>
+    <button type="button" data-range="30" @onclick="ShowMonthAsync">@Strings.History_Days30</button>
+    <button type="button" data-range="12" @onclick="ShowYearAsync">@Strings.History_Months12</button>
+    <label>@Strings.History_From <input type="date" data-from @bind="From" /></label>
+    <label>@Strings.History_To <input type="date" data-to @bind="To" /></label>
+    <button type="button" data-range="free" @onclick="ShowRangeAsync">@Strings.History_Show</button>
+</p>
+<BarChart Title="@Strings.History_Connections" Unit="@Strings.History_PerBucket" LabelName="@BucketName" Labels="@Labels" Series="@ConnectionsSeries" />
+<BarChart Title="@Strings.History_Users" Unit="@Strings.Live_UsersUnit" LabelName="@BucketName" Labels="@Labels" Series="@UsersSeries" />
+<BarChart Title="@Strings.History_Peak" Unit="@Strings.Live_UsersUnit" LabelName="@BucketName" Labels="@Labels" Series="@PeakSeries" />
+<BarChart Title="@Strings.History_Bandwidth" Unit="MB" LabelName="@BucketName" Labels="@Labels" Series="@BandwidthSeries" />

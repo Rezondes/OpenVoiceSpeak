@@ -26,6 +26,27 @@ sealed partial class ServerList
     [Inject]
     OVS.Manager.ManagerOptions Options { get; set; } = null!;
 
+    [Inject]
+    OVS.Manager.Telemetry.DashboardQuery Dashboard { get; set; } = null!;
+
+    /// <summary>Package M23 (AC2): users online and bandwidth over the visible servers, when the page opened.</summary>
+    OVS.Manager.Telemetry.DashboardFigures? Figures { get; set; }
+
+    string UsersText => Figures is { } figures ? figures.UsersOnline.ToString("0", System.Globalization.CultureInfo.CurrentCulture) : "-";
+
+    string BandwidthText => Figures is { } figures
+        ? $"{figures.KbitIn.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture)} / {figures.KbitOut.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture)}" : "-";
+
+    /// <summary>Package M23 (AC2): the ports the visible servers take, such as "37 / 100".</summary>
+    string PortsText => $"{VisibleServers.Count()} / {PortPool.Count}";
+
+    /// <summary>Package M23 (AC2): how many visible servers are in each state.</summary>
+    string StatusText => string.Join(", ", VisibleServers.GroupBy(server => server.Status).OrderBy(group => group.Key)
+        .Select(group => $"{group.Count()} {ServerTexts.Status(group.First() with { ExitCode = null })}"));
+
+    /// <summary>Package M23 (AC2): how many visible servers have an update.</summary>
+    string UpdatesText => VisibleServers.Count(server => Catalog.UpdateFor(server.Version) is not null).ToString(System.Globalization.CultureInfo.CurrentCulture);
+
     /// <summary>Package M21 (AC4): the warning when the telemetry database is at its limit.</summary>
     string LimitText => TextFormat.Of(Strings.Telemetry_LimitReached, Options.TelemetryMaxBytes / (1024 * 1024));
 
@@ -55,5 +76,6 @@ sealed partial class ServerList
     {
         await base.OnInitializedAsync();
         DockerReachable = await Docker.IsReachableAsync();
+        Figures = await Dashboard.ReadAsync([.. VisibleServers.Select(server => server.Id)]);
     }
 }
