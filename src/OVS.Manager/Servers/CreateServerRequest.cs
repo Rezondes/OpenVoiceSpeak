@@ -7,4 +7,5 @@ namespace OVS.Manager.Servers;
 /// <param name="Version">The version; null takes the manager's own (MA5).</param>
 /// <param name="TimeZone">The time zone; null takes the manager's TZ (D14).</param>
 /// <param name="Port">The port; null takes the lowest free one.</param>
-internal sealed record CreateServerRequest(string Name, int MaxUsers, string? Password, string? Version, string? TimeZone, int? Port);
+/// <param name="Limits">Package M25: CPU and memory limits, null for none.</param>
+internal sealed record CreateServerRequest(string Name, int MaxUsers, string? Password, string? Version, string? TimeZone, int? Port, Docker.ResourceLimits? Limits = null);

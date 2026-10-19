@@ -22,7 +22,7 @@ public sealed class ManagerComposeTests
 
     /// <summary>
     /// Package M6 (AC1, D8): the proxy gets the socket read-only, publishes nothing, lives in an internal network and
-    /// passes on exactly the calls the manager makes: GET of ping, container list, inspect, logs, stats and image inspect;
+    /// passes on exactly the calls the manager makes: GET of ping, container list, inspect, logs, stats, image inspect and system df (M25);
     /// POST of container create, start, stop, restart, image pull, volume create and network connect; DELETE of a
     /// container or a volume.
     /// </summary>
@@ -37,7 +37,7 @@ public sealed class ManagerComposeTests
         var allowed = proxy.Where(line => line.StartsWith("- \"-allow", StringComparison.Ordinal) && !line.StartsWith("- \"-allowfrom", StringComparison.Ordinal)).ToList();
         Assert.Equal(
         [
-            @"- ""-allowGET=^(/v1\\.[0-9]+)?/(_ping|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs|stats)|images/.+/json)$""",
+            @"- ""-allowGET=^(/v1\\.[0-9]+)?/(_ping|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs|stats)|images/.+/json|system/df)$""", // Package M25: system/df for the volume sizes
             @"- ""-allowPOST=^(/v1\\.[0-9]+)?/(containers/create|containers/[a-zA-Z0-9_.-]+/(start|stop|restart)|images/create|volumes/create|networks/[a-zA-Z0-9_.-]+/connect)$""",
             @"- ""-allowDELETE=^(/v1\\.[0-9]+)?/(containers|volumes)/[a-zA-Z0-9_.-]+$""",
         ], allowed);

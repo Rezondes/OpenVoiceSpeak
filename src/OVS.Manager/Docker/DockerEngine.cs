@@ -16,6 +16,8 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
     const int StopSeconds = 30;
 
     readonly DockerClient client = new DockerClientConfiguration(new Uri(options.DockerHost)).CreateClient();
+    readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(60) };
+    KeptSizes? volumeSizes;
 
     /// <inheritdoc/>
     public async Task<bool> IsReachableAsync(CancellationToken cancellation = default)
@@ -79,6 +81,8 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
                 Binds = [$"{volume}:/data"],
                 RestartPolicy = new RestartPolicy { Name = RestartPolicyKind.UnlessStopped },
                 NetworkMode = spec.Network,
+                NanoCPUs = spec.Limits?.CpuCores is { } cores ? (long)(cores * 1_000_000_000) : 0, // Package M25: 0 is no limit
+                Memory = spec.Limits?.MemoryMb is { } megabytes ? megabytes * 1024L * 1024 : 0,
             },
         }, cancellation);
         return created.ID;
@@ -179,8 +183,27 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
         return last.Value is { } stats ? Usage(stats) : new ContainerUsage(0, 0);
     }
 
+    /// <summary>
+    /// Package M25: <c>system/df</c> sizes every volume and takes its time, so its answer is kept for 10 minutes. Docker.DotNet
+    /// has no call for it; the request goes to the same host. ponytail: only a tcp or http host, a unix socket gives no sizes.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, long>> VolumeSizesAsync(CancellationToken cancellation = default)
+    {
+        if (volumeSizes is { } kept && DateTimeOffset.UtcNow - kept.At < TimeSpan.FromMinutes(10)) return kept.Sizes; // clock: the age of a cache
+        var host = new Uri(options.DockerHost);
+        if (host.Scheme is not ("tcp" or "http")) return new Dictionary<string, long>();
+        var json = await CallAsync(() => http.GetStringAsync(new UriBuilder("http", host.Host, host.Port, "/system/df", "?type=volume").Uri, cancellation));
+        var sizes = VolumeUsage.Parse(json);
+        volumeSizes = new KeptSizes(DateTimeOffset.UtcNow, sizes); // clock: the age of a cache
+        return sizes;
+    }
+
     /// <summary>Ends the client.</summary>
-    public void Dispose() => client.Dispose();
+    public void Dispose()
+    {
+        client.Dispose();
+        http.Dispose();
+    }
 
     /// <summary>CPU as Docker's own <c>docker stats</c> counts it (the change against the previous sample), memory without the page cache.</summary>
     static ContainerUsage Usage(ContainerStatsResponse stats)
@@ -218,6 +241,9 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
     static bool IsDockerFailure(Exception exception) => exception is DockerApiException or HttpRequestException or IOException or TimeoutException;
 
     static string Label(IDictionary<string, string> labels, string key) => labels.TryGetValue(key, out var value) ? value : "";
+
+    /// <summary>The volume sizes with the time they were read.</summary>
+    sealed record KeptSizes(DateTimeOffset At, IReadOnlyDictionary<string, long> Sizes);
 
     /// <summary>Keeps the one sample a stats call without streaming reports.</summary>
     sealed class LastStats : IProgress<ContainerStatsResponse>

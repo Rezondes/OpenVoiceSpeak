@@ -247,6 +247,20 @@
   <data name="Profile_SessionSince" xml:space="preserve"><value>seit {0}</value></data>
   <data name="Profile_SessionsTitle" xml:space="preserve"><value>Angemeldete Sitzungen</value></data>
   <data name="Profile_Title" xml:space="preserve"><value>Mein Konto</value></data>
+  <data name="Resources_Change" xml:space="preserve"><value>Grenzen ändern</value></data>
+  <data name="Resources_Changed" xml:space="preserve"><value>Grenzen geändert.</value></data>
+  <data name="Resources_Confirm" xml:space="preserve"><value>Neu erstellen</value></data>
+  <data name="Resources_CpuCores" xml:space="preserve"><value>CPU-Kerne</value></data>
+  <data name="Resources_DiskFree" xml:space="preserve"><value>Freier Speicher</value></data>
+  <data name="Resources_DiskFreeValue" xml:space="preserve"><value>{0:0} GB ({1:0} %)</value></data>
+  <data name="Resources_DiskLow" xml:space="preserve"><value>Auf dem Docker-Datenträger sind nur noch {0:0} % frei.</value></data>
+  <data name="Resources_InvalidLimits" xml:space="preserve"><value>CPU zwischen {0} und {1} Kernen, RAM zwischen {2} und {3} MB, oder leer.</value></data>
+  <data name="Resources_Limits" xml:space="preserve"><value>Grenzen</value></data>
+  <data name="Resources_MemoryMb" xml:space="preserve"><value>RAM in MB</value></data>
+  <data name="Resources_NoLimitHint" xml:space="preserve"><value>Leer heißt keine Grenze.</value></data>
+  <data name="Resources_Recreate" xml:space="preserve"><value>Der Container wird mit den neuen Grenzen neu erstellt; der Server ist dabei kurz nicht erreichbar.</value></data>
+  <data name="Resources_Title" xml:space="preserve"><value>Ressourcen</value></data>
+  <data name="Resources_Volume" xml:space="preserve"><value>Datenvolume</value></data>
   <data name="Save" xml:space="preserve"><value>Speichern</value></data>
   <data name="Servers_AllPortsTaken" xml:space="preserve"><value>Alle 100 Ports sind belegt.</value></data>
   <data name="Servers_ColumnErrors" xml:space="preserve"><value>Fehler (24 h)</value></data>

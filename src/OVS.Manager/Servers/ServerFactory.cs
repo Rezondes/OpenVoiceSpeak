@@ -29,6 +29,8 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
         if (request.MaxUsers is < 1 or > MaxUsersLimit) throw new ServerRequestException(ServerProblem.InvalidMaxUsers);
         var zone = string.IsNullOrWhiteSpace(request.TimeZone) ? options.TimeZone : request.TimeZone.Trim();
         if (!TimeZoneInfo.TryFindSystemTimeZoneById(zone, out _)) throw new ServerRequestException(ServerProblem.InvalidTimeZone);
+        var limits = request.Limits ?? ResourceLimits.None;
+        if (!limits.IsValid) throw new ServerRequestException(ServerProblem.InvalidLimits);
         var taken = await database.Servers.Select(server => server.Port).ToListAsync(cancellation);
         int port = request.Port ?? PortPool.FindFree(taken) ?? throw new ServerRequestException(ServerProblem.NoFreePort);
         switch (PortPool.Check(port, taken))
@@ -41,10 +43,10 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
         {
             Id = await NewIdAsync(cancellation), Name = name, Port = port, TimeZone = zone, MaxUsers = request.MaxUsers,
             Version = string.IsNullOrWhiteSpace(request.Version) ? BuildInfo.Current.Version : request.Version.Trim(),
-            CreatedAtUtc = time.GetUtcNow().UtcDateTime,
+            CreatedAtUtc = time.GetUtcNow().UtcDateTime, CpuCores = limits.CpuCores, MemoryMb = limits.MemoryMb,
         };
         using (var identity = identities.Create(server.Id)) server.AdminFingerprint = identity.Fingerprint;
-        server.ContainerId = await docker.CreateAsync(new ContainerSpec(server.Id, options.ServerImage, server.Version, port, Environment(server, request.Password), Network), cancellation);
+        server.ContainerId = await docker.CreateAsync(new ContainerSpec(server.Id, options.ServerImage, server.Version, port, Environment(server, request.Password), Network, limits), cancellation);
         database.Servers.Add(server);
         await database.SaveChangesAsync(cancellation);
         try

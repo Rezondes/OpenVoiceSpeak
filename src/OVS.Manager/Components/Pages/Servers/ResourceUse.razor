@@ -1,0 +1,37 @@
+@page "/servers/{Id}/resources"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = ServerAccessHandler.Policy)]
+
+<h1>@Strings.Resources_Title</h1>
+@if (Snapshot is { } snapshot)
+{
+    <div class="stat-tiles">
+        <StatTile Name="cpu" Label="@Strings.Live_Cpu" Value="@Number(snapshot.Usage?.CpuPercent)" Unit="%" />
+        <StatTile Name="ram" Label="@Strings.Live_Ram" Value="@Number(UsedMemoryMb(snapshot))" Unit="MB" />
+        <StatTile Name="volume" Label="@Strings.Resources_Volume" Value="@Number(VolumeGb(snapshot))" Unit="GB" />
+    </div>
+    <LineChart Title="@Strings.Live_Cpu" Unit="%" Series="@CpuLines" FromUnixMs="@snapshot.FromUnixMs" ToUnixMs="@snapshot.ToUnixMs" />
+    <LineChart Title="@Strings.Live_Ram" Unit="MB" Series="@MemoryLines" FromUnixMs="@snapshot.FromUnixMs" ToUnixMs="@snapshot.ToUnixMs" />
+}
+<AuthorizeView Roles="@ManagerRoles.Admin">
+    <h2>@Strings.Resources_Limits</h2>
+    <div class="account-form">
+        <label>@Strings.Resources_CpuCores <input type="number" step="0.1" data-cpu @bind="CpuCores" /></label>
+        <label>@Strings.Resources_MemoryMb <input type="number" step="64" data-memory @bind="MemoryMb" /></label>
+        <p class="form-hint">@Strings.Resources_NoLimitHint</p>
+        @if (!Confirming)
+        {
+            <button type="button" data-change @onclick="AskAsync">@Strings.Resources_Change</button>
+        }
+        else
+        {
+            <p class="form-hint" role="alert" data-confirm-text>@Strings.Resources_Recreate</p>
+            <button type="button" data-confirm @onclick="ApplyAsync">@Strings.Resources_Confirm</button>
+            <button type="button" data-cancel @onclick="Cancel">@Strings.Announce_Cancel</button>
+        }
+        @if (Result is not null)
+        {
+            <p class="@ResultClass" role="status" data-result>@Result</p>
+        }
+    </div>
+</AuthorizeView>

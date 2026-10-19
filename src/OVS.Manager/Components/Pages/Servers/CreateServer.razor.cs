@@ -57,7 +57,7 @@ sealed partial class CreateServer
     {
         try
         {
-            await Factory.CreateAsync(new CreateServerRequest(Model!.Name, Model.MaxUsers, Model.Password, Model.Version, Model.TimeZone, Model.Port),
+            await Factory.CreateAsync(new CreateServerRequest(Model!.Name, Model.MaxUsers, Model.Password, Model.Version, Model.TimeZone, Model.Port, new OVS.Manager.Docker.ResourceLimits(Model.CpuCores, Model.MemoryMb)),
                 HttpContext.User.Identity?.Name ?? "");
         }
         catch (ServerRequestException exception)
@@ -82,5 +82,9 @@ sealed partial class CreateServer
         public string? Version { get; set; }
         public string? TimeZone { get; set; }
         public int? Port { get; set; }
+
+        public double? CpuCores { get; set; }
+
+        public int? MemoryMb { get; set; }
     }
 }

@@ -32,6 +32,14 @@ sealed partial class ServerList
     [Inject]
     OVS.Manager.Telemetry.ErrorQuery Errors { get; set; } = null!;
 
+    [Inject]
+    IHostDisk Disk { get; set; } = null!;
+
+    /// <summary>Package M25 (AC3): the free space of Docker's data root, such as "120 GB (24 %)".</summary>
+    string DiskText => Disk.Read() is { } space ? TextFormat.Of(Strings.Resources_DiskFreeValue, space.FreeBytes / 1e9, space.FreeShare * 100) : "-";
+
+    static string DiskLowText(DiskSpace space) => TextFormat.Of(Strings.Resources_DiskLow, space.FreeShare * 100);
+
     /// <summary>Package M24 (AC3): each visible server's errors of the last 24 hours, when the page opened.</summary>
     IReadOnlyDictionary<string, int> ErrorCounts { get; set; } = new Dictionary<string, int>();
 

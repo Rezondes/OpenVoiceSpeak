@@ -340,6 +340,9 @@ namespace OVS.Manager.Data.Migrations
                     b.Property<string>("ContainerId")
                         .HasColumnType("TEXT");
 
+                    b.Property<double?>("CpuCores")
+                        .HasColumnType("REAL");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("TEXT");
 
@@ -347,6 +350,9 @@ namespace OVS.Manager.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("MaxUsers")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MemoryMb")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")

@@ -21,4 +21,6 @@ internal enum ServerProblem
     NotFound,
     /// <summary>Package M9: the name typed to delete it is not exactly the server's.</summary>
     NameMismatch,
+    /// <summary>Package M25: a CPU or memory limit is out of its range.</summary>
+    InvalidLimits,
 }

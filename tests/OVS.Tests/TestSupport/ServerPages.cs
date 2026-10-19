@@ -27,6 +27,9 @@ internal static class ServerPages
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<OVS.Manager.Telemetry.HistoryQuery>()); // Package M23
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<OVS.Manager.Telemetry.DashboardQuery>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<OVS.Manager.Telemetry.ErrorQuery>()); // Package M24
+        context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<OVS.Manager.Telemetry.ResourceQuery>()); // Package M25
+        context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ServerResources>());
+        context.Services.AddSingleton<IHostDisk>(manager.Disk);
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<SettingsCommands>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ModerationCommands>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<GroupCommands>());

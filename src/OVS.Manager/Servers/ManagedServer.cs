@@ -1,3 +1,5 @@
+using OVS.Manager.Docker;
+
 namespace OVS.Manager.Servers;
 
 /// <summary>Package M7: a server the manager created; its container carries its id (label ovs.server-id).</summary>
@@ -20,6 +22,15 @@ internal sealed class ManagedServer
 
     /// <summary>The start value of the user limit.</summary>
     public int MaxUsers { get; set; }
+
+    /// <summary>Package M25: the container's CPU limit in cores, null for none.</summary>
+    public double? CpuCores { get; set; }
+
+    /// <summary>Package M25: the container's memory limit in MB, null for none.</summary>
+    public int? MemoryMb { get; set; }
+
+    /// <summary>Package M25: both limits as the container takes them.</summary>
+    public ResourceLimits Limits => new(CpuCores, MemoryMb);
 
     /// <summary>When it was created, in UTC.</summary>
     public DateTime CreatedAtUtc { get; set; }

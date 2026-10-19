@@ -1136,15 +1136,17 @@ Limits are container settings (`NanoCpus`, `Memory`); changing them recreates th
 
 ### Acceptance Criteria
 
-- [ ] AC1: Each server shows CPU and RAM now and over 24 hours, and the size of its volume.
-- [ ] AC2: The admin sets CPU (cores) and RAM (MB) limits at creation and later; a change recreates the container after a confirmation.
-- [ ] AC3: The overview shows the free disk of the host's Docker data root and warns below 10 %.
+- [x] AC1: Each server shows CPU and RAM now and over 24 hours, and the size of its volume.
+- [x] AC2: The admin sets CPU (cores) and RAM (MB) limits at creation and later; a change recreates the container after a confirmation.
+- [x] AC3: The overview shows the free disk of the host's Docker data root and warns below 10 %.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `ResourceLimitsTests > "Usage_ShownWithVolumeSize"` - AC1
-2. `ResourceLimitsTests > "Limits_Change_Recreated"` - AC2
-3. `ResourceLimitsTests > "Disk_BelowTenPercent_Warning"` - AC3
+1. `ResourceLimitsTests > "Usage_Sampled_ShownWithVolumeSize"` and `"VolumeUsage_Answer_SizesByName"` - AC1
+2. `ResourceLimitsTests > "Limits_Change_Recreated"` (bUnit) - AC2
+3. `ResourceLimitsTests > "Disk_BelowTenPercent_Warning"` (bUnit) - AC3
+
+(as built: `/servers/{id}/resources` (linked from the server page) shows CPU and RAM now (Docker stats) and the hourly peaks of the last 24 hours, and the volume's size. `UsageSampler` (hosted, each minute) writes every running container's CPU and RAM as the gauges `container.cpu.percent` and `container.memory.mb` into the telemetry store, so the rollup of M21 keeps them. The size comes from `GET /system/df?type=volume` (Docker.DotNet has no call for it; the proxy's allow list gets `system/df`), kept 10 minutes; a unix socket host gives no sizes. `ResourceLimits` (CPU cores 0.1 to 64, RAM 64 MB to 256 GB, empty for none) are stored on the server (migration `AddResourceLimits`), set at creation in the form and later by the admin: after a confirmation `ServerResources` stops, removes and makes the container again with the same variables and the new `NanoCpus` and `Memory`, starts it if it ran, and writes `ServerLimitsChanged`; updates (M18) keep the limits. The overview shows the free space of the disk of the manager's data folder (`IHostDisk`, `DataDirDisk`), which in the compose setup is a named volume in Docker's data root, and warns below 10 %. The page is `ResourceUse`, as `Resources` collides with `System.Resources`.)
 
 ### Steps
 

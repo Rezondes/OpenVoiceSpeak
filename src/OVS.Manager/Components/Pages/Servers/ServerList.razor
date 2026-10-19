@@ -7,6 +7,10 @@
 {
     <p class="banner-error" role="alert">@Strings.Docker_Unreachable</p>
 }
+@if (Disk.Read() is { IsLow: true } low)
+{
+    <p class="banner-error" role="alert" data-disk-low>@DiskLowText(low)</p>
+}
 @if (Limit.Reached)
 {
     <p class="banner-error" role="alert" data-telemetry-limit>@LimitText</p>
@@ -17,6 +21,7 @@
     <StatTile Name="ports" Label="@Strings.Dashboard_Ports" Value="@PortsText" />
     <StatTile Name="status" Label="@Strings.Dashboard_Status" Value="@StatusText" />
     <StatTile Name="updates" Label="@Strings.Dashboard_Updates" Value="@UpdatesText" />
+    <StatTile Name="disk" Label="@Strings.Resources_DiskFree" Value="@DiskText" />
 </section>
 <AuthorizeView Roles="@ManagerRoles.Admin">
     <p>

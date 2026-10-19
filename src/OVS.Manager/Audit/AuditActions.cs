@@ -105,6 +105,8 @@ internal static class AuditActions
     public const string ServerUpdateFailed = "ServerUpdateFailed";
     /// <summary>A server's maintenance window changed (M18); the target is "on" or "off".</summary>
     public const string UpdateWindowChanged = "UpdateWindowChanged";
+    /// <summary>A server's CPU and memory limits changed (M25); the detail names them.</summary>
+    public const string ServerLimitsChanged = "ServerLimitsChanged";
     /// <summary>A free text went to a server's chat (M19); the detail is the text.</summary>
     public const string ServerChatSent = "ServerChatSent";
 }

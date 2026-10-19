@@ -21,6 +21,9 @@ internal sealed class FakeDockerEngine : IDockerEngine
     /// <summary>Package M8: while set, start, stop and restart wait for it (an action that takes its time).</summary>
     public TaskCompletionSource? Hold { get; set; }
 
+    /// <summary>Package M25: each volume's size by its name.</summary>
+    public ConcurrentDictionary<string, long> VolumeSizes { get; } = new();
+
     /// <summary>Package M22: what each container uses; none is idle.</summary>
     public ConcurrentDictionary<string, ContainerUsage> Usage { get; } = new();
 
@@ -81,6 +84,12 @@ internal sealed class FakeDockerEngine : IDockerEngine
         EnsureReachable();
         foreach (var line in ConsoleLines.GetValueOrDefault(containerId, []).TakeLast(tail)) yield return line;
         await Task.Delay(Timeout.Infinite, cancellation); // following: no more lines until the page leaves
+    }
+
+    public Task<IReadOnlyDictionary<string, long>> VolumeSizesAsync(CancellationToken cancellation = default)
+    {
+        EnsureReachable();
+        return Task.FromResult<IReadOnlyDictionary<string, long>>(new Dictionary<string, long>(VolumeSizes));
     }
 
     public Task<ContainerUsage> StatsAsync(string containerId, CancellationToken cancellation = default)

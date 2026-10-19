@@ -34,6 +34,9 @@ internal interface IDockerEngine
     /// <summary>Package M16: the last <paramref name="tail"/> lines of a managed container's output and then every new one, until <paramref name="cancellation"/>.</summary>
     IAsyncEnumerable<string> FollowLogsAsync(string containerId, int tail, CancellationToken cancellation = default);
 
+    /// <summary>Package M25: each volume's size in bytes by its name (the proxy allows <c>system/df</c>); empty when Docker cannot tell.</summary>
+    Task<IReadOnlyDictionary<string, long>> VolumeSizesAsync(CancellationToken cancellation = default);
+
     /// <summary>Package M22: the CPU and memory a managed container uses now (the proxy allows <c>containers/{id}/stats</c>).</summary>
     Task<ContainerUsage> StatsAsync(string containerId, CancellationToken cancellation = default);
 

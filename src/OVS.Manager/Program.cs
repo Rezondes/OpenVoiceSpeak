@@ -102,6 +102,11 @@ builder.Services.AddScoped<LiveFeed>(); // Package M22
 builder.Services.AddScoped<HistoryQuery>(); // Package M23
 builder.Services.AddScoped<DashboardQuery>();
 builder.Services.AddScoped<ErrorQuery>(); // Package M24
+// Package M25: limits, usage over time and the data root's free disk
+builder.Services.AddScoped<ServerResources>();
+builder.Services.AddScoped<ResourceQuery>();
+builder.Services.AddHostedService<UsageSampler>();
+builder.Services.AddSingleton<IHostDisk, DataDirDisk>();
 builder.Services.AddScoped<ConsoleLog>();
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();

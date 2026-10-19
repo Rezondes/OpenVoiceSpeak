@@ -74,7 +74,7 @@ internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine dock
         await docker.StopAsync(old.Id, cancellation);
         await docker.RemoveAsync(old.Id, cancellation);
         await StepAsync(UpdateStep.Recreate);
-        var created = await docker.CreateAsync(new ContainerSpec(serverId, options.ServerImage, version, server.Port, environment, ServerFactory.Network), cancellation);
+        var created = await docker.CreateAsync(new ContainerSpec(serverId, options.ServerImage, version, server.Port, environment, ServerFactory.Network, server.Limits), cancellation);
         await SaveContainerAsync(server, created, cancellation);
         await StepAsync(UpdateStep.Start);
         await docker.StartAsync(created, cancellation);
@@ -91,7 +91,7 @@ internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine dock
         await StepAsync(UpdateStep.RollBack);
         await docker.StopAsync(created, cancellation);
         await docker.RemoveAsync(created, cancellation);
-        var back = await docker.CreateAsync(new ContainerSpec(serverId, options.ServerImage, oldVersion, server.Port, environment, ServerFactory.Network), cancellation);
+        var back = await docker.CreateAsync(new ContainerSpec(serverId, options.ServerImage, oldVersion, server.Port, environment, ServerFactory.Network, server.Limits), cancellation);
         await SaveContainerAsync(server, back, cancellation);
         await docker.StartAsync(back, cancellation);
         var reason = Strings.Update_HealthFailed;

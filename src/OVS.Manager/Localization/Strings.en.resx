@@ -247,6 +247,20 @@
   <data name="Profile_SessionSince" xml:space="preserve"><value>since {0}</value></data>
   <data name="Profile_SessionsTitle" xml:space="preserve"><value>Signed-in sessions</value></data>
   <data name="Profile_Title" xml:space="preserve"><value>My account</value></data>
+  <data name="Resources_Change" xml:space="preserve"><value>Change limits</value></data>
+  <data name="Resources_Changed" xml:space="preserve"><value>Limits changed.</value></data>
+  <data name="Resources_Confirm" xml:space="preserve"><value>Make it again</value></data>
+  <data name="Resources_CpuCores" xml:space="preserve"><value>CPU cores</value></data>
+  <data name="Resources_DiskFree" xml:space="preserve"><value>Free disk</value></data>
+  <data name="Resources_DiskFreeValue" xml:space="preserve"><value>{0:0} GB ({1:0} %)</value></data>
+  <data name="Resources_DiskLow" xml:space="preserve"><value>Only {0:0} % of the Docker disk is free.</value></data>
+  <data name="Resources_InvalidLimits" xml:space="preserve"><value>CPU between {0} and {1} cores, RAM between {2} and {3} MB, or empty.</value></data>
+  <data name="Resources_Limits" xml:space="preserve"><value>Limits</value></data>
+  <data name="Resources_MemoryMb" xml:space="preserve"><value>RAM in MB</value></data>
+  <data name="Resources_NoLimitHint" xml:space="preserve"><value>Empty means no limit.</value></data>
+  <data name="Resources_Recreate" xml:space="preserve"><value>The container is made again with the new limits; the server is away for a moment.</value></data>
+  <data name="Resources_Title" xml:space="preserve"><value>Resources</value></data>
+  <data name="Resources_Volume" xml:space="preserve"><value>Data volume</value></data>
   <data name="Save" xml:space="preserve"><value>Save</value></data>
   <data name="Servers_AllPortsTaken" xml:space="preserve"><value>All 100 ports are taken.</value></data>
   <data name="Servers_ColumnErrors" xml:space="preserve"><value>Errors (24 h)</value></data>
