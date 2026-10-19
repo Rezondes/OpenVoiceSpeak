@@ -37,7 +37,7 @@ else
         <thead>
             <tr>
                 <th>@Strings.Servers_Name</th><th>@Strings.Servers_ColumnStatus</th><th>@Strings.Servers_Version</th>
-                <th>@Strings.Servers_ColumnPort</th><th>@Strings.Servers_ColumnUsers</th><th>@Strings.Servers_ColumnUptime</th><th></th>
+                <th>@Strings.Servers_ColumnPort</th><th>@Strings.Servers_ColumnUsers</th><th>@Strings.Servers_ColumnErrors</th><th>@Strings.Servers_ColumnUptime</th><th></th>
             </tr>
         </thead>
         <tbody>
@@ -49,6 +49,7 @@ else
                     <td>@server.Version <span class="update-offer">@OfferText(server)</span></td>
                     <td>@server.Port</td>
                     <td>@ServerTexts.UsersOnline(Connections.LinkOf(server.Id))</td>
+                    <td data-errors><a href="@($"/servers/{server.Id}/errors")">@ErrorCount(server)</a></td>
                     <td>@ServerTexts.Uptime(server, Time.GetUtcNow())</td>
                     <td><ServerActions ServerId="@server.Id" Busy="@Watcher.IsBusy(server.Id)" /></td>
                 </tr>

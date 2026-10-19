@@ -107,6 +107,24 @@
   <data name="Dashboard_Updates" xml:space="preserve"><value>Updates available</value></data>
   <data name="Docker_CallFailed" xml:space="preserve"><value>Docker did not carry out the request. Is the socket proxy running?</value></data>
   <data name="Docker_Unreachable" xml:space="preserve"><value>Docker not reachable: servers cannot be started, stopped or created right now.</value></data>
+  <data name="ErrorLookup_Duration" xml:space="preserve"><value>Duration</value></data>
+  <data name="ErrorLookup_Failed" xml:space="preserve"><value>Error</value></data>
+  <data name="ErrorLookup_Ms" xml:space="preserve"><value>{0} ms</value></data>
+  <data name="ErrorLookup_NotFound" xml:space="preserve"><value>No error with this ID on the servers you can see.</value></data>
+  <data name="ErrorLookup_Ok" xml:space="preserve"><value>ok</value></data>
+  <data name="ErrorLookup_Search" xml:space="preserve"><value>Look up</value></data>
+  <data name="ErrorLookup_Span" xml:space="preserve"><value>Step</value></data>
+  <data name="ErrorLookup_Start" xml:space="preserve"><value>Start</value></data>
+  <data name="ErrorLookup_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="ErrorLookup_Title" xml:space="preserve"><value>Look up an error ID</value></data>
+  <data name="ErrorLookup_Trace" xml:space="preserve"><value>Trace</value></data>
+  <data name="Errors_Count" xml:space="preserve"><value>Count</value></data>
+  <data name="Errors_Id" xml:space="preserve"><value>Error ID</value></data>
+  <data name="Errors_Last" xml:space="preserve"><value>Last</value></data>
+  <data name="Errors_Message" xml:space="preserve"><value>Message</value></data>
+  <data name="Errors_None" xml:space="preserve"><value>No errors.</value></data>
+  <data name="Errors_StackTrace" xml:space="preserve"><value>Stack trace</value></data>
+  <data name="Errors_Title" xml:space="preserve"><value>Errors</value></data>
   <data name="Field_ConfirmPassword" xml:space="preserve"><value>Repeat password</value></data>
   <data name="Field_Email" xml:space="preserve"><value>E-mail address (optional)</value></data>
   <data name="Field_NewPassword" xml:space="preserve"><value>New password</value></data>
@@ -231,6 +249,7 @@
   <data name="Profile_Title" xml:space="preserve"><value>My account</value></data>
   <data name="Save" xml:space="preserve"><value>Save</value></data>
   <data name="Servers_AllPortsTaken" xml:space="preserve"><value>All 100 ports are taken.</value></data>
+  <data name="Servers_ColumnErrors" xml:space="preserve"><value>Errors (24 h)</value></data>
   <data name="Servers_ColumnLink" xml:space="preserve"><value>Management</value></data>
   <data name="Servers_ColumnPort" xml:space="preserve"><value>Port</value></data>
   <data name="Servers_ColumnStatus" xml:space="preserve"><value>Status</value></data>

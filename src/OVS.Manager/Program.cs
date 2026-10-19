@@ -101,6 +101,7 @@ builder.Services.AddHostedService<Retention>();
 builder.Services.AddScoped<LiveFeed>(); // Package M22
 builder.Services.AddScoped<HistoryQuery>(); // Package M23
 builder.Services.AddScoped<DashboardQuery>();
+builder.Services.AddScoped<ErrorQuery>(); // Package M24
 builder.Services.AddScoped<ConsoleLog>();
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();

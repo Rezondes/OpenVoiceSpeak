@@ -29,6 +29,14 @@ sealed partial class ServerList
     [Inject]
     OVS.Manager.Telemetry.DashboardQuery Dashboard { get; set; } = null!;
 
+    [Inject]
+    OVS.Manager.Telemetry.ErrorQuery Errors { get; set; } = null!;
+
+    /// <summary>Package M24 (AC3): each visible server's errors of the last 24 hours, when the page opened.</summary>
+    IReadOnlyDictionary<string, int> ErrorCounts { get; set; } = new Dictionary<string, int>();
+
+    string ErrorCount(ServerSnapshot server) => ErrorCounts.GetValueOrDefault(server.Id).ToString(System.Globalization.CultureInfo.CurrentCulture);
+
     /// <summary>Package M23 (AC2): users online and bandwidth over the visible servers, when the page opened.</summary>
     OVS.Manager.Telemetry.DashboardFigures? Figures { get; set; }
 
@@ -77,5 +85,6 @@ sealed partial class ServerList
         await base.OnInitializedAsync();
         DockerReachable = await Docker.IsReachableAsync();
         Figures = await Dashboard.ReadAsync([.. VisibleServers.Select(server => server.Id)]);
+        ErrorCounts = await Errors.CountsAsync([.. VisibleServers.Select(server => server.Id)]);
     }
 }

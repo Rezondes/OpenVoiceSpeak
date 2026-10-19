@@ -1,0 +1,10 @@
+<section class="error-view" data-error>
+    <h2>@ErrorId</h2>
+    <p>@At: @Error</p>
+    @if (ExceptionMessage.Length > 0)
+    {
+        <p data-exception>@ExceptionMessage</p>
+    }
+    <h3>@Strings.Errors_StackTrace</h3>
+    <pre data-stack>@StackTrace</pre>
+</section>

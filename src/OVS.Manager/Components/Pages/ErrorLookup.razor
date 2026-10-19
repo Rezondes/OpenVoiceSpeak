@@ -1,0 +1,36 @@
+@page "/errors"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using OVS.Manager.Components.Pages.Servers
+
+<h1>@Strings.ErrorLookup_Title</h1>
+<form class="account-form" @onsubmit="LookupAsync">
+    <label>@Strings.Errors_Id <input type="text" data-error-id @bind="ErrorId" /></label>
+    <button type="submit" data-lookup>@Strings.ErrorLookup_Search</button>
+</form>
+@if (Searched && Found is null)
+{
+    <p class="form-error" role="alert" data-not-found>@Strings.ErrorLookup_NotFound</p>
+}
+@if (Found is { } found)
+{
+    <p><a href="@($"/servers/{found.ServerId}/errors")" data-server>@ServerName</a></p>
+    <ErrorView Error="@found.Error.Text" ErrorId="@found.Error.ErrorId" At="@Clock(found.Error.AtUnixMs)" ExceptionMessage="@found.Error.ExceptionMessage" StackTrace="@found.Error.StackTrace" />
+    <h2>@Strings.ErrorLookup_Trace</h2>
+    <table class="list">
+        <thead>
+            <tr><th>@Strings.ErrorLookup_Span</th><th>@Strings.ErrorLookup_Start</th><th>@Strings.ErrorLookup_Duration</th><th>@Strings.ErrorLookup_Status</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var span in found.Spans)
+            {
+                <tr data-span>
+                    <td>@span.Name</td>
+                    <td>@Clock(span.StartUnixMs)</td>
+                    <td>@Milliseconds(span)</td>
+                    <td>@SpanStatus(span)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

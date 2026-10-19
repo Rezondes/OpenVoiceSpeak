@@ -107,6 +107,24 @@
   <data name="Dashboard_Updates" xml:space="preserve"><value>Updates verfügbar</value></data>
   <data name="Docker_CallFailed" xml:space="preserve"><value>Docker hat den Auftrag nicht ausgeführt. Läuft der Socket-Proxy?</value></data>
   <data name="Docker_Unreachable" xml:space="preserve"><value>Docker nicht erreichbar: Server können gerade nicht gestartet, gestoppt oder angelegt werden.</value></data>
+  <data name="ErrorLookup_Duration" xml:space="preserve"><value>Dauer</value></data>
+  <data name="ErrorLookup_Failed" xml:space="preserve"><value>Fehler</value></data>
+  <data name="ErrorLookup_Ms" xml:space="preserve"><value>{0} ms</value></data>
+  <data name="ErrorLookup_NotFound" xml:space="preserve"><value>Zu dieser Fehler-ID gibt es keinen Fehler auf den Servern, die du siehst.</value></data>
+  <data name="ErrorLookup_Ok" xml:space="preserve"><value>ok</value></data>
+  <data name="ErrorLookup_Search" xml:space="preserve"><value>Suchen</value></data>
+  <data name="ErrorLookup_Span" xml:space="preserve"><value>Schritt</value></data>
+  <data name="ErrorLookup_Start" xml:space="preserve"><value>Beginn</value></data>
+  <data name="ErrorLookup_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="ErrorLookup_Title" xml:space="preserve"><value>Fehler-ID suchen</value></data>
+  <data name="ErrorLookup_Trace" xml:space="preserve"><value>Ablauf</value></data>
+  <data name="Errors_Count" xml:space="preserve"><value>Anzahl</value></data>
+  <data name="Errors_Id" xml:space="preserve"><value>Fehler-ID</value></data>
+  <data name="Errors_Last" xml:space="preserve"><value>Zuletzt</value></data>
+  <data name="Errors_Message" xml:space="preserve"><value>Meldung</value></data>
+  <data name="Errors_None" xml:space="preserve"><value>Keine Fehler.</value></data>
+  <data name="Errors_StackTrace" xml:space="preserve"><value>Stacktrace</value></data>
+  <data name="Errors_Title" xml:space="preserve"><value>Fehler</value></data>
   <data name="Field_ConfirmPassword" xml:space="preserve"><value>Passwort wiederholen</value></data>
   <data name="Field_Email" xml:space="preserve"><value>E-Mail-Adresse (freiwillig)</value></data>
   <data name="Field_NewPassword" xml:space="preserve"><value>Neues Passwort</value></data>
@@ -231,6 +249,7 @@
   <data name="Profile_Title" xml:space="preserve"><value>Mein Konto</value></data>
   <data name="Save" xml:space="preserve"><value>Speichern</value></data>
   <data name="Servers_AllPortsTaken" xml:space="preserve"><value>Alle 100 Ports sind belegt.</value></data>
+  <data name="Servers_ColumnErrors" xml:space="preserve"><value>Fehler (24 h)</value></data>
   <data name="Servers_ColumnLink" xml:space="preserve"><value>Verwaltung</value></data>
   <data name="Servers_ColumnPort" xml:space="preserve"><value>Port</value></data>
   <data name="Servers_ColumnStatus" xml:space="preserve"><value>Status</value></data>

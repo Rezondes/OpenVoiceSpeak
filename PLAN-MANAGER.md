@@ -1097,15 +1097,17 @@ Package 143: the error ID is the trace id (146) and the log record of `RequestFa
 
 ### Acceptance Criteria
 
-- [ ] AC1: The errors page lists log records of level Error and above with time, message and error ID, grouped by message with count; one opens with the whole stack trace.
-- [ ] AC2: The lookup takes an error ID and opens the error with its trace (spans with name, duration, status), across all servers the user may see.
-- [ ] AC3: The server list shows the number of errors of the last 24 hours per server.
+- [x] AC1: The errors page lists log records of level Error and above with time, message and error ID, grouped by message with count; one opens with the whole stack trace.
+- [x] AC2: The lookup takes an error ID and opens the error with its trace (spans with name, duration, status), across all servers the user may see.
+- [x] AC3: The server list shows the number of errors of the last 24 hours per server.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `ErrorQueryTests > "Errors_GroupedWithStackTrace"` - AC1
+1. `ErrorQueryTests > "Errors_SameTemplate_GroupedWithStackTrace"` (with bUnit) - AC1
 2. `ErrorQueryTests > "Lookup_ErrorId_ErrorAndTrace"` and `"Lookup_OtherManagersServer_NotFound"` - AC2
-3. `ErrorQueryTests > "Count_LastDay"` - AC3
+3. `ErrorQueryTests > "Count_LastDay_InOverview"` (bUnit) - AC3
+
+(as built: `ErrorQuery` reads the log lines of OTLP severity 17 and above. `/servers/{id}/errors` (linked from the server page and the overview's count) groups a server's newest 1000 by their template (`{OriginalFormat}`, else the text) with count, last time and error ID; a click opens `ErrorView` with the exception and the whole `exception.stacktrace`. `/errors` (in the navigation) takes an error ID in any case (hex, stored lower), finds the line by its trace id or its `ErrorId` attribute on a server the user may see (`ServerAccess.VisibleAsync`), and shows it with the spans of its trace (name, start, duration, status). The overview has a column "Fehler (24 h)" per server.)
 
 ### Steps
 

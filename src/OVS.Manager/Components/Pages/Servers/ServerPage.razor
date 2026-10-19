@@ -38,6 +38,7 @@ else
     <LiveView ServerId="@Server.Id" />
     <nav class="server-nav">
         <a href="@($"/servers/{Server.Id}/history")">@Strings.History_Title</a>
+        <a href="@($"/servers/{Server.Id}/errors")">@Strings.Errors_Title</a>
         <a href="@($"/servers/{Server.Id}/settings")">@Strings.Settings_Title</a>
         <a href="@($"/servers/{Server.Id}/users")">@Strings.Users_Title</a>
         <a href="@($"/servers/{Server.Id}/bans")">@Strings.Bans_Title</a>

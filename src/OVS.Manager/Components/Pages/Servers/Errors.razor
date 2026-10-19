@@ -1,0 +1,32 @@
+@page "/servers/{Id}/errors"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = ServerAccessHandler.Policy)]
+
+<h1>@Strings.Errors_Title</h1>
+@if (Groups.Count == 0)
+{
+    <p>@Strings.Errors_None</p>
+}
+else
+{
+    <table class="list">
+        <thead>
+            <tr><th>@Strings.Errors_Message</th><th>@Strings.Errors_Count</th><th>@Strings.Errors_Last</th><th>@Strings.Errors_Id</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var group in Groups)
+            {
+                <tr data-error-group>
+                    <td>@group.Message</td>
+                    <td data-count>@group.Count</td>
+                    <td>@Clock(group.Entries[0])</td>
+                    <td><button type="button" class="link-button" data-open @onclick="OpenFor(group)">@NewestId(group)</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+@if (Opened is { } opened)
+{
+    <ErrorView Error="@opened.Text" ErrorId="@opened.ErrorId" At="@Clock(opened)" ExceptionMessage="@opened.ExceptionMessage" StackTrace="@opened.StackTrace" />
+}
