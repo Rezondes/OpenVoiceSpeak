@@ -221,19 +221,21 @@ ASP.NET Core Identity brings hashing, lockout, security stamps and reset tokens 
 
 ### Acceptance Criteria
 
-- [ ] AC1: While no account exists, every page leads to `/setup`, where the first account is created with role Admin; afterwards `/setup` answers 404.
-- [ ] AC2: With `OVS_MANAGER_ADMIN_USER` and `OVS_MANAGER_ADMIN_PASSWORD` set and no account, the admin is created at start and `/setup` is never shown.
-- [ ] AC3: Login with user name and password; a wrong pair shows one text for both cases; 5 failures lock the account for 15 minutes, and more than 20 failures per IP in 15 minutes are refused.
-- [ ] AC4: Passwords need at least 12 characters; the cookie is HttpOnly, SameSite=Strict, and Secure whenever the request is HTTPS; every form carries an antiforgery token.
-- [ ] AC5: Logout ends the session; a page without login leads to `/login` and back after it.
+- [x] AC1: While no account exists, every page leads to `/setup`, where the first account is created with role Admin; afterwards `/setup` answers 404.
+- [x] AC2: With `OVS_MANAGER_ADMIN_USER` and `OVS_MANAGER_ADMIN_PASSWORD` set and no account, the admin is created at start and `/setup` is never shown.
+- [x] AC3: Login with user name and password; a wrong pair shows one text for both cases; 5 failures lock the account for 15 minutes, and more than 20 failures per IP in 15 minutes are refused.
+- [x] AC4: Passwords need at least 12 characters; the cookie is HttpOnly, SameSite=Strict, and Secure whenever the request is HTTPS; every form carries an antiforgery token.
+- [x] AC5: Logout ends the session; a page without login leads to `/login` and back after it.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `FirstAdminTests > "Setup_NoAccount_RedirectedAndAdminCreated"` and `"Setup_AccountExists_NotFound"` - AC1
 2. `FirstAdminTests > "Environment_NoAccount_AdminCreatedNoSetup"` - AC2
 3. `LoginTests > "Login_WrongPassword_SameTextAsUnknownUser"`, `"Login_FiveFailures_Locked"`, `"Login_ManyFailuresFromIp_Refused"` - AC3
 4. `LoginTests > "Password_Short_Refused"` and `"Cookie_Flags_HttpOnlyStrict"` - AC4
-5. `LoginTests > "Page_NotLoggedIn_LoginAndBack"` and `"Logout_SessionEnded"` - AC5
+5. `LoginTests > "Page_NotLoggedIn_LoginAndBack"` and `"Logout_LoggedIn_SessionEnded"` - AC5
+
+(as built: `Microsoft.AspNetCore.Identity.EntityFrameworkCore` 10.0.12; `ManagerDbContext` is an `IdentityDbContext<ManagerUser>` with the migration `Identity`. `FirstAdmin` (a singleton) creates both roles at start, the admin of the environment while no account exists, and the admin of `/setup`; it remembers once an account exists, so `SetupGate` asks the database only until then. `SetupGate` leads every request but the health check, the switches, the framework and files to `/setup` while no account exists, and answers 404 on `/setup` afterwards. Every page needs a login (fallback policy); `/setup`, `/login`, `/healthz`, `/culture`, `/theme` and the static files are anonymous. The login shows one text for an unknown user, a wrong password and a locked account, so it never tells which accounts exist; `LoginLimits` counts failures per address on the run's `TimeProvider`. Logout is `POST /logout` (`AccountEndpoints`, antiforgery required) with a button in the layout instead of a `Logout.razor` page. `LocalUrls` checks every return address (login, switches). `ManagerForm` in `TestSupport` submits a page's form like a browser (hidden antiforgery and form-name fields); `ManagerFactory` takes settings and asks for German pages.)
 
 ### Steps
 

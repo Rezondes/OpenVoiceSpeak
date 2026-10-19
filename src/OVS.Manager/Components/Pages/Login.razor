@@ -1,0 +1,13 @@
+@page "/login"
+@attribute [AllowAnonymous]
+
+<h1>@Strings.Login_Title</h1>
+<EditForm Model="Model" FormName="login" OnValidSubmit="LoginAsync" class="account-form">
+    <label>@Strings.Field_UserName <InputText @bind-Value="Model!.UserName" autocomplete="username" /></label>
+    <label>@Strings.Field_Password <InputText type="password" @bind-Value="Model!.Password" autocomplete="current-password" /></label>
+    @if (Error is not null)
+    {
+        <p class="form-error" role="alert">@Error</p>
+    }
+    <button type="submit">@Strings.Login_Submit</button>
+</EditForm>

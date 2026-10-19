@@ -16,22 +16,19 @@ internal static class AppearanceEndpoints
     {
         app.MapGet("/culture", (string? language, string? returnUrl, HttpContext context) =>
         {
-            if (UiCulture.Find(language) is not { } culture || !IsLocal(returnUrl)) return Results.BadRequest();
+            if (UiCulture.Find(language) is not { } culture || !LocalUrls.IsLocal(returnUrl)) return Results.BadRequest();
             context.Response.Cookies.Append(CookieRequestCultureProvider.DefaultCookieName,
                 CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(culture)), CookieOptions(context));
             return Results.LocalRedirect(returnUrl!);
-        });
+        }).AllowAnonymous();
         app.MapGet("/theme", (string? value, string? returnUrl, HttpContext context) =>
         {
-            if (!ThemeCookie.TryParse(value, out var theme) || !IsLocal(returnUrl)) return Results.BadRequest();
+            if (!ThemeCookie.TryParse(value, out var theme) || !LocalUrls.IsLocal(returnUrl)) return Results.BadRequest();
             if (theme == Theme.System) context.Response.Cookies.Delete(ThemeCookie.Name);
             else context.Response.Cookies.Append(ThemeCookie.Name, ThemeCookie.Format(theme), CookieOptions(context));
             return Results.LocalRedirect(returnUrl!);
-        });
+        }).AllowAnonymous();
     }
-
-    /// <summary>A path of this site: one leading slash, not "//" or "/\" (another host), as <c>Url.IsLocalUrl</c> decides.</summary>
-    static bool IsLocal(string? url) => url is ['/', ..] && !url.StartsWith("//", StringComparison.Ordinal) && !url.StartsWith("/\\", StringComparison.Ordinal);
 
     static CookieOptions CookieOptions(HttpContext context) => new()
     {

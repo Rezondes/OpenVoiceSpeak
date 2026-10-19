@@ -70,3 +70,34 @@ a {
 main {
     padding: 16px;
 }
+
+/* Package M3: the account forms (setup, login) */
+.account-form {
+    display: grid;
+    gap: 12px;
+    max-width: 360px;
+}
+
+.account-form label {
+    display: grid;
+    gap: 4px;
+}
+
+.account-form input,
+button {
+    font: inherit;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+}
+
+.form-error {
+    color: #c62828;
+    margin: 0;
+}
+
+.logout {
+    margin: 0;
+}

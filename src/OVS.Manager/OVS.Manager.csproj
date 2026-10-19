@@ -4,6 +4,8 @@
   <ItemGroup>
     <ProjectReference Include="..\OVS.Shared\OVS.Shared.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+    <!-- Package M3 (MA1): accounts with hashing, lockout, security stamps and reset tokens -->
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
     <!-- the migrations are made with the dotnet-ef tool of dotnet-tools.json (dotnet tool restore), which needs this at design time -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" PrivateAssets="all" />
   </ItemGroup>

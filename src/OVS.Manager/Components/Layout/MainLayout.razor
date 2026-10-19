@@ -4,6 +4,12 @@
     <span class="app-title">@Strings.App_Title</span>
     <LanguageSwitch />
     <ThemeSwitch />
+    <AuthorizeView>
+        <form method="post" action="/logout" class="logout">
+            <AntiforgeryToken />
+            <button type="submit" name="logout" value="logout">@Strings.Logout</button>
+        </form>
+    </AuthorizeView>
 </header>
 <main>
     @Body

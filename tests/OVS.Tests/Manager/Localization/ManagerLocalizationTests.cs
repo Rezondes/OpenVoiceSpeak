@@ -63,7 +63,7 @@ public sealed partial class ManagerLocalizationTests
         foreach (var file in Directory.GetFiles(Path.Combine(RepoPaths.Root, "src", "OVS.Manager"), "*.razor", SearchOption.AllDirectories))
         {
             var text = File.ReadAllText(file);
-            var markup = Directive().Replace(text, "");
+            var markup = Control().Replace(Directive().Replace(text, ""), "");
             foreach (Match attribute in TextAttribute().Matches(markup))
                 Assert.True(attribute.Groups[2].Value.StartsWith('@'), $"{file}: {attribute.Value} is no resource");
             var content = Expression().Replace(Tag().Replace(markup, " "), " ");
@@ -73,6 +73,10 @@ public sealed partial class ManagerLocalizationTests
 
     [GeneratedRegex(@"^@(page|using|inherits|implements|layout|attribute|inject|rendermode)\b.*$", RegexOptions.Multiline)]
     private static partial Regex Directive();
+
+    /// <summary>The lines of Razor control flow (<c>@if (...)</c>, <c>else</c>, a lone brace): code, no text.</summary>
+    [GeneratedRegex(@"^\s*(@(if|foreach|for|while|switch)\b.*|\}?\s*else\b.*|[{}])\s*$", RegexOptions.Multiline)]
+    private static partial Regex Control();
 
     [GeneratedRegex(@"\b(title|placeholder|aria-label|alt|label)=""([^""]*)""", RegexOptions.IgnoreCase)]
     private static partial Regex TextAttribute();

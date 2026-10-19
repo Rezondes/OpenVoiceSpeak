@@ -4,11 +4,25 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Account_Failed" xml:space="preserve"><value>Das Konto konnte nicht angelegt werden.</value></data>
+  <data name="Account_PasswordMismatch" xml:space="preserve"><value>Die Passwörter stimmen nicht überein.</value></data>
+  <data name="Account_PasswordTooShort" xml:space="preserve"><value>Das Passwort braucht mindestens 12 Zeichen.</value></data>
+  <data name="Account_UserNameInvalid" xml:space="preserve"><value>Der Benutzername ist ungültig oder schon vergeben.</value></data>
   <data name="App_Title" xml:space="preserve"><value>OpenVoiceSpeak Verwaltung</value></data>
+  <data name="Field_ConfirmPassword" xml:space="preserve"><value>Passwort wiederholen</value></data>
+  <data name="Field_Password" xml:space="preserve"><value>Passwort</value></data>
+  <data name="Field_UserName" xml:space="preserve"><value>Benutzername</value></data>
   <data name="Home_Title" xml:space="preserve"><value>OpenVoiceSpeak Verwaltung</value></data>
   <data name="Language_English" xml:space="preserve"><value>English</value></data>
   <data name="Language_German" xml:space="preserve"><value>Deutsch</value></data>
   <data name="Language_Label" xml:space="preserve"><value>Sprache</value></data>
+  <data name="Login_Submit" xml:space="preserve"><value>Anmelden</value></data>
+  <data name="Login_Title" xml:space="preserve"><value>Anmelden</value></data>
+  <data name="Login_TooMany" xml:space="preserve"><value>Zu viele Fehlversuche von dieser Adresse. Bitte später erneut versuchen.</value></data>
+  <data name="Login_Wrong" xml:space="preserve"><value>Benutzername oder Passwort falsch.</value></data>
+  <data name="Logout" xml:space="preserve"><value>Abmelden</value></data>
+  <data name="Setup_Submit" xml:space="preserve"><value>Anlegen</value></data>
+  <data name="Setup_Title" xml:space="preserve"><value>Ersten Administrator anlegen</value></data>
   <data name="Theme_Dark" xml:space="preserve"><value>Dunkel</value></data>
   <data name="Theme_Label" xml:space="preserve"><value>Darstellung</value></data>
   <data name="Theme_Light" xml:space="preserve"><value>Hell</value></data>
