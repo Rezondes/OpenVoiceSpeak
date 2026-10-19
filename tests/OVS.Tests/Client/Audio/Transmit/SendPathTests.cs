@@ -783,7 +783,7 @@ public class SendPathTests
 
     /// <summary>
     /// Package 124: complexity 5 instead of the default 10 (measured: same spectral distance at about 40 % less encoding
-    /// time, see PLAN.md). DTX stays off: talk pauses already stop sending, and within one DTX would send a comfort-noise
+    /// time, see docs/archive/PLAN-ARCHIVE.md). DTX stays off: talk pauses already stop sending, and within one DTX would send a comfort-noise
     /// frame every 400 ms that receivers play as a faint pulse. So a pause while the key is held is sent frame by frame.
     /// </summary>
     [Fact]

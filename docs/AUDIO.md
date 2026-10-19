@@ -1,6 +1,6 @@
 # So funktioniert der Ton
 
-Diese Seite beschreibt den Weg der Sprache vom Mikrofon bis zu den Lautsprechern der anderen und wie die Hinweistöne dazukommen. Die Zahlen stammen aus dem Code; wo eine Stelle genauer nachzulesen ist, steht die Datei dabei. Die Entscheidungen und ihre Gründe stehen in `PLAN.md` (vor allem Packages 123 bis 142 und 172 bis 180).
+Diese Seite beschreibt den Weg der Sprache vom Mikrofon bis zu den Lautsprechern der anderen und wie die Hinweistöne dazukommen. Die Zahlen stammen aus dem Code; wo eine Stelle genauer nachzulesen ist, steht die Datei dabei. Die Entscheidungen und ihre Gründe stehen in `docs/archive/PLAN-ARCHIVE.md` (vor allem Packages 123 bis 142 und 172 bis 180).
 
 ## Überblick
 

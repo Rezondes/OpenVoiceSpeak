@@ -12,7 +12,7 @@ namespace OVS.Client.Audio.Codec;
 internal sealed unsafe class VoiceEncoder
 {
     /// <summary>
-    /// Package 124: Opus defaults to its most expensive setting. Measured on a speech-like signal at 32 kbps (PLAN.md,
+    /// Package 124: Opus defaults to its most expensive setting. Measured on a speech-like signal at 32 kbps (docs/archive/PLAN-ARCHIVE.md,
     /// Package 124): 5 encodes in about 60 % of the time of 10 with the same spectral distance. It is the lowest value
     /// that keeps the voice part's spectral interpolation and warped noise shaping (from 4) and the music part's pitch
     /// pre-filter (from 5); what dropping them costs a real voice a synthetic signal cannot show.
@@ -51,7 +51,7 @@ internal sealed unsafe class VoiceEncoder
         // single lost packet instead of guessing it. Opus only adds it when told to expect some loss.
         // Package 142: not for music. Opus carries FEC only in its speech coder (SILK), so with a loss hint (10 % from the
         // start) it leaves the music coder for it, and SILK's stereo blurs the sides: at 64 kbps a tone on one side came
-        // out 2.6 dB below it on the other (measured with Concentus, see PLAN.md). Without FEC the music coder keeps them
+        // out 2.6 dB below it on the other (measured with Concentus, see docs/archive/PLAN-ARCHIVE.md). Without FEC the music coder keeps them
         // more than 70 dB apart; a lost music frame comes from the copy (Package 136) or the decoder's concealment.
         Set(SetInbandFec, music ? 0 : 1);
         Set(SetPacketLoss, LossAdapter.InitialHint);

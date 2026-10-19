@@ -467,7 +467,7 @@ public class VoiceFilterTests
 
     /// <summary>
     /// Pink noise (Paul Kellet's filter over white noise) with the given RMS level per frame: like a fan or room noise,
-    /// with most energy low. RNNoise hardly touches plain white noise (about -2 dB at -35 dBFS, measured), see PLAN.md.
+    /// with most energy low. RNNoise hardly touches plain white noise (about -2 dB at -35 dBFS, measured), see docs/archive/PLAN-ARCHIVE.md.
     /// </summary>
     sealed class PinkNoise(int seed)
     {

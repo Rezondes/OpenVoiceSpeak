@@ -4,9 +4,9 @@ using System.Text.RegularExpressions;
 namespace OVS.Tests;
 
 /// <summary>
-/// One test reference in a Tests section of a PLAN.md package (CODING-RULES-OVS.md §Tests): a test method with or without
-/// its class, a test class alone, or a website file and a text it contains; with the acceptance criteria named after it
-/// on its line. <see cref="Parse"/> reads them; <see cref="PlanReferenceTests"/> resolves them against the test assembly.
+/// One test reference in a Tests section of a package of PLAN.md or docs/archive/PLAN-ARCHIVE.md (CODING-RULES-OVS.md §Tests): a test
+/// method with or without its class, a test class alone, or a website file and a text it contains; with the acceptance criteria named after it
+/// on its line. <see cref="Parse(string, string)"/> reads them; <see cref="PlanReferenceTests"/> resolves them against the test assembly.
 /// </summary>
 sealed record PlanReference(int Package, int Line, string? Class, string? Method, string? File, string? Text, IReadOnlyList<int> AcceptanceCriteria)
 {
@@ -36,7 +36,10 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
     /// a bullet below a header does not change it), if any. A test named right after "ersetzt" or "replaces" is the
     /// history of a replaced test and no reference.
     /// </summary>
-    public static PlanParse Parse(string plan)
+    public static PlanParse Parse(string plan) => Parse(plan, PlanFiles.Open);
+
+    /// <summary><see cref="Parse(string)"/> of the plan file named <paramref name="planFile"/>, whose name the references carry.</summary>
+    public static PlanParse Parse(string plan, string planFile)
     {
         var references = new List<PlanReference>();
         var ignored = new List<(int, string)>();
@@ -73,7 +76,7 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
                     continue;
                 }
                 references.Add(new(package!.Value, index + 1, target.Class, target.Method, target.File, target.Text,
-                    ReadCriteria(line[(span.Index + span.Length)..])));
+                    ReadCriteria(line[(span.Index + span.Length)..])) { PlanFile = planFile });
             }
             if (line.Length > 0 && !char.IsWhiteSpace(line[0])) context = lineContext;
         }
@@ -116,7 +119,10 @@ sealed record PlanReference(int Package, int Line, string? Class, string? Method
     /// <summary>Package 172: a test of the native library, <c>file.rs > name</c>, the file under native/ovs_audio.</summary>
     public bool IsRust => File is not null && File.EndsWith(".rs", StringComparison.Ordinal);
 
-    public override string ToString() => $"PLAN.md:{Line} (Package {Package}): {Target}";
+    /// <summary>The plan file the reference stands in, <see cref="PlanFiles.Open"/> unless the parse named another.</summary>
+    public string PlanFile { get; init; } = PlanFiles.Open;
+
+    public override string ToString() => $"{PlanFile}:{Line} (Package {Package}): {Target}";
 
     sealed record SpanTarget(string? Class, string? Method, string? File, string? Text);
 }

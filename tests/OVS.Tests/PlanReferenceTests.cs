@@ -5,8 +5,9 @@ using Xunit.Abstractions;
 namespace OVS.Tests;
 
 /// <summary>
-/// Every test reference in the Tests sections of PLAN.md resolves (CODING-RULES-OVS.md §Tests): a method by reflection on
-/// this assembly (in its class when one is named), a class alone by its name, a website reference by its file and text.
+/// Every test reference in the Tests sections of PLAN.md and docs/archive/PLAN-ARCHIVE.md resolves (CODING-RULES-OVS.md §Tests): a
+/// method by reflection on this assembly (in its class when one is named), a class alone by its name, a website reference
+/// by its file and text.
 /// The parser and the resolver have their own tests on small inline plans and references.
 /// </summary>
 public sealed class PlanReferenceTests(ITestOutputHelper output)
@@ -63,14 +64,16 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     public void Plan_EveryTestReference_Resolves()
     {
         var root = RepoPaths.Root;
-        var (references, ignored) = PlanReference.Parse(File.ReadAllText(Path.Combine(root, "PLAN.md")));
+        var parses = PlanFiles.All.Select(planFile => PlanReference.Parse(File.ReadAllText(Path.Combine(root, planFile)), planFile)).ToList();
+        var references = parses.SelectMany(parse => parse.References).ToList();
+        var ignored = parses.SelectMany(parse => parse.Ignored).ToList();
         var tests = FindTestMethods(typeof(PlanReferenceTests).Assembly);
         output.WriteLine($"{references.Count} references, ignored spans: " + string.Join(", ", ignored.Select(value => $"{value.Line} `{value.Span}`")));
 
         Assert.True(references.Count > 900, $"only {references.Count} references: did the package or Tests headings change?");
         Assert.Equal(NoTest.Keys.Order(), ignored.Select(value => value.Span).Distinct().Order());
         var problems = FindProblems(references, Uncovered, planReference => Resolves(planReference, tests, root));
-        Assert.True(problems.Count == 0, $"{problems.Count} PLAN.md reference problems:\n" + string.Join("\n", problems));
+        Assert.True(problems.Count == 0, $"{problems.Count} plan reference problems:\n" + string.Join("\n", problems));
     }
 
     /// <summary>
@@ -81,11 +84,11 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     public void Plan_EveryCheckedCriterion_CoveredMarkedOrExempt()
     {
         var root = RepoPaths.Root;
-        var plan = File.ReadAllText(Path.Combine(root, "PLAN.md"));
+        var plans = PlanFiles.All.Select(planFile => (File: planFile, Text: File.ReadAllText(Path.Combine(root, planFile)))).ToList();
         var tests = FindTestMethods(typeof(PlanReferenceTests).Assembly);
-        var covered = PlanReference.Parse(plan).References.Where(planReference => Resolves(planReference, tests, root))
+        var covered = plans.SelectMany(plan => PlanReference.Parse(plan.Text, plan.File).References).Where(planReference => Resolves(planReference, tests, root))
             .SelectMany(planReference => planReference.AcceptanceCriteria.Select(number => $"Package {planReference.Package} AC{number}")).ToHashSet();
-        var criteria = PlanCriterion.Parse(plan);
+        var criteria = plans.SelectMany(plan => PlanCriterion.Parse(plan.Text, plan.File)).ToList();
         Assert.True(criteria.Count > 700, $"only {criteria.Count} checked criteria: did the package headings or the AC form change?");
 
         var problems = FindUncovered(criteria, covered, NoTestPossible);
@@ -305,7 +308,7 @@ public sealed class PlanReferenceTests(ITestOutputHelper output)
     {
         var open = criteria.Where(criterion => !criterion.IsManual && !covered.Contains(criterion.Key)).ToList();
         var problems = exempt.Keys.Except(open.Select(criterion => criterion.Key)).Select(key => $"stale exemption (covered, marked or gone): {key}").ToList();
-        problems.AddRange(open.Where(criterion => !exempt.ContainsKey(criterion.Key)).Select(criterion => $"not covered: PLAN.md:{criterion.Line} {criterion.Key}"));
+        problems.AddRange(open.Where(criterion => !exempt.ContainsKey(criterion.Key)).Select(criterion => $"not covered: {criterion.PlanFile}:{criterion.Line} {criterion.Key}"));
         return problems;
     }
 
