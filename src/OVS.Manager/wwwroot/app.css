@@ -143,6 +143,16 @@ table.list td {
     border-radius: 10px;
 }
 
+/* Package M16: log pages and the console */
+.console {
+    max-height: 60vh;
+    overflow: auto;
+    padding: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    white-space: pre-wrap;
+}
+
 /* Package M9: deleting a server */
 .danger-zone {
     margin-top: 32px;

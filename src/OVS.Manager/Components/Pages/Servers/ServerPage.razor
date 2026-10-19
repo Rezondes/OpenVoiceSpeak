@@ -39,6 +39,7 @@ else
         <a href="@($"/servers/{Server.Id}/bans")">@Strings.Bans_Title</a>
         <a href="@($"/servers/{Server.Id}/groups")">@Strings.Groups_Title</a>
         <a href="@($"/servers/{Server.Id}/backups")">@Strings.Backups_Title</a>
+        <a href="@($"/servers/{Server.Id}/log")">@Strings.Log_Title</a>
     </nav>
     <AuthorizeView Roles="@ManagerRoles.Admin">
         <Assignments ServerId="@Server.Id" />

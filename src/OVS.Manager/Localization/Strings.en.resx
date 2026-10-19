@@ -113,6 +113,16 @@
   <data name="Link_Outdated" xml:space="preserve"><value>outdated: only start, stop and restart</value></data>
   <data name="Link_OutdatedProtocol" xml:space="preserve"><value>outdated (protocol {0}): only start, stop and restart</value></data>
   <data name="Link_Refused" xml:space="preserve"><value>The server refused: {0}</value></data>
+  <data name="Log_Console" xml:space="preserve"><value>Without a connection to the server: the container's console output, live.</value></data>
+  <data name="Log_DownloadFailed" xml:space="preserve"><value>The server did not prepare the download.</value></data>
+  <data name="Log_Find" xml:space="preserve"><value>Find</value></data>
+  <data name="Log_Hit" xml:space="preserve"><value>{0}, line {1}: {2}</value></data>
+  <data name="Log_Next" xml:space="preserve"><value>Next page</value></data>
+  <data name="Log_Page" xml:space="preserve"><value>{0}, page {1} of {2}</value></data>
+  <data name="Log_Previous" xml:space="preserve"><value>Previous page</value></data>
+  <data name="Log_Search" xml:space="preserve"><value>Search</value></data>
+  <data name="Log_ServerOnly" xml:space="preserve"><value>Only the server log can be seen here.</value></data>
+  <data name="Log_Title" xml:space="preserve"><value>Server log</value></data>
   <data name="Login_Submit" xml:space="preserve"><value>Log in</value></data>
   <data name="Login_Title" xml:space="preserve"><value>Log in</value></data>
   <data name="Login_TooMany" xml:space="preserve"><value>Too many failed attempts from this address. Please try again later.</value></data>

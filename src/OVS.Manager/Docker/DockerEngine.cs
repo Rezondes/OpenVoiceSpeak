@@ -135,6 +135,29 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
         return true;
     });
 
+    /// <inheritdoc/>
+    public async IAsyncEnumerable<string> FollowLogsAsync(string containerId, int tail, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellation = default)
+    {
+        await EnsureManagedAsync(containerId, cancellation);
+        using var stream = await CallAsync(() => client.Containers.GetContainerLogsAsync(containerId, false, new ContainerLogsParameters
+        {
+            ShowStdout = true, ShowStderr = true, Follow = true, Tail = tail.ToString(CultureInfo.InvariantCulture),
+        }, cancellation));
+        var buffer = new byte[8192];
+        var pending = new System.Text.StringBuilder();
+        while (!cancellation.IsCancellationRequested)
+        {
+            var read = await stream.ReadOutputAsync(buffer, 0, buffer.Length, cancellation);
+            if (read.EOF) break;
+            pending.Append(System.Text.Encoding.UTF8.GetString(buffer, 0, read.Count));
+            for (int end = pending.ToString().IndexOf('\n', StringComparison.Ordinal); end >= 0; end = pending.ToString().IndexOf('\n', StringComparison.Ordinal))
+            {
+                yield return pending.ToString(0, end).TrimEnd('\r');
+                pending.Remove(0, end + 1);
+            }
+        }
+    }
+
     /// <summary>Ends the client.</summary>
     public void Dispose() => client.Dispose();
 

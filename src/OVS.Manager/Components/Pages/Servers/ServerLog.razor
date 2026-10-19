@@ -1,0 +1,52 @@
+@page "/servers/{Id}/log"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = ServerAccessHandler.Policy)]
+@implements IAsyncDisposable
+
+<h1>@Strings.Log_Title</h1>
+@if (Error is not null)
+{
+    <p class="form-error" role="alert">@Error</p>
+}
+@if (ShowsConsole)
+{
+    <p class="form-hint">@Strings.Log_Console</p>
+    <pre class="console" data-console>@string.Join("\n", ConsoleLines)</pre>
+}
+else
+{
+    <form class="filter-form" @onsubmit="SearchAsync">
+        <label>@Strings.Log_Search <input @bind="Query" /></label>
+        <button type="submit">@Strings.Log_Find</button>
+    </form>
+    @if (Hits.Count > 0)
+    {
+        <ul class="hits">
+            @foreach (var hit in Hits)
+            {
+                <li data-hit="@hit.Line"><button type="button" @onclick="@Open(hit)">@HitText(hit)</button></li>
+            }
+        </ul>
+    }
+    <table class="list">
+        <tbody>
+            @foreach (var file in Files)
+            {
+                <tr @key="file.Id" data-file="@file.Id">
+                    <td><button type="button" @onclick="@Read(file)">@file.Id</button></td>
+                    <td>@Local(file.LastWrite)</td>
+                    <td><a href="@DownloadLink(file)" data-download>@Strings.Backups_Download</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (Page is { } page)
+    {
+        <h2>@PageTitle(page)</h2>
+        <p>
+            <button type="button" disabled="@IsFirstPage" @onclick="PreviousAsync">@Strings.Log_Previous</button>
+            <button type="button" disabled="@IsLastPage" @onclick="NextAsync">@Strings.Log_Next</button>
+        </p>
+        <pre class="console" data-page>@string.Join("\n", page.Lines)</pre>
+    }
+}

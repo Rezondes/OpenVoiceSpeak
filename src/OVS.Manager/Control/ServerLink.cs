@@ -11,6 +11,7 @@ using OVS.Shared.Net;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.LogAccess;
 using OVS.Shared.Protocol.Messages.Moderation;
 using OVS.Shared.Protocol.Messages.ServerBackups;
 using OVS.Shared.Protocol.Messages.Users;
@@ -296,6 +297,11 @@ internal sealed partial class ServerLink : IAsyncDisposable
             BackupChunk chunk => chunk.RequestId == requestId,
             UploadBackupAck ack => ack.RequestId == requestId,
             BackupUploaded uploaded => uploaded.RequestId == requestId,
+            LogList list => list.RequestId == requestId,
+            LogPage page => page.RequestId == requestId,
+            LogSearchResult result => result.RequestId == requestId,
+            LogDownloadReady ready => ready.RequestId == requestId,
+            LogChunk chunk => chunk.RequestId == requestId,
             _ => done?.Invoke(message) ?? false,
         };
     }

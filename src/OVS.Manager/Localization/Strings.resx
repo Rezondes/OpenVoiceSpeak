@@ -113,6 +113,16 @@
   <data name="Link_Outdated" xml:space="preserve"><value>veraltet: nur Starten, Stoppen und Neustarten</value></data>
   <data name="Link_OutdatedProtocol" xml:space="preserve"><value>veraltet (Protokoll {0}): nur Starten, Stoppen und Neustarten</value></data>
   <data name="Link_Refused" xml:space="preserve"><value>Der Server hat abgelehnt: {0}</value></data>
+  <data name="Log_Console" xml:space="preserve"><value>Ohne Verbindung zum Server: die Konsolenausgabe des Containers, live.</value></data>
+  <data name="Log_DownloadFailed" xml:space="preserve"><value>Der Server hat den Download nicht vorbereitet.</value></data>
+  <data name="Log_Find" xml:space="preserve"><value>Finden</value></data>
+  <data name="Log_Hit" xml:space="preserve"><value>{0}, Zeile {1}: {2}</value></data>
+  <data name="Log_Next" xml:space="preserve"><value>Nächste Seite</value></data>
+  <data name="Log_Page" xml:space="preserve"><value>{0}, Seite {1} von {2}</value></data>
+  <data name="Log_Previous" xml:space="preserve"><value>Vorige Seite</value></data>
+  <data name="Log_Search" xml:space="preserve"><value>Suchen</value></data>
+  <data name="Log_ServerOnly" xml:space="preserve"><value>Nur das Serverlog ist hier zu sehen.</value></data>
+  <data name="Log_Title" xml:space="preserve"><value>Serverlog</value></data>
   <data name="Login_Submit" xml:space="preserve"><value>Anmelden</value></data>
   <data name="Login_Title" xml:space="preserve"><value>Anmelden</value></data>
   <data name="Login_TooMany" xml:space="preserve"><value>Zu viele Fehlversuche von dieser Adresse. Bitte später erneut versuchen.</value></data>

@@ -95,4 +95,6 @@ internal static class AuditActions
     public const string BackupUploaded = "BackupUploaded";
     /// <summary>A server's backup schedule changed (M15).</summary>
     public const string BackupScheduleChanged = "BackupScheduleChanged";
+    /// <summary>A server log file was downloaded (M16).</summary>
+    public const string LogDownloaded = "LogDownloaded";
 }

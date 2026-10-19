@@ -83,6 +83,8 @@ builder.Services.AddScoped<ModerationCommands>(); // Package M13
 builder.Services.AddScoped<GroupCommands>();
 builder.Services.AddScoped<BackupCommands>(); // Package M15
 builder.Services.AddHostedService<BackupScheduler>();
+builder.Services.AddScoped<LogCommands>(); // Package M16
+builder.Services.AddScoped<ConsoleLog>();
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();
 
@@ -109,5 +111,6 @@ AppearanceEndpoints.Map(app);
 AccountEndpoints.Map(app);
 AuditEndpoints.Map(app);
 BackupEndpoints.Map(app);
+LogEndpoints.Map(app);
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 await app.RunAsync();

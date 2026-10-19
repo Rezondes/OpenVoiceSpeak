@@ -770,17 +770,19 @@ Packages 81 and 82 give the server log over the protocol; the channel logs (chat
 
 ### Acceptance Criteria
 
-- [ ] AC1: The server log is listed per day, paged and searched; a hit opens its place.
-- [ ] AC2: A day's log is downloaded as a file.
-- [ ] AC3: For an outdated or unreachable server the console output is shown live instead, without token lines.
-- [ ] AC4: Channel logs are never listed or shown.
+- [x] AC1: The server log is listed per day, paged and searched; a hit opens its place.
+- [x] AC2: A day's log is downloaded as a file.
+- [x] AC3: For an outdated or unreachable server the console output is shown live instead, without token lines.
+- [x] AC4: Channel logs are never listed or shown.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `LogCommandsTests > "List_Read_Search"` - AC1
-2. `LogCommandsTests > "Download_Day_File"` - AC2
-3. `LogCommandsTests > "Console_Outdated_ShownWithoutToken"` - AC3
-4. `LogCommandsTests > "ChannelLogs_NeverListed"` - AC4
+1. `LogCommandsTests > "List_ReadAndSearch_HitOpensPage"` - AC1
+2. `LogCommandsTests > "Download_ServerLog_FileWithItsLines"` - AC2
+3. `LogCommandsTests > "Console_NoSession_ShownWithoutToken"` (bUnit) - AC3
+4. `LogCommandsTests > "ChannelLogs_Chat_NeverListed"` - AC4
+
+(as built: `LogCommands` lists the server's log files (`ListLogs`, only `LogKind.Server` with ids under `server/`), reads a page (`ReadLog`, 1000 lines a page, the last page first), searches (`SearchLogs` with `LogKind.Server`) and opens a hit at its page, and downloads a file (`PrepareLogDownload` with that one file, then `DownloadLogChunk`; the server sends a single file as it is, several as a zip). A channel id is refused before any request ("Nur das Serverlog ist hier zu sehen."). `GET /servers/{id}/log/download?file=server/...` streams it (policy `ServerAccess`, audit line `LogDownloaded`). Without an open service session the page `/servers/{id}/log` follows the container's output instead (`IDockerEngine.FollowLogsAsync` over the proxy's `containers/{id}/logs`, the last 200 lines and then live) through `ConsoleLog`, which drops every line with "Server admin token:"; the page keeps the newest 500 lines.)
 
 ### Steps
 

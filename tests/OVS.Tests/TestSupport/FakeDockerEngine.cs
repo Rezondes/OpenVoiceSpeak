@@ -21,6 +21,9 @@ internal sealed class FakeDockerEngine : IDockerEngine
     /// <summary>Package M8: while set, start, stop and restart wait for it (an action that takes its time).</summary>
     public TaskCompletionSource? Hold { get; set; }
 
+    /// <summary>Package M16: the console output per container id, given out once and then followed until cancelled.</summary>
+    public ConcurrentDictionary<string, string[]> ConsoleLines { get; } = new();
+
     /// <summary>Package M9: the servers whose volume was removed, in order.</summary>
     public ConcurrentQueue<string> RemovedVolumes { get; } = new();
 
@@ -62,6 +65,13 @@ internal sealed class FakeDockerEngine : IDockerEngine
         EnsureReachable();
         if (!Containers.TryRemove(containerId, out _)) throw new ForeignContainerException(containerId);
         return Task.CompletedTask;
+    }
+
+    public async IAsyncEnumerable<string> FollowLogsAsync(string containerId, int tail, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellation = default)
+    {
+        EnsureReachable();
+        foreach (var line in ConsoleLines.GetValueOrDefault(containerId, []).TakeLast(tail)) yield return line;
+        await Task.Delay(Timeout.Infinite, cancellation); // following: no more lines until the page leaves
     }
 
     public Task RemoveVolumeAsync(string serverId, CancellationToken cancellation = default)
