@@ -1,6 +1,7 @@
 using System.Globalization;
 using OVS.Manager.Control;
 using OVS.Manager.Servers;
+using Error = OVS.Shared.Protocol.Messages.Connection.Error;
 
 namespace OVS.Manager.Localization;
 
@@ -35,6 +36,9 @@ internal static class ServerTexts
         };
         return server.ExitCode is { } code ? TextFormat.Of(Strings.Status_WithExitCode, text, code) : text;
     }
+
+    /// <summary>Package M12 (AC1): a server's refusal of a request: its own text, else its code.</summary>
+    public static string Refusal(Error error) => TextFormat.Of(Strings.Link_Refused, error.Detail is { Length: > 0 } detail ? detail : error.Code);
 
     /// <summary>Package M11 (AC4): the users online but the service session, "–" without a session.</summary>
     public static string UsersOnline(ServerLink? link) =>

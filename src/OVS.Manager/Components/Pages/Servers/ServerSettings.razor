@@ -1,0 +1,37 @@
+@page "/servers/{Id}/settings"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = ServerAccessHandler.Policy)]
+@implements IDisposable
+
+<h1>@Strings.Settings_Title</h1>
+@if (Message is not null)
+{
+    <p class="form-ok" role="status">@Message</p>
+}
+@if (Error is not null)
+{
+    <p class="form-error" role="alert">@Error</p>
+}
+@if (Input is null)
+{
+    <p class="form-hint">@Strings.Link_NotConnected</p>
+}
+else
+{
+    <EditForm Model="Input" OnValidSubmit="SaveAsync" class="account-form" @oninput="MarkDirty">
+        <label>@Strings.Servers_Name <InputText @bind-Value="Input.Name" /></label>
+        <label>@Strings.Settings_WelcomeText <InputTextArea @bind-Value="Input.WelcomeText" /></label>
+        <label>@Strings.Settings_NewPassword <InputText type="password" @bind-Value="Input.NewPassword" autocomplete="new-password" /></label>
+        <label><InputCheckbox @bind-Value="Input.RemovePassword" /> @Strings.Settings_RemovePassword</label>
+        <label>@Strings.Servers_MaxUsers <InputNumber @bind-Value="Input.MaxUsers" /></label>
+        <label>@Strings.Settings_LogDays <InputNumber @bind-Value="Input.LogDays" /></label>
+        <label><InputCheckbox @bind-Value="Input.LogRotateDaily" /> @Strings.Settings_LogRotateDaily</label>
+        <label><InputCheckbox @bind-Value="Input.AutoRestart" /> @Strings.Settings_AutoRestart</label>
+        <label>@Strings.Settings_AutoRestartTime <input type="time" @bind="Input.AutoRestartTime" @bind:format="HH:mm" /></label>
+        <button type="submit">@Strings.Settings_Save</button>
+    </EditForm>
+    <h2>@Strings.Settings_Icon</h2>
+    <p class="form-hint">@IconHint</p>
+    <InputFile OnChange="SetIconAsync" accept="image/png" />
+    <button type="button" @onclick="RemoveIconAsync">@Strings.Settings_RemoveIcon</button>
+}

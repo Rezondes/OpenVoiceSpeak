@@ -78,6 +78,7 @@ builder.Services.AddScoped<ServerAssignmentList>();
 // Package M11: one invisible service session to each running server, with its state as a mirror
 builder.Services.AddSingleton<ServerConnections>();
 builder.Services.AddHostedService(services => services.GetRequiredService<ServerConnections>());
+builder.Services.AddScoped<SettingsCommands>(); // Package M12
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();
 

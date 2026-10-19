@@ -32,6 +32,9 @@ else
         </tbody>
     </table>
     <ServerActions ServerId="@Server.Id" Busy="@Watcher.IsBusy(Server.Id)" />
+    <nav class="server-nav">
+        <a href="@($"/servers/{Server.Id}/settings")">@Strings.Settings_Title</a>
+    </nav>
     <AuthorizeView Roles="@ManagerRoles.Admin">
         <Assignments ServerId="@Server.Id" />
         <DeleteServerDialog ServerId="@Server.Id" ServerName="@Server.Name" />

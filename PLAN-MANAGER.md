@@ -607,17 +607,19 @@ The protocol has `ServerSettingsInfo`, `UpdateServerSettings`, `SetServerIcon` (
 
 ### Acceptance Criteria
 
-- [ ] AC1: The page shows the current values from the mirror and saves changes with `UpdateServerSettings`; a refused value shows the server's error text.
-- [ ] AC2: Changes from a client admin appear on an open page without reload.
-- [ ] AC3: An icon upload is checked for size and type like in the client and set with `SetServerIcon`.
-- [ ] AC4: Each save writes an audit line with the changed fields (the password only as "geändert").
+- [x] AC1: The page shows the current values from the mirror and saves changes with `UpdateServerSettings`; a refused value shows the server's error text.
+- [x] AC2: Changes from a client admin appear on an open page without reload.
+- [x] AC3: An icon upload is checked for size and type like in the client and set with `SetServerIcon`.
+- [x] AC4: Each save writes an audit line with the changed fields (the password only as "geändert").
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `SettingsCommandsTests > "Save_Values_SentAndRefusalShown"` - AC1
-2. `SettingsCommandsTests > "ExternalChange_PageUpdated"` - AC2
-3. `SettingsCommandsTests > "Icon_TooLarge_Refused"` - AC3
-4. `SettingsCommandsTests > "Save_AuditFieldsPasswordHidden"` - AC4
+2. `SettingsCommandsTests > "ExternalChange_OpenPage_Updated"` (bUnit) - AC2
+3. `SettingsCommandsTests > "Icon_TooLargeOrNoPng_Refused"` - AC3
+4. `SettingsCommandsTests > "Save_Audit_FieldsWithoutPassword"` - AC4
+
+(as built: `ServerLink.RequestAsync` sends a request with a new id and waits up to 10 s for the server's `Error` with that id (returned) or the message that shows it was done (`ServerSettingsChanged` here). `SettingsCommands` builds `UpdateServerSettings` from `SettingsInput` (name, welcome text, password new or removed, max users, log days, daily log file, daily restart and its time; the AFK settings of the mirror stay) and takes over a new name in the manager's row too; a refusal shows "Der Server hat abgelehnt:" with the server's text. The icon is checked for 512 KB and a square PNG of 64 to 512 px before it is sent (the client also scales a larger picture, the manager has no image library); `SetServerIcon` sets it. Each save writes `ServerSettingsChanged` with the changed fields, the password only as "password changed" or "password removed", and `ServerIconChanged`. The page `/servers/{id}/settings` (policy `ServerAccess`, so assigned managers too) follows the mirror and takes a change from a client admin unless the form holds unsaved input; the server page links to it. Without a connection or for an outdated server it says so. `TestSupport/ServerLinks` starts in-process servers with the manager's open service session for M11 ff.)
 
 ### Steps
 

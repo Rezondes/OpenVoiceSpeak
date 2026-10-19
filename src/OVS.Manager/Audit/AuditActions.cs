@@ -53,4 +53,8 @@ internal static class AuditActions
     public const string ServerUnassigned = "ServerUnassigned";
     /// <summary>The admin accepted a server's new certificate (M11); the detail is its fingerprint.</summary>
     public const string CertificateAccepted = "CertificateAccepted";
+    /// <summary>A server's settings were changed (M12); the detail names the changed fields, never a password.</summary>
+    public const string ServerSettingsChanged = "ServerSettingsChanged";
+    /// <summary>A server's icon was set or removed (M12).</summary>
+    public const string ServerIconChanged = "ServerIconChanged";
 }

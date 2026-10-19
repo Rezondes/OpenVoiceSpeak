@@ -10,6 +10,7 @@ using OVS.Shared.Exceptions;
 using OVS.Shared.Net;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
+using OVS.Shared.Protocol.Messages.Connection;
 
 namespace OVS.Manager.Control;
 
@@ -29,6 +30,9 @@ internal sealed partial class ServerLink : IAsyncDisposable
     /// <summary>AC1: the longest wait between two connects, so a started server is reached within 10 s.</summary>
     public static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(8);
 
+    /// <summary>Package M12: how long a request waits for the server's answer.</summary>
+    public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
+
     /// <summary>AC2: how long an outdated server is left alone before the next try (it may have been updated).</summary>
     public static readonly TimeSpan OutdatedRetry = TimeSpan.FromMinutes(5);
 
@@ -40,6 +44,7 @@ internal sealed partial class ServerLink : IAsyncDisposable
     readonly Lock gate = new();
     readonly CancellationTokenSource stop = new();
     Task running = Task.CompletedTask;
+    readonly List<PendingRequest> pending = [];
     StateMirror? mirror;
     ControlConnection? connection;
 
@@ -84,6 +89,29 @@ internal sealed partial class ServerLink : IAsyncDisposable
         ControlConnection? open;
         lock (gate) open = connection;
         return open?.SendAsync(message, cancellation) ?? throw new InvalidOperationException($"Server {serverId} is not connected.");
+    }
+
+    /// <summary>
+    /// Package M12: sends <paramref name="request"/> with a new request id and waits until the server refuses it (the
+    /// <see cref="Error"/> is returned) or sends the message <paramref name="done"/> accepts (null is returned).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The link is not connected.</exception>
+    /// <exception cref="TimeoutException">No answer within <see cref="RequestTimeout"/>.</exception>
+    public async Task<Error?> RequestAsync(Request request, Func<Message, bool> done, CancellationToken cancellation = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var id = Guid.NewGuid().ToString("N");
+        var answer = new PendingRequest(id, done);
+        lock (gate) pending.Add(answer);
+        try
+        {
+            await SendAsync(request with { RequestId = id }, cancellation);
+            return await answer.Result.Task.WaitAsync(RequestTimeout, time, cancellation);
+        }
+        finally
+        {
+            lock (gate) pending.Remove(answer);
+        }
     }
 
     /// <summary>Ends the session and stops connecting.</summary>
@@ -165,8 +193,14 @@ internal sealed partial class ServerLink : IAsyncDisposable
         void OnMessage(object? sender, MessageReceivedEventArgs received)
         {
             bool changed;
-            lock (gate) changed = mirror?.Apply(received.Message) ?? false;
+            List<PendingRequest> answered;
+            lock (gate)
+            {
+                changed = mirror?.Apply(received.Message) ?? false;
+                answered = [.. pending.Where(request => request.Answers(received.Message))];
+            }
             if (changed) Changed?.Invoke();
+            foreach (var request in answered) request.Result.TrySetResult(received.Message as Error);
         }
         void OnDisconnected(object? sender, DisconnectedEventArgs disconnected) => ended.TrySetResult();
         open.MessageReceived += OnMessage;
@@ -203,4 +237,14 @@ internal sealed partial class ServerLink : IAsyncDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Server {ServerId} shows another certificate; the service session waits for the admin")]
     static partial void LogCertificateChanged(ILogger logger, string serverId);
+
+    /// <summary>Package M12: a request waiting for its <see cref="Error"/> or for the message that shows it was done.</summary>
+    sealed class PendingRequest(string requestId, Func<Message, bool> done)
+    {
+        /// <summary>The refusal, or null when it was done.</summary>
+        public TaskCompletionSource<Error?> Result { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>True when <paramref name="message"/> ends the request.</summary>
+        public bool Answers(Message message) => message is Error error ? error.RequestId == requestId : done(message);
+    }
 }
