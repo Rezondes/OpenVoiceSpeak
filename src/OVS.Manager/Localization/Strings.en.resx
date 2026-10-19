@@ -131,6 +131,11 @@
   <data name="Field_OldPassword" xml:space="preserve"><value>Current password</value></data>
   <data name="Field_Password" xml:space="preserve"><value>Password</value></data>
   <data name="Field_UserName" xml:space="preserve"><value>User name</value></data>
+  <data name="Forgot_AskAdmin" xml:space="preserve"><value>Please ask the administrator, who sets a new password for you.</value></data>
+  <data name="Forgot_NameOrEmail" xml:space="preserve"><value>User name or e-mail</value></data>
+  <data name="Forgot_Sent" xml:space="preserve"><value>If the account exists and has an e-mail address, a link is on its way. It is valid for an hour.</value></data>
+  <data name="Forgot_Submit" xml:space="preserve"><value>Send link</value></data>
+  <data name="Forgot_Title" xml:space="preserve"><value>Forgot password</value></data>
   <data name="Groups_Create" xml:space="preserve"><value>New group</value></data>
   <data name="Groups_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Groups_Down" xml:space="preserve"><value>down</value></data>
@@ -196,11 +201,30 @@
   <data name="Log_Search" xml:space="preserve"><value>Search</value></data>
   <data name="Log_ServerOnly" xml:space="preserve"><value>Only the server log can be seen here.</value></data>
   <data name="Log_Title" xml:space="preserve"><value>Server log</value></data>
+  <data name="Login_Forgot" xml:space="preserve"><value>Forgot password</value></data>
   <data name="Login_Submit" xml:space="preserve"><value>Log in</value></data>
   <data name="Login_Title" xml:space="preserve"><value>Log in</value></data>
   <data name="Login_TooMany" xml:space="preserve"><value>Too many failed attempts from this address. Please try again later.</value></data>
   <data name="Login_Wrong" xml:space="preserve"><value>Wrong user name or password.</value></data>
   <data name="Logout" xml:space="preserve"><value>Log out</value></data>
+  <data name="MailSettings_Failed" xml:space="preserve"><value>The test mail did not go out: {0}</value></data>
+  <data name="MailSettings_From" xml:space="preserve"><value>Sender</value></data>
+  <data name="MailSettings_Host" xml:space="preserve"><value>Server</value></data>
+  <data name="MailSettings_NotConfigured" xml:space="preserve"><value>SMTP is not set up: set SMTP_HOST and SMTP_FROM in the compose file.</value></data>
+  <data name="MailSettings_Security" xml:space="preserve"><value>Encryption</value></data>
+  <data name="MailSettings_Send" xml:space="preserve"><value>Send test mail</value></data>
+  <data name="MailSettings_Sent" xml:space="preserve"><value>Test mail sent to {0}.</value></data>
+  <data name="MailSettings_Title" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Mail_ResetBody" xml:space="preserve"><value>Hello {0},
+
+this link sets a new password for the manager. It is valid for an hour and only once:
+
+{1}
+
+If you did not ask for it, ignore this mail.</value></data>
+  <data name="Mail_ResetSubject" xml:space="preserve"><value>OpenVoiceSpeak: new password</value></data>
+  <data name="Mail_TestBody" xml:space="preserve"><value>This mail shows that the manager can send mail.</value></data>
+  <data name="Mail_TestSubject" xml:space="preserve"><value>OpenVoiceSpeak: test mail</value></data>
   <data name="Nav_Accounts" xml:space="preserve"><value>Accounts</value></data>
   <data name="Nav_Audit" xml:space="preserve"><value>Audit log</value></data>
   <data name="Nav_Home" xml:space="preserve"><value>Overview</value></data>
@@ -247,6 +271,10 @@
   <data name="Profile_SessionSince" xml:space="preserve"><value>since {0}</value></data>
   <data name="Profile_SessionsTitle" xml:space="preserve"><value>Signed-in sessions</value></data>
   <data name="Profile_Title" xml:space="preserve"><value>My account</value></data>
+  <data name="Reset_Done" xml:space="preserve"><value>The password is set; every login was ended.</value></data>
+  <data name="Reset_InvalidLink" xml:space="preserve"><value>The link has expired or was used already.</value></data>
+  <data name="Reset_Submit" xml:space="preserve"><value>Set password</value></data>
+  <data name="Reset_Title" xml:space="preserve"><value>New password</value></data>
   <data name="Resources_Change" xml:space="preserve"><value>Change limits</value></data>
   <data name="Resources_Changed" xml:space="preserve"><value>Limits changed.</value></data>
   <data name="Resources_Confirm" xml:space="preserve"><value>Make it again</value></data>

@@ -12,6 +12,7 @@ using OVS.Manager.Control;
 using OVS.Manager.Data;
 using OVS.Manager.Docker;
 using OVS.Manager.Localization;
+using OVS.Manager.Mail;
 using OVS.Manager.Servers;
 using OVS.Manager.Telemetry;
 using OVS.Shared;
@@ -41,6 +42,11 @@ builder.Services.AddIdentity<ManagerUser, IdentityRole>(identity =>
     })
     .AddEntityFrameworkStores<ManagerDbContext>()
     .AddDefaultTokenProviders();
+// Package M26 (D5): mail over SMTP; a reset link is valid for an hour
+builder.Services.AddSingleton(SmtpOptions.Read(builder.Configuration));
+builder.Services.AddSingleton<IMailSender, MailSender>();
+builder.Services.AddScoped<PasswordReset>();
+builder.Services.Configure<DataProtectionTokenProviderOptions>(tokens => tokens.TokenLifespan = PasswordReset.LinkLifetime);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuditLog>(); // Package M5
 builder.Services.AddHostedService<AuditRetention>();

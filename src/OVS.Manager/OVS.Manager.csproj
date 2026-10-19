@@ -13,6 +13,10 @@
     <!-- Package M20 (D6): OTLP over http/protobuf; the classes are made from Telemetry/Proto at build time, internal to the manager -->
     <PackageReference Include="Google.Protobuf" Version="3.28.0" />
     <PackageReference Include="Grpc.Tools" Version="2.66.0" PrivateAssets="all" />
+    <!-- Package M26 (D5): SMTP for the password reset and the notifications -->
+    <PackageReference Include="MailKit" Version="4.16.0" />
+    <!-- MailKit brings Pkcs 10.0.0, which has known advisories; the patched one of the runtime line -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
   <ItemGroup>
     <Protobuf Include="Telemetry/Proto/*.proto" ProtoRoot="." GrpcServices="None" Access="Internal" />

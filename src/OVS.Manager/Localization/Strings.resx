@@ -131,6 +131,11 @@
   <data name="Field_OldPassword" xml:space="preserve"><value>Bisheriges Passwort</value></data>
   <data name="Field_Password" xml:space="preserve"><value>Passwort</value></data>
   <data name="Field_UserName" xml:space="preserve"><value>Benutzername</value></data>
+  <data name="Forgot_AskAdmin" xml:space="preserve"><value>Bitte wende dich an den Administrator, er setzt dir ein neues Passwort.</value></data>
+  <data name="Forgot_NameOrEmail" xml:space="preserve"><value>Benutzername oder E-Mail</value></data>
+  <data name="Forgot_Sent" xml:space="preserve"><value>Wenn es das Konto gibt und es eine E-Mail-Adresse hat, ist ein Link unterwegs. Er gilt eine Stunde.</value></data>
+  <data name="Forgot_Submit" xml:space="preserve"><value>Link senden</value></data>
+  <data name="Forgot_Title" xml:space="preserve"><value>Passwort vergessen</value></data>
   <data name="Groups_Create" xml:space="preserve"><value>Neue Gruppe</value></data>
   <data name="Groups_Delete" xml:space="preserve"><value>Löschen</value></data>
   <data name="Groups_Down" xml:space="preserve"><value>nach unten</value></data>
@@ -196,11 +201,30 @@
   <data name="Log_Search" xml:space="preserve"><value>Suchen</value></data>
   <data name="Log_ServerOnly" xml:space="preserve"><value>Nur das Serverlog ist hier zu sehen.</value></data>
   <data name="Log_Title" xml:space="preserve"><value>Serverlog</value></data>
+  <data name="Login_Forgot" xml:space="preserve"><value>Passwort vergessen</value></data>
   <data name="Login_Submit" xml:space="preserve"><value>Anmelden</value></data>
   <data name="Login_Title" xml:space="preserve"><value>Anmelden</value></data>
   <data name="Login_TooMany" xml:space="preserve"><value>Zu viele Fehlversuche von dieser Adresse. Bitte später erneut versuchen.</value></data>
   <data name="Login_Wrong" xml:space="preserve"><value>Benutzername oder Passwort falsch.</value></data>
   <data name="Logout" xml:space="preserve"><value>Abmelden</value></data>
+  <data name="MailSettings_Failed" xml:space="preserve"><value>Die Testmail ging nicht raus: {0}</value></data>
+  <data name="MailSettings_From" xml:space="preserve"><value>Absender</value></data>
+  <data name="MailSettings_Host" xml:space="preserve"><value>Server</value></data>
+  <data name="MailSettings_NotConfigured" xml:space="preserve"><value>SMTP ist nicht eingerichtet: setze SMTP_HOST und SMTP_FROM in der Compose-Datei.</value></data>
+  <data name="MailSettings_Security" xml:space="preserve"><value>Verschlüsselung</value></data>
+  <data name="MailSettings_Send" xml:space="preserve"><value>Testmail senden</value></data>
+  <data name="MailSettings_Sent" xml:space="preserve"><value>Testmail an {0} gesendet.</value></data>
+  <data name="MailSettings_Title" xml:space="preserve"><value>E-Mail</value></data>
+  <data name="Mail_ResetBody" xml:space="preserve"><value>Hallo {0},
+
+mit diesem Link setzt du ein neues Passwort für das Verwaltungstool. Er gilt eine Stunde und nur einmal:
+
+{1}
+
+Wenn du das nicht angefordert hast, ignoriere diese Mail.</value></data>
+  <data name="Mail_ResetSubject" xml:space="preserve"><value>OpenVoiceSpeak: neues Passwort</value></data>
+  <data name="Mail_TestBody" xml:space="preserve"><value>Diese Mail zeigt, dass das Verwaltungstool Mails senden kann.</value></data>
+  <data name="Mail_TestSubject" xml:space="preserve"><value>OpenVoiceSpeak: Testmail</value></data>
   <data name="Nav_Accounts" xml:space="preserve"><value>Konten</value></data>
   <data name="Nav_Audit" xml:space="preserve"><value>Protokoll</value></data>
   <data name="Nav_Home" xml:space="preserve"><value>Übersicht</value></data>
@@ -247,6 +271,10 @@
   <data name="Profile_SessionSince" xml:space="preserve"><value>seit {0}</value></data>
   <data name="Profile_SessionsTitle" xml:space="preserve"><value>Angemeldete Sitzungen</value></data>
   <data name="Profile_Title" xml:space="preserve"><value>Mein Konto</value></data>
+  <data name="Reset_Done" xml:space="preserve"><value>Das Passwort ist gesetzt; alle Anmeldungen wurden beendet.</value></data>
+  <data name="Reset_InvalidLink" xml:space="preserve"><value>Der Link ist abgelaufen oder wurde schon benutzt.</value></data>
+  <data name="Reset_Submit" xml:space="preserve"><value>Passwort setzen</value></data>
+  <data name="Reset_Title" xml:space="preserve"><value>Neues Passwort</value></data>
   <data name="Resources_Change" xml:space="preserve"><value>Grenzen ändern</value></data>
   <data name="Resources_Changed" xml:space="preserve"><value>Grenzen geändert.</value></data>
   <data name="Resources_Confirm" xml:space="preserve"><value>Neu erstellen</value></data>

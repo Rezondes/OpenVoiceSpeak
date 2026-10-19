@@ -1175,17 +1175,19 @@ D5. `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_T
 
 ### Acceptance Criteria
 
-- [ ] AC1: "Passwort vergessen" takes a user name or e-mail and always shows the same text; a user with e-mail gets a link valid for 1 hour and usable once.
-- [ ] AC2: Without SMTP the link "Passwort vergessen" says "Bitte wende dich an den Administrator".
-- [ ] AC3: The admin sends a test mail from the settings; failures show the SMTP error.
-- [ ] AC4: A reset ends all sessions of the account and writes an audit line.
+- [x] AC1: "Passwort vergessen" takes a user name or e-mail and always shows the same text; a user with e-mail gets a link valid for 1 hour and usable once.
+- [x] AC2: Without SMTP the link "Passwort vergessen" says "Bitte wende dich an den Administrator".
+- [x] AC3: The admin sends a test mail from the settings; failures show the SMTP error.
+- [x] AC4: A reset ends all sessions of the account and writes an audit line.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `PasswordResetTests > "Forgot_SameTextAlways_LinkOnceOneHour"` (fake sender) - AC1
-2. `PasswordResetTests > "NoSmtp_AskAdmin"` - AC2
-3. `MailSenderTests > "TestMail_ErrorShown"` - AC3
-4. `PasswordResetTests > "Reset_SessionsEndedAudit"` - AC4
+2. `PasswordResetTests > "Forgot_NoSmtp_AskAdmin"` - AC2
+3. `MailSenderTests > "TestMail_SentOrFailed_ResultShown"`, `"Sender_ClosedPort_SmtpError"` and `"Options_Variables_SecurityAndPort"` - AC3
+4. `PasswordResetTests > "Reset_ByMail_SessionsEndedAudit"` - AC4
+
+(as built: `SmtpOptions` reads `SMTP_HOST`, `SMTP_PORT` (default 25, 587 or 465 by `SMTP_TLS`), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` and `SMTP_TLS` (none, starttls as default, tls); host and sender make it set up. `MailSender` sends plain text with MailKit 4.16.0 (4.8.0 has advisories; `System.Security.Cryptography.Pkcs` is pinned to 10.0.13 for the same reason) behind `IMailSender`, and turns every SMTP failure into a `MailSendException` with the server's text. `/forgot-password` (linked from the login) takes a user name or e-mail and always answers the same text; an account with an e-mail gets a mail in its language with a link to `/reset-password` holding an Identity reset token, valid for one hour (`TokenLifespan`) and good once (the reset changes the security stamp the token holds). Without SMTP the page says "Bitte wende dich an den Administrator". A reset ends every session of the account and writes `PasswordResetByMail`; the mail writes `PasswordResetMailSent`. `/settings/mail` (admin, in the navigation) shows the settings without the password and sends a test mail, showing the SMTP error on failure (`TestMailSent`). The one-hour expiry is checked as the option's value: Identity's token provider uses the system clock, which a test cannot move.)
 
 ### Steps
 

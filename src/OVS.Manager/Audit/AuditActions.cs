@@ -105,6 +105,12 @@ internal static class AuditActions
     public const string ServerUpdateFailed = "ServerUpdateFailed";
     /// <summary>A server's maintenance window changed (M18); the target is "on" or "off".</summary>
     public const string UpdateWindowChanged = "UpdateWindowChanged";
+    /// <summary>A password reset link went out by mail (M26); the target is the account.</summary>
+    public const string PasswordResetMailSent = "PasswordResetMailSent";
+    /// <summary>A password was set with a mailed link (M26); every session ended.</summary>
+    public const string PasswordResetByMail = "PasswordResetByMail";
+    /// <summary>The admin sent a test mail (M26); the detail is the address, and the error when it failed.</summary>
+    public const string TestMailSent = "TestMailSent";
     /// <summary>A server's CPU and memory limits changed (M25); the detail names them.</summary>
     public const string ServerLimitsChanged = "ServerLimitsChanged";
     /// <summary>A free text went to a server's chat (M19); the detail is the text.</summary>

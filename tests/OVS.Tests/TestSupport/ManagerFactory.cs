@@ -19,6 +19,9 @@ internal sealed class ManagerFactory(params (string Key, string Value)[] setting
     /// <summary>Package M8: the servers' answer to the status check's TLS handshake.</summary>
     public FakeServerProbe Probe { get; } = new();
 
+    /// <summary>Package M26: the mails the manager sent, instead of an SMTP server.</summary>
+    public FakeMailSender Mail { get; } = new();
+
     /// <summary>Package M25: the disk of Docker's data root, half free unless a test sets it.</summary>
     public FakeHostDisk Disk { get; } = new();
 
@@ -42,6 +45,7 @@ internal sealed class ManagerFactory(params (string Key, string Value)[] setting
         {
             services.AddSingleton<IServerProbe>(Probe);
             services.AddSingleton<IHostDisk>(Disk);
+            services.AddSingleton<OVS.Manager.Mail.IMailSender>(Mail);
             services.AddSingleton(provider => new ReleaseCatalog(new HttpClient(GitHub), OVS.Shared.BuildInfo.Current, provider.GetRequiredService<TimeProvider>(),
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<ReleaseCatalog>.Instance)); // Package M17: never GitHub in a test
             if (Time is not null) services.AddSingleton(Time);

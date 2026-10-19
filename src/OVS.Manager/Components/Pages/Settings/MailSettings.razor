@@ -1,0 +1,26 @@
+@page "/settings/mail"
+@attribute [Authorize(Roles = ManagerRoles.Admin)]
+
+<h1>@Strings.MailSettings_Title</h1>
+@if (!Smtp.IsConfigured)
+{
+    <p data-not-configured>@Strings.MailSettings_NotConfigured</p>
+}
+else
+{
+    <table class="list">
+        <tbody>
+            <tr><th>@Strings.MailSettings_Host</th><td>@HostText</td></tr>
+            <tr><th>@Strings.MailSettings_From</th><td>@Smtp.From</td></tr>
+            <tr><th>@Strings.MailSettings_Security</th><td>@SecurityText</td></tr>
+        </tbody>
+    </table>
+    <EditForm Model="Model" FormName="test-mail" OnValidSubmit="SendAsync" class="account-form">
+        <label>@Strings.Field_Email <InputText @bind-Value="Model!.To" autocomplete="email" /></label>
+        <button type="submit">@Strings.MailSettings_Send</button>
+    </EditForm>
+    @if (Result is not null)
+    {
+        <p class="@ResultClass" role="status" data-result>@Result</p>
+    }
+}
