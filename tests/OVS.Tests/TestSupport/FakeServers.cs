@@ -1,6 +1,7 @@
 using OVS.Client.Dialogs;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
+using OVS.Shared.Net;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Channels;

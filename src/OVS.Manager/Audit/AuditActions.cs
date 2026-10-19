@@ -51,4 +51,6 @@ internal static class AuditActions
     public const string ServerAssigned = "ServerAssigned";
     /// <summary>A server's assignment to a manager ended (M10); the target is the manager.</summary>
     public const string ServerUnassigned = "ServerUnassigned";
+    /// <summary>The admin accepted a server's new certificate (M11); the detail is its fingerprint.</summary>
+    public const string CertificateAccepted = "CertificateAccepted";
 }

@@ -1,3 +1,4 @@
+using OVS.Shared.Net;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.Channels;
@@ -112,7 +113,7 @@ public class StateSyncTests
         {
             Assert.Equal(ProtocolDefaults.Bitrate, Assert.Single(testClient.Welcome.Snapshot.Channels).Bitrate); // the Lobby
             await client.SendAsync(new CreateChannel("Raid", "", Bitrate: 96));
-            var mirror = new OVS.Client.Net.StateMirror(testClient.Welcome);
+            var mirror = new OVS.Shared.Net.StateMirror(testClient.Welcome);
             mirror.Apply(await testClient.WaitForAsync<ChannelAdded>());
             Assert.Equal(96, mirror.Channels.Values.Single(channel => channel.Name == "Raid").Bitrate);
         }

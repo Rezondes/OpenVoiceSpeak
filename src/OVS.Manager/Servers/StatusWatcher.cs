@@ -11,7 +11,7 @@ namespace OVS.Manager.Servers;
 /// events, so the watcher lists and inspects the managed containers and finds each server's by its label, also after the
 /// manager's own restart. A running container counts as running only when the server finishes a TLS handshake.
 /// </summary>
-internal sealed class StatusWatcher(IDockerEngine docker, IServerProbe probe, IServiceScopeFactory scopes, TimeProvider time) : BackgroundService
+internal sealed class StatusWatcher(IDockerEngine docker, IServerProbe probe, IServiceScopeFactory scopes, ManagerOptions options, TimeProvider time) : BackgroundService
 {
     /// <summary>How often the status is checked.</summary>
     public static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(5);
@@ -93,7 +93,7 @@ internal sealed class StatusWatcher(IDockerEngine docker, IServerProbe probe, IS
         bool loop = CountRestarts(row.Id, inspected.RestartCount, now) > LoopRestarts;
         var status = loop ? ServerStatus.RestartLoop : inspected.State switch
         {
-            "running" when await probe.AnswersAsync(ManagedLabels.ContainerName(row.Id), row.Port, cancellation) => ServerStatus.Running,
+            "running" when await probe.AnswersAsync(options.HostOf(row.Id), row.Port, cancellation) => ServerStatus.Running,
             "running" => now - inspected.StartedAtUtc < StartGrace ? ServerStatus.Starting : ServerStatus.NotReachable,
             "restarting" => ServerStatus.Starting,
             "exited" or "dead" when inspected.ExitCode != 0 => ServerStatus.Crashed,

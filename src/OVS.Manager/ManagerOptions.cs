@@ -30,6 +30,15 @@ internal sealed record ManagerOptions(string DataDir)
     /// <summary>Package M7 (D14 3): the manager's time zone (TZ), which new servers take; UTC without one.</summary>
     public string TimeZone { get; init; } = "UTC";
 
+    /// <summary>
+    /// Package M11 (MA6): the host of every server, <c>OVS_MANAGER_SERVER_HOST</c>; without it a server is reached as
+    /// <c>ovs-&lt;id&gt;</c> in the network ovs-managed. A manager outside Docker (development) sets the Docker host here.
+    /// </summary>
+    public string? ServerHost { get; init; }
+
+    /// <summary>Package M11: where the manager reaches the server <paramref name="serverId"/>.</summary>
+    public string HostOf(string serverId) => ServerHost ?? Docker.ManagedLabels.ContainerName(serverId);
+
     /// <summary>The settings in <paramref name="configuration"/>, the data folder as a full path.</summary>
     /// <exception cref="InvalidOperationException">A value is set but invalid.</exception>
     public static ManagerOptions Read(IConfiguration configuration) =>
@@ -44,5 +53,6 @@ internal sealed record ManagerOptions(string DataDir)
             DockerHost = configuration[DockerHostVariable] is { Length: > 0 } host ? host : "tcp://socket-proxy:2375",
             ServerImage = configuration["OVS_MANAGER_SERVER_IMAGE"] is { Length: > 0 } image ? image : "ghcr.io/rezondes/openvoicespeak-server",
             TimeZone = configuration["TZ"] is { Length: > 0 } zone ? zone : "UTC",
+            ServerHost = configuration["OVS_MANAGER_SERVER_HOST"] is { Length: > 0 } serverHost ? serverHost : null,
         };
 }

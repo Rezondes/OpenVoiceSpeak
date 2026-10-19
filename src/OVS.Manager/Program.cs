@@ -8,6 +8,7 @@ using OVS.Manager.Accounts;
 using OVS.Manager.Appearance;
 using OVS.Manager.Audit;
 using OVS.Manager.Components;
+using OVS.Manager.Control;
 using OVS.Manager.Data;
 using OVS.Manager.Docker;
 using OVS.Manager.Localization;
@@ -74,6 +75,9 @@ builder.Services.AddScoped<ServerDeletion>(); // Package M9: the trash and its d
 builder.Services.AddScoped<ServerAccess>(); // Package M10: a manager sees and operates the assigned servers only
 builder.Services.AddScoped<IAuthorizationHandler, ServerAccessHandler>();
 builder.Services.AddScoped<ServerAssignmentList>();
+// Package M11: one invisible service session to each running server, with its state as a mirror
+builder.Services.AddSingleton<ServerConnections>();
+builder.Services.AddHostedService(services => services.GetRequiredService<ServerConnections>());
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();
 

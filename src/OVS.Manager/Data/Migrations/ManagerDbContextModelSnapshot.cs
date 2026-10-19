@@ -290,6 +290,9 @@ namespace OVS.Manager.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CertificateFingerprint")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ContainerId")
                         .HasColumnType("TEXT");
 

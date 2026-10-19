@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using OVS.Manager.Accounts;
+using OVS.Manager.Control;
 using OVS.Manager.Docker;
 using OVS.Manager.Servers;
 
@@ -18,6 +19,7 @@ internal static class ServerPages
     {
         var context = new BunitContext();
         context.Services.AddSingleton(manager.Services.GetRequiredService<StatusWatcher>());
+        context.Services.AddSingleton(manager.Services.GetRequiredService<ServerConnections>());
         context.Services.AddSingleton<IDockerEngine>(manager.Docker);
         context.Services.AddSingleton(TimeProvider.System);
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ServerLifecycle>());

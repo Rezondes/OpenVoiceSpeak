@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using OVS.Manager.Control;
 using OVS.Manager.Servers;
 
 namespace OVS.Manager.Components.Pages.Servers;
@@ -19,11 +20,16 @@ public abstract class ServerWatchPage : ComponentBase, IDisposable
     [Inject]
     internal TimeProvider Time { get; set; } = null!;
 
+    /// <summary>Package M11: the service sessions with the servers' mirrors.</summary>
+    [Inject]
+    internal ServerConnections Connections { get; set; } = null!;
+
     [Inject]
     ServerAccess Access { get; set; } = null!;
 
+    /// <summary>Who looks at the page.</summary>
     [CascadingParameter]
-    Task<AuthenticationState> Authentication { get; set; } = null!;
+    internal Task<AuthenticationState> Authentication { get; set; } = null!;
 
     /// <summary>The servers of the last check the user may see: the admin all, a manager their assigned ones (M10).</summary>
     internal IEnumerable<ServerSnapshot> VisibleServers => Watcher.Servers.Where(server => visible is null || visible.Contains(server.Id));
@@ -33,6 +39,7 @@ public abstract class ServerWatchPage : ComponentBase, IDisposable
     {
         visible = await Access.VisibleAsync((await Authentication).User);
         Watcher.Changed += Redraw;
+        Connections.Changed += Redraw;
     }
 
     /// <summary>Stops following the watcher.</summary>
@@ -45,7 +52,9 @@ public abstract class ServerWatchPage : ComponentBase, IDisposable
     /// <summary>Stops following the watcher.</summary>
     protected virtual void Dispose(bool disposing)
     {
-        if (disposing) Watcher.Changed -= Redraw;
+        if (!disposing) return;
+        Watcher.Changed -= Redraw;
+        Connections.Changed -= Redraw;
     }
 
     void Redraw() => _ = InvokeAsync(StateHasChanged);

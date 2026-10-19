@@ -1,6 +1,7 @@
 using OVS.Client.Audio;
 using OVS.Client.Net;
 using OVS.Client.Settings;
+using OVS.Shared.Net;
 using OVS.Shared.Protocol;
 
 namespace OVS.Client.Services;

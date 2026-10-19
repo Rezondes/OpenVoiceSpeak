@@ -1,4 +1,5 @@
 using OVS.Client.Net;
+using OVS.Shared.Net;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Connection;

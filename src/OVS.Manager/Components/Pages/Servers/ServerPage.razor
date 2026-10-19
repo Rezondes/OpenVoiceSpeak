@@ -15,7 +15,19 @@ else
             <tr><th>@Strings.Servers_ColumnStatus</th><td data-status="@Server.Status">@ServerTexts.Status(Server)</td></tr>
             <tr><th>@Strings.Servers_Version</th><td>@Server.Version</td></tr>
             <tr><th>@Strings.Servers_ColumnPort</th><td>@Server.Port</td></tr>
-            <tr><th>@Strings.Servers_ColumnUsers</th><td>–</td></tr>
+            <tr><th>@Strings.Servers_ColumnUsers</th><td>@ServerTexts.UsersOnline(Connections.LinkOf(Server.Id))</td></tr>
+            <tr>
+                <th>@Strings.Servers_ColumnLink</th>
+                <td data-link="@(Connections.LinkOf(Server.Id)?.Status)">
+                    @ServerTexts.Link(Connections.LinkOf(Server.Id))
+                    @if (Connections.LinkOf(Server.Id)?.Status == ServerLinkStatus.CertificateChanged)
+                    {
+                        <AuthorizeView Roles="@ManagerRoles.Admin">
+                            <button type="button" class="danger" @onclick="AcceptCertificateAsync">@Strings.Link_AcceptCertificate</button>
+                        </AuthorizeView>
+                    }
+                </td>
+            </tr>
             <tr><th>@Strings.Servers_ColumnUptime</th><td>@ServerTexts.Uptime(Server, Time.GetUtcNow())</td></tr>
         </tbody>
     </table>

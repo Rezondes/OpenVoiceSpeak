@@ -30,6 +30,9 @@ internal sealed class ManagedServer
     /// <summary>Docker's id of its container, null until it is created.</summary>
     public string? ContainerId { get; set; }
 
+    /// <summary>Package M11 (AC3): the server certificate's fingerprint pinned at the first connect; null before it.</summary>
+    public string? CertificateFingerprint { get; set; }
+
     /// <summary>The fingerprint of the manager's identity on this server, its server admin (D3, MA4).</summary>
     public string AdminFingerprint { get; set; } = "";
 }

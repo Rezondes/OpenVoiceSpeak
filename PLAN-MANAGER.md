@@ -564,19 +564,21 @@ MA5, A205 of PLAN.md. The manager connects inside `ovs-managed` as `ovs-<id>:<po
 
 ### Acceptance Criteria
 
-- [ ] AC1: For every running server a service session is open within 10 s of its start and reconnects with backoff after a loss.
-- [ ] AC2: `VersionMismatch` marks the server "veraltet" with its protocol, and no protocol page of it is offered; Docker actions stay.
-- [ ] AC3: The certificate fingerprint is stored at the first connect; a later different certificate stops the connection and shows "Zertifikat geändert" until the admin accepts the new one (audit line).
-- [ ] AC4: The mirror holds users online, channels, groups and settings, live from the server's messages.
-- [ ] AC5: No user of the server sees the manager in a channel or the user list.
+- [x] AC1: For every running server a service session is open within 10 s of its start and reconnects with backoff after a loss.
+- [x] AC2: `VersionMismatch` marks the server "veraltet" with its protocol, and no protocol page of it is offered; Docker actions stay.
+- [x] AC3: The certificate fingerprint is stored at the first connect; a later different certificate stops the connection and shows "Zertifikat geändert" until the admin accepts the new one (audit line).
+- [x] AC4: The mirror holds users online, channels, groups and settings, live from the server's messages.
+- [x] AC5: No user of the server sees the manager in a channel or the user list.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `ServerConnectionsTests > "Running_ConnectedAndReconnected"` (in-process server) - AC1
-2. `ServerConnectionsTests > "VersionMismatch_Outdated"` - AC2
+1. `ServerConnectionsTests > "Running_ServerRestarted_ConnectedAgain"` (in-process server) - AC1
+2. `ServerConnectionsTests > "VersionMismatch_Server_Outdated"` (`HandshakeStub`) - AC2
 3. `ServerConnectionsTests > "Certificate_Changed_StoppedUntilAccepted"` - AC3
-4. `ServerConnectionsTests > "Mirror_FollowsBroadcasts"` - AC4
-5. `ServerConnectionsTests > "Service_InvisibleToClients"` - AC5
+4. `ServerConnectionsTests > "Mirror_UserJoinsAndLeaves_Followed"` - AC4
+5. `ServerConnectionsTests > "Service_UserOnServer_NeverSeesIt"` - AC5
+
+(as built: the client's `StateMirror` and `ChannelPair` moved to `OVS.Shared/Net` (public; `StateMirror.Groups` is an `IReadOnlyList`), so the manager mirrors a server with the same code; `ServerLink` keeps it under a lock. `ServerConnections` (singleton, hosted) opens a `ServerLink` for every server whose container runs, from the watcher's checks, and ends it when the container stops or the server goes to the trash. A link connects with `ControlConnection` as "Serververwaltung" with `Service = true` and the manager's identity for that server, retries after 1 s, doubling up to 8 s (so a started server is reached within 10 s), and after `VersionMismatch` waits 5 minutes ("veraltet (Protokoll N)" from the server's detail text). The first certificate is pinned in `ManagedServer.CertificateFingerprint` (migration `AddCertificateFingerprint`); another one stops the link with `CertificateChangedException` and "Zertifikat geändert", until the admin clicks "Neues Zertifikat annehmen" on the server page, which pins it, writes `CertificateAccepted` with the fingerprint and connects again. `OVS_MANAGER_SERVER_HOST` names one host for all servers (a manager outside Docker; the tests use 127.0.0.1); without it a server is `ovs-<id>`, also for the probe of M8. The overview shows the link's state next to the name and the users online (without the service session) from the mirror; the server page has a row "Verwaltung".)
 
 ### Steps
 

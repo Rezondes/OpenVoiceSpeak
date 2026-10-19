@@ -1,6 +1,6 @@
-using OVS.Client.Net;
+using OVS.Shared.Net;
 
-namespace OVS.Tests.Client.Net;
+namespace OVS.Tests.Shared.Net;
 
 /// <summary>An undirected link of two channels, one key in either direction.</summary>
 public sealed class ChannelPairTests

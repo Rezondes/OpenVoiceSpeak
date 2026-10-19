@@ -12,4 +12,7 @@ sealed partial class ServerPage
 
     /// <summary>The server at the last check, null when the user may not see it or it is gone.</summary>
     ServerSnapshot? Server => VisibleServers.FirstOrDefault(server => server.Id == Id);
+
+    /// <summary>Package M11 (AC3): the admin pins the server's new certificate.</summary>
+    async Task AcceptCertificateAsync() => await Connections.AcceptCertificateAsync(Id, (await Authentication).User.Identity?.Name ?? "");
 }

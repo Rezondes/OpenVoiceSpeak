@@ -25,7 +25,7 @@ public sealed class StatusWatcherTests
 
     /// <summary>A watcher of its own, not started, on <paramref name="time"/>.</summary>
     static StatusWatcher Watcher(ManagerFactory manager, TimeProvider time) =>
-        new(manager.Docker, manager.Probe, manager.Services.GetRequiredService<IServiceScopeFactory>(), time);
+        new(manager.Docker, manager.Probe, manager.Services.GetRequiredService<IServiceScopeFactory>(), manager.Services.GetRequiredService<OVS.Manager.ManagerOptions>(), time);
 
     static ServerSnapshot Find(StatusWatcher watcher, ManagedServer server) => watcher.Servers.Single(snapshot => snapshot.Id == server.Id);
 

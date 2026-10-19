@@ -6,10 +6,13 @@ using OVS.Shared.Protocol.Messages.Links;
 using OVS.Shared.Protocol.Messages.ServerInfo;
 using OVS.Shared.Protocol.Messages.Users;
 
-namespace OVS.Client.Net;
+namespace OVS.Shared.Net;
 
-/// <summary>Client-side copy of the server state, fed with Welcome and every delta. Single-threaded (UI thread).</summary>
-internal sealed class StateMirror
+/// <summary>
+/// A copy of the server state, fed with Welcome and every delta. Not thread-safe: the client uses it on the UI thread,
+/// the web manager under a lock (Package M11 moved it from the client to OVS.Shared).
+/// </summary>
+public sealed class StateMirror
 {
     /// <summary>The state the welcome carries.</summary>
     public StateMirror(Welcome welcome)
@@ -36,7 +39,7 @@ internal sealed class StateMirror
     /// <summary>The links between channels.</summary>
     public HashSet<ChannelPair> Links { get; }
     /// <summary>The groups in their order.</summary>
-    public List<GroupInfo> Groups { get; private set; }
+    public IReadOnlyList<GroupInfo> Groups { get; private set; }
     /// <summary>The users online by session id.</summary>
     public Dictionary<uint, UserInfo> Users { get; }
     /// <summary>Package 182: the server has a server admin, so no server admin token exists.</summary>

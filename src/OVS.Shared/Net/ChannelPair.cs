@@ -1,7 +1,7 @@
-namespace OVS.Client.Net;
+namespace OVS.Shared.Net;
 
 /// <summary>An undirected link of two channels, ordered so that Lower &lt; Upper: the same pair in either direction is one key.</summary>
-internal readonly record struct ChannelPair(Guid Lower, Guid Upper)
+public readonly record struct ChannelPair(Guid Lower, Guid Upper)
 {
     /// <summary>The pair of <paramref name="one"/> and <paramref name="other"/> in their order.</summary>
     public static ChannelPair Of(Guid one, Guid other) => one.CompareTo(other) < 0 ? new(one, other) : new(other, one);

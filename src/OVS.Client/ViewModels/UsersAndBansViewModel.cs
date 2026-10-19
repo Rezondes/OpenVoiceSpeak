@@ -51,7 +51,7 @@ internal sealed partial class UsersAndBansViewModel : ObservableObject
     HashSet<string> onlineFingerprints;
     // Package 92: the rights the user list's rank flags were judged by; the list is asked for again when they change
     Permission judgedActor;
-    List<GroupInfo> judgedGroups;
+    IReadOnlyList<GroupInfo> judgedGroups;
     bool detached;
 
     /// <param name="server">The connected server: its lists, requests, rights and tones.</param>

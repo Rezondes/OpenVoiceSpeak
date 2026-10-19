@@ -1,3 +1,5 @@
+using System.Globalization;
+using OVS.Manager.Control;
 using OVS.Manager.Servers;
 
 namespace OVS.Manager.Localization;
@@ -33,6 +35,23 @@ internal static class ServerTexts
         };
         return server.ExitCode is { } code ? TextFormat.Of(Strings.Status_WithExitCode, text, code) : text;
     }
+
+    /// <summary>Package M11 (AC4): the users online but the service session, "–" without a session.</summary>
+    public static string UsersOnline(ServerLink? link) =>
+        link?.Read(mirror => mirror.Users.Keys.Count(session => session != mirror.SelfId), -1) is >= 0 and var count
+            ? count.ToString(CultureInfo.CurrentCulture)
+            : Strings.Link_Offline;
+
+    /// <summary>Package M11 (AC1 to AC3): the state of the service session.</summary>
+    public static string Link(ServerLink? link) => link?.Status switch
+    {
+        null => Strings.Link_Offline,
+        ServerLinkStatus.Connected => Strings.Link_Connected,
+        ServerLinkStatus.Outdated when link.OutdatedProtocol is { } protocol => TextFormat.Of(Strings.Link_OutdatedProtocol, protocol),
+        ServerLinkStatus.Outdated => Strings.Link_Outdated,
+        ServerLinkStatus.CertificateChanged => Strings.Link_CertificateChanged,
+        _ => Strings.Link_Connecting,
+    };
 
     /// <summary>AC1: how long the container runs, empty when it does not.</summary>
     public static string Uptime(ServerSnapshot server, DateTimeOffset now) =>

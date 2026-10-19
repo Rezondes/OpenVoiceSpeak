@@ -5,6 +5,7 @@ using OVS.Client.Localization;
 using OVS.Client.Net;
 using OVS.Client.Services;
 using OVS.Client.Settings;
+using OVS.Shared.Net;
 using OVS.Shared.Permissions;
 using OVS.Shared.Protocol;
 using OVS.Tests.TestSupport;
