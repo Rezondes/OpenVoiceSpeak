@@ -37,6 +37,15 @@ public class LocalizationTests
     public void Language_SystemGermanOrEnglish_ChoiceWins(AppLanguage choice, string windows, string expected) =>
         Assert.Equal(expected, UiCulture.Resolve(choice, CultureInfo.GetCultureInfo(windows)).Name);
 
+    /// <summary>Package 191 (AC6): a refused service session, as the manager would see it; a client never asks for one.</summary>
+    [Fact]
+    public void ErrorTexts_ServiceNotAllowed_GermanAndEnglish()
+    {
+        Assert.True(ErrorTexts.Has(ReasonCodes.ServiceNotAllowed));
+        Assert.Equal("Nur der Server-Admin darf sich als Verwaltung verbinden.", ErrorTexts.For(ReasonCodes.ServiceNotAllowed));
+        Assert.Equal("Only the server admin may connect as the manager.", TestCulture.With("en-US", () => ErrorTexts.For(ReasonCodes.ServiceNotAllowed)));
+    }
+
     [Fact]
     public void ErrorTexts_English_Translated()
     {

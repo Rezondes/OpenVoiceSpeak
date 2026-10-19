@@ -42,7 +42,7 @@ internal sealed partial class ServerState
     {
         if (ActiveAfkChannel is not { } afk) return;
         var idleSince = time.GetUtcNow().AddMinutes(-data.Settings.AfkMinutes);
-        foreach (var session in sessions.Values.Where(session => session.ChannelId != afk && session.LastActivity <= idleSince).ToList())
+        foreach (var session in ServiceSessions.Visible(sessions.Values).Where(session => session.ChannelId != afk && session.LastActivity <= idleSince).ToList())
         {
             var from = session.ChannelId;
             #pragma warning disable CA1873 // the log files and the console are always on, so the argument is always used

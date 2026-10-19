@@ -116,6 +116,10 @@ static partial class ServerLogLines
     [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} connected ({Fingerprint}, {Ip})")]
     public static partial void Connected(this ILogger logger, string nickname, string fingerprint, IPAddress ip);
 
+    /// <summary>Package 191: the server admin's invisible session, such as the web manager.</summary>
+    [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} connected as a service session ({Fingerprint}, {Ip})")]
+    public static partial void ServiceConnected(this ILogger logger, string nickname, string fingerprint, IPAddress ip);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "{Nickname} disconnected ({Reason})")]
     public static partial void Disconnected(this ILogger logger, string nickname, string reason);
 

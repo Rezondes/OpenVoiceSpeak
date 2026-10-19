@@ -199,7 +199,7 @@ internal sealed class ControlServer(ServerState state, X509Certificate2 certific
 
         logFingerprint = ClientIdentity.ComputeFingerprint(publicKey);
         span?.SetTag(ServerTelemetry.FingerprintTag, logFingerprint);
-        var (session, rejection) = state.Admit(logFingerprint, nickname, ip, hello.Password);
+        var (session, rejection) = state.Admit(logFingerprint, nickname, ip, hello.Password, hello.Service);
         if (rejection is not null) return await RejectAsync(rejection.Code, rejection.Detail);
         span?.SetTag(ServerTelemetry.ResultTag, ServerTelemetry.ResultOk);
         return session;

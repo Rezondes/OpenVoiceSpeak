@@ -34,6 +34,20 @@ public sealed class ServerMetricsTests() : TempDirectoryTest("ovs-metrics-", qui
         await AsyncWait.UntilAsync(() => Online() == 0);
     }
 
+    /// <summary>Package 191 (AC5): the manager's service session is no user online.</summary>
+    [Fact]
+    public async Task Sessions_Service_NotCounted()
+    {
+        using var managerId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(managerId, "Server-Admin"));
+        using var metrics = new MetricRecorder(server.State.Metrics.Meter);
+        await using var anna = await TestClient.ConnectAsync(server, "anna");
+        await using var manager = await TestClient.ConnectAsync(server, "Serververwaltung", managerId, service: true);
+
+        metrics.Collect();
+        Assert.Equal(1, metrics.Of("ovs.sessions")[^1].Value);
+    }
+
     [Fact]
     public void Requests_Handled_CountedByTypeAndCode()
     {

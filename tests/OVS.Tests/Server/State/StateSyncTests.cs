@@ -260,4 +260,59 @@ public class StateSyncTests
         // a change that shows nothing new to an observer is not sent to it (no hint about others' rights)
         await bert.AssertNoMessageAsync<UserUpdated>();
     }
+
+    /// <summary>Package 191 (AC2, A203): nobody sees the manager's session; the user stays in the known-user list, offline.</summary>
+    [Fact]
+    public async Task Service_OtherSessions_NeverInSnapshotJoinedLeftOrUserList()
+    {
+        using var managerId = OVS.Shared.Identity.ClientIdentity.Create();
+        using var annaId = OVS.Shared.Identity.ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(serverData =>
+        {
+            TestServer.Grant(managerId, "Server-Admin")(serverData);
+            TestServer.Grant(annaId, "Admin")(serverData);
+        });
+        await using var anna = await TestClient.ConnectAsync(server, "anna", annaId);
+        await using var manager = await TestClient.ConnectAsync(server, "Serververwaltung", managerId, service: true);
+        Assert.Contains(manager.Welcome.Snapshot.Users, userInfo => userInfo.SessionId == anna.Id);
+        Assert.Contains(manager.Welcome.Snapshot.Users, userInfo => userInfo.SessionId == manager.Id);
+        await using var bert = await TestClient.ConnectAsync(server, "bert");
+        Assert.DoesNotContain(bert.Welcome.Snapshot.Users, userInfo => userInfo.SessionId == manager.Id);
+        await manager.WaitForAsync<UserJoined>(userJoined => userJoined.User.SessionId == bert.Id); // the manager follows the others
+
+        await anna.SendAsync(new ListUsers { RequestId = "l" });
+        var known = (await anna.WaitForAsync<UserList>(userList => userList.RequestId == "l")).Users.Single(user => user.Fingerprint == managerId.Fingerprint);
+        Assert.False(known.IsOnline);
+        Assert.Null(known.SessionId);
+
+        uint managerSession = manager.Id;
+        await manager.DisposeAsync();
+        await AsyncWait.UntilAsync(() => server.State.SessionCount == 2);
+        await anna.SendAsync(new ListUsers { RequestId = "m" }); // everything about the manager came before this answer
+        var messages = new List<OVS.Shared.Protocol.Messages.Message>();
+        while (await anna.NextAsync() is { } message and not UserList) messages.Add(message);
+        Assert.DoesNotContain(messages, message => message is UserJoined { User.SessionId: var id } && id == managerSession);
+        Assert.DoesNotContain(messages, message => message is UserLeft { SessionId: var id } && id == managerSession);
+    }
+
+    /// <summary>Package 191 (AC3): the manager never talks and never stands in a channel; other requests work.</summary>
+    [Fact]
+    public async Task Service_VoiceAndJoin_DroppedAndRefused()
+    {
+        using var managerId = OVS.Shared.Identity.ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(managerId, "Server-Admin"));
+        await using var anna = await TestClient.ConnectAsync(server, "anna");
+        await anna.SendAsync(new OVS.Shared.Protocol.Messages.VoiceRelay.VoiceUp(0, OVS.Shared.Voice.VoiceHeader.TargetChannel, ""));
+        await AsyncWait.UntilAsync(() => server.State.FindSession(anna.Id)!.Voice.TcpVoice);
+        await using var manager = await TestClient.ConnectAsync(server, "Serververwaltung", managerId, service: true);
+        Assert.Null(server.State.FindSession(manager.Id));
+
+        await manager.SendAsync(new OVS.Shared.Protocol.Messages.VoiceRelay.VoiceUp(1, OVS.Shared.Voice.VoiceHeader.TargetChannel, Convert.ToBase64String(new byte[20])));
+        await anna.AssertNoMessageAsync<OVS.Shared.Protocol.Messages.VoiceRelay.VoiceDown>();
+
+        await manager.SendAsync(new JoinChannel(manager.Welcome.Snapshot.DefaultChannelId) { RequestId = "j" });
+        Assert.Equal(ReasonCodes.PermissionDenied, (await manager.ErrorAsync("j")).Code);
+        await manager.SendAsync(new ListUsers { RequestId = "u" });
+        Assert.Contains((await manager.WaitForAsync<UserList>(userList => userList.RequestId == "u")).Users, user => user.Fingerprint == managerId.Fingerprint);
+    }
 }

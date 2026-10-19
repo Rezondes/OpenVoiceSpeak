@@ -241,4 +241,54 @@ public class HandshakeTests
         Assert.IsType<Welcome>(await client.HandshakeAsync("anna", "irgendwas"));
         Assert.Null(OnDisk(server).Settings.StoredPassword);
     }
+
+    /// <summary>Package 191 (AC1, A203): the manager's session takes no slot and needs no server password.</summary>
+    [Fact]
+    public async Task Service_ServerAdmin_AdmittedFullAndWithPassword()
+    {
+        using var managerId = OVS.Shared.Identity.ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(managerId, "Server-Admin"), maxUsers: 1, password: "pw");
+        await using var anna = await TestClient.ConnectAsync(server, "anna", password: "pw");
+        await using var full = await TestClient.OpenAsync(server.Port);
+        Assert.Equal(ReasonCodes.ServerFull, Assert.IsType<Rejected>(await full.HandshakeAsync("bert", "pw")).Code);
+
+        await using var manager = await TestClient.OpenAsync(server.Port, managerId);
+        Assert.IsType<Welcome>(await manager.HandshakeAsync("Serververwaltung", service: true));
+    }
+
+    [Theory]
+    [InlineData("Admin")]
+    [InlineData(null)]
+    public async Task Service_NotServerAdmin_ServiceNotAllowed(string? group)
+    {
+        using var identity = OVS.Shared.Identity.ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(group is null ? null : TestServer.Grant(identity, group));
+        await using var client = await TestClient.OpenAsync(server.Port, identity);
+        Assert.Equal(ReasonCodes.ServiceNotAllowed, Assert.IsType<Rejected>(await client.HandshakeAsync("Serververwaltung", service: true)).Code);
+    }
+
+    /// <summary>Package 191 (AC5): a service session only replaces the user's service session, a normal one only a normal one.</summary>
+    [Fact]
+    public async Task Service_Second_ReplacesOnlyService()
+    {
+        using var managerId = OVS.Shared.Identity.ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(managerId, "Server-Admin"));
+        await using var person = await TestClient.ConnectAsync(server, "chef", managerId);
+        await using var first = await TestClient.ConnectAsync(server, "Serververwaltung", managerId, service: true);
+        await using var second = await TestClient.ConnectAsync(server, "Serververwaltung", managerId, service: true);
+
+        Assert.Equal(ReasonCodes.ReplacedByNewConnection, (await first.WaitForAsync<Disconnected>()).Reason);
+        await person.AssertNoMessageAsync<Disconnected>();
+        Assert.Equal(2, server.State.SessionCount);
+    }
+
+    /// <summary>Package 191 (AC6): the service flag raised the protocol version to 23; a client of 22 is turned away.</summary>
+    [Fact]
+    public async Task Hello_OldVersion_VersionMismatch()
+    {
+        Assert.Equal(23, WireProtocol.Version);
+        await using var server = await TestServer.StartAsync();
+        await using var client = await TestClient.OpenAsync(server.Port);
+        Assert.Equal(ReasonCodes.VersionMismatch, Assert.IsType<Rejected>(await client.HandshakeAsync("anna", version: 22)).Code);
+    }
 }

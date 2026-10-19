@@ -107,22 +107,24 @@ The manager talks to its servers over the normal protocol (A205). A normal sessi
 
 ### Acceptance Criteria
 
-- [ ] AC1: A hello with `Service = true` from a member of Server-Admin is admitted even when the server is full or has a password; from anyone else it is refused with `ServiceNotAllowed`.
-- [ ] AC2: Other sessions get no `UserJoined` or `UserLeft` for a service session, and it is not in their snapshot or `ListUsers` answer; the known-user list still shows the user.
-- [ ] AC3: A service session's `VoiceUp` is dropped, `JoinChannel` is refused with `PermissionDenied`; every request it is allowed by its rights works as for a normal session.
-- [ ] AC4: A server chat message of a service session reaches everyone with its nickname, and the client shows that nickname although the session is not in its user list.
-- [ ] AC5: `ovs.sessions` and the max-users count leave service sessions out; a second service session of the same user replaces the first (`ReplacedByNewConnection`) and never a normal session of that user.
-- [ ] AC6: The protocol version is 23; the client shows a text for `ServiceNotAllowed`.
+- [x] AC1: A hello with `Service = true` from a member of Server-Admin is admitted even when the server is full or has a password; from anyone else it is refused with `ServiceNotAllowed`.
+- [x] AC2: Other sessions get no `UserJoined` or `UserLeft` for a service session, and it is not in their snapshot or `ListUsers` answer; the known-user list still shows the user.
+- [x] AC3: A service session's `VoiceUp` is dropped, `JoinChannel` is refused with `PermissionDenied`; every request it is allowed by its rights works as for a normal session.
+- [x] AC4: A server chat message of a service session reaches everyone with its nickname, and the client shows that nickname although the session is not in its user list.
+- [x] AC5: `ovs.sessions` and the max-users count leave service sessions out; a second service session of the same user replaces the first (`ReplacedByNewConnection`) and never a normal session of that user.
+- [x] AC6: The protocol version is 23; the client shows a text for `ServiceNotAllowed`.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `HandshakeTests > "Service_ServerAdmin_AdmittedFullAndWithPassword"` and `"Service_NotServerAdmin_ServiceNotAllowed"` - AC1
-2. `StateSyncTests > "Service_NeverInSnapshotJoinedLeftOrUserList"` - AC2
-3. `StateSyncTests > "Service_VoiceDroppedJoinRefused"` - AC3
+2. `StateSyncTests > "Service_OtherSessions_NeverInSnapshotJoinedLeftOrUserList"` - AC2
+3. `StateSyncTests > "Service_VoiceAndJoin_DroppedAndRefused"` - AC3
 4. `ChatTests > "Service_ServerChat_DeliveredWithNickname"` - AC4
 5. `ChatViewModelTests > "Chat_FromUnknownSession_ShowsNickname"` - AC4
 6. `ServerMetricsTests > "Sessions_Service_NotCounted"` and `HandshakeTests > "Service_Second_ReplacesOnlyService"` - AC5
 7. `LocalizationTests > "ErrorTexts_ServiceNotAllowed_GermanAndEnglish"` and `HandshakeTests > "Hello_OldVersion_VersionMismatch"` with 23 - AC6
+
+(as built: `ServiceSessions` is a static class with `MayOpen`, `IsVisibleTo`, `Visible` and `Replaces`; `Session.IsService` marks the session. A service session gets every broadcast like the client's mirror, sees itself in its snapshot, is never in `voiceSessions` (no UDP voice) and stands in the default channel without being in any member list. In the `ListUsers` answer the user is listed as known but not online (`IsOnline` false, no `SessionId`); that is how "not in their `ListUsers` answer" and "the known-user list still shows the user" fit together. A private chat, a move or a moderation request naming a service session gets `NotFound`. It counts no online time and gets its own log line, `connected as a service session`. `ClientConnection` needs no change: `Service` defaults to false. `WireFreezeTests` lists the new field and code.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 

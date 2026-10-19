@@ -336,11 +336,24 @@ public class ChatViewModelTests
         Assert.Null(fixture.Chat.ComposerError);
     }
 
+    /// <summary>Package 191 (AC4): the manager's service session is in no user list, its server chat still shows its name.</summary>
+    [Fact]
+    public void Chat_FromUnknownSession_ShowsNickname()
+    {
+        var fixture = Create();
+        fixture.ReceiveFrom(99, "Serververwaltung", "Neustart in 5 Minuten");
+        var entry = Assert.Single(fixture.Chat.General.Entries);
+        Assert.True(entry is { From: "Serververwaltung", IsOwn: false, Text: "Neustart in 5 Minuten" });
+    }
+
     sealed record Fixture(ChatViewModel Chat, ServerViewModel Server, List<Request> Sent)
     {
         public SendChat LastChat => Sent.OfType<SendChat>().Last();
         public void Receive(ChatTarget target, uint from, string text, Guid? channel = null, uint? to = null) =>
             Server.Apply(new ChatMessage(target, from, from == 1 ? "ich" : "bert", channel, to, text, DateTimeOffset.UtcNow));
+
+        public void ReceiveFrom(uint from, string nickname, string text) =>
+            Server.Apply(new ChatMessage(ChatTarget.Server, from, nickname, null, null, text, DateTimeOffset.UtcNow));
 
         public UserViewModel User(uint id) => Server.Tree.Channels.SelectMany(channel => channel.Users).Single(user => user.SessionId == id);
         public ChatTabViewModel? Private(string title) => Chat.Tabs.SingleOrDefault(chatTab => chatTab.IsPrivate && chatTab.Title == title);

@@ -26,10 +26,10 @@ internal sealed partial class ServerState
     {
         lock (gate)
         {
-            if (!IsCurrent(sender)) return new VoiceRoute([], 0, Guid.Empty);
+            if (!IsCurrent(sender) || sender.IsService) return new VoiceRoute([], 0, Guid.Empty); // Package 191: a service session never talks
             sender.LastActivity = time.GetUtcNow(); // Package 169: speaking is not idle
             var afk = ActiveAfkChannel; // Package 169: nobody is heard in the AFK channel, as in a muted one
-            return new VoiceRoute(VoiceRouting.Recipients(sessions.Values, sender, requestedTarget, LinkedChannels, id => id == afk || FindChannel(id)?.IsMuted == true),
+            return new VoiceRoute(VoiceRouting.Recipients(ServiceSessions.Visible(sessions.Values), sender, requestedTarget, LinkedChannels, id => id == afk || FindChannel(id)?.IsMuted == true),
                 VoiceRouting.EffectiveTarget(sender, requestedTarget), sender.ChannelId);
         }
     }

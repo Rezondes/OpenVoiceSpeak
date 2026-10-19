@@ -166,5 +166,20 @@ public sealed class ChatTests
         Assert.DoesNotContain(files, value => value.Text.Contains("geheimer Inhalt", StringComparison.Ordinal));
     }
 
+    /// <summary>Package 191 (AC4, A203): the manager announces in the server chat under its nickname, no new message type.</summary>
+    [Fact]
+    public async Task Service_ServerChat_DeliveredWithNickname()
+    {
+        using var managerId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(managerId, "Server-Admin"));
+        await using var anna = await TestClient.ConnectAsync(server, "anna");
+        await using var manager = await TestClient.ConnectAsync(server, "Serververwaltung", managerId, service: true);
+
+        await manager.SendAsync(new SendChat(ChatTarget.Server, null, "Neustart in 5 Minuten") { RequestId = "c" });
+        var message = await anna.WaitForAsync<ChatMessage>();
+        Assert.Equal((manager.Id, "Serververwaltung", "Neustart in 5 Minuten"), (message.FromSessionId, message.FromNickname, message.Text));
+        await manager.WaitForAsync<ChatMessage>(chatMessage => chatMessage.Text == "Neustart in 5 Minuten");
+    }
+
     sealed record ChatServerRig(TestServer Server, TestClient Chef, TestClient Gast, TestClient Weit, Guid Raid);
 }

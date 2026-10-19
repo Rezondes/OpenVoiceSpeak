@@ -49,8 +49,11 @@ internal sealed partial class ServerState
         }
     }
 
-    /// <summary>Lets a client in after its proof, or says why not.</summary>
-    public Admission Admit(string fingerprint, string nickname, IPAddress ip, string? password)
+    /// <summary>
+    /// Lets a client in after its proof, or says why not. Package 191 (A203): with <paramref name="service"/> it is the
+    /// server admin's invisible session, see <see cref="ServiceSessions"/>.
+    /// </summary>
+    public Admission Admit(string fingerprint, string nickname, IPAddress ip, string? password, bool service = false)
     {
         lock (gate)
         {
@@ -69,25 +72,12 @@ internal sealed partial class ServerState
                 return new Admission(null, new Rejected(ReasonCodes.Banned, BanText(ban)));
             }
 
-            // A source that guessed wrong too often is turned away before its password is even looked at.
-            if (data.Settings.StoredPassword is not null && passwordGuesses.IsBlocked(source, now))
-                return new Admission(null, new Rejected(ReasonCodes.TooManyPasswordAttempts));
-            // Package 91: PBKDF2 with 100,000 iterations, about 10 ms on a desktop CPU, under the lock
-            // ponytail: verified under the global lock; move it before the lock if slow hosts make logins stall the server
-            if (!data.Settings.CheckPassword(password))
-            {
-                passwordGuesses.RecordFailure(source, now);
-                return new Admission(null, new Rejected(ReasonCodes.WrongPassword));
-            }
-            if (data.Settings.HasLegacyHash()) // Package 91: the right password turns the old unsalted hash into the new format
-            {
-                data.Settings.StoredPassword = StoredPassword.Create(password ?? "");
-                saves.Persist();
-                logs.Server.PasswordHashUpgraded();
-            }
+            if (service && !ServiceSessions.MayOpen(FindUser(fingerprint)))
+                return new Admission(null, new Rejected(ReasonCodes.ServiceNotAllowed));
+            if (!service && CheckPassword(password, source, now) is { } wrong) return new Admission(null, wrong); // Package 191: the fingerprint is proven already
 
-            var replaced = sessions.Values.FirstOrDefault(otherSession => otherSession.Fingerprint == fingerprint);
-            if (sessions.Count - (replaced is null ? 0 : 1) >= data.Settings.MaxUsers)
+            var replaced = sessions.Values.FirstOrDefault(otherSession => ServiceSessions.Replaces(otherSession, fingerprint, service));
+            if (!service && ServiceSessions.Visible(sessions.Values).Count() - (replaced is null ? 0 : 1) >= data.Settings.MaxUsers)
                 return new Admission(null, new Rejected(ReasonCodes.ServerFull));
             // Package 83: normalized, and an offline user's last name is taken as well
             // ponytail: one linear pass over all users per login; index the keys if the user list grows into the tens of thousands
@@ -120,6 +110,7 @@ internal sealed partial class ServerState
 
             var session = new Session(++lastSessionId, fingerprint, nickname, ip, RandomNumberGenerator.GetBytes(VoiceCrypto.KeySize), time, Metrics)
             {
+                IsService = service,
                 ChannelId = data.DefaultChannelId,
                 GroupIds = user.GroupIds.ToList(),
                 Permissions = Effective(user.GroupIds, data.Groups),
@@ -127,6 +118,13 @@ internal sealed partial class ServerState
                 ServerMutedUntil = user.ServerMutedUntil, // Package 166
             };
             sessions.Add(session.Id, session);
+            if (service)
+            {
+                serviceSessionCount++;
+                session.Outbox.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot(session)));
+                logs.Server.ServiceConnected(nickname, fingerprint[..12], ip); // Package 191: in no channel, no voice, seen by nobody
+                return new Admission(session, null);
+            }
             voiceSessions[session.Id] = session;
             session.Outbox.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot(session)));
             foreach (var other in sessions.Values)
@@ -135,6 +133,28 @@ internal sealed partial class ServerState
             ChannelLogger(session.ChannelId)?.JoinedOnConnect(nickname);
             return new Admission(session, null);
         }
+    }
+
+    /// <returns>Null for the right password, else why the session is refused.</returns>
+    Rejected? CheckPassword(string? password, IPAddress source, DateTimeOffset now)
+    {
+        // A source that guessed wrong too often is turned away before its password is even looked at.
+        if (data.Settings.StoredPassword is not null && passwordGuesses.IsBlocked(source, now))
+            return new Rejected(ReasonCodes.TooManyPasswordAttempts);
+        // Package 91: PBKDF2 with 100,000 iterations, about 10 ms on a desktop CPU, under the lock
+        // ponytail: verified under the global lock; move it before the lock if slow hosts make logins stall the server
+        if (!data.Settings.CheckPassword(password))
+        {
+            passwordGuesses.RecordFailure(source, now);
+            return new Rejected(ReasonCodes.WrongPassword);
+        }
+        if (data.Settings.HasLegacyHash()) // Package 91: the right password turns the old unsalted hash into the new format
+        {
+            data.Settings.StoredPassword = StoredPassword.Create(password ?? "");
+            saves.Persist();
+            logs.Server.PasswordHashUpgraded();
+        }
+        return null;
     }
 
     /// <param name="reason">Why the connection ended, for the logs (e.g. "timed out").</param>
@@ -167,6 +187,7 @@ internal sealed partial class ServerState
                 DropUpload(session);
                 session.LogDownload.End(); // Package 82
                 channelPasswordGuesses.ForgetSession(session.Id);
+                if (session.IsService) continue; // Package 191: no statistics, in no channel
                 if (!statsCounted) AddSessionStats(session, now);
                 ChannelLogger(session.ChannelId)?.Left(session.Nickname, why);
             }
@@ -175,6 +196,7 @@ internal sealed partial class ServerState
             afkCheck?.Dispose(); // Package 169
             saves.Close(force: sessions.Count > 0); // the running sessions' statistics, or what is still pending
             sessions.Clear();
+            serviceSessionCount = 0;
             voiceSessions.Clear();
         }
     }
@@ -195,6 +217,12 @@ internal sealed partial class ServerState
         channelPasswordGuesses.ForgetSession(session.Id); // nor its wrong channel passwords
         if (!IsCurrent(session)) return;
         sessions.Remove(session.Id);
+        if (session.IsService)
+        {
+            serviceSessionCount--; // Package 191: nobody saw it come, nobody sees it go, it counts no online time
+            logs.Server.Disconnected(session.Nickname, final is Disconnected { Reason: var code } ? code : reason);
+            return;
+        }
         voiceSessions.TryRemove(session.Id, out _);
         AddSessionStats(session, time.GetUtcNow());
         saves.PersistSoon();

@@ -163,6 +163,7 @@
   <data name="Error_ServerFull" xml:space="preserve"><value>The server is full.</value></data>
   <data name="Error_ServerRestart" xml:space="preserve"><value>The server is restarting. Connect again in a few seconds.</value></data>
   <data name="Error_ServerShutdown" xml:space="preserve"><value>The server was shut down.</value></data>
+  <data name="Error_ServiceNotAllowed" xml:space="preserve"><value>Only the server admin may connect as the manager.</value></data>
   <data name="Error_Timeout" xml:space="preserve"><value>Timed out.</value></data>
   <data name="Error_TooManyConnections" xml:space="preserve"><value>Too many connections from your IP address.</value></data>
   <data name="Error_TooManyPasswordAttempts" xml:space="preserve"><value>Too many wrong passwords from your IP address, try again later.</value></data>

@@ -10,6 +10,8 @@ public static class ReasonCodes
     public const string BadSignature = nameof(BadSignature);
     /// <summary>Rejected: the server password is wrong.</summary>
     public const string WrongPassword = nameof(WrongPassword);
+    /// <summary>Package 191: a service session was asked for by someone outside Server-Admin.</summary>
+    public const string ServiceNotAllowed = nameof(ServiceNotAllowed);
     /// <summary>Rejected: the server's user limit is reached.</summary>
     public const string ServerFull = nameof(ServerFull);
     /// <summary>Rejected: the nickname breaks the name rules.</summary>

@@ -175,7 +175,7 @@ internal sealed partial class ServerState
             user.ServerMuted = false;
             user.ServerMutedUntil = null;
             logs.Server.ServerMuteEnded(user.LastNickname);
-            if (sessions.Values.FirstOrDefault(session => session.Fingerprint == user.Fingerprint) is not { } online) continue;
+            if (ServiceSessions.Visible(sessions.Values).FirstOrDefault(session => session.Fingerprint == user.Fingerprint) is not { } online) continue;
             online.ServerMuted = false;
             online.ServerMutedUntil = null;
             BroadcastUser(online);
@@ -207,7 +207,7 @@ internal sealed partial class ServerState
     bool FindKnownTarget(Session session, Request request, string fingerprint, out UserRecord user, out Session? online, bool lastAdminFirst = false)
     {
         user = FindUser(fingerprint)!;
-        online = sessions.Values.FirstOrDefault(otherSession => otherSession.Fingerprint == fingerprint);
+        online = ServiceSessions.Visible(sessions.Values).FirstOrDefault(otherSession => otherSession.Fingerprint == fingerprint);
         if (user is null)
         {
             Fail(session, request, ReasonCodes.NotFound);
@@ -223,7 +223,7 @@ internal sealed partial class ServerState
 
     bool FindTarget(Session session, Request request, uint sessionId, out Session target, bool lastAdminFirst = false)
     {
-        if (!sessions.TryGetValue(sessionId, out target!))
+        if (!sessions.TryGetValue(sessionId, out target!) || target.IsService) // Package 191: nobody sees a service session
         {
             Fail(session, request, ReasonCodes.NotFound);
             return false;
@@ -246,7 +246,7 @@ internal sealed partial class ServerState
 
     /// <summary>Package 84: online the session's rights, offline those of the stored groups, nothing for an unknown user.</summary>
     Permission RightsOf(string fingerprint) =>
-        sessions.Values.FirstOrDefault(session => session.Fingerprint == fingerprint)?.Permissions
+        ServiceSessions.Visible(sessions.Values).FirstOrDefault(session => session.Fingerprint == fingerprint)?.Permissions
         ?? (FindUser(fingerprint) is { } user ? PermissionRules.Effective(user.GroupIds, data.Groups) : Permission.None);
 
     bool IsLastAdmin(string fingerprint) =>

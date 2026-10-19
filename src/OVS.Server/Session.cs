@@ -21,6 +21,8 @@ internal sealed class Session(uint id, string fingerprint, string nickname, IPAd
     public IPAddress Ip { get; } = ip;
     /// <summary>The session's voice key for UDP.</summary>
     public byte[] VoiceKey { get; } = voiceKey;
+    /// <summary>Package 191 (A203): the server admin's invisible session (the web manager); see <see cref="State.ServiceSessions"/>.</summary>
+    public bool IsService { get; init; }
 
     /// <summary>The frames for the write loop; safe from any thread.</summary>
     public SessionOutbox Outbox { get; } = new(metrics);

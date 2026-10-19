@@ -229,7 +229,7 @@ internal sealed partial class ServerState
         }
         // The safety backup gets pending changes and the running sessions' statistics, which CloseAll then does not add again.
         var now = time.GetUtcNow();
-        var running = sessions.Values.Select(otherSession => (otherSession.Fingerprint, Online: now - otherSession.ConnectedAt, otherSession.SpeechTime, otherSession.ChatMessages)).ToList();
+        var running = ServiceSessions.Visible(sessions.Values).Select(otherSession => (otherSession.Fingerprint, Online: now - otherSession.ConnectedAt, otherSession.SpeechTime, otherSession.ChatMessages)).ToList();
         foreach (var stats in running) AddStats(stats.Fingerprint, stats.Online, stats.SpeechTime, stats.ChatMessages);
         void Uncount()
         {

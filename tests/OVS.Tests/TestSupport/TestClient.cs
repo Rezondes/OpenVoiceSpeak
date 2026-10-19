@@ -49,21 +49,21 @@ internal sealed class TestClient : IAsyncDisposable
     }
 
     public static async Task<TestClient> ConnectAsync(TestServer server, string? nickname = null,
-        ClientIdentity? identity = null, string? password = null)
+        ClientIdentity? identity = null, string? password = null, bool service = false)
     {
         var client = await OpenAsync(server.Port, identity);
-        var result = await client.HandshakeAsync(nickname ?? "user" + Random.Shared.Next(100_000), password);
+        var result = await client.HandshakeAsync(nickname ?? "user" + Random.Shared.Next(100_000), password, service: service);
         Assert.True(result is Welcome, $"Handshake failed: {result}");
         return client;
     }
 
     /// <returns>Welcome on success, otherwise the Rejected message.</returns>
     public async Task<Message> HandshakeAsync(string nickname, string? password = null, int version = WireProtocol.Version,
-        bool badSignature = false, byte[]? certHash = null, bool pump = true)
+        bool badSignature = false, byte[]? certHash = null, bool pump = true, bool service = false)
     {
         // Generous: the server answers under its state lock, which a debounced save on a slow CI disk can hold for seconds.
         using var cancelSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        await writer.WriteAsync(new ClientHello(version, nickname, Convert.ToBase64String(Identity.PublicKey), password), cancelSource.Token);
+        await writer.WriteAsync(new ClientHello(version, nickname, Convert.ToBase64String(Identity.PublicKey), password, service), cancelSource.Token);
         var first = await reader.ReadAsync(cancelSource.Token) ?? throw new EndOfStreamException();
         if (first is not Challenge challenge) return first;
 

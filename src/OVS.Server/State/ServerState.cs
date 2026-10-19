@@ -54,6 +54,7 @@ internal sealed partial class ServerState
     DateTimeOffset nextPrune; // the next daily prune of unused guests, checked on each save
     readonly AdminToken adminToken = new();
     uint lastSessionId;
+    int serviceSessionCount; // Package 191: so the session gauge leaves them out without reading the sessions outside the lock
     string? closedWith; // set by CloseAll: the reason every later handshake is rejected with
 
     /// <param name="stores">From <see cref="ServerStores.Open"/>, so the crash cleanups have run.</param>
@@ -77,7 +78,8 @@ internal sealed partial class ServerState
         logReader = stores.LogReader; // Package 81
         logExporter = stores.LogExporter;
         Metrics = metrics;
-        metrics.ObserveSessions(() => sessions.Count); // ponytail: read without the lock, an int read is atomic and the gauge only samples
+        // ponytail: read without the lock, an int read is atomic and the gauge only samples (two reads may be off by one for a moment)
+        metrics.ObserveSessions(() => sessions.Count - serviceSessionCount);
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
         saves = new SaveScheduler(gate, WriteData, time, logs.Server);
         bool pruned = PruneGuests(time.GetUtcNow());
@@ -366,7 +368,7 @@ internal sealed partial class ServerState
         foreach (var to in sessions.Values)
         {
             var (toBefore, _) = before[to];
-            foreach (var session in sessions.Values)
+            foreach (var session in sessions.Values.Where(session => ServiceSessions.IsVisibleTo(session, to)))
             {
                 bool send = session == to ? changed.Contains(session)
                     : !before[session].GroupIds.SequenceEqual(session.GroupIds)
@@ -390,7 +392,7 @@ internal sealed partial class ServerState
     void BroadcastUser(Session user)
     {
         byte[]? moderator = null, other = null;
-        foreach (var to in sessions.Values)
+        foreach (var to in sessions.Values.Where(to => ServiceSessions.IsVisibleTo(user, to)))
         {
             if (to == user) to.Outbox.Send(new UserUpdated(Info(user, to)));
             else if (Moderates(to, user)) to.Outbox.SendFrame(moderator ??= SessionOutbox.Encode(new UserUpdated(Info(user, to))), nameof(UserUpdated));
@@ -438,7 +440,7 @@ internal sealed partial class ServerState
         data.Channels.Select(Info).ToList(),
         data.Links.Select(channelLink => new LinkInfo(channelLink.A, channelLink.B)).ToList(),
         GroupInfos(to),
-        sessions.Values.Select(session => Info(session, to)).ToList(),
+        sessions.Values.Where(session => ServiceSessions.IsVisibleTo(session, to)).Select(session => Info(session, to)).ToList(),
         HasServerAdmin);
 
     static string BanText(BanRecord ban) =>

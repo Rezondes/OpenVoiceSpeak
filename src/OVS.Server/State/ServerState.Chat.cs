@@ -34,6 +34,7 @@ internal sealed partial class ServerState
         if (request.Target == ChatTarget.Private)
         {
             to = request.ToSessionId is { } id ? sessions.GetValueOrDefault(id) : null;
+            if (to?.IsService == true) to = null; // Package 191: nobody sees a service session
             if (to is null)
             {
                 Fail(session, request, ReasonCodes.NotFound, "The recipient is not online.");
@@ -65,7 +66,7 @@ internal sealed partial class ServerState
                 break;
             case ChatTarget.Channel:
                 ChannelLogger(session.ChannelId)?.Chat(session.Nickname, text);
-                foreach (var member in sessions.Values.Where(otherSession => otherSession.ChannelId == session.ChannelId)) member.Outbox.Send(message);
+                foreach (var member in sessions.Values.Where(otherSession => otherSession.ChannelId == session.ChannelId && ServiceSessions.IsVisibleTo(otherSession, session))) member.Outbox.Send(message);
                 break;
             case ChatTarget.Private:
                 logs.Server.PrivateChat(session.Nickname, to!.Nickname); // never the content (A29)

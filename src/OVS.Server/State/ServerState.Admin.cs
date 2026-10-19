@@ -176,7 +176,7 @@ internal sealed partial class ServerState
     {
         if (!Require(session, request, Permission.UsersView) || !ThrottleList(session, request, request.Offset)) return; // Package 76: the IP is only for those who may see the overview (A86)
         var now = time.GetUtcNow();
-        var online = sessions.Values.ToDictionary(otherSession => otherSession.Fingerprint);
+        var online = ServiceSessions.Visible(sessions.Values).ToDictionary(otherSession => otherSession.Fingerprint); // Package 191: the manager is not online
         var bans = data.Bans.Where(ban => ban.IsActive(now)).ToLookup(ban => ban.Fingerprint);
         int offset = Math.Max(0, request.Offset);
         session.Outbox.Send(new UserList(request.RequestId, Page(data.Users, offset).Select(user =>

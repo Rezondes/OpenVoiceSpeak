@@ -15,6 +15,11 @@ internal sealed partial class ServerState
 {
     void OnJoinChannel(Session session, JoinChannel request)
     {
+        if (session.IsService) // Package 191 (A203): a service session stands in no channel
+        {
+            Fail(session, request, ReasonCodes.PermissionDenied);
+            return;
+        }
         if (FindChannel(request.ChannelId) is not { } channel)
         {
             Fail(session, request, ReasonCodes.NotFound);
@@ -238,7 +243,7 @@ internal sealed partial class ServerState
             return;
         }
 
-        foreach (var user in sessions.Values.Where(otherSession => otherSession.ChannelId == channel.Id))
+        foreach (var user in ServiceSessions.Visible(sessions.Values).Where(otherSession => otherSession.ChannelId == channel.Id))
         {
             ChannelLogger(channel.Id)?.LeftDeleted(user.Nickname);
             ChannelLogger(data.DefaultChannelId)?.JoinedFromDeleted(user.Nickname, channel.Name);
@@ -269,7 +274,7 @@ internal sealed partial class ServerState
     void OnMoveUser(Session session, MoveUser request)
     {
         if (!Require(session, request, Permission.UserMove)) return;
-        if (!sessions.TryGetValue(request.SessionId, out var target) || FindChannel(request.ChannelId) is null)
+        if (!sessions.TryGetValue(request.SessionId, out var target) || target.IsService || FindChannel(request.ChannelId) is null)
         {
             Fail(session, request, ReasonCodes.NotFound);
             return;
@@ -305,7 +310,7 @@ internal sealed partial class ServerState
 
     /// <summary>Full for this user (ChannelCapacity), not counting the user if already inside.</summary>
     bool IsFull(ChannelRecord channel, Session user) =>
-        ChannelCapacity.IsFull(channel.MaxUsers, sessions.Values.Count(session => session != user && session.ChannelId == channel.Id));
+        ChannelCapacity.IsFull(channel.MaxUsers, ServiceSessions.Visible(sessions.Values).Count(session => session != user && session.ChannelId == channel.Id));
 
     void OnSetSelfState(Session session, SetSelfState request)
     {
