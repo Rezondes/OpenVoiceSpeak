@@ -1,0 +1,38 @@
+@page "/"
+@rendermode InteractiveServer
+@inherits ServerWatchPage
+
+<h1>@Strings.Home_Title</h1>
+@if (!DockerReachable)
+{
+    <p class="banner-error" role="alert">@Strings.Docker_Unreachable</p>
+}
+@if (!VisibleServers.Any())
+{
+    <p>@Strings.Servers_Empty</p>
+}
+else
+{
+    <table class="list">
+        <thead>
+            <tr>
+                <th>@Strings.Servers_Name</th><th>@Strings.Servers_ColumnStatus</th><th>@Strings.Servers_Version</th>
+                <th>@Strings.Servers_ColumnPort</th><th>@Strings.Servers_ColumnUsers</th><th>@Strings.Servers_ColumnUptime</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var server in VisibleServers)
+            {
+                <tr @key="server.Id" data-server="@server.Id">
+                    <td><a href="@($"/servers/{server.Id}")">@server.Name</a></td>
+                    <td data-status="@server.Status">@ServerTexts.Status(server)</td>
+                    <td>@server.Version</td>
+                    <td>@server.Port</td>
+                    <td>–</td>
+                    <td>@ServerTexts.Uptime(server, Time.GetUtcNow())</td>
+                    <td><ServerActions ServerId="@server.Id" Busy="@Watcher.IsBusy(server.Id)" /></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

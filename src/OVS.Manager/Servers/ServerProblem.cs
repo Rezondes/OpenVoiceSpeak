@@ -1,6 +1,6 @@
 namespace OVS.Manager.Servers;
 
-/// <summary>Package M7: why a server could not be created, for the text on the page.</summary>
+/// <summary>Package M7: why a server could not be created (M8: or started, stopped, restarted), for the text on the page.</summary>
 internal enum ServerProblem
 {
     /// <summary>The name is empty, too long or has forbidden characters.</summary>
@@ -17,4 +17,6 @@ internal enum ServerProblem
     NoFreePort,
     /// <summary>Something else on the host uses the port.</summary>
     PortInUseOnHost,
+    /// <summary>Package M8: the server or its container is gone.</summary>
+    NotFound,
 }

@@ -61,6 +61,11 @@ builder.Services.AddSingleton<FirstAdmin>();
 builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(options.DataDir, "keys"))).SetApplicationName("OVS.Manager");
 builder.Services.AddScoped<ServerIdentityStore>();
 builder.Services.AddScoped<ServerFactory>();
+// Package M8: the status of every server, checked in the background, and its start, stop and restart
+builder.Services.AddSingleton<IServerProbe, TlsServerProbe>();
+builder.Services.AddSingleton<StatusWatcher>();
+builder.Services.AddHostedService(services => services.GetRequiredService<StatusWatcher>());
+builder.Services.AddScoped<ServerLifecycle>();
 builder.Services.AddSingleton<LoginLimits>();
 
 var app = builder.Build();

@@ -1,0 +1,22 @@
+@page "/servers/{Id}"
+@rendermode InteractiveServer
+@inherits ServerWatchPage
+
+@if (Server is null)
+{
+    <p class="form-error" role="alert">@Strings.Servers_NotFound</p>
+}
+else
+{
+    <h1>@Server.Name</h1>
+    <table class="list">
+        <tbody>
+            <tr><th>@Strings.Servers_ColumnStatus</th><td data-status="@Server.Status">@ServerTexts.Status(Server)</td></tr>
+            <tr><th>@Strings.Servers_Version</th><td>@Server.Version</td></tr>
+            <tr><th>@Strings.Servers_ColumnPort</th><td>@Server.Port</td></tr>
+            <tr><th>@Strings.Servers_ColumnUsers</th><td>–</td></tr>
+            <tr><th>@Strings.Servers_ColumnUptime</th><td>@ServerTexts.Uptime(Server, Time.GetUtcNow())</td></tr>
+        </tbody>
+    </table>
+    <ServerActions ServerId="@Server.Id" Busy="@Watcher.IsBusy(Server.Id)" />
+}

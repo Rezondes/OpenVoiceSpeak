@@ -1,0 +1,9 @@
+<span class="server-actions">
+    <button type="button" disabled="@Busy" @onclick="StartAsync">@Strings.Servers_Start</button>
+    <button type="button" disabled="@Busy" @onclick="StopAsync">@Strings.Servers_Stop</button>
+    <button type="button" disabled="@Busy" @onclick="RestartAsync">@Strings.Servers_Restart</button>
+    @if (Error is not null)
+    {
+        <span class="form-error" role="alert">@Error</span>
+    }
+</span>

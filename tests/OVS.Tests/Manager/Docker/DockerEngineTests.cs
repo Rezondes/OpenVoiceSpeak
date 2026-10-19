@@ -70,6 +70,24 @@ public sealed class DockerEngineTests
             Assert.Contains(part, create.Body, StringComparison.Ordinal);
     }
 
+    /// <summary>Package M8: inspect gives the state, exit code, restart count and start; a foreign container is refused.</summary>
+    [Fact]
+    public async Task Inspect_Labels_StateOrRefused()
+    {
+        await using var api = new FakeDockerApi
+        {
+            InspectJson = """
+                { "Id": "m1", "RestartCount": 2, "State": { "Status": "exited", "ExitCode": 137, "StartedAt": "2026-10-19T10:00:00.5Z" },
+                  "Config": { "Labels": { "ovs.managed": "true", "ovs.server-id": "s1" } } }
+                """,
+        };
+        using var engine = Engine(api);
+        Assert.Equal(new InspectedContainer("exited", 137, 2, new DateTimeOffset(2026, 10, 19, 10, 0, 0, 500, TimeSpan.Zero)), await engine.InspectAsync("m1"));
+
+        api.InspectJson = """{ "Id": "x", "State": { "Status": "running", "StartedAt": "0001-01-01T00:00:00Z" }, "Config": { "Labels": {} } }""";
+        await Assert.ThrowsAsync<ForeignContainerException>(() => engine.InspectAsync("x"));
+    }
+
     /// <summary>AC4: without the proxy the health check says so with 503, the overview shows it, and the rest works.</summary>
     [Fact]
     public async Task Health_ProxyDown_Degraded()

@@ -430,26 +430,30 @@ D2, D3, D6, MA4, MA6. The container gets `OVS_PORT`, `OVS_SERVER_NAME`, `OVS_MAX
 - `src/OVS.Manager/Servers/ServerStatus.cs`, `StatusWatcher.cs`, `ServerLifecycle.cs` (new)
 - `src/OVS.Manager/Components/Pages/Servers/ServerList.razor`, `ServerPage.razor` (new)
 - `tests/OVS.Tests/Manager/Servers/StatusWatcherTests.cs`, `ServerLifecycleTests.cs` (new)
+- (as built, also) `src/OVS.Manager/Docker/InspectedContainer.cs`, `Servers/ServerSnapshot.cs`, `IServerProbe.cs`, `TlsServerProbe.cs`, `Localization/ServerTexts.cs`, `Components/Pages/Servers/ServerWatchPage.cs`, `ServerActions.razor` (new); `Components/Pages/Home.razor` (removed, the overview is the start page); `tests/OVS.Tests/Manager/Servers/TlsServerProbeTests.cs`, `TestSupport/FakeServerProbe.cs`, `ServerPages.cs` (new)
 
 ### Context
 
-Status comes from Docker events and inspect (running, restarting, exited with code) and from a TLS connect to the port (the server answers). The server ends cleanly on SIGTERM and tells clients "ServerShutdown" (`Program.cs`, Package 5); a stop uses a timeout of 15 s.
+Status comes from Docker's list and inspect every 5 seconds (running, restarting, exited with code; the socket proxy passes no events) and from a TLS connect to the port (the server answers). The server ends cleanly on SIGTERM and tells clients "ServerShutdown" (`Program.cs`, Package 5); a stop uses a timeout of 15 s.
 
 ### Acceptance Criteria
 
-- [ ] AC1: The overview shows per server name, status ("läuft", "startet", "gestoppt", "abgestürzt", "Neustart-Schleife", "nicht erreichbar"), version, port, users online and uptime, and updates live without reload.
-- [ ] AC2: Start, stop and restart work from the overview and the server page and write audit lines; a running action disables the buttons of that server.
-- [ ] AC3: More than 3 restarts within 10 minutes show "Neustart-Schleife" with the last exit code.
-- [ ] AC4: "läuft" needs the container running and a TLS handshake on the port; a running container without answer is "nicht erreichbar".
-- [ ] AC5: The manager's own restart loses no status: containers are found again by their labels (M6 AC3).
+- [x] AC1: The overview shows per server name, status ("läuft", "startet", "gestoppt", "abgestürzt", "Neustart-Schleife", "nicht erreichbar"), version, port, users online and uptime, and updates live without reload.
+- [x] AC2: Start, stop and restart work from the overview and the server page and write audit lines; a running action disables the buttons of that server.
+- [x] AC3: More than 3 restarts within 10 minutes show "Neustart-Schleife" with the last exit code.
+- [x] AC4: "läuft" needs the container running and a TLS handshake on the port; a running container without answer is "nicht erreichbar".
+- [x] AC5: The manager's own restart loses no status: containers are found again by their labels (M6 AC3).
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `StatusWatcherTests > "Events_StatusMapped"` and `"List_LiveUpdate"` (bUnit) - AC1
-2. `ServerLifecycleTests > "StartStopRestart_AuditAndButtonsDisabled"` - AC2
-3. `StatusWatcherTests > "FourRestartsInTenMinutes_RestartLoop"` (with `ManualTimeProvider`) - AC3
-4. `StatusWatcherTests > "Running_NoHandshake_NotReachable"` - AC4
-5. `StatusWatcherTests > "ManagerRestart_ServersFoundByLabels"` - AC5
+1. `StatusWatcherTests > "Refresh_DockerStates_StatusMapped"` and `"List_StatusChange_RedrawnLive"` (bUnit) - AC1
+2. `ServerLifecycleTests > "StartStopRestart_Overview_AuditAndButtonsDisabled"` (bUnit) and `"Start_UnknownServer_NotFound"` - AC2
+3. `StatusWatcherTests > "Refresh_FourRestartsInTenMinutes_RestartLoop"` (with `ManualTimeProvider`) - AC3
+4. `StatusWatcherTests > "Refresh_RunningNoHandshake_NotReachable"`, `TlsServerProbeTests > "Answers_RunningServer_True"` and `"Answers_ClosedPort_False"` - AC4
+5. `StatusWatcherTests > "Refresh_NewWatcher_ServersFoundByLabels"` - AC5
+6. `DockerEngineTests > "Inspect_Labels_StateOrRefused"` - the adapter's inspect
+
+(as built: the socket proxy allows no `events`, so `StatusWatcher` (a singleton and hosted service) lists the managed containers every 5 seconds, inspects each (`IDockerEngine.InspectAsync`, refused for a container without the label) and finds a server's container by its label `ovs.server-id`, not by the stored id; `ServerLifecycle` does the same, so a recreated container is found again. Mapping: running with a TLS handshake is "läuft", without one "startet" for 30 s after its start and then "nicht erreichbar"; restarting is "startet"; exited or dead with an exit code other than 0 is "abgestürzt" with the code; exited with 0, created and paused are "gestoppt"; a server without container is "nicht erreichbar". AC3 counts the rises of Docker's restart count since the manager started: more than 3 within 10 minutes is "Neustart-Schleife" with the last exit code. `TlsServerProbe` (behind `IServerProbe`, the tests use `FakeServerProbe`) connects to `ovs-<id>:<port>` in the network `ovs-managed` and only finishes the handshake; the certificate is not checked (CA5359 suppressed: self-signed, nothing is sent), and the server drops such a connection without a log line. A running action marks the server busy in the watcher, which turns its buttons off in every browser and refuses a second action. The overview `ServerList` is the start page `/` (it took the Docker banner of `Home`), `ServerPage` is `/servers/{id}`; both inherit `ServerWatchPage`, render interactively on the server and draw again on the watcher's `Changed`. Visible are the servers of `AuditScope.For`: the admin all, a manager none until M10. Users online show "–" until the service session of M11 reports them. The stop keeps M6's 30 s for the server's own shutdown. bUnit 2.11.3 renders the pages in the tests on the services of `ManagerFactory`.)
 
 ### Steps
 

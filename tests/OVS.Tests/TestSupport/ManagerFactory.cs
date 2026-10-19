@@ -5,6 +5,7 @@ using OVS.Manager.Docker;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using OVS.Manager;
+using OVS.Manager.Servers;
 
 namespace OVS.Tests.TestSupport;
 
@@ -14,6 +15,9 @@ internal sealed class ManagerFactory(params (string Key, string Value)[] setting
 {
     /// <summary>Package M6: Docker in memory unless a test asks for the real adapter (then OVS_MANAGER_DOCKER_HOST decides).</summary>
     public FakeDockerEngine Docker { get; } = new();
+
+    /// <summary>Package M8: the servers' answer to the status check's TLS handshake.</summary>
+    public FakeServerProbe Probe { get; } = new();
 
     /// <summary>Package M6: the real <c>DockerEngine</c> instead of <see cref="Docker"/>.</summary>
     public bool RealDocker { get; init; }
@@ -25,7 +29,11 @@ internal sealed class ManagerFactory(params (string Key, string Value)[] setting
     {
         builder.UseSetting(ManagerOptions.DataDirVariable, DataDir);
         foreach (var (key, value) in settings) builder.UseSetting(key, value);
-        if (!RealDocker) builder.ConfigureTestServices(services => services.AddSingleton<IDockerEngine>(Docker));
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddSingleton<IServerProbe>(Probe);
+            if (!RealDocker) services.AddSingleton<IDockerEngine>(Docker);
+        });
     }
 
     /// <summary>Package M3: the pages answer in German, as for most users; a test of the language sets its own header.</summary>

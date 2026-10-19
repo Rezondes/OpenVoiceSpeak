@@ -15,6 +15,12 @@ internal sealed class FakeDockerEngine : IDockerEngine
     /// <summary>The containers by id.</summary>
     public ConcurrentDictionary<string, ManagedContainer> Containers { get; } = new();
 
+    /// <summary>Package M8: what inspect says per container id; without an entry, its state with exit code 0, no restarts and no start.</summary>
+    public ConcurrentDictionary<string, InspectedContainer> Inspected { get; } = new();
+
+    /// <summary>Package M8: while set, start, stop and restart wait for it (an action that takes its time).</summary>
+    public TaskCompletionSource? Hold { get; set; }
+
     /// <summary>Every spec created, in order.</summary>
     public ConcurrentQueue<ContainerSpec> Created { get; } = new();
 
@@ -24,6 +30,13 @@ internal sealed class FakeDockerEngine : IDockerEngine
     {
         EnsureReachable();
         return Task.FromResult<IReadOnlyList<ManagedContainer>>([.. Containers.Values.OrderBy(container => container.Port)]);
+    }
+
+    public Task<InspectedContainer> InspectAsync(string containerId, CancellationToken cancellation = default)
+    {
+        EnsureReachable();
+        if (!Containers.TryGetValue(containerId, out var container)) throw new ForeignContainerException(containerId);
+        return Task.FromResult(Inspected.TryGetValue(containerId, out var inspected) ? inspected : new InspectedContainer(container.State, 0, 0, null));
     }
 
     public Task<string> CreateAsync(ContainerSpec spec, CancellationToken cancellation = default)
@@ -48,12 +61,12 @@ internal sealed class FakeDockerEngine : IDockerEngine
         return Task.CompletedTask;
     }
 
-    Task SetStateAsync(string containerId, string state)
+    async Task SetStateAsync(string containerId, string state)
     {
+        if (Hold is { } hold) await hold.Task;
         EnsureReachable();
         if (!Containers.TryGetValue(containerId, out var container)) throw new ForeignContainerException(containerId);
         Containers[containerId] = container with { State = state };
-        return Task.CompletedTask;
     }
 
     void EnsureReachable()

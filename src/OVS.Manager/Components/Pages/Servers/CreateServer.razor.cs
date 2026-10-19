@@ -62,7 +62,7 @@ sealed partial class CreateServer
         }
         catch (ServerRequestException exception)
         {
-            Error = Text(exception.Problem);
+            Error = ServerTexts.Problem(exception.Problem);
             return;
         }
         catch (DockerCallException)
@@ -72,17 +72,6 @@ sealed partial class CreateServer
         }
         Navigation.NavigateTo("/");
     }
-
-    static string Text(ServerProblem problem) => problem switch
-    {
-        ServerProblem.InvalidName => Strings.Servers_InvalidName,
-        ServerProblem.InvalidMaxUsers => TextFormat.Of(Strings.Servers_InvalidMaxUsers, ServerFactory.MaxUsersLimit),
-        ServerProblem.InvalidTimeZone => Strings.Servers_InvalidTimeZone,
-        ServerProblem.PortOutOfRange => TextFormat.Of(Strings.Servers_PortOutOfRange, PortPool.First, PortPool.First + PortPool.Count - 1),
-        ServerProblem.PortTaken => Strings.Servers_PortTaken,
-        ServerProblem.NoFreePort => Strings.Servers_AllPortsTaken,
-        _ => Strings.Servers_PortInUseOnHost,
-    };
 
     /// <summary>The fields of the form; empty ones take the defaults.</summary>
     sealed class CreateInput

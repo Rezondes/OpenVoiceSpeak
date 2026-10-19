@@ -28,6 +28,9 @@ internal sealed class FakeDockerApi : IAsyncDisposable
     /// <summary>The answer to <c>GET /containers/json</c>, a JSON array.</summary>
     public string ContainersJson { get; set; } = "[]";
 
+    /// <summary>Package M8: the answer to <c>GET /containers/{id}/json</c>, an inspect object.</summary>
+    public string InspectJson { get; set; } = "{}";
+
     /// <summary>Every request received, in order.</summary>
     public ConcurrentQueue<DockerApiRequest> Requests { get; } = new();
 
@@ -71,6 +74,7 @@ internal sealed class FakeDockerApi : IAsyncDisposable
         {
             ("GET", "/_ping") => new("200 OK", "OK"),
             ("GET", "/containers/json") => new("200 OK", ContainersJson),
+            ("GET", var inspect) when inspect.StartsWith("/containers/", StringComparison.Ordinal) && inspect.EndsWith("/json", StringComparison.Ordinal) => new("200 OK", InspectJson),
             ("POST", "/containers/create") => new("201 Created", """{"Id":"created-1","Warnings":[]}"""),
             ("POST", "/volumes/create") => new("201 Created", """{"Name":"volume"}"""),
             ("POST", _) => new("204 No Content", ""),

@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Headless.XUnit" Version="11.3.22" />
+    <!-- Package M8 (MA2): the manager's live components rendered in memory -->
+    <PackageReference Include="bunit" Version="2.11.3" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <!-- Package M1: the manager's HTTP pipeline in memory -->
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />

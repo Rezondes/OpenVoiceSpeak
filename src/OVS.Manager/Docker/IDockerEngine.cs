@@ -13,6 +13,9 @@ internal interface IDockerEngine
     /// <summary>The managed containers.</summary>
     Task<IReadOnlyList<ManagedContainer>> ListAsync(CancellationToken cancellation = default);
 
+    /// <summary>Package M8: the state, exit code, restart count and start of a managed container.</summary>
+    Task<InspectedContainer> InspectAsync(string containerId, CancellationToken cancellation = default);
+
     /// <summary>Creates the volume and the container of <paramref name="spec"/> (not started); returns the container's id.</summary>
     Task<string> CreateAsync(ContainerSpec spec, CancellationToken cancellation = default);
 

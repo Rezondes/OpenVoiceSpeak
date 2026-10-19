@@ -48,6 +48,16 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
     });
 
     /// <inheritdoc/>
+    public Task<InspectedContainer> InspectAsync(string containerId, CancellationToken cancellation = default) => CallAsync(async () =>
+    {
+        var inspected = await client.Containers.InspectContainerAsync(containerId, cancellation);
+        if (!ManagedLabels.IsManaged(inspected.Config?.Labels))
+            throw new ForeignContainerException($"Container {containerId} is not managed by the OVS manager.");
+        var started = DateTimeOffset.TryParse(inspected.State.StartedAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var at) && at.Year > 1 ? at : (DateTimeOffset?)null;
+        return new InspectedContainer(inspected.State.Status, (int)inspected.State.ExitCode, (int)inspected.RestartCount, started);
+    });
+
+    /// <inheritdoc/>
     public Task<string> CreateAsync(ContainerSpec spec, CancellationToken cancellation = default) => CallAsync(async () =>
     {
         var labels = ManagedLabels.For(spec);

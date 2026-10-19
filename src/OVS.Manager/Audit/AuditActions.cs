@@ -39,4 +39,6 @@ internal static class AuditActions
     public const string ServerStarted = "ServerStarted";
     /// <summary>A server was stopped (M8).</summary>
     public const string ServerStopped = "ServerStopped";
+    /// <summary>A server was restarted (M8).</summary>
+    public const string ServerRestarted = "ServerRestarted";
 }

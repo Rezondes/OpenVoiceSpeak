@@ -76,22 +76,39 @@
   <data name="Profile_Title" xml:space="preserve"><value>Mein Konto</value></data>
   <data name="Save" xml:space="preserve"><value>Speichern</value></data>
   <data name="Servers_AllPortsTaken" xml:space="preserve"><value>Alle 100 Ports sind belegt.</value></data>
+  <data name="Servers_ColumnPort" xml:space="preserve"><value>Port</value></data>
+  <data name="Servers_ColumnStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="Servers_ColumnUptime" xml:space="preserve"><value>Laufzeit</value></data>
+  <data name="Servers_ColumnUsers" xml:space="preserve"><value>Nutzer online</value></data>
   <data name="Servers_Create" xml:space="preserve"><value>Anlegen und starten</value></data>
   <data name="Servers_CreateTitle" xml:space="preserve"><value>Neuen Server anlegen</value></data>
+  <data name="Servers_Empty" xml:space="preserve"><value>Noch keine Server.</value></data>
   <data name="Servers_InvalidMaxUsers" xml:space="preserve"><value>Die maximale Nutzerzahl muss zwischen 1 und {0} liegen.</value></data>
   <data name="Servers_InvalidName" xml:space="preserve"><value>Der Name ist leer, zu lang oder enthält unerlaubte Zeichen.</value></data>
   <data name="Servers_InvalidTimeZone" xml:space="preserve"><value>Diese Zeitzone ist unbekannt (Beispiel: Europe/Berlin).</value></data>
   <data name="Servers_MaxUsers" xml:space="preserve"><value>Maximale Nutzer</value></data>
   <data name="Servers_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Servers_NotFound" xml:space="preserve"><value>Diesen Server gibt es nicht mehr.</value></data>
   <data name="Servers_Password" xml:space="preserve"><value>Serverpasswort (freiwillig)</value></data>
   <data name="Servers_Port" xml:space="preserve"><value>Port (TCP und UDP)</value></data>
   <data name="Servers_PortInUseOnHost" xml:space="preserve"><value>Der Port ist auf dem Host schon belegt.</value></data>
   <data name="Servers_PortOutOfRange" xml:space="preserve"><value>Der Port muss zwischen {0} und {1} liegen.</value></data>
   <data name="Servers_PortTaken" xml:space="preserve"><value>Diesen Port hat schon ein anderer Server.</value></data>
+  <data name="Servers_Restart" xml:space="preserve"><value>Neu starten</value></data>
+  <data name="Servers_Start" xml:space="preserve"><value>Starten</value></data>
+  <data name="Servers_Stop" xml:space="preserve"><value>Stoppen</value></data>
   <data name="Servers_TimeZone" xml:space="preserve"><value>Zeitzone</value></data>
+  <data name="Servers_Uptime" xml:space="preserve"><value>{0} T {1} h {2} min</value></data>
   <data name="Servers_Version" xml:space="preserve"><value>Version</value></data>
   <data name="Setup_Submit" xml:space="preserve"><value>Anlegen</value></data>
   <data name="Setup_Title" xml:space="preserve"><value>Ersten Administrator anlegen</value></data>
+  <data name="Status_Crashed" xml:space="preserve"><value>abgestürzt</value></data>
+  <data name="Status_NotReachable" xml:space="preserve"><value>nicht erreichbar</value></data>
+  <data name="Status_RestartLoop" xml:space="preserve"><value>Neustart-Schleife</value></data>
+  <data name="Status_Running" xml:space="preserve"><value>läuft</value></data>
+  <data name="Status_Starting" xml:space="preserve"><value>startet</value></data>
+  <data name="Status_Stopped" xml:space="preserve"><value>gestoppt</value></data>
+  <data name="Status_WithExitCode" xml:space="preserve"><value>{0} (Exit-Code {1})</value></data>
   <data name="Theme_Dark" xml:space="preserve"><value>Dunkel</value></data>
   <data name="Theme_Label" xml:space="preserve"><value>Darstellung</value></data>
   <data name="Theme_Light" xml:space="preserve"><value>Hell</value></data>
