@@ -250,17 +250,19 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 
 ### Acceptance Criteria
 
-- [ ] AC1: `ControlConnection` connects to a real in-process server, completes the handshake (also with `Service = true` for a server admin) and receives the `Welcome`.
-- [ ] AC2: A certificate the caller's check refuses ends the connect with the same exception the client shows today (TOFU prompt unchanged).
-- [ ] AC3: Ping, idle timeout, `Disconnected` with reason and the TCP half-close of `7b8f52c` behave as before.
-- [ ] AC4: Every existing client network test stays green without a change of its assertions.
+- [x] AC1: `ControlConnection` connects to a real in-process server, completes the handshake (also with `Service = true` for a server admin) and receives the `Welcome`.
+- [x] AC2: A certificate the caller's check refuses ends the connect with the same exception the client shows today (TOFU prompt unchanged).
+- [x] AC3: Ping, idle timeout, `Disconnected` with reason and the TCP half-close of `7b8f52c` behave as before.
+- [x] AC4: Every existing client network test stays green without a change of its assertions.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `ControlConnectionTests > "Connect_RealServer_WelcomeReceived"` and `"Connect_Service_WelcomeWithoutSlot"` - AC1
 2. `ControlConnectionTests > "Connect_CertificateRefused_SameExceptionAsClient"` - AC2
 3. `ControlConnectionTests > "Disconnected_ServerShutdown_ReasonGiven"` and `"Close_HalfClose_ServerSeesEnd"` - AC3
 4. `ClientNetTests` (whole class) - AC4
+
+(as built: `ControlConnection.ConnectAsync` takes the certificate check as `Func<string, Task>` that gets the fingerprint and throws to refuse; the connect timeout pauses while it runs, so the client's TOFU prompt keeps its time, and the client's check still throws `TofuRejectedException`. `ConnectionRejectedException` moved to `OVS.Shared.Exceptions` (public); `ReadNonce` and `CloseGracefully` moved to `ControlConnection`, so `ClientNetTests` and `TestClient` call them there with unchanged assertions. Public events of the shared type are `EventHandler<MessageReceivedEventArgs>` and `EventHandler<DisconnectedEventArgs>` (CA1003); `ClientConnection` keeps its `Action` events, splits `VoiceDown` off on the receive thread and stops its voice loop before it closes the control connection. A second dispose does nothing. `CODING-RULES-OVS.md` names the moved exception and the new types.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 

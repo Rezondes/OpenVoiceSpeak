@@ -49,9 +49,9 @@ Each project has an `Exceptions/` folder (B7 b). A base exception and its subcla
 
 | Namespace | Types |
 |---|---|
-| `OVS.Shared.Exceptions` | `ProtocolException`, `InvalidRequestException` |
+| `OVS.Shared.Exceptions` | `ProtocolException`, `InvalidRequestException`, `ConnectionRejectedException` (Package 194: the client and the web manager share the connection) |
 | `OVS.Server.Exceptions` | `ConfigException`, `BackupQuotaException` |
-| `OVS.Client.Exceptions` | `ConnectionRejectedException`, `TofuRejectedException`, `DebugApiException` |
+| `OVS.Client.Exceptions` | `TofuRejectedException`, `DebugApiException` |
 
 ## Target layout
 
@@ -63,7 +63,7 @@ Each project has an `Exceptions/` folder (B7 b). A base exception and its subcla
 - `Voice/` stays flat, one type per file (D8): `PacketType`, `PacketDirection` (was `Direction`), `VoiceHeader`, `VoiceCrypto`, `SeqCounter`, `ReplayWindow`, `LossReport`, `PingPayload`, `LossWindow`, `RelayPayload`.
 - `Permissions/`: `Permission`, `WellKnownGroups`, `PermissionExtensions`, and the rules server and client share, `GroupRules`, `ChannelAccess` and `ChannelCapacity` (N1; `ChannelCapacity` moved from the server's `Rules/` in Step 22). `Identity/`: `ClientIdentity`, `CertFingerprint` (D9).
 - `Moderation/`: `BanStatus` (moved from the client, N18) and its rule `BanStatusRule`.
-- `Logging/`, `Exceptions/`, and later `IO/` and `Net/` (§Shared helpers).
+- `Logging/`, `Exceptions/`, and later `IO/` and `Net/` (§Shared helpers). `Net/` also holds `ControlConnection` with its `MessageReceivedEventArgs` and `DisconnectedEventArgs` (Package 194): public events of a shared type use `EventHandler<T>` (CA1003), the client's own types keep `Action`.
 
 ### Protocol messages
 

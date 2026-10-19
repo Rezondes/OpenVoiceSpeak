@@ -7,6 +7,7 @@ using OVS.Client.Input;
 using OVS.Client.Localization;
 using OVS.Client.Net;
 using OVS.Client.ViewModels;
+using OVS.Shared.Exceptions;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages.Channels;
 using OVS.Shared.Protocol.Messages.Connection;

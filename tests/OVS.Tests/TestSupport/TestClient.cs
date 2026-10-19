@@ -202,7 +202,7 @@ internal sealed class TestClient : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        OVS.Client.Net.ClientConnection.CloseGracefully(tcp);
+        OVS.Shared.Net.ControlConnection.CloseGracefully(tcp);
         // Like the real client: let the server read the end of the stream and close first (see ClientConnection).
         if (pump is not null) await Task.WhenAny(pump, Task.Delay(TimeSpan.FromSeconds(1)));
         tcp.Dispose();

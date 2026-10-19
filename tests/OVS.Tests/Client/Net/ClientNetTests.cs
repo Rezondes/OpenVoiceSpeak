@@ -159,7 +159,7 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     [InlineData("QUJD!")] // a bad character
     public void ReadNonce_NotBase64_ThrowsProtocolException(string nonce)
     {
-        var thrown = Assert.Throws<ProtocolException>(() => ClientConnection.ReadNonce(new Challenge(nonce)));
+        var thrown = Assert.Throws<ProtocolException>(() => OVS.Shared.Net.ControlConnection.ReadNonce(new Challenge(nonce)));
         Assert.Equal("Server sent a malformed challenge", thrown.Message);
     }
 
@@ -168,14 +168,14 @@ public sealed class ClientNetTests() : TempDirectoryTest("ovs-client-", quiet: f
     [InlineData("")]
     [InlineData(" ")] // whitespace only is skipped, so it is empty too
     public void ReadNonce_Empty_ReturnsNoBytes(string nonce) =>
-        Assert.Empty(ClientConnection.ReadNonce(new Challenge(nonce)));
+        Assert.Empty(OVS.Shared.Net.ControlConnection.ReadNonce(new Challenge(nonce)));
 
     [Fact]
     public void ReadNonce_ThirtyTwoBytes_ReturnsThemWhole()
     {
         var text = Base64Of(32);
 
-        Assert.Equal(Convert.FromBase64String(text), ClientConnection.ReadNonce(new Challenge(text)));
+        Assert.Equal(Convert.FromBase64String(text), OVS.Shared.Net.ControlConnection.ReadNonce(new Challenge(text)));
     }
 
     [Fact]

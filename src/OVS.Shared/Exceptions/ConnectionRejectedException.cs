@@ -1,7 +1,7 @@
-namespace OVS.Client.Exceptions;
+namespace OVS.Shared.Exceptions;
 
-/// <summary>The server rejected the handshake.</summary>
-internal sealed class ConnectionRejectedException : Exception
+/// <summary>The server rejected the handshake (Package 194: shared by the client and the web manager).</summary>
+public sealed class ConnectionRejectedException : Exception
 {
     /// <summary>The server rejected the handshake.</summary>
     public ConnectionRejectedException() : base("The server rejected the handshake.")

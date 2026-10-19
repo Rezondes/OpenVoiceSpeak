@@ -1,13 +1,10 @@
 using System.Net;
-using System.Net.Security;
-using System.Net.Sockets;
 using System.Threading.Channels;
 using OVS.Client.Exceptions;
 using OVS.Shared.Exceptions;
 using OVS.Shared.Identity;
 using OVS.Shared.Net;
 using OVS.Shared.Protocol;
-using OVS.Shared.Protocol.Framing;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
 using OVS.Shared.Protocol.Messages.VoiceRelay;
@@ -15,49 +12,42 @@ using OVS.Shared.Voice;
 
 namespace OVS.Client.Net;
 
-/// <summary>TLS control connection with TOFU pinning and the challenge handshake.</summary>
+/// <summary>
+/// The client's connection: the shared TLS control connection (<see cref="ControlConnection"/>, Package 194) with TOFU
+/// pinning of the server certificate, and voice over TCP on top of it (Package 141).
+/// </summary>
 internal sealed class ClientConnection : IAsyncDisposable
 {
-    static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(5);
+    readonly ControlConnection control;
+    readonly CancellationTokenSource voiceStop = new(); // stopped on dispose before the control connection closes
 
-    readonly TcpClient tcp;
-    readonly SslStream ssl;
-    readonly FrameReader reader;
-    readonly FrameWriter writer;
-    readonly CancellationTokenSource stopping = new();
-    readonly CancellationTokenSource pingCts = new(); // stopped first on dispose, before the TLS shutdown (also voice, Package 141)
-    readonly TimeProvider time;
-    long pingSentAt;
-    int disconnectRaised;
-    Task? receiveLoop, pingLoop, voiceLoop;
+    // Package 141: at most 10 frames (200 ms) wait for the TLS stream, in order; more is dropped
+    readonly Channel<VoiceUp> voiceOut = Channel.CreateBounded<VoiceUp>(
+        new BoundedChannelOptions(10) { FullMode = BoundedChannelFullMode.DropWrite }); // two readers: the loop and DropPendingVoice
+    readonly Task voiceLoop;
 
-    ClientConnection(TcpClient tcp, SslStream ssl, Welcome welcome, byte[] voiceKey, TimeProvider time)
+    ClientConnection(ControlConnection control, byte[] voiceKey)
     {
-        this.tcp = tcp;
-        this.ssl = ssl;
-        this.time = time;
-        reader = new FrameReader(ssl);
-        writer = new FrameWriter(ssl);
-        Welcome = welcome;
+        this.control = control;
         VoiceKey = voiceKey;
+        control.MessageReceived += (_, received) =>
+        {
+            if (received.Message is VoiceDown voice) VoiceDownReceived?.Invoke(voice);
+            else MessageReceived?.Invoke(received.Message);
+        };
+        control.Disconnected += (_, ended) => Disconnected?.Invoke(ended.Reason, ended.Detail);
+        voiceLoop = Task.Run(VoiceLoopAsync);
     }
 
     /// <summary>The server's welcome: the session id, the voice key and the server's state.</summary>
-    public Welcome Welcome { get; }
+    public Welcome Welcome => control.Welcome;
 
     /// <summary>The welcome's voice key, decoded once at the handshake (always <see cref="VoiceCrypto.KeySize"/> bytes).</summary>
     internal byte[] VoiceKey { get; }
     /// <summary>Server address for UDP. Dual-mode TCP sockets report IPv4 servers as ::ffff:a.b.c.d, which UDP cannot use.</summary>
-    public IPAddress RemoteAddress
-    {
-        get
-        {
-            var address = ((IPEndPoint)tcp.Client.RemoteEndPoint!).Address;
-            return IpAddresses.Unmap(address);
-        }
-    }
+    public IPAddress RemoteAddress => control.RemoteAddress;
     /// <summary>The last ping's round trip, null before the first answer.</summary>
-    public TimeSpan? LastRoundTrip { get; private set; }
+    public TimeSpan? LastRoundTrip => control.LastRoundTrip;
 
     /// <summary>Raised on the receive thread for every message after Welcome.</summary>
     public event Action<Message>? MessageReceived;
@@ -69,7 +59,7 @@ internal sealed class ClientConnection : IAsyncDisposable
     public event Action<string, string?>? Disconnected;
 
     /// <summary>The clock of the ping's round trip.</summary>
-    internal TimeProvider Time => time;
+    internal TimeProvider Time => control.Time;
 
     /// <param name="time">
     /// The clock of the ping's round trip (tests pass a manual one). The ping itself goes every 5 s of real time: it keeps
@@ -86,66 +76,25 @@ internal sealed class ClientConnection : IAsyncDisposable
     public static async Task<ClientConnection> ConnectAsync(string host, int port, ClientIdentity identity, string nickname,
         string? password, TrustedServerFingerprints known, Func<TofuPrompt, Task<bool>> confirm, TimeProvider time, CancellationToken cancellation = default)
     {
-        #pragma warning disable CA2000 // the catch disposes it on every failure, the connection owns it on success
-        var tcp = new TcpClient();
-        #pragma warning restore CA2000
+        async Task CheckAsync(string fingerprint)
+        {
+            var check = known.Check(host, port, fingerprint);
+            if (check == TofuResult.Known) return;
+            if (!await confirm(new TofuPrompt(host, port, fingerprint, check))) throw new TofuRejectedException();
+            known.Trust(host, port, fingerprint);
+        }
+
+        var control = await ControlConnection.ConnectAsync(host, port, identity, nickname, password, service: false, CheckAsync, time, cancellation);
         try
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-            timeout.CancelAfter(TimeSpan.FromSeconds(10)); // clock: real time
-            await tcp.ConnectAsync(host, port, timeout.Token);
-
-            // Self-signed server certs are pinned by fingerprint (TOFU) instead of a CA chain.
-            #pragma warning disable CA2000 // it wraps the TCP stream, which the catch closes with the client; on success the connection owns it
-            #pragma warning disable CA5359 // TOFU: the certificate is checked by its pinned fingerprint right after the handshake
-            var ssl = new SslStream(tcp.GetStream(), false, (_, _, _, _) => true);
-            #pragma warning restore CA5359
-            #pragma warning restore CA2000
-            await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions { TargetHost = host }, timeout.Token);
-
-            var fingerprint = CertFingerprint.ComputeHex(ssl.RemoteCertificate!);
-            var check = known.Check(host, port, fingerprint);
-            if (check != TofuResult.Known)
-            {
-                timeout.CancelAfter(Timeout.InfiniteTimeSpan); // clock: real time, the user may take their time
-                if (!await confirm(new TofuPrompt(host, port, fingerprint, check))) throw new TofuRejectedException();
-                known.Trust(host, port, fingerprint);
-                timeout.CancelAfter(TimeSpan.FromSeconds(10)); // clock: real time
-            }
-
-            var reader = new FrameReader(ssl);
-            var writer = new FrameWriter(ssl);
-            await writer.WriteAsync(new ClientHello(WireProtocol.Version, nickname, Convert.ToBase64String(identity.PublicKey), password), timeout.Token);
-            var reply = await reader.ReadAsync(timeout.Token);
-            if (reply is Challenge challenge)
-            {
-                var proof = identity.Sign(ClientIdentity.ProofData(ReadNonce(challenge), CertFingerprint.Compute(ssl.RemoteCertificate!)));
-                await writer.WriteAsync(new ClientProof(Convert.ToBase64String(proof)), timeout.Token);
-                reply = await reader.ReadAsync(timeout.Token);
-            }
-
-            switch (reply)
-            {
-                case Welcome welcome:
-                    var connection = new ClientConnection(tcp, ssl, welcome, ReadVoiceKey(welcome), time);
-                    connection.Start();
-                    return connection;
-                case Rejected rejected:
-                    throw new ConnectionRejectedException(rejected.Code, rejected.Detail);
-                default:
-                    throw new ConnectionRejectedException(ReasonCodes.ProtocolError, reply?.GetType().Name);
-            }
+            return new ClientConnection(control, ReadVoiceKey(control.Welcome));
         }
         catch
         {
-            tcp.Dispose();
+            await control.DisposeAsync();
             throw;
         }
     }
-
-    /// <summary>The challenge's nonce; any length decodes (the server's proof check decides), text that is not base64 fails the connect.</summary>
-    internal static byte[] ReadNonce(Challenge challenge) =>
-        Base64Text.TryDecode(challenge.Nonce, out var nonce) ? nonce : throw new ProtocolException("Server sent a malformed challenge");
 
     /// <summary>The welcome's voice key; anything but base64 of exactly <see cref="VoiceCrypto.KeySize"/> bytes fails the connect.</summary>
     internal static byte[] ReadVoiceKey(Welcome welcome) =>
@@ -153,19 +102,8 @@ internal sealed class ClientConnection : IAsyncDisposable
             ? key
             : throw new ProtocolException("Server sent a malformed voice key");
 
-    void Start()
-    {
-        receiveLoop = Task.Run(ReceiveLoopAsync);
-        pingLoop = Task.Run(PingLoopAsync);
-        voiceLoop = Task.Run(VoiceLoopAsync); // Package 141
-    }
-
     /// <summary>Sends one message.</summary>
-    public Task SendAsync(Message message) => writer.WriteAsync(message, stopping.Token);
-
-    // Package 141: at most 10 frames (200 ms) wait for the TLS stream, in order; more is dropped
-    readonly Channel<VoiceUp> voiceOut = Channel.CreateBounded<VoiceUp>(
-        new BoundedChannelOptions(10) { FullMode = BoundedChannelFullMode.DropWrite }); // two readers: the loop and DropPendingVoice
+    public Task SendAsync(Message message) => control.SendAsync(message);
 
     /// <summary>Package 141 (A150): voice over the TLS connection from the audio thread; never waits, drops while the stream is behind.</summary>
     public void SendVoice(VoiceUp up) => voiceOut.Writer.TryWrite(up);
@@ -182,7 +120,7 @@ internal sealed class ClientConnection : IAsyncDisposable
     {
         try
         {
-            await foreach (var up in voiceOut.Reader.ReadAllAsync(pingCts.Token)) await writer.WriteAsync(up, pingCts.Token);
+            await foreach (var up in voiceOut.Reader.ReadAllAsync(voiceStop.Token)) await control.SendAsync(up, voiceStop.Token);
         }
         catch (Exception exception) when (exception is IOException or OperationCanceledException or ObjectDisposedException)
         {
@@ -190,96 +128,13 @@ internal sealed class ClientConnection : IAsyncDisposable
         }
     }
 
-    async Task ReceiveLoopAsync()
-    {
-        string reason = ReasonCodes.ConnectionLost;
-        string? detail = null;
-        try
-        {
-            while (await reader.ReadAsync(stopping.Token) is { } message)
-            {
-                switch (message)
-                {
-                    case Disconnected disconnected:
-                        (reason, detail) = (disconnected.Reason, disconnected.Detail);
-                        break;
-                    case Pong:
-                        LastRoundTrip = time.GetElapsedTime(Interlocked.Read(ref pingSentAt));
-                        break;
-                    case VoiceDown voice:
-                        VoiceDownReceived?.Invoke(voice);
-                        break;
-                    default:
-                        MessageReceived?.Invoke(message);
-                        break;
-                }
-            }
-        }
-        catch (Exception exception) when (exception is IOException or OperationCanceledException or ObjectDisposedException or ProtocolException)
-        {
-        }
-        finally
-        {
-            RaiseDisconnected(reason, detail);
-        }
-    }
-
-    async Task PingLoopAsync()
-    {
-        try
-        {
-            while (!pingCts.IsCancellationRequested)
-            {
-                Interlocked.Exchange(ref pingSentAt, time.GetTimestamp());
-                await writer.WriteAsync(new Ping(), pingCts.Token);
-                await Task.Delay(PingInterval, pingCts.Token); // clock: real time, keepalive against the server's real-time idle timeout
-            }
-        }
-        catch (Exception exception) when (exception is IOException or OperationCanceledException or ObjectDisposedException)
-        {
-        }
-    }
-
-    void RaiseDisconnected(string reason, string? detail)
-    {
-        if (Interlocked.Exchange(ref disconnectRaised, 1) == 0) Disconnected?.Invoke(reason, detail);
-    }
-
-    /// <summary>
-    /// Ends the sending side with a TCP FIN, so the server reads the end of the stream and sees an orderly end ("ended by
-    /// the client") and not a dropped connection. Not the TLS close_notify (<c>SslStream.ShutdownAsync</c>): it changes the
-    /// TLS context while the receive loop may be decrypting on another thread, which crashed the test host inside SSPI's
-    /// DecryptMessage on CI (0xC0000005, 18 October 2026).
-    /// </summary>
-    public static void CloseGracefully(TcpClient tcp)
-    {
-        try
-        {
-            tcp.Client?.Shutdown(SocketShutdown.Send); // null once the client was disposed (a second dispose)
-        }
-        catch (Exception exception) when (exception is SocketException or ObjectDisposedException)
-        {
-            // already broken or closed: the socket close below still ends the connection
-        }
-    }
-
-    /// <summary>Closes the connection.</summary>
+    /// <summary>Closes the connection: voice stops first, so nothing is written after the close (Package 141).</summary>
     public async ValueTask DisposeAsync()
     {
-        Interlocked.Exchange(ref disconnectRaised, 1); // a deliberate disconnect is not an event
-        // No more pings: writing after the TLS shutdown throws.
-        await pingCts.CancelAsync();
-        if (pingLoop is not null) await pingLoop;
-        if (voiceLoop is not null) await voiceLoop; // Package 141: like the pings, nothing is written after the TLS shutdown
-        CloseGracefully(tcp);
-        // Wait until the server has read the end of the stream and closed its side. Closing the socket while its last
-        // messages are still unread makes Windows send a reset, and the server logs "Verbindung abgebrochen".
-        if (receiveLoop is not null) await Task.WhenAny(receiveLoop, Task.Delay(TimeSpan.FromSeconds(1))); // clock: real time
-        await stopping.CancelAsync();
-        tcp.Dispose();
-        if (receiveLoop is not null) await receiveLoop;
-        await ssl.DisposeAsync();
-        stopping.Dispose();
-        pingCts.Dispose();
+        if (voiceStop.IsCancellationRequested) return; // a second dispose
+        await voiceStop.CancelAsync();
+        await voiceLoop;
+        await control.DisposeAsync();
+        voiceStop.Dispose();
     }
 }
