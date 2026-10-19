@@ -17,8 +17,13 @@ public sealed class DashboardTests
     /// <summary>A manager whose GitHub offers 201026.zz, with servers "Raid" (3 users, 100 kbit/s in) and "Lobby" (4 users, 10 kbit/s out).</summary>
     static async Task<ManagerFactory> TwoServersAsync()
     {
-        var now = DateTimeOffset.UtcNow;
-        var manager = StatusWatcherTests.WithAdmin();
+        // a fixed clock in the middle of a minute: with the system's, a minute that ends between the setup and the render moves "the last minute" away
+        var wall = DateTimeOffset.UtcNow;
+        var now = new DateTimeOffset(wall.Year, wall.Month, wall.Day, wall.Hour, wall.Minute, 30, TimeSpan.Zero);
+        var manager = new ManagerFactory((FirstAdmin.UserVariable, "chef"), (FirstAdmin.PasswordVariable, OVS.Tests.Manager.Accounts.FirstAdminTests.Password))
+        {
+            Time = new ManualTimeProvider(now),
+        };
         manager.GitHub.Respond = _ => FakeHttp.Json(new[]
         {
             new Dictionary<string, object> { ["tag_name"] = "deploy-201026z", ["name"] = "OpenVoiceSpeak 201026.zz", ["published_at"] = DateTimeOffset.UtcNow, ["draft"] = false, ["body"] = $"Protokoll: {WireProtocol.Version}" },
