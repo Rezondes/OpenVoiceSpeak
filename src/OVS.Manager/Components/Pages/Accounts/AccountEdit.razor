@@ -1,0 +1,31 @@
+@page "/accounts/{Id}"
+@attribute [Authorize(Roles = ManagerRoles.Admin)]
+
+<h1>@Title</h1>
+@if (Message is not null)
+{
+    <p class="form-ok" role="status">@Message</p>
+}
+@if (Error is not null)
+{
+    <p class="form-error" role="alert">@Error</p>
+}
+@if (Account is not null)
+{
+    <EditForm Model="RenameModel" FormName="rename" OnValidSubmit="RenameAsync" class="account-form">
+        <label>@Strings.Field_UserName <InputText @bind-Value="RenameModel!.UserName" /></label>
+        <button type="submit">@Strings.Account_Rename</button>
+    </EditForm>
+    <EditForm Model="ResetModel" FormName="reset" OnValidSubmit="ResetAsync" class="account-form">
+        <label>@Strings.Accounts_StartPassword <InputText type="password" @bind-Value="ResetModel!.Password" autocomplete="new-password" /></label>
+        <button type="submit">@Strings.Account_ResetPassword</button>
+    </EditForm>
+    <form method="post" @onsubmit="ToggleLockAsync" @formname="lock">
+        <AntiforgeryToken />
+        <button type="submit">@LockText</button>
+    </form>
+    <form method="post" @onsubmit="DeleteAsync" @formname="delete">
+        <AntiforgeryToken />
+        <button type="submit" class="danger">@Strings.Account_Delete</button>
+    </form>
+}

@@ -11,6 +11,9 @@ internal static class AccountErrors
     {
         nameof(IdentityErrorDescriber.PasswordTooShort) => Strings.Account_PasswordTooShort,
         nameof(IdentityErrorDescriber.DuplicateUserName) or nameof(IdentityErrorDescriber.InvalidUserName) => Strings.Account_UserNameInvalid,
+        nameof(IdentityErrorDescriber.PasswordMismatch) => Strings.Profile_OldPasswordWrong,
+        AccountService.AdminProtected => Strings.Account_Protected,
+        AccountService.NotFound => Strings.Account_NotFound,
         _ => Strings.Account_Failed,
     };
 }

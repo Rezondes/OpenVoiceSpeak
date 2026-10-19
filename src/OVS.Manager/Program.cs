@@ -34,8 +34,12 @@ builder.Services.AddIdentity<ManagerUser, IdentityRole>(identity =>
     })
     .AddEntityFrameworkStores<ManagerDbContext>()
     .AddDefaultTokenProviders();
+builder.Services.AddScoped<SessionStore>();
+builder.Services.AddScoped<SessionCookieEvents>();
+builder.Services.AddScoped<AccountService>();
 builder.Services.ConfigureApplicationCookie(cookie =>
 {
+    cookie.EventsType = typeof(SessionCookieEvents); // Package M4: sessions, the start password, 403 for a forbidden page
     cookie.Cookie.HttpOnly = true;
     cookie.Cookie.SameSite = SameSiteMode.Strict;
     cookie.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // Secure behind HTTPS; the forwarded headers come with M32
@@ -55,6 +59,7 @@ await app.Services.GetRequiredService<FirstAdmin>().InitializeAsync(app.Configur
 app.UseRequestLocalization(UiCulture.CreateOptions());
 app.UseMiddleware<SetupGate>();
 app.UseAuthentication();
+app.UseMiddleware<PasswordChangeGate>();
 app.UseAuthorization();
 app.UseAntiforgery();
 app.MapStaticAssets().AllowAnonymous();

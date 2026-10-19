@@ -101,3 +101,38 @@ button {
 .logout {
     margin: 0;
 }
+
+/* Package M4: navigation, lists, messages */
+.main-nav {
+    display: flex;
+    gap: 12px;
+}
+
+table.list {
+    border-collapse: collapse;
+    margin-bottom: 24px;
+}
+
+table.list th,
+table.list td {
+    text-align: left;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.form-ok {
+    color: #2e7d32;
+}
+
+.form-hint {
+    color: var(--muted);
+}
+
+button.danger {
+    border-color: #c62828;
+    color: #c62828;
+}
+
+.sessions {
+    padding-left: 18px;
+}

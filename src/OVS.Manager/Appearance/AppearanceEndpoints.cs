@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Localization;
 using OVS.Manager.Localization;
 
 namespace OVS.Manager.Appearance;
@@ -17,25 +16,15 @@ internal static class AppearanceEndpoints
         app.MapGet("/culture", (string? language, string? returnUrl, HttpContext context) =>
         {
             if (UiCulture.Find(language) is not { } culture || !LocalUrls.IsLocal(returnUrl)) return Results.BadRequest();
-            context.Response.Cookies.Append(CookieRequestCultureProvider.DefaultCookieName,
-                CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(culture)), CookieOptions(context));
+            UiCulture.Store(context, culture);
             return Results.LocalRedirect(returnUrl!);
         }).AllowAnonymous();
         app.MapGet("/theme", (string? value, string? returnUrl, HttpContext context) =>
         {
             if (!ThemeCookie.TryParse(value, out var theme) || !LocalUrls.IsLocal(returnUrl)) return Results.BadRequest();
             if (theme == Theme.System) context.Response.Cookies.Delete(ThemeCookie.Name);
-            else context.Response.Cookies.Append(ThemeCookie.Name, ThemeCookie.Format(theme), CookieOptions(context));
+            else context.Response.Cookies.Append(ThemeCookie.Name, ThemeCookie.Format(theme), PreferenceCookie.Options(context));
             return Results.LocalRedirect(returnUrl!);
         }).AllowAnonymous();
     }
-
-    static CookieOptions CookieOptions(HttpContext context) => new()
-    {
-        HttpOnly = true,
-        SameSite = SameSiteMode.Lax,
-        Secure = context.Request.IsHttps,
-        IsEssential = true, // a setting the user made, no tracking
-        MaxAge = TimeSpan.FromDays(365),
-    };
 }

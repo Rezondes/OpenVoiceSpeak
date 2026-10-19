@@ -1,0 +1,64 @@
+@page "/profile"
+
+<h1>@Strings.Profile_Title</h1>
+@if (MustChange)
+{
+    <p class="form-hint">@Strings.Profile_MustChange</p>
+}
+@if (Message is not null)
+{
+    <p class="form-ok" role="status">@Message</p>
+}
+@if (Error is not null)
+{
+    <p class="form-error" role="alert">@Error</p>
+}
+
+<section>
+    <h2>@Strings.Profile_PasswordTitle</h2>
+    <EditForm Model="PasswordModel" FormName="password" OnValidSubmit="ChangePasswordAsync" class="account-form">
+        <label>@Strings.Field_OldPassword <InputText type="password" @bind-Value="PasswordModel!.OldPassword" autocomplete="current-password" /></label>
+        <label>@Strings.Field_NewPassword <InputText type="password" @bind-Value="PasswordModel!.NewPassword" autocomplete="new-password" /></label>
+        <label>@Strings.Field_ConfirmPassword <InputText type="password" @bind-Value="PasswordModel!.ConfirmPassword" autocomplete="new-password" /></label>
+        <button type="submit">@Strings.Save</button>
+    </EditForm>
+</section>
+
+<section>
+    <h2>@Strings.Profile_EmailTitle</h2>
+    <EditForm Model="EmailModel" FormName="email" OnValidSubmit="SaveEmailAsync" class="account-form">
+        <label>@Strings.Field_Email <InputText type="email" @bind-Value="EmailModel!.Email" autocomplete="email" /></label>
+        <button type="submit">@Strings.Save</button>
+    </EditForm>
+</section>
+
+<section>
+    <h2>@Strings.Language_Label</h2>
+    <EditForm Model="LanguageModel" FormName="language" OnValidSubmit="SaveLanguageAsync" class="account-form">
+        <InputSelect @bind-Value="LanguageModel!.Language">
+            <option value="de">@Strings.Language_German</option>
+            <option value="en">@Strings.Language_English</option>
+        </InputSelect>
+        <button type="submit">@Strings.Save</button>
+    </EditForm>
+</section>
+
+<section>
+    <h2>@Strings.Profile_SessionsTitle</h2>
+    <ul class="sessions">
+        @foreach (var session in SessionList)
+        {
+            <li class="session">
+                @Since(session) @session.UserAgent
+                @if (session.Id == CurrentSession)
+                {
+                    <strong>@Strings.Profile_SessionCurrent</strong>
+                }
+            </li>
+        }
+    </ul>
+    <form method="post" @onsubmit="EndOthersAsync" @formname="sessions">
+        <AntiforgeryToken />
+        <button type="submit">@Strings.Profile_EndOthers</button>
+    </form>
+</section>

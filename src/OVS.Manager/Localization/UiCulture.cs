@@ -1,6 +1,8 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Localization;
+using OVS.Manager.Appearance;
 
 namespace OVS.Manager.Localization;
 
@@ -21,6 +23,11 @@ internal static class UiCulture
         SupportedUICultures = [German, English],
         RequestCultureProviders = [new CookieRequestCultureProvider(), new AcceptLanguageHeaderRequestCultureProvider()],
     };
+
+    /// <summary>Stores <paramref name="culture"/> as the browser's choice (the culture cookie), for every later request.</summary>
+    public static void Store(HttpContext context, CultureInfo culture) =>
+        context.Response.Cookies.Append(CookieRequestCultureProvider.DefaultCookieName,
+            CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(culture)), PreferenceCookie.Options(context));
 
     /// <summary>The culture of the language code <paramref name="language"/> ("de" or "en"), null for any other.</summary>
     public static CultureInfo? Find(string? language) => language switch

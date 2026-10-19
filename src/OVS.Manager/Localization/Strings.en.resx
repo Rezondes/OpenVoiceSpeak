@@ -4,12 +4,34 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Account_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Account_Failed" xml:space="preserve"><value>The account could not be created.</value></data>
+  <data name="Account_Lock" xml:space="preserve"><value>Lock</value></data>
+  <data name="Account_NotFound" xml:space="preserve"><value>The account does not exist.</value></data>
   <data name="Account_PasswordMismatch" xml:space="preserve"><value>The passwords do not match.</value></data>
   <data name="Account_PasswordTooShort" xml:space="preserve"><value>The password needs at least 12 characters.</value></data>
+  <data name="Account_Protected" xml:space="preserve"><value>The administrator account is protected.</value></data>
+  <data name="Account_Rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="Account_ResetPassword" xml:space="preserve"><value>Reset password</value></data>
+  <data name="Account_Saved" xml:space="preserve"><value>Saved.</value></data>
+  <data name="Account_Unlock" xml:space="preserve"><value>Unlock</value></data>
   <data name="Account_UserNameInvalid" xml:space="preserve"><value>The user name is invalid or already taken.</value></data>
+  <data name="Accounts_ColumnRole" xml:space="preserve"><value>Role</value></data>
+  <data name="Accounts_ColumnState" xml:space="preserve"><value>State</value></data>
+  <data name="Accounts_ColumnUser" xml:space="preserve"><value>User</value></data>
+  <data name="Accounts_Create" xml:space="preserve"><value>Create server manager</value></data>
+  <data name="Accounts_Created" xml:space="preserve"><value>The account was created.</value></data>
+  <data name="Accounts_Locked" xml:space="preserve"><value>locked</value></data>
+  <data name="Accounts_MustChange" xml:space="preserve"><value>must change password</value></data>
+  <data name="Accounts_RoleAdmin" xml:space="preserve"><value>Administrator</value></data>
+  <data name="Accounts_RoleManager" xml:space="preserve"><value>Server manager</value></data>
+  <data name="Accounts_StartPassword" xml:space="preserve"><value>Start password</value></data>
+  <data name="Accounts_Title" xml:space="preserve"><value>Accounts</value></data>
   <data name="App_Title" xml:space="preserve"><value>OpenVoiceSpeak Manager</value></data>
   <data name="Field_ConfirmPassword" xml:space="preserve"><value>Repeat password</value></data>
+  <data name="Field_Email" xml:space="preserve"><value>E-mail address (optional)</value></data>
+  <data name="Field_NewPassword" xml:space="preserve"><value>New password</value></data>
+  <data name="Field_OldPassword" xml:space="preserve"><value>Current password</value></data>
   <data name="Field_Password" xml:space="preserve"><value>Password</value></data>
   <data name="Field_UserName" xml:space="preserve"><value>User name</value></data>
   <data name="Home_Title" xml:space="preserve"><value>OpenVoiceSpeak Manager</value></data>
@@ -21,6 +43,23 @@
   <data name="Login_TooMany" xml:space="preserve"><value>Too many failed attempts from this address. Please try again later.</value></data>
   <data name="Login_Wrong" xml:space="preserve"><value>Wrong user name or password.</value></data>
   <data name="Logout" xml:space="preserve"><value>Log out</value></data>
+  <data name="Nav_Accounts" xml:space="preserve"><value>Accounts</value></data>
+  <data name="Nav_Home" xml:space="preserve"><value>Overview</value></data>
+  <data name="Nav_Profile" xml:space="preserve"><value>My account</value></data>
+  <data name="Profile_EmailSaved" xml:space="preserve"><value>The e-mail address was saved.</value></data>
+  <data name="Profile_EmailTitle" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Profile_EndOthers" xml:space="preserve"><value>Log out everywhere else</value></data>
+  <data name="Profile_LanguageSaved" xml:space="preserve"><value>The language was saved.</value></data>
+  <data name="Profile_MustChange" xml:space="preserve"><value>Please change your start password first.</value></data>
+  <data name="Profile_OldPasswordWrong" xml:space="preserve"><value>The current password is wrong.</value></data>
+  <data name="Profile_OthersEnded" xml:space="preserve"><value>All other sessions were ended.</value></data>
+  <data name="Profile_PasswordChanged" xml:space="preserve"><value>The password was changed.</value></data>
+  <data name="Profile_PasswordTitle" xml:space="preserve"><value>Change password</value></data>
+  <data name="Profile_SessionCurrent" xml:space="preserve"><value>this session</value></data>
+  <data name="Profile_SessionSince" xml:space="preserve"><value>since {0}</value></data>
+  <data name="Profile_SessionsTitle" xml:space="preserve"><value>Signed-in sessions</value></data>
+  <data name="Profile_Title" xml:space="preserve"><value>My account</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
   <data name="Setup_Submit" xml:space="preserve"><value>Create</value></data>
   <data name="Setup_Title" xml:space="preserve"><value>Create the first administrator</value></data>
   <data name="Theme_Dark" xml:space="preserve"><value>Dark</value></data>
