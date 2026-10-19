@@ -351,19 +351,21 @@ D8. The proxy allows only the calls the manager makes: list, inspect, create, st
 
 ### Acceptance Criteria
 
-- [ ] AC1: The compose file gives the proxy the socket read-only, publishes no port of it, and its allow list contains exactly the calls named above.
-- [ ] AC2: `DockerEngine` lists only containers with `ovs.managed=true`; any call for another container fails without reaching Docker.
-- [ ] AC3: Every container the manager creates carries `ovs.managed`, `ovs.server-id`, `ovs.port` and `ovs.version`, and its volume is named `ovs-<id>-data`.
-- [ ] AC4: An unreachable proxy shows "Docker nicht erreichbar" on the overview and in `/healthz` (status 503), and the rest of the manager keeps working.
-- [ ] AC5 (manual): On a Docker host the manager lists, starts and stops a test container through the proxy, and a call outside the allow list is refused by the proxy (403).
+- [x] AC1: The compose file gives the proxy the socket read-only, publishes no port of it, and its allow list contains exactly the calls named above.
+- [x] AC2: `DockerEngine` lists only containers with `ovs.managed=true`; any call for another container fails without reaching Docker.
+- [x] AC3: Every container the manager creates carries `ovs.managed`, `ovs.server-id`, `ovs.port` and `ovs.version`, and its volume is named `ovs-<id>-data`.
+- [x] AC4: An unreachable proxy shows "Docker nicht erreichbar" on the overview and in `/healthz` (status 503), and the rest of the manager keeps working.
+- [x] AC5 (manual): On a Docker host the manager lists, starts and stops a test container through the proxy, and a call outside the allow list is refused by the proxy (403). (checked 19 October 2026 on Docker Desktop 29.2.1 with the proxy of the compose file, a curl container standing in for the manager (allowed in `-allowfrom`) and a container labelled `ovs.managed=true`: list 200, stop and start 204 with the state following, `GET /info` and `POST .../exec` 403, the socket mounted read-only; the manager itself starts and stops servers from M8 on)
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `ManagerComposeTests > "SocketProxy_ReadOnlyNoPortAllowList"` - AC1
-2. `DockerEngineTests > "List_OnlyManaged"` and `"Call_ForeignContainer_RefusedBeforeDocker"` - AC2
-3. `DockerEngineTests > "Create_LabelsAndVolumeName"` - AC3
-4. `DockerEngineTests > "ProxyDown_HealthDegraded"` - AC4
+1. `ManagerComposeTests > "SocketProxy_Compose_ReadOnlyNoPortAllowList"` - AC1
+2. `DockerEngineTests > "List_Labels_OnlyManaged"` and `"Call_ForeignContainer_RefusedBeforeDocker"` - AC2
+3. `DockerEngineTests > "Create_Spec_LabelsAndVolumeName"` - AC3
+4. `DockerEngineTests > "Health_ProxyDown_Degraded"` - AC4
 5. Manual check AC5.
+
+(as built: `Docker.DotNet` 3.125.15 and `wollomatic/socket-proxy:1.13.1`; the proxy runs as `65534:999` (the socket's group on the host, see the question in the hand-over) with a read-only root, no capabilities and `no-new-privileges`, only in the internal network `docker-proxy`, which the manager joins as well. `DockerEngine` lists with the label filter and checks the label again; before any call with a container id it lists the managed containers and throws `ForeignContainerException` for any other id, so nothing with it is sent. A server's container is `ovs-<id>` with its volume `ovs-<id>-data`, the same port inside and outside for TCP and UDP, the network and `unless-stopped`. `/healthz` answers 503 with `docker: false` while the proxy does not answer within 2 s, and the start page shows "Docker nicht erreichbar". The adapter's tests run against `FakeDockerApi`, a Docker Engine API on localhost that keeps every request; the later packages use `FakeDockerEngine`, which `ManagerFactory` puts in unless a test asks for the real adapter.)
 
 ### Steps
 

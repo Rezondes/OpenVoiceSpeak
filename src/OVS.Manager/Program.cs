@@ -8,6 +8,7 @@ using OVS.Manager.Appearance;
 using OVS.Manager.Audit;
 using OVS.Manager.Components;
 using OVS.Manager.Data;
+using OVS.Manager.Docker;
 using OVS.Manager.Localization;
 using OVS.Shared;
 
@@ -52,6 +53,7 @@ builder.Services.ConfigureApplicationCookie(cookie =>
 });
 builder.Services.AddAuthorization(authorization => authorization.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddSingleton<IDockerEngine, DockerEngine>(); // Package M6: Docker only through the socket proxy
 builder.Services.AddSingleton<FirstAdmin>();
 builder.Services.AddSingleton<LoginLimits>();
 
@@ -67,7 +69,13 @@ app.UseMiddleware<PasswordChangeGate>();
 app.UseAuthorization();
 app.UseAntiforgery();
 app.MapStaticAssets().AllowAnonymous();
-app.MapGet("/healthz", () => Results.Ok(new { Status = "ok", BuildInfo.Current.Version })).AllowAnonymous();
+// Package M6 (AC4): 503 while Docker is not reachable; the pages keep working
+app.MapGet("/healthz", async (IDockerEngine docker, CancellationToken cancellation) =>
+{
+    bool reachable = await docker.IsReachableAsync(cancellation);
+    return Results.Json(new { Status = reachable ? "ok" : "degraded", BuildInfo.Current.Version, Docker = reachable },
+        statusCode: reachable ? StatusCodes.Status200OK : StatusCodes.Status503ServiceUnavailable);
+}).AllowAnonymous();
 AppearanceEndpoints.Map(app);
 AccountEndpoints.Map(app);
 AuditEndpoints.Map(app);

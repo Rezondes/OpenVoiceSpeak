@@ -13,15 +13,47 @@ services:
       - "6999:6999"
     environment:
       TZ: "Europe/Berlin"   # new servers take this time zone (D14 3)
+      OVS_MANAGER_DOCKER_HOST: "tcp://socket-proxy:2375"
     volumes:
       - manager-data:/data
     networks:
       - ovs-managed
+      - docker-proxy
+    depends_on:
+      - socket-proxy
+
+  # Package M6 (D8): the manager's only way to Docker. The socket is mounted read-only, the proxy publishes no port and
+  # sits in an internal network, and it passes on exactly the calls the manager makes (one regex per method).
+  # It cannot filter by label; the manager itself touches only containers labelled ovs.managed=true.
+  socket-proxy:
+    image: wollomatic/socket-proxy:1.13.1
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges
+    # The proxy runs as nobody; the second number is the group of /var/run/docker.sock on the host (stat -c %g /var/run/docker.sock).
+    user: "65534:999"
+    command:
+      - "-loglevel=info"
+      - "-listenip=0.0.0.0"
+      - "-allowfrom=ovs-manager"
+      - "-shutdowngracetime=5"
+      - "-allowGET=^(/v1\\.[0-9]+)?/(_ping|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs|stats)|images/.+/json)$"
+      - "-allowPOST=^/v1\\.[0-9]+/(containers/create|containers/[a-zA-Z0-9_.-]+/(start|stop|restart)|images/create|volumes/create|networks/[a-zA-Z0-9_.-]+/connect)$"
+      - "-allowDELETE=^/v1\\.[0-9]+/(containers|volumes)/[a-zA-Z0-9_.-]+$"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-proxy
 
 networks:
   ovs-managed:
     # MA6: a fixed name, so the manager reaches each server as ovs-<id> and the servers send telemetry to ovs-manager
     name: ovs-managed
+  docker-proxy:
+    internal: true
 
 volumes:
   manager-data:

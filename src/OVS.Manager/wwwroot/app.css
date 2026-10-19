@@ -150,3 +150,11 @@ button.danger {
     display: grid;
     gap: 4px;
 }
+
+/* Package M6: a problem the whole page has */
+.banner-error {
+    padding: 8px 12px;
+    border: 1px solid #c62828;
+    border-radius: 6px;
+    color: #c62828;
+}

@@ -4,6 +4,8 @@
   <ItemGroup>
     <ProjectReference Include="..\OVS.Shared\OVS.Shared.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+    <!-- Package M6 (D8): the Docker Engine API, reached only through the socket proxy -->
+    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
     <!-- Package M3 (MA1): accounts with hashing, lockout, security stamps and reset tokens -->
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
     <!-- the migrations are made with the dotnet-ef tool of dotnet-tools.json (dotnet tool restore), which needs this at design time -->
