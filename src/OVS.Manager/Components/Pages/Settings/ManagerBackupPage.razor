@@ -1,0 +1,41 @@
+@page "/settings/backup"
+@attribute [Authorize(Roles = ManagerRoles.Admin)]
+
+<h1>@Strings.ManagerBackup_Title</h1>
+<p>@Strings.ManagerBackup_Intro</p>
+@if (Error is not null)
+{
+    <p class="form-error" role="alert" data-error>@Error</p>
+}
+<section>
+    <h2>@Strings.ManagerBackup_DownloadTitle</h2>
+    <form method="post" action="/settings/backup/download" class="account-form">
+        <AntiforgeryToken />
+        <input type="hidden" name="form" value="manager-backup-download" />
+        <label>@Strings.Field_Password <input type="password" name="password" autocomplete="new-password" /></label>
+        <label>@Strings.Field_ConfirmPassword <input type="password" name="confirm" autocomplete="new-password" /></label>
+        <button type="submit">@Strings.ManagerBackup_Download</button>
+    </form>
+</section>
+<section>
+    <h2>@Strings.ManagerBackup_ScheduleTitle</h2>
+    @if (!HasPassword)
+    {
+        <p class="form-hint" data-no-password>@Strings.ManagerBackup_NeedsPassword</p>
+    }
+    <EditForm Model="Model" FormName="manager-backup-schedule" OnValidSubmit="SaveAsync" class="account-form">
+        <label>@Strings.Backups_Interval
+            <InputSelect @bind-Value="Model!.Interval">
+                <option value="@BackupInterval.Off">@Strings.Backups_Off</option>
+                <option value="@BackupInterval.Daily">@Strings.Backups_Daily</option>
+                <option value="@BackupInterval.Weekly">@Strings.Backups_Weekly</option>
+            </InputSelect>
+        </label>
+        <label>@Strings.Backups_Keep <InputNumber @bind-Value="Model!.Keep" min="1" max="100" /></label>
+        <button type="submit">@Strings.Save</button>
+    </EditForm>
+    @if (Result is not null)
+    {
+        <p class="@ResultClass" role="status" data-result>@Result</p>
+    }
+</section>

@@ -254,6 +254,20 @@ Wenn du das nicht angefordert hast, ignoriere diese Mail.</value></data>
   <data name="Mail_ResetSubject" xml:space="preserve"><value>OpenVoiceSpeak: neues Passwort</value></data>
   <data name="Mail_TestBody" xml:space="preserve"><value>Diese Mail zeigt, dass das Verwaltungstool Mails senden kann.</value></data>
   <data name="Mail_TestSubject" xml:space="preserve"><value>OpenVoiceSpeak: Testmail</value></data>
+  <data name="ManagerBackup_Download" xml:space="preserve"><value>Backup herunterladen</value></data>
+  <data name="ManagerBackup_DownloadTitle" xml:space="preserve"><value>Herunterladen</value></data>
+  <data name="ManagerBackup_Intro" xml:space="preserve"><value>Das Backup enthält die Datenbank (Konten, Server, Zuweisungen, Einstellungen) und die Schlüssel der Server-Identitäten, verschlüsselt mit deinem Passwort. Ohne das Passwort ist es nicht lesbar. Telemetrie und die Daten der Server gehören nicht dazu.</value></data>
+  <data name="ManagerBackup_NeedsPassword" xml:space="preserve"><value>Für geplante Backups muss OVS_MANAGER_BACKUP_PASSWORD gesetzt sein; sie landen in /data/backups.</value></data>
+  <data name="ManagerBackup_PasswordShort" xml:space="preserve"><value>Das Passwort braucht mindestens {0} Zeichen.</value></data>
+  <data name="ManagerBackup_ScheduleTitle" xml:space="preserve"><value>Zeitplan</value></data>
+  <data name="ManagerBackup_Title" xml:space="preserve"><value>Backup des Verwaltungstools</value></data>
+  <data name="ManagerRestore_File" xml:space="preserve"><value>Backup-Datei</value></data>
+  <data name="ManagerRestore_Intro" xml:space="preserve"><value>Ein Backup eines anderen Verwaltungstools bringt Konten, Server und Identitäten zurück. Danach meldest du dich mit deinem bisherigen Konto an.</value></data>
+  <data name="ManagerRestore_Newer" xml:space="preserve"><value>Das Backup stammt von einer neueren Version ({0}); aktualisiere zuerst das Verwaltungstool. Nichts wurde geändert.</value></data>
+  <data name="ManagerRestore_NotFresh" xml:space="preserve"><value>Wiederherstellen geht nur, solange es kein Konto gibt.</value></data>
+  <data name="ManagerRestore_Submit" xml:space="preserve"><value>Wiederherstellen</value></data>
+  <data name="ManagerRestore_Title" xml:space="preserve"><value>Aus Backup wiederherstellen</value></data>
+  <data name="ManagerRestore_Unreadable" xml:space="preserve"><value>Falsches Passwort oder beschädigtes Backup; nichts wurde geändert.</value></data>
   <data name="Nav_Accounts" xml:space="preserve"><value>Konten</value></data>
   <data name="Nav_Audit" xml:space="preserve"><value>Protokoll</value></data>
   <data name="Nav_Home" xml:space="preserve"><value>Übersicht</value></data>

@@ -1461,19 +1461,21 @@ D14. Without the Data Protection keys (`/data/keys`) the stored server identitie
 
 ### Acceptance Criteria
 
-- [ ] AC1: The admin downloads one archive with the database (without telemetry tables), the keys and a manifest (manager version, time, server ids); it is encrypted with a password the admin types twice (AES-256-GCM, key from PBKDF2).
-- [ ] AC2: On a manager without accounts, `/setup` offers "Aus Backup wiederherstellen"; with the right password the accounts, assignments, servers and identities come back, and the manager finds the containers by their labels (M8 AC5).
-- [ ] AC3: A wrong password, a damaged archive or one of a newer manager version is refused with a text and changes nothing.
-- [ ] AC4: A scheduled backup (off, daily, weekly) keeps the newest N archives in `/data/backups`, encrypted with a password from `OVS_MANAGER_BACKUP_PASSWORD`; without it the schedule cannot be turned on.
-- [ ] AC5: Download, restore and schedule changes write audit lines.
+- [x] AC1: The admin downloads one archive with the database (without telemetry tables), the keys and a manifest (manager version, time, server ids); it is encrypted with a password the admin types twice (AES-256-GCM, key from PBKDF2).
+- [x] AC2: On a manager without accounts, `/setup` offers "Aus Backup wiederherstellen"; with the right password the accounts, assignments, servers and identities come back, and the manager finds the containers by their labels (M8 AC5).
+- [x] AC3: A wrong password, a damaged archive or one of a newer manager version is refused with a text and changes nothing.
+- [x] AC4: A scheduled backup (off, daily, weekly) keeps the newest N archives in `/data/backups`, encrypted with a password from `OVS_MANAGER_BACKUP_PASSWORD`; without it the schedule cannot be turned on.
+- [x] AC5: Download, restore and schedule changes write audit lines.
 
 ### Planned tests (TDD)
 
-1. `ManagerBackupTests > "Download_EncryptedWithManifestNoTelemetry"` - AC1
+1. `ManagerBackupTests > "Download_Sealed_ManifestKeysNoTelemetry"` - AC1, AC5
 2. `ManagerBackupTests > "Restore_FreshManager_EverythingBack"` - AC2
 3. `ManagerBackupTests > "Restore_WrongPasswordDamagedOrNewer_Refused"` - AC3
 4. `ManagerBackupTests > "Schedule_KeepsNewestN_NeedsPassword"` (with `ManualTimeProvider`) - AC4
-5. `ManagerBackupTests > "Actions_AuditLines"` - AC5
+5. AC5 is checked in each of the four tests above (download, restore, schedule change and scheduled archive).
+
+(as built: `ManagerBackup` copies the database with SQLite's `VACUUM INTO` while the manager runs (telemetry is its own file, `telemetry.db`, and stays out), adds every key file of `/data/keys` and a manifest (format, manager version, time, newest migration, server ids), and `ManagerArchive` zips and seals it: AES-256-GCM, key from PBKDF2-SHA256 with 600 000 rounds and a random salt, file `.ovsmb`. `/settings/backup` (admin) posts the password twice to `/settings/backup/download`; at least 12 characters. `/setup` has "Aus Backup wiederherstellen", which posts to `/setup/restore` (404 once an account exists, like `/setup`): `ManagerRestore` checks password and tag, manifest, format, that this manager knows the newest migration (else "newer version"), and that the database is intact with its migration history, and only then replaces `manager.db`, writes the keys, makes the key ring read them again, migrates, writes the audit line and lets the watcher find the containers by their labels; then it leads to the login. A refused archive changes nothing. `ManagerBackupSchedule` keeps interval and number in `ManagerSettings`; `ManagerBackupRunner` checks every 10 minutes and writes `manager-<UTC time>.ovsmb` to `/data/backups`, keeping the newest N; without `OVS_MANAGER_BACKUP_PASSWORD` (at least 12 characters, else the start stops) the schedule cannot be turned on.)
 
 ### Steps
 

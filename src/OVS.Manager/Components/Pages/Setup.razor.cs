@@ -30,6 +30,10 @@ sealed partial class Setup
     /// <summary>A fresh form on the first render; a post fills it.</summary>
     protected override void OnInitialized() => Model ??= new();
 
+    /// <summary>Package M33 (AC3): why the last restore was refused, from the address.</summary>
+    [SupplyParameterFromQuery(Name = "restore-error")]
+    string? RestoreError { get; set; }
+
     /// <summary>Why the account was not made, null before a try.</summary>
     string? Error { get; set; }
 

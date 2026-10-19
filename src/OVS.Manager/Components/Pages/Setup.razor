@@ -12,3 +12,17 @@
     }
     <button type="submit">@Strings.Setup_Submit</button>
 </EditForm>
+<section>
+    <h2>@Strings.ManagerRestore_Title</h2>
+    <p>@Strings.ManagerRestore_Intro</p>
+    @if (RestoreError is not null)
+    {
+        <p class="form-error" role="alert" data-restore-error>@RestoreError</p>
+    }
+    <form method="post" action="/setup/restore" enctype="multipart/form-data" class="account-form">
+        <AntiforgeryToken />
+        <label>@Strings.ManagerRestore_File <input type="file" name="file" accept=".ovsmb" /></label>
+        <label>@Strings.Field_Password <input type="password" name="password" autocomplete="off" /></label>
+        <button type="submit">@Strings.ManagerRestore_Submit</button>
+    </form>
+</section>

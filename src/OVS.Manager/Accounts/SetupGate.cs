@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http;
 namespace OVS.Manager.Accounts;
 
 /// <summary>
-/// Package M3 (AC1): while no account exists every page leads to <c>/setup</c>; afterwards <c>/setup</c> answers 404.
+/// Package M3 (AC1): while no account exists every page leads to <c>/setup</c>; afterwards <c>/setup</c> (and its restore, M33) answers 404.
 /// The health check, the language and theme links and the files of the page stay reachable.
 /// </summary>
 internal sealed class SetupGate(RequestDelegate next, FirstAdmin firstAdmin)
@@ -17,7 +17,7 @@ internal sealed class SetupGate(RequestDelegate next, FirstAdmin firstAdmin)
     public async Task InvokeAsync(HttpContext context)
     {
         var path = context.Request.Path;
-        bool setup = path.Equals(SetupPath, StringComparison.OrdinalIgnoreCase);
+        bool setup = path.StartsWithSegments(SetupPath, StringComparison.OrdinalIgnoreCase); // Package M33: /setup/restore too
         if (await firstAdmin.ExistsAsync(context.RequestAborted))
         {
             if (setup) context.Response.StatusCode = StatusCodes.Status404NotFound;

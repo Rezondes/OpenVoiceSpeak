@@ -66,6 +66,9 @@ internal sealed record ManagerOptions(string DataDir)
     /// <summary>Package M32 (AC2): the proxies whose forwarded headers count, <c>OVS_MANAGER_TRUSTED_PROXIES</c>; none by default.</summary>
     public IReadOnlyList<System.Net.IPNetwork> TrustedProxies { get; init; } = [];
 
+    /// <summary>Package M33 (AC4): the password of the scheduled manager backups, <c>OVS_MANAGER_BACKUP_PASSWORD</c>; null keeps the schedule off.</summary>
+    public string? BackupPassword { get; init; }
+
     /// <summary>Package M11: where the manager reaches the server <paramref name="serverId"/>.</summary>
     public string HostOf(string serverId) => ServerHost ?? Docker.ManagedLabels.ContainerName(serverId);
 
@@ -94,6 +97,12 @@ internal sealed record ManagerOptions(string DataDir)
             TelemetryMaxBytes = Positive(configuration["OVS_MANAGER_TELEMETRY_MAX_MB"], 5000) * 1024L * 1024,
             BaseUrl = ManagerProxy.ParseBaseUrl(configuration[ManagerProxy.BaseUrlVariable]),
             TrustedProxies = ManagerProxy.ParseTrustedProxies(configuration[ManagerProxy.TrustedProxiesVariable]),
+            BackupPassword = configuration["OVS_MANAGER_BACKUP_PASSWORD"] switch
+            {
+                null or "" => null,
+                { Length: >= Data.ManagerBackup.MinPasswordLength } password => password,
+                _ => throw new InvalidOperationException($"OVS_MANAGER_BACKUP_PASSWORD must have at least {Data.ManagerBackup.MinPasswordLength} characters."),
+            },
         };
 
     /// <summary>Package M21: a whole number above 0, else <paramref name="otherwise"/>.</summary>

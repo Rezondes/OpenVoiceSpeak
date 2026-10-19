@@ -75,6 +75,11 @@ builder.Services.AddAuthorization(authorization =>
 // Package M31: API tokens as a second scheme, used only by /api
 builder.Services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, ApiTokenHandler>(ApiTokenHandler.SchemeName, null);
 builder.Services.AddScoped<ApiTokenStore>();
+// Package M33: the manager's own backup, its restore and its schedule
+builder.Services.AddScoped<ManagerBackup>();
+builder.Services.AddScoped<ManagerBackupSchedule>();
+builder.Services.AddScoped<ManagerRestore>();
+builder.Services.AddHostedService<ManagerBackupRunner>();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddSingleton<IDockerEngine, DockerEngine>(); // Package M6: Docker only through the socket proxy
 builder.Services.AddSingleton<FirstAdmin>();
@@ -169,5 +174,6 @@ AuditEndpoints.Map(app);
 BackupEndpoints.Map(app);
 LogEndpoints.Map(app);
 ServerEndpoints.Map(app);
+ManagerBackupEndpoints.Map(app);
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 await app.RunAsync();

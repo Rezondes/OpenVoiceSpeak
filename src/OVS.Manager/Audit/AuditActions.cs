@@ -105,6 +105,14 @@ internal static class AuditActions
     public const string ServerUpdateFailed = "ServerUpdateFailed";
     /// <summary>A server's maintenance window changed (M18); the target is "on" or "off".</summary>
     public const string UpdateWindowChanged = "UpdateWindowChanged";
+    /// <summary>The admin downloaded the manager's backup (M33).</summary>
+    public const string ManagerBackupDownloaded = "ManagerBackupDownloaded";
+    /// <summary>The schedule made a manager backup (M33); the target is its file.</summary>
+    public const string ManagerBackupCreated = "ManagerBackupCreated";
+    /// <summary>A manager backup was restored on this manager (M33); the target is the version that made it.</summary>
+    public const string ManagerBackupRestored = "ManagerBackupRestored";
+    /// <summary>The admin changed the schedule of the manager's backups (M33).</summary>
+    public const string ManagerBackupScheduleChanged = "ManagerBackupScheduleChanged";
     /// <summary>A user made an API token (M31); the target is its name.</summary>
     public const string ApiTokenCreated = "ApiTokenCreated";
     /// <summary>A user revoked an API token (M31).</summary>
