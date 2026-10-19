@@ -355,7 +355,7 @@ D8. The proxy allows only the calls the manager makes: list, inspect, create, st
 - [x] AC2: `DockerEngine` lists only containers with `ovs.managed=true`; any call for another container fails without reaching Docker.
 - [x] AC3: Every container the manager creates carries `ovs.managed`, `ovs.server-id`, `ovs.port` and `ovs.version`, and its volume is named `ovs-<id>-data`.
 - [x] AC4: An unreachable proxy shows "Docker nicht erreichbar" on the overview and in `/healthz` (status 503), and the rest of the manager keeps working.
-- [x] AC5 (manual): On a Docker host the manager lists, starts and stops a test container through the proxy, and a call outside the allow list is refused by the proxy (403). (checked 19 October 2026 on Docker Desktop 29.2.1 with the proxy of the compose file, a curl container standing in for the manager (allowed in `-allowfrom`) and a container labelled `ovs.managed=true`: list 200, stop and start 204 with the state following, `GET /info` and `POST .../exec` 403, the socket mounted read-only; the manager itself starts and stops servers from M8 on)
+- [x] AC5 (manual): On a Docker host the manager lists, starts and stops a test container through the proxy, and a call outside the allow list is refused by the proxy (403). (checked 19 October 2026 on Docker Desktop 29.2.1 with the proxy of the compose file, a curl container standing in for the manager (allowed in `-allowfrom`) and a container labelled `ovs.managed=true`: list 200, stop and start 204 with the state following, `GET /info` and `POST .../exec` 403, the socket mounted read-only; the manager itself starts and stops servers from M8 on. Correction found in M7: Docker.DotNet sends its paths without the `/v1.x` prefix, so POST and DELETE take the version as optional like GET)
 
 ### Tests (TDD)
 
@@ -394,19 +394,21 @@ D2, D3, D6, MA4, MA6. The container gets `OVS_PORT`, `OVS_SERVER_NAME`, `OVS_MAX
 
 ### Acceptance Criteria
 
-- [ ] AC1: The form takes name, max users, password (optional), version (default: the manager's own, MA5), time zone (default: the manager's `TZ`, D14) and port (default: the lowest free one); a port outside 7000 to 7099, taken by another server or in use on the host is refused with a text.
-- [ ] AC2: With 100 servers the button is off with "Alle 100 Ports sind belegt".
-- [ ] AC3: The created container has exactly the variables, mapping, labels, volume, network and restart policy above; the identity's private key is stored encrypted and never shown.
-- [ ] AC4: Only the admin reaches the page; the creation writes an audit line.
+- [x] AC1: The form takes name, max users, password (optional), version (default: the manager's own, MA5), time zone (default: the manager's `TZ`, D14) and port (default: the lowest free one); a port outside 7000 to 7099, taken by another server or in use on the host is refused with a text.
+- [x] AC2: With 100 servers the button is off with "Alle 100 Ports sind belegt".
+- [x] AC3: The created container has exactly the variables, mapping, labels, volume, network and restart policy above; the identity's private key is stored encrypted and never shown.
+- [x] AC4: Only the admin reaches the page; the creation writes an audit line.
 - [ ] AC5 (manual): A created server starts, a client connects, and the server log shows "Server admin set from OVS_SERVER_ADMIN_FINGERPRINT" and no token.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `PortPoolTests > "Next_LowestFree"`, `"Take_OutOfRangeOrTaken_Refused"`, `"Full_HundredServers_NoneFree"` - AC1, AC2
+1. `PortPoolTests > "Next_SomeTaken_LowestFree"`, `"Check_OutOfRangeOrTaken_Refused"`, `"Next_HundredServers_NoneFree"` - AC1, AC2
 2. `ServerFactoryTests > "Create_ContainerSpec_ExactVariablesAndMappings"` (on `FakeDockerEngine`) - AC3
-3. `ServerFactoryTests > "Identity_StoredEncrypted"` - AC3
-4. `ServerFactoryTests > "Create_Manager_Forbidden"` and `"Create_AuditLine"` - AC4
+3. `ServerFactoryTests > "Identity_PrivateKey_StoredEncrypted"` - AC3
+4. `ServerFactoryTests > "Create_Manager_Forbidden"` and `"Create_Admin_AuditLine"` - AC4
 5. Manual check AC5.
+
+(as built: `ManagedServer` and `ServerIdentity` (migration `AddServers`: a migration class named `Servers` would clash with the namespace, one server per port as a unique index); `ServerIdentityStore` makes one `ClientIdentity` per server and keeps its PKCS#8 key only protected by Data Protection (keys in `/data/keys`, application name `OVS.Manager`). `ServerFactory` checks name (`TextRules`), user limit (1 to 1000), time zone and port (`PortPool`), creates the container through `IDockerEngine`, saves, starts and writes `ServerCreated`; a port Docker reports as taken on the host (`PortInUseException`) removes the container and the rows again and shows "Der Port ist auf dem Host schon belegt" (its empty volume stays for M9). `ManagerOptions` gives `OVS_MANAGER_SERVER_IMAGE` (default `ghcr.io/rezondes/openvoicespeak-server`) and `TZ` (default UTC). Docker failures are `DockerCallException` and show a text instead of a 500. Manual check AC5 (19 October 2026, Docker Desktop 29.2.1): the compose file with a locally built server image, the admin from the environment, a server created through `/servers/new` on port 7050: the container `ovs-<id>` ran with exactly the labels, the volume, the network and `unless-stopped`, and its log showed "Server admin set from OVS_SERVER_ADMIN_FINGERPRINT" and no token. It also found the proxy's version prefix (M6). The client's connection is still to be checked by hand.)
 
 ### Steps
 

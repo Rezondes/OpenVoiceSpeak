@@ -1,0 +1,21 @@
+@page "/servers/new"
+@attribute [Authorize(Roles = ManagerRoles.Admin)]
+
+<h1>@Strings.Servers_CreateTitle</h1>
+@if (NoFreePort)
+{
+    <p class="form-error" role="alert">@Strings.Servers_AllPortsTaken</p>
+}
+@if (Error is not null)
+{
+    <p class="form-error" role="alert">@Error</p>
+}
+<EditForm Model="Model" FormName="create-server" OnValidSubmit="CreateAsync" class="account-form">
+    <label>@Strings.Servers_Name <InputText @bind-Value="Model!.Name" /></label>
+    <label>@Strings.Servers_MaxUsers <InputNumber @bind-Value="Model!.MaxUsers" /></label>
+    <label>@Strings.Servers_Password <InputText type="password" @bind-Value="Model!.Password" autocomplete="new-password" /></label>
+    <label>@Strings.Servers_Version <InputText @bind-Value="Model!.Version" placeholder="@DefaultVersion" /></label>
+    <label>@Strings.Servers_TimeZone <InputText @bind-Value="Model!.TimeZone" placeholder="@DefaultTimeZone" /></label>
+    <label>@Strings.Servers_Port <InputNumber @bind-Value="Model!.Port" placeholder="@DefaultPort" /></label>
+    <button type="submit" disabled="@NoFreePort">@Strings.Servers_Create</button>
+</EditForm>

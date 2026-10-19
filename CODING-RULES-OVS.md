@@ -52,7 +52,7 @@ Each project has an `Exceptions/` folder (B7 b). A base exception and its subcla
 | `OVS.Shared.Exceptions` | `ProtocolException`, `InvalidRequestException`, `ConnectionRejectedException` (Package 194: the client and the web manager share the connection) |
 | `OVS.Server.Exceptions` | `ConfigException`, `BackupQuotaException` |
 | `OVS.Client.Exceptions` | `TofuRejectedException`, `DebugApiException` |
-| `OVS.Manager.Exceptions` | `ForeignContainerException` (Package M6) |
+| `OVS.Manager.Exceptions` | `ForeignContainerException` (Package M6), `ServerRequestException`, `PortInUseException`, `DockerCallException` (M7) |
 
 ## Target layout
 

@@ -24,6 +24,12 @@ internal sealed record ManagerOptions(string DataDir)
     /// <summary>Package M6 (D8): the socket proxy, the manager's only way to Docker.</summary>
     public string DockerHost { get; init; } = "tcp://socket-proxy:2375";
 
+    /// <summary>Package M7 (D14 4): the server image without its tag, <c>OVS_MANAGER_SERVER_IMAGE</c>.</summary>
+    public string ServerImage { get; init; } = "ghcr.io/rezondes/openvoicespeak-server";
+
+    /// <summary>Package M7 (D14 3): the manager's time zone (TZ), which new servers take; UTC without one.</summary>
+    public string TimeZone { get; init; } = "UTC";
+
     /// <summary>The settings in <paramref name="configuration"/>, the data folder as a full path.</summary>
     /// <exception cref="InvalidOperationException">A value is set but invalid.</exception>
     public static ManagerOptions Read(IConfiguration configuration) =>
@@ -36,5 +42,7 @@ internal sealed record ManagerOptions(string DataDir)
                 var text => throw new InvalidOperationException($"{AuditDaysVariable} must be a number of days above 0, but is '{text}'."),
             },
             DockerHost = configuration[DockerHostVariable] is { Length: > 0 } host ? host : "tcp://socket-proxy:2375",
+            ServerImage = configuration["OVS_MANAGER_SERVER_IMAGE"] is { Length: > 0 } image ? image : "ghcr.io/rezondes/openvoicespeak-server",
+            TimeZone = configuration["TZ"] is { Length: > 0 } zone ? zone : "UTC",
         };
 }

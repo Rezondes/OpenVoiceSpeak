@@ -33,6 +33,8 @@ internal static class AuditActions
     public const string LanguageChanged = "LanguageChanged";
     /// <summary>A user ended their other sessions.</summary>
     public const string SessionsEnded = "SessionsEnded";
+    /// <summary>A server was created (M7).</summary>
+    public const string ServerCreated = "ServerCreated";
     /// <summary>A server was started (M8).</summary>
     public const string ServerStarted = "ServerStarted";
     /// <summary>A server was stopped (M8).</summary>

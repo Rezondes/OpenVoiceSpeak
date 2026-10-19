@@ -9,6 +9,7 @@
             <a href="/audit">@Strings.Nav_Audit</a>
             <AuthorizeView Roles="@ManagerRoles.Admin" Context="admin">
                 <a href="/accounts">@Strings.Nav_Accounts</a>
+                <a href="/servers/new">@Strings.Nav_NewServer</a>
             </AuthorizeView>
         </nav>
     </AuthorizeView>

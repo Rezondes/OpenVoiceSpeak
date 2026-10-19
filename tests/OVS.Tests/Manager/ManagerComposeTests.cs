@@ -38,8 +38,8 @@ public sealed class ManagerComposeTests
         Assert.Equal(
         [
             @"- ""-allowGET=^(/v1\\.[0-9]+)?/(_ping|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs|stats)|images/.+/json)$""",
-            @"- ""-allowPOST=^/v1\\.[0-9]+/(containers/create|containers/[a-zA-Z0-9_.-]+/(start|stop|restart)|images/create|volumes/create|networks/[a-zA-Z0-9_.-]+/connect)$""",
-            @"- ""-allowDELETE=^/v1\\.[0-9]+/(containers|volumes)/[a-zA-Z0-9_.-]+$""",
+            @"- ""-allowPOST=^(/v1\\.[0-9]+)?/(containers/create|containers/[a-zA-Z0-9_.-]+/(start|stop|restart)|images/create|volumes/create|networks/[a-zA-Z0-9_.-]+/connect)$""",
+            @"- ""-allowDELETE=^(/v1\\.[0-9]+)?/(containers|volumes)/[a-zA-Z0-9_.-]+$""",
         ], allowed);
     }
 

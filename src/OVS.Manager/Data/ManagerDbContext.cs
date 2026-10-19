@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using OVS.Manager.Accounts;
 using OVS.Manager.Audit;
+using OVS.Manager.Servers;
 
 namespace OVS.Manager.Data;
 
@@ -17,10 +18,23 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
     /// <summary>Package M5: the audit log.</summary>
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
+    /// <summary>Package M7: the servers the manager created.</summary>
+    public DbSet<ManagedServer> Servers => Set<ManagedServer>();
+
+    /// <summary>Package M7 (MA4): the manager's identity per server, the private key encrypted.</summary>
+    public DbSet<ServerIdentity> ServerIdentities => Set<ServerIdentity>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.Entity<ManagedServer>(server =>
+        {
+            server.HasKey(value => value.Id);
+            server.HasIndex(value => value.Port).IsUnique(); // D2: one server per port
+            server.Property(value => value.CreatedAtUtc).HasConversion(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
+        });
+        builder.Entity<ServerIdentity>(identity => identity.HasKey(value => value.ServerId));
         builder.Entity<AuditEntry>(entry =>
         {
             entry.Property(value => value.AtUtc).HasConversion(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc)); // SQLite keeps no kind

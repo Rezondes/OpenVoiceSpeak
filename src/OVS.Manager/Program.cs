@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ using OVS.Manager.Components;
 using OVS.Manager.Data;
 using OVS.Manager.Docker;
 using OVS.Manager.Localization;
+using OVS.Manager.Servers;
 using OVS.Shared;
 
 // Package M1: the manager's composition root (CODING-RULES rule 14)
@@ -55,6 +57,10 @@ builder.Services.AddAuthorization(authorization => authorization.FallbackPolicy 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddSingleton<IDockerEngine, DockerEngine>(); // Package M6: Docker only through the socket proxy
 builder.Services.AddSingleton<FirstAdmin>();
+// Package M7 (MA4): the servers' identities are encrypted with keys of their own in /data/keys
+builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(options.DataDir, "keys"))).SetApplicationName("OVS.Manager");
+builder.Services.AddScoped<ServerIdentityStore>();
+builder.Services.AddScoped<ServerFactory>();
 builder.Services.AddSingleton<LoginLimits>();
 
 var app = builder.Build();

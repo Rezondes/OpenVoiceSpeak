@@ -39,6 +39,7 @@
   <data name="Audit_Title" xml:space="preserve"><value>Protokoll</value></data>
   <data name="Audit_To" xml:space="preserve"><value>bis</value></data>
   <data name="Audit_User" xml:space="preserve"><value>Benutzer</value></data>
+  <data name="Docker_CallFailed" xml:space="preserve"><value>Docker hat den Auftrag nicht ausgeführt. Läuft der Socket-Proxy?</value></data>
   <data name="Docker_Unreachable" xml:space="preserve"><value>Docker nicht erreichbar: Server können gerade nicht gestartet, gestoppt oder angelegt werden.</value></data>
   <data name="Field_ConfirmPassword" xml:space="preserve"><value>Passwort wiederholen</value></data>
   <data name="Field_Email" xml:space="preserve"><value>E-Mail-Adresse (freiwillig)</value></data>
@@ -58,6 +59,7 @@
   <data name="Nav_Accounts" xml:space="preserve"><value>Konten</value></data>
   <data name="Nav_Audit" xml:space="preserve"><value>Protokoll</value></data>
   <data name="Nav_Home" xml:space="preserve"><value>Übersicht</value></data>
+  <data name="Nav_NewServer" xml:space="preserve"><value>Neuer Server</value></data>
   <data name="Nav_Profile" xml:space="preserve"><value>Mein Konto</value></data>
   <data name="Profile_EmailSaved" xml:space="preserve"><value>Die E-Mail-Adresse wurde gespeichert.</value></data>
   <data name="Profile_EmailTitle" xml:space="preserve"><value>E-Mail</value></data>
@@ -73,6 +75,21 @@
   <data name="Profile_SessionsTitle" xml:space="preserve"><value>Angemeldete Sitzungen</value></data>
   <data name="Profile_Title" xml:space="preserve"><value>Mein Konto</value></data>
   <data name="Save" xml:space="preserve"><value>Speichern</value></data>
+  <data name="Servers_AllPortsTaken" xml:space="preserve"><value>Alle 100 Ports sind belegt.</value></data>
+  <data name="Servers_Create" xml:space="preserve"><value>Anlegen und starten</value></data>
+  <data name="Servers_CreateTitle" xml:space="preserve"><value>Neuen Server anlegen</value></data>
+  <data name="Servers_InvalidMaxUsers" xml:space="preserve"><value>Die maximale Nutzerzahl muss zwischen 1 und {0} liegen.</value></data>
+  <data name="Servers_InvalidName" xml:space="preserve"><value>Der Name ist leer, zu lang oder enthält unerlaubte Zeichen.</value></data>
+  <data name="Servers_InvalidTimeZone" xml:space="preserve"><value>Diese Zeitzone ist unbekannt (Beispiel: Europe/Berlin).</value></data>
+  <data name="Servers_MaxUsers" xml:space="preserve"><value>Maximale Nutzer</value></data>
+  <data name="Servers_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Servers_Password" xml:space="preserve"><value>Serverpasswort (freiwillig)</value></data>
+  <data name="Servers_Port" xml:space="preserve"><value>Port (TCP und UDP)</value></data>
+  <data name="Servers_PortInUseOnHost" xml:space="preserve"><value>Der Port ist auf dem Host schon belegt.</value></data>
+  <data name="Servers_PortOutOfRange" xml:space="preserve"><value>Der Port muss zwischen {0} und {1} liegen.</value></data>
+  <data name="Servers_PortTaken" xml:space="preserve"><value>Diesen Port hat schon ein anderer Server.</value></data>
+  <data name="Servers_TimeZone" xml:space="preserve"><value>Zeitzone</value></data>
+  <data name="Servers_Version" xml:space="preserve"><value>Version</value></data>
   <data name="Setup_Submit" xml:space="preserve"><value>Anlegen</value></data>
   <data name="Setup_Title" xml:space="preserve"><value>Ersten Administrator anlegen</value></data>
   <data name="Theme_Dark" xml:space="preserve"><value>Dunkel</value></data>

@@ -2,7 +2,8 @@ namespace OVS.Manager.Docker;
 
 /// <summary>
 /// Package M6 (MA2, D8): the manager's view of Docker, through the socket proxy and only on its own containers; the tests
-/// use a fake. Every call for a container that is not the manager's throws <see cref="Exceptions.ForeignContainerException"/>.
+/// use a fake. Every call for a container that is not the manager's throws <see cref="Exceptions.ForeignContainerException"/>, a
+/// failed call (proxy or Docker) <see cref="Exceptions.DockerCallException"/>.
 /// </summary>
 internal interface IDockerEngine
 {
@@ -15,7 +16,7 @@ internal interface IDockerEngine
     /// <summary>Creates the volume and the container of <paramref name="spec"/> (not started); returns the container's id.</summary>
     Task<string> CreateAsync(ContainerSpec spec, CancellationToken cancellation = default);
 
-    /// <summary>Starts a managed container.</summary>
+    /// <summary>Starts a managed container; <see cref="Exceptions.PortInUseException"/> when its port is taken on the host.</summary>
     Task StartAsync(string containerId, CancellationToken cancellation = default);
 
     /// <summary>Stops a managed container (30 s for the server's own shutdown).</summary>

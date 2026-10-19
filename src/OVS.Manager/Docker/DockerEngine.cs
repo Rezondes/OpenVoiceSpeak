@@ -8,7 +8,7 @@ namespace OVS.Manager.Docker;
 /// <summary>
 /// Package M6 (D8): <see cref="IDockerEngine"/> with Docker.DotNet over the socket proxy (<c>OVS_MANAGER_DOCKER_HOST</c>).
 /// Docker lists by the label <c>ovs.managed=true</c> and the adapter checks it again; a call for any other container
-/// is refused before it is sent.
+/// is refused before it is sent. Package M7: a failed call becomes a <see cref="DockerCallException"/>.
 /// </summary>
 internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDisposable
 {
@@ -27,28 +27,28 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
             await client.System.PingAsync(timeout.Token);
             return true;
         }
-        catch (Exception exception) when (exception is HttpRequestException or DockerApiException or OperationCanceledException or IOException or TimeoutException)
+        catch (Exception exception) when (IsDockerFailure(exception) || exception is OperationCanceledException)
         {
             return false;
         }
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<ManagedContainer>> ListAsync(CancellationToken cancellation = default)
+    public Task<IReadOnlyList<ManagedContainer>> ListAsync(CancellationToken cancellation = default) => CallAsync(async () =>
     {
         var listed = await client.Containers.ListContainersAsync(new ContainersListParameters
         {
             All = true,
             Filters = new Dictionary<string, IDictionary<string, bool>> { ["label"] = new Dictionary<string, bool> { [$"{ManagedLabels.Managed}=true"] = true } },
         }, cancellation);
-        return [.. listed.Where(container => ManagedLabels.IsManaged(container.Labels)).Select(container => new ManagedContainer(
+        return (IReadOnlyList<ManagedContainer>)[.. listed.Where(container => ManagedLabels.IsManaged(container.Labels)).Select(container => new ManagedContainer(
             container.ID, Label(container.Labels, ManagedLabels.ServerId),
             int.TryParse(Label(container.Labels, ManagedLabels.Port), CultureInfo.InvariantCulture, out var port) ? port : 0,
             Label(container.Labels, ManagedLabels.Version), container.State, container.Image))];
-    }
+    });
 
     /// <inheritdoc/>
-    public async Task<string> CreateAsync(ContainerSpec spec, CancellationToken cancellation = default)
+    public Task<string> CreateAsync(ContainerSpec spec, CancellationToken cancellation = default) => CallAsync(async () =>
     {
         var labels = ManagedLabels.For(spec);
         var volume = ManagedLabels.VolumeName(spec.ServerId);
@@ -71,37 +71,52 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
             },
         }, cancellation);
         return created.ID;
-    }
+    });
 
     /// <inheritdoc/>
     public async Task StartAsync(string containerId, CancellationToken cancellation = default)
     {
         await EnsureManagedAsync(containerId, cancellation);
-        await client.Containers.StartContainerAsync(containerId, new ContainerStartParameters(), cancellation);
+        try
+        {
+            await CallAsync(() => client.Containers.StartContainerAsync(containerId, new ContainerStartParameters(), cancellation));
+        }
+        catch (DockerCallException exception) when (exception.InnerException is DockerApiException api
+                                                    && (api.ResponseBody.Contains("port is already allocated", StringComparison.OrdinalIgnoreCase)
+                                                        || api.ResponseBody.Contains("address already in use", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new PortInUseException($"Container {containerId}: {api.ResponseBody}", api);
+        }
     }
 
     /// <inheritdoc/>
     public async Task StopAsync(string containerId, CancellationToken cancellation = default)
     {
         await EnsureManagedAsync(containerId, cancellation);
-        await client.Containers.StopContainerAsync(containerId, new ContainerStopParameters { WaitBeforeKillSeconds = StopSeconds }, cancellation);
+        await CallAsync(() => client.Containers.StopContainerAsync(containerId, new ContainerStopParameters { WaitBeforeKillSeconds = StopSeconds }, cancellation));
     }
 
     /// <inheritdoc/>
     public async Task RestartAsync(string containerId, CancellationToken cancellation = default)
     {
         await EnsureManagedAsync(containerId, cancellation);
-        await client.Containers.RestartContainerAsync(containerId, new ContainerRestartParameters { WaitBeforeKillSeconds = StopSeconds }, cancellation);
+        await CallAsync(async () =>
+        {
+            await client.Containers.RestartContainerAsync(containerId, new ContainerRestartParameters { WaitBeforeKillSeconds = StopSeconds }, cancellation);
+            return true;
+        });
     }
 
     /// <inheritdoc/>
     public async Task RemoveAsync(string containerId, CancellationToken cancellation = default)
     {
         await EnsureManagedAsync(containerId, cancellation);
-        await client.Containers.RemoveContainerAsync(containerId, new ContainerRemoveParameters { Force = true }, cancellation);
+        await CallAsync(async () =>
+        {
+            await client.Containers.RemoveContainerAsync(containerId, new ContainerRemoveParameters { Force = true }, cancellation);
+            return true;
+        });
     }
-
-    static string Label(IDictionary<string, string> labels, string key) => labels.TryGetValue(key, out var value) ? value : "";
 
     /// <summary>Ends the client.</summary>
     public void Dispose() => client.Dispose();
@@ -112,4 +127,23 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
         if (!(await ListAsync(cancellation)).Any(container => container.Id == containerId))
             throw new ForeignContainerException($"Container {containerId} is not managed by the OVS manager.");
     }
+
+    /// <summary>Package M7: a call whose failure is the proxy's or Docker's becomes a <see cref="DockerCallException"/>.</summary>
+    static async Task<T> CallAsync<T>(Func<Task<T>> call)
+    {
+        try
+        {
+            return await call();
+        }
+        catch (Exception exception) when (IsDockerFailure(exception))
+        {
+            throw new DockerCallException($"Docker call failed: {exception.Message}", exception);
+        }
+    }
+
+    static async Task CallAsync(Func<Task<bool>> call) => await CallAsync<bool>(call);
+
+    static bool IsDockerFailure(Exception exception) => exception is DockerApiException or HttpRequestException or IOException or TimeoutException;
+
+    static string Label(IDictionary<string, string> labels, string key) => labels.TryGetValue(key, out var value) ? value : "";
 }
