@@ -7,4 +7,5 @@ namespace OVS.Manager.Accounts;
 /// <param name="Role">Its role, <see cref="ManagerRoles.Admin"/> or <see cref="ManagerRoles.Manager"/>.</param>
 /// <param name="IsLocked">Locked by the admin or by too many failures.</param>
 /// <param name="MustChangePassword">It still has a start or reset password.</param>
-internal sealed record AccountSummary(string Id, string UserName, string? Email, string Role, bool IsLocked, bool MustChangePassword);
+/// <param name="TwoFactorEnabled">Package M28: it signs in with TOTP.</param>
+internal sealed record AccountSummary(string Id, string UserName, string? Email, string Role, bool IsLocked, bool MustChangePassword, bool TwoFactorEnabled = false);

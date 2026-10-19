@@ -1257,17 +1257,19 @@ Identity's authenticator support (RFC 6238); the QR code as SVG made in the mana
 
 ### Acceptance Criteria
 
-- [ ] AC1: A user turns TOTP on by scanning a QR code and entering a code; 10 recovery codes are shown once.
-- [ ] AC2: Login then asks for a code or a recovery code; each recovery code works once.
-- [ ] AC3: With "2FA Pflicht" set by the admin, a user without TOTP must set it up right after login.
-- [ ] AC4: The admin can turn off a user's TOTP (audit line).
+- [x] AC1: A user turns TOTP on by scanning a QR code and entering a code; 10 recovery codes are shown once.
+- [x] AC2: Login then asks for a code or a recovery code; each recovery code works once.
+- [x] AC3: With "2FA Pflicht" set by the admin, a user without TOTP must set it up right after login.
+- [x] AC4: The admin can turn off a user's TOTP (audit line).
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `TwoFactorTests > "Enable_CodeChecked_RecoveryCodesOnce"` - AC1
-2. `TwoFactorTests > "Login_CodeOrRecoveryOnce"` - AC2
-3. `TwoFactorTests > "Required_SetupAfterLogin"` - AC3
+2. `TwoFactorTests > "Login_CodeOrRecovery_RecoveryOnce"` - AC2
+3. `TwoFactorTests > "Required_NoTotp_SetupAfterLogin"` - AC3
 4. `TwoFactorTests > "Admin_Disable_Audit"` - AC4
+
+(as built: `/profile/two-factor` (linked from the profile) gives the user an Identity authenticator key, shows it as a QR code made in the manager (QRCoder 1.6.0, SVG, `otpauth://totp/...`) and as text, and turns TOTP on after a right code, showing 10 recovery codes once (`TwoFactorEnabled`). The login leads to `/login/two-factor` when the password was right; six digits are a TOTP code, anything else a recovery code, which works once; failures count for the address as in the login. "2FA Pflicht" is a `ManagerSetting` (migration `AddManagerSettings`) the admin switches on the account list (`TwoFactorPolicyChanged`); at sign-in a user without TOTP then gets a claim, and `TwoFactorGate` leads every page to the setup until it is done (the sign-in is refreshed then). The admin turns a manager's TOTP off on the account page, which also forgets its key (`TwoFactorDisabled`). Pages in `Components/Pages/Accounts` (`TwoFactorSetup`) and `Components/Pages` (`LoginTwoFactor`).)
 
 ### Steps
 

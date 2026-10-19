@@ -24,7 +24,7 @@ internal sealed class AccountService(UserManager<ManagerUser> users, SessionStor
         var now = time.GetUtcNow();
         return [.. (await users.Users.ToListAsync())
             .Select(user => new AccountSummary(user.Id, user.UserName ?? "", user.Email, admins.Contains(user.Id) ? ManagerRoles.Admin : ManagerRoles.Manager,
-                user.LockoutEnd > now, user.MustChangePassword))
+                user.LockoutEnd > now, user.MustChangePassword, user.TwoFactorEnabled))
             .OrderBy(account => account.Role != ManagerRoles.Admin).ThenBy(account => account.UserName, StringComparer.OrdinalIgnoreCase)];
     }
 
@@ -73,6 +73,14 @@ internal sealed class AccountService(UserManager<ManagerUser> users, SessionStor
     /// <summary>AC2: the account and its sessions are gone (its server assignments go with it, M10).</summary>
     public Task<IdentityResult> DeleteAsync(string id) =>
         WithManagerAsync(id, async user => await AuditAsync(await users.DeleteAsync(user), AuditActions.AccountDeleted, user.UserName));
+
+    /// <summary>Package M28 (AC4): the manager's TOTP is off and its key forgotten; it may set it up again.</summary>
+    public Task<IdentityResult> DisableTwoFactorAsync(string id) => WithManagerAsync(id, async user =>
+    {
+        var result = await users.SetTwoFactorEnabledAsync(user, false);
+        if (result.Succeeded) result = await users.ResetAuthenticatorKeyAsync(user);
+        return await AuditAsync(result, AuditActions.TwoFactorDisabled, user.UserName);
+    });
 
     /// <summary>AC3: nobody becomes admin and the admin is never demoted; a manager stays a manager.</summary>
     public Task<IdentityResult> ChangeRoleAsync(string id, string role) =>

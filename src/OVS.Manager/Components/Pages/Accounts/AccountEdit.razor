@@ -24,6 +24,13 @@
         <AntiforgeryToken />
         <button type="submit">@LockText</button>
     </form>
+    @if (Account.TwoFactorEnabled)
+    {
+        <form method="post" @onsubmit="DisableTwoFactorAsync" @formname="two-factor-off">
+            <AntiforgeryToken />
+            <button type="submit" data-two-factor-off>@Strings.TwoFactor_Disable</button>
+        </form>
+    }
     @if (Account.Role == ManagerRoles.Manager)
     {
         <OVS.Manager.Components.Pages.Servers.Assignments UserId="@Account.Id" @rendermode="InteractiveServer" />

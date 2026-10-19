@@ -1,0 +1,12 @@
+@page "/login/two-factor"
+@attribute [AllowAnonymous]
+
+<h1>@Strings.TwoFactor_LoginTitle</h1>
+<EditForm Model="Model" FormName="login-two-factor" OnValidSubmit="LoginAsync" class="account-form">
+    <label>@Strings.TwoFactor_CodeOrRecovery <InputText @bind-Value="Model!.Code" autocomplete="one-time-code" /></label>
+    @if (Error is not null)
+    {
+        <p class="form-error" role="alert" data-error>@Error</p>
+    }
+    <button type="submit">@Strings.Login_Submit</button>
+</EditForm>

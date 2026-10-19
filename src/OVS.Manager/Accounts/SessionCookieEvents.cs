@@ -13,7 +13,7 @@ namespace OVS.Manager.Accounts;
 /// the start password must be changed, and the account's language becomes the browser's (M2 AC1). A page the user may
 /// not see answers 403 instead of leading to the login (AC5).
 /// </summary>
-internal sealed class SessionCookieEvents(SessionStore sessions, UserManager<ManagerUser> users) : CookieAuthenticationEvents
+internal sealed class SessionCookieEvents(SessionStore sessions, UserManager<ManagerUser> users, TwoFactorPolicy twoFactor) : CookieAuthenticationEvents
 {
     /// <inheritdoc/>
     public override async Task SigningIn(CookieSigningInContext context)
@@ -29,6 +29,7 @@ internal sealed class SessionCookieEvents(SessionStore sessions, UserManager<Man
         identity.AddClaim(new Claim(AccountClaims.Session, session));
         var user = await users.FindByIdAsync(userId);
         if (user?.MustChangePassword == true) identity.AddClaim(new Claim(AccountClaims.MustChangePassword, "true"));
+        if (user is { TwoFactorEnabled: false } && await twoFactor.IsRequiredAsync(http.RequestAborted)) identity.AddClaim(new Claim(AccountClaims.MustSetUpTwoFactor, "true")); // Package M28
         if (UiCulture.Find(user?.Language) is { } culture) UiCulture.Store(http, culture);
         await base.SigningIn(context);
     }

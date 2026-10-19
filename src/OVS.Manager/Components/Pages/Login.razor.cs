@@ -51,6 +51,11 @@ sealed partial class Login
             return;
         }
         var result = await SignIn.PasswordSignInAsync(userName, Model!.Password, isPersistent: false, lockoutOnFailure: true);
+        if (result.RequiresTwoFactor) // Package M28: the password was right, the code follows
+        {
+            Navigation.NavigateTo("/login/two-factor" + (LocalUrls.IsLocal(ReturnUrl) ? "?ReturnUrl=" + Uri.EscapeDataString(ReturnUrl!) : ""));
+            return;
+        }
         await Audit.WriteAsync(userName, result.Succeeded ? AuditActions.Login : AuditActions.LoginFailed, userName, detail: address?.ToString());
         if (!result.Succeeded)
         {

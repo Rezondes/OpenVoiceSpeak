@@ -53,6 +53,7 @@ builder.Services.AddScoped<AuditLog>(); // Package M5
 builder.Services.AddHostedService<AuditRetention>();
 builder.Services.AddScoped<SessionStore>();
 builder.Services.AddScoped<SessionCookieEvents>();
+builder.Services.AddScoped<TwoFactorPolicy>(); // Package M28
 builder.Services.AddScoped<AccountService>();
 builder.Services.ConfigureApplicationCookie(cookie =>
 {
@@ -139,6 +140,7 @@ app.UseRequestLocalization(UiCulture.CreateOptions());
 app.UseMiddleware<SetupGate>();
 app.UseAuthentication();
 app.UseMiddleware<PasswordChangeGate>();
+app.UseMiddleware<TwoFactorGate>(); // Package M28
 app.UseAuthorization();
 app.UseAntiforgery();
 app.MapStaticAssets().AllowAnonymous();

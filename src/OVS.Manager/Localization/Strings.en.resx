@@ -386,6 +386,23 @@ If you did not ask for it, ignore this mail.</value></data>
   <data name="Trash_Empty" xml:space="preserve"><value>The trash is empty.</value></data>
   <data name="Trash_Restore" xml:space="preserve"><value>Restore</value></data>
   <data name="Trash_Title" xml:space="preserve"><value>Trash</value></data>
+  <data name="TwoFactor_Active" xml:space="preserve"><value>Two-factor login is on; {0} recovery codes are left.</value></data>
+  <data name="TwoFactor_Code" xml:space="preserve"><value>Code</value></data>
+  <data name="TwoFactor_CodeOrRecovery" xml:space="preserve"><value>App code or recovery code</value></data>
+  <data name="TwoFactor_Disable" xml:space="preserve"><value>Turn off two-factor login</value></data>
+  <data name="TwoFactor_Enable" xml:space="preserve"><value>Turn on</value></data>
+  <data name="TwoFactor_Enabled" xml:space="preserve"><value>Two-factor login is on.</value></data>
+  <data name="TwoFactor_Key" xml:space="preserve"><value>Key to type in:</value></data>
+  <data name="TwoFactor_LoginTitle" xml:space="preserve"><value>Enter code</value></data>
+  <data name="TwoFactor_PolicyOff" xml:space="preserve"><value>2FA is not required.</value></data>
+  <data name="TwoFactor_PolicyOn" xml:space="preserve"><value>2FA is required: whoever has no two-factor login sets it up after logging in.</value></data>
+  <data name="TwoFactor_PolicyTurnOff" xml:space="preserve"><value>Stop requiring 2FA</value></data>
+  <data name="TwoFactor_PolicyTurnOn" xml:space="preserve"><value>Require 2FA</value></data>
+  <data name="TwoFactor_RecoveryHint" xml:space="preserve"><value>These recovery codes are shown only now. Each works once if the app is missing; keep them safe.</value></data>
+  <data name="TwoFactor_Required" xml:space="preserve"><value>The administrator requires two-factor login; set it up now.</value></data>
+  <data name="TwoFactor_Scan" xml:space="preserve"><value>Scan the code with an authenticator app and enter the code it shows.</value></data>
+  <data name="TwoFactor_Title" xml:space="preserve"><value>Two-factor login</value></data>
+  <data name="TwoFactor_WrongCode" xml:space="preserve"><value>The code is wrong.</value></data>
   <data name="UpdateStep_Announce" xml:space="preserve"><value>Tell the users</value></data>
   <data name="UpdateStep_Backup" xml:space="preserve"><value>Backup before the update</value></data>
   <data name="UpdateStep_Done" xml:space="preserve"><value>Done</value></data>

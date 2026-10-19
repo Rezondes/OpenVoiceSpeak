@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Http;
 using OVS.Manager.Accounts;
 using OVS.Manager.Localization;
 
@@ -21,6 +22,25 @@ sealed partial class AccountList
 
     /// <summary>What went wrong, null before an action.</summary>
     string? Error { get; set; }
+
+    [Inject]
+    TwoFactorPolicy TwoFactor { get; set; } = null!;
+
+    [CascadingParameter]
+    HttpContext HttpContext { get; set; } = null!;
+
+    /// <summary>Package M28 (AC3): "2FA Pflicht" is on.</summary>
+    bool TwoFactorRequired { get; set; }
+
+    string PolicyText => TwoFactorRequired ? Strings.TwoFactor_PolicyOn : Strings.TwoFactor_PolicyOff;
+
+    string PolicyButton => TwoFactorRequired ? Strings.TwoFactor_PolicyTurnOff : Strings.TwoFactor_PolicyTurnOn;
+
+    async Task TogglePolicyAsync()
+    {
+        TwoFactorRequired = !await TwoFactor.IsRequiredAsync();
+        await TwoFactor.SetRequiredAsync(TwoFactorRequired, HttpContext.User.Identity?.Name ?? "");
+    }
 
     /// <summary>Loads the list.</summary>
     protected override async Task OnInitializedAsync()

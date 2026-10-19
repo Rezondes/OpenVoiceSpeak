@@ -386,6 +386,23 @@ Wenn du das nicht angefordert hast, ignoriere diese Mail.</value></data>
   <data name="Trash_Empty" xml:space="preserve"><value>Der Papierkorb ist leer.</value></data>
   <data name="Trash_Restore" xml:space="preserve"><value>Wiederherstellen</value></data>
   <data name="Trash_Title" xml:space="preserve"><value>Papierkorb</value></data>
+  <data name="TwoFactor_Active" xml:space="preserve"><value>Die Zwei-Faktor-Anmeldung ist an; {0} Wiederherstellungscodes sind übrig.</value></data>
+  <data name="TwoFactor_Code" xml:space="preserve"><value>Code</value></data>
+  <data name="TwoFactor_CodeOrRecovery" xml:space="preserve"><value>Code der App oder Wiederherstellungscode</value></data>
+  <data name="TwoFactor_Disable" xml:space="preserve"><value>Zwei-Faktor-Anmeldung abschalten</value></data>
+  <data name="TwoFactor_Enable" xml:space="preserve"><value>Einschalten</value></data>
+  <data name="TwoFactor_Enabled" xml:space="preserve"><value>Die Zwei-Faktor-Anmeldung ist an.</value></data>
+  <data name="TwoFactor_Key" xml:space="preserve"><value>Schlüssel zum Abtippen:</value></data>
+  <data name="TwoFactor_LoginTitle" xml:space="preserve"><value>Code eingeben</value></data>
+  <data name="TwoFactor_PolicyOff" xml:space="preserve"><value>2FA Pflicht ist aus.</value></data>
+  <data name="TwoFactor_PolicyOn" xml:space="preserve"><value>2FA Pflicht ist an: wer keine Zwei-Faktor-Anmeldung hat, muss sie nach dem Login einrichten.</value></data>
+  <data name="TwoFactor_PolicyTurnOff" xml:space="preserve"><value>2FA Pflicht ausschalten</value></data>
+  <data name="TwoFactor_PolicyTurnOn" xml:space="preserve"><value>2FA Pflicht einschalten</value></data>
+  <data name="TwoFactor_RecoveryHint" xml:space="preserve"><value>Diese Wiederherstellungscodes werden nur jetzt gezeigt. Jeder gilt einmal, falls die App fehlt; bewahre sie sicher auf.</value></data>
+  <data name="TwoFactor_Required" xml:space="preserve"><value>Der Administrator verlangt die Zwei-Faktor-Anmeldung; richte sie jetzt ein.</value></data>
+  <data name="TwoFactor_Scan" xml:space="preserve"><value>Scanne den Code mit einer Authenticator-App und gib den Code ein, den sie zeigt.</value></data>
+  <data name="TwoFactor_Title" xml:space="preserve"><value>Zwei-Faktor-Anmeldung</value></data>
+  <data name="TwoFactor_WrongCode" xml:space="preserve"><value>Der Code stimmt nicht.</value></data>
   <data name="UpdateStep_Announce" xml:space="preserve"><value>Nutzer benachrichtigen</value></data>
   <data name="UpdateStep_Backup" xml:space="preserve"><value>Backup vor dem Update</value></data>
   <data name="UpdateStep_Done" xml:space="preserve"><value>Fertig</value></data>

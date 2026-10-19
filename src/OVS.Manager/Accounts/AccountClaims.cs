@@ -8,4 +8,7 @@ internal static class AccountClaims
 
     /// <summary>Present while the user must change the start password.</summary>
     public const string MustChangePassword = "ovs:must-change-password";
+
+    /// <summary>Package M28: present while two-factor login is required and the user has not set it up.</summary>
+    public const string MustSetUpTwoFactor = "ovs:must-set-up-two-factor";
 }

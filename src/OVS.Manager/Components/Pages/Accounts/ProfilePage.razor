@@ -25,6 +25,7 @@
 </section>
 
 <section>
+    <p><a href="/profile/two-factor" data-two-factor-link>@Strings.TwoFactor_Title</a></p>
     <h2>@Strings.Profile_EmailTitle</h2>
     <EditForm Model="EmailModel" FormName="email" OnValidSubmit="SaveEmailAsync" class="account-form">
         <label>@Strings.Field_Email <InputText type="email" @bind-Value="EmailModel!.Email" autocomplete="email" /></label>

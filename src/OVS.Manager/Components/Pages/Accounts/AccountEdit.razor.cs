@@ -52,6 +52,8 @@ sealed partial class AccountEdit
 
     Task ResetAsync() => ShowAsync(Accounts.ResetPasswordAsync(Id, ResetModel!.Password));
 
+    Task DisableTwoFactorAsync() => ShowAsync(Accounts.DisableTwoFactorAsync(Id)); // Package M28 (AC4)
+
     Task ToggleLockAsync() => ShowAsync(Account?.IsLocked == true ? Accounts.UnlockAsync(Id) : Accounts.LockAsync(Id));
 
     async Task DeleteAsync()

@@ -34,6 +34,9 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
     /// <summary>Package M15: the backups the manager made for a reason.</summary>
     public DbSet<BackupMark> BackupMarks => Set<BackupMark>();
 
+    /// <summary>Package M28: the manager's own settings.</summary>
+    public DbSet<ManagerSetting> ManagerSettings => Set<ManagerSetting>();
+
     /// <summary>Package M27: what each user wants to be told, and how.</summary>
     public DbSet<Notifications.NotificationRule> NotificationRules => Set<Notifications.NotificationRule>();
 
@@ -70,6 +73,7 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
             rule.Property(value => value.LastErrorAtUtc).HasConversion(value => value, value => value == null ? null : DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
             rule.HasOne<ManagerUser>().WithMany().HasForeignKey(value => value.UserId).OnDelete(DeleteBehavior.Cascade);
         });
+        builder.Entity<ManagerSetting>().HasKey(setting => setting.Key);
         builder.Entity<Notifications.AlertState>(state =>
         {
             state.HasKey(value => new { value.Key, value.Event });

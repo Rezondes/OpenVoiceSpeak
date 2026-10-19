@@ -15,6 +15,8 @@
     <PackageReference Include="Grpc.Tools" Version="2.66.0" PrivateAssets="all" />
     <!-- Package M26 (D5): SMTP for the password reset and the notifications -->
     <PackageReference Include="MailKit" Version="4.16.0" />
+    <!-- Package M28: the TOTP QR code as SVG, made in the manager -->
+    <PackageReference Include="QRCoder" Version="1.6.0" />
     <!-- MailKit brings Pkcs 10.0.0, which has known advisories; the patched one of the runtime line -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>

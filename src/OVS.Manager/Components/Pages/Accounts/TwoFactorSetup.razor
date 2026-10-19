@@ -1,0 +1,37 @@
+@page "/profile/two-factor"
+
+<h1>@Strings.TwoFactor_Title</h1>
+@if (Required)
+{
+    <p class="form-hint" role="alert" data-required>@Strings.TwoFactor_Required</p>
+}
+@if (RecoveryCodes is { } codes)
+{
+    <p class="form-ok" role="status">@Strings.TwoFactor_Enabled</p>
+    <p>@Strings.TwoFactor_RecoveryHint</p>
+    <ul class="recovery-codes">
+        @foreach (var recovery in codes)
+        {
+            <li data-recovery-code>@recovery</li>
+        }
+    </ul>
+    <p><a href="/">@Strings.Nav_Home</a></p>
+}
+else if (IsEnabled)
+{
+    <p class="form-ok" data-active>@ActiveText</p>
+}
+else
+{
+    <p>@Strings.TwoFactor_Scan</p>
+    <div class="qr-code" data-qr>@Qr</div>
+    <p>@Strings.TwoFactor_Key <kbd data-key>@Key</kbd></p>
+    <EditForm Model="Model" FormName="enable" OnValidSubmit="EnableAsync" class="account-form">
+        <label>@Strings.TwoFactor_Code <InputText @bind-Value="Model!.Code" autocomplete="one-time-code" inputmode="numeric" /></label>
+        @if (Error is not null)
+        {
+            <p class="form-error" role="alert" data-error>@Error</p>
+        }
+        <button type="submit">@Strings.TwoFactor_Enable</button>
+    </EditForm>
+}

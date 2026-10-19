@@ -105,6 +105,12 @@ internal static class AuditActions
     public const string ServerUpdateFailed = "ServerUpdateFailed";
     /// <summary>A server's maintenance window changed (M18); the target is "on" or "off".</summary>
     public const string UpdateWindowChanged = "UpdateWindowChanged";
+    /// <summary>A user turned on TOTP (M28).</summary>
+    public const string TwoFactorEnabled = "TwoFactorEnabled";
+    /// <summary>The admin turned off a user's TOTP (M28); the target is the account.</summary>
+    public const string TwoFactorDisabled = "TwoFactorDisabled";
+    /// <summary>The admin turned "2FA Pflicht" on or off (M28); the target is "on" or "off".</summary>
+    public const string TwoFactorPolicyChanged = "TwoFactorPolicyChanged";
     /// <summary>A password reset link went out by mail (M26); the target is the account.</summary>
     public const string PasswordResetMailSent = "PasswordResetMailSent";
     /// <summary>A password was set with a mailed link (M26); every session ended.</summary>

@@ -174,6 +174,20 @@ namespace OVS.Manager.Data.Migrations
                     b.ToTable("Sessions");
                 });
 
+            modelBuilder.Entity("OVS.Manager.Accounts.ManagerSetting", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("ManagerSettings");
+                });
+
             modelBuilder.Entity("OVS.Manager.Accounts.ManagerUser", b =>
                 {
                     b.Property<string>("Id")

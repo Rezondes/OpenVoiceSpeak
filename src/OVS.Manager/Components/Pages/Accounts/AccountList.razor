@@ -26,6 +26,11 @@
     </tbody>
 </table>
 
+<form method="post" @onsubmit="TogglePolicyAsync" @formname="two-factor-policy" class="account-form">
+    <AntiforgeryToken />
+    <p>@PolicyText</p>
+    <button type="submit" data-two-factor-policy>@PolicyButton</button>
+</form>
 <h2>@Strings.Accounts_Create</h2>
 <EditForm Model="NewModel" FormName="create" OnValidSubmit="CreateAsync" class="account-form">
     <label>@Strings.Field_UserName <InputText @bind-Value="NewModel!.UserName" /></label>
