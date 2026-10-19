@@ -1,0 +1,26 @@
+<section class="live-view" data-live>
+    <h2>@Strings.Live_Title</h2>
+    @if (Snapshot is { } snapshot)
+    {
+        @if (!snapshot.HasTelemetry)
+        {
+            <p class="form-hint" data-no-telemetry>@Strings.Live_NoTelemetry</p>
+        }
+        <div class="stat-tiles">
+            <StatTile Name="users" Label="@Strings.Live_Users" Value="@Number(snapshot.UsersOnline)" />
+            <StatTile Name="in" Label="@Strings.Live_In" Value="@Number(snapshot.KbitIn)" Unit="kbit/s" />
+            <StatTile Name="out" Label="@Strings.Live_Out" Value="@Number(snapshot.KbitOut)" Unit="kbit/s" />
+            <StatTile Name="drops" Label="@Strings.Live_Drops" Value="@Number(snapshot.DropsPerMinute)" Unit="@Strings.Live_PerMinute" />
+            <StatTile Name="cpu" Label="@Strings.Live_Cpu" Value="@Number(snapshot.Usage?.CpuPercent)" Unit="%" />
+            <StatTile Name="ram" Label="@Strings.Live_Ram" Value="@Number(MemoryMb(snapshot))" Unit="MB" />
+        </div>
+        @if (snapshot.HasTelemetry)
+        {
+            <LineChart Title="@Strings.Live_Users" Unit="@Strings.Live_UsersUnit" Series="@UsersLines" FromUnixMs="@snapshot.FromUnixMs" ToUnixMs="@snapshot.ToUnixMs" />
+            <LineChart Title="@Strings.Live_Bandwidth" Unit="kbit/s" Series="@BandwidthLines" FromUnixMs="@snapshot.FromUnixMs" ToUnixMs="@snapshot.ToUnixMs" />
+            <LineChart Title="@Strings.Live_Drops" Unit="@Strings.Live_PerMinute" Series="@DropsLines" FromUnixMs="@snapshot.FromUnixMs" ToUnixMs="@snapshot.ToUnixMs" />
+        }
+        <LineChart Title="@Strings.Live_Cpu" Unit="%" Series="@CpuLines" FromUnixMs="@snapshot.FromUnixMs" ToUnixMs="@snapshot.ToUnixMs" />
+        <LineChart Title="@Strings.Live_Ram" Unit="MB" Series="@MemoryLines" FromUnixMs="@snapshot.FromUnixMs" ToUnixMs="@snapshot.ToUnixMs" />
+    }
+</section>

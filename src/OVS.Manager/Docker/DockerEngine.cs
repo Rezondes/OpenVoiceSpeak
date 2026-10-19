@@ -166,8 +166,32 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
         return true;
     });
 
+    /// <inheritdoc/>
+    public async Task<ContainerUsage> StatsAsync(string containerId, CancellationToken cancellation = default)
+    {
+        await EnsureManagedAsync(containerId, cancellation);
+        var last = new LastStats();
+        await CallAsync(async () =>
+        {
+            await client.Containers.GetContainerStatsAsync(containerId, new ContainerStatsParameters { Stream = false }, last, cancellation);
+            return true;
+        });
+        return last.Value is { } stats ? Usage(stats) : new ContainerUsage(0, 0);
+    }
+
     /// <summary>Ends the client.</summary>
     public void Dispose() => client.Dispose();
+
+    /// <summary>CPU as Docker's own <c>docker stats</c> counts it (the change against the previous sample), memory without the page cache.</summary>
+    static ContainerUsage Usage(ContainerStatsResponse stats)
+    {
+        double cpu = (double)(stats.CPUStats?.CPUUsage?.TotalUsage ?? 0) - (stats.PreCPUStats?.CPUUsage?.TotalUsage ?? 0);
+        double system = (double)(stats.CPUStats?.SystemUsage ?? 0) - (stats.PreCPUStats?.SystemUsage ?? 0);
+        double cores = stats.CPUStats?.OnlineCPUs is > 0 and var online ? online : stats.CPUStats?.CPUUsage?.PercpuUsage?.Count ?? 1;
+        var memory = stats.MemoryStats?.Usage ?? 0;
+        var cache = stats.MemoryStats?.Stats is { } values ? values.TryGetValue("inactive_file", out var inactive) ? inactive : values.TryGetValue("cache", out var cached) ? cached : 0 : 0;
+        return new ContainerUsage(cpu > 0 && system > 0 ? cpu / system * cores * 100 : 0, (long)(memory - Math.Min(cache, memory)));
+    }
 
     /// <summary>AC2: the id must be one Docker lists as managed; otherwise nothing with it is sent.</summary>
     async Task EnsureManagedAsync(string containerId, CancellationToken cancellation)
@@ -194,4 +218,12 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
     static bool IsDockerFailure(Exception exception) => exception is DockerApiException or HttpRequestException or IOException or TimeoutException;
 
     static string Label(IDictionary<string, string> labels, string key) => labels.TryGetValue(key, out var value) ? value : "";
+
+    /// <summary>Keeps the one sample a stats call without streaming reports.</summary>
+    sealed class LastStats : IProgress<ContainerStatsResponse>
+    {
+        public ContainerStatsResponse? Value { get; private set; }
+
+        public void Report(ContainerStatsResponse value) => Value = value;
+    }
 }

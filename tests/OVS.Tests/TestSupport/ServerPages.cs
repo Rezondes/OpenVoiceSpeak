@@ -23,6 +23,7 @@ internal static class ServerPages
         context.Services.AddSingleton(manager.Services.GetRequiredService<ReleaseCatalog>());
         context.Services.AddSingleton(manager.Services.GetRequiredService<OVS.Manager.Control.Announcement>()); // Package M19
         context.Services.AddSingleton(manager.Services.GetRequiredService<OVS.Manager.Telemetry.TelemetryLimit>()); // Package M21
+        context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<OVS.Manager.Telemetry.LiveFeed>()); // Package M22
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<SettingsCommands>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ModerationCommands>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<GroupCommands>());

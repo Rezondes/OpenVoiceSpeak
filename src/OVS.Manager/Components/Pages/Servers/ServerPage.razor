@@ -35,6 +35,7 @@ else
     <InviteBox ServerId="@Server.Id" Port="@Server.Port" />
     <UpdateDialog ServerId="@Server.Id" Version="@Server.Version" />
     <AnnouncementBox ServerId="@Server.Id" />
+    <LiveView ServerId="@Server.Id" />
     <nav class="server-nav">
         <a href="@($"/servers/{Server.Id}/settings")">@Strings.Settings_Title</a>
         <a href="@($"/servers/{Server.Id}/users")">@Strings.Users_Title</a>

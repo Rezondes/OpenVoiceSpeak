@@ -98,6 +98,7 @@ builder.Services.AddHostedService<UpdateWindowRunner>();
 builder.Services.AddSingleton<TelemetryLimit>();
 builder.Services.AddHostedService<Rollup>();
 builder.Services.AddHostedService<Retention>();
+builder.Services.AddScoped<LiveFeed>(); // Package M22
 builder.Services.AddScoped<ConsoleLog>();
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();

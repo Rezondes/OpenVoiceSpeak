@@ -1017,15 +1017,17 @@ Metrics of Package 147: `ovs.sessions`, `ovs.voice.bytes`, `ovs.control.bytes`, 
 
 ### Acceptance Criteria
 
-- [ ] AC1: The page shows tiles (users online, kbit/s in and out, drops per minute, CPU %, RAM MB) and lines for the last 15 minutes, updated at least every 10 s without reload.
-- [ ] AC2: Charts have axes with units, a tooltip per point and read correctly in light and dark (M2 tokens).
-- [ ] AC3: A server without data for 2 minutes shows "keine Telemetrie" instead of a flat line.
+- [x] AC1: The page shows tiles (users online, kbit/s in and out, drops per minute, CPU %, RAM MB) and lines for the last 15 minutes, updated at least every 10 s without reload.
+- [x] AC2: Charts have axes with units, a tooltip per point and read correctly in light and dark (M2 tokens).
+- [x] AC3: A server without data for 2 minutes shows "keine Telemetrie" instead of a flat line.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `LiveFeedTests > "Points_PushedWithinTenSeconds"` and `ChartTests > "Tiles_Values"` - AC1
-2. `ChartTests > "Axes_UnitsAndTooltip"` and `"Colors_FromTokens"` - AC2
+1. `LiveFeedTests > "Page_NewPoint_ShownWithinTenSeconds"` (bUnit, `ManualTimeProvider`), `"Minutes_BytesAndDrops_KbitAndPerMinute"` and `ChartTests > "Tiles_Values_LabelValueUnit"` - AC1
+2. `ChartTests > "Axes_UnitsAndTooltip_EachPoint"` and `"Colors_FromTokens_NoFixedColor"` - AC2
 3. `LiveFeedTests > "NoData_TwoMinutes_NoTelemetry"` - AC3
+
+(as built: `LiveView` on the server page reads `LiveFeed` at once and every 5 s (a `PeriodicTimer` on the `TimeProvider`) and redraws without a reload. The feed takes the minute values of M21 of the last 15 minutes (users from `ovs.sessions`, kbit/s in and out from `ovs.voice.bytes` and `ovs.control.bytes` by `ovs.direction`, drops per minute from `ovs.voice.drops`), the newest raw `ovs.sessions` for the users tile, and CPU and RAM from `IDockerEngine.StatsAsync` (Docker's stats without streaming, CPU as `docker stats` counts it, RAM without the page cache); CPU and RAM lines are kept by the page from its opening on. No data for 2 minutes shows "keine Telemetrie" and leaves out the telemetry lines. `LineChart` draws own SVG with a value axis in its unit (top 1, 2 or 5 times a power of ten), a clock axis every 5 minutes and a `<title>` tooltip per point, all colours as M2 tokens; `StatTile` shows a figure with label and unit. `ChartPoint` and `ChartSeries` are public (Razor makes components public; CA1515 is suppressed there with the reason). No `Sparkline`: the tiles and lines cover the page; add it with M23 if the overview needs one.)
 
 ### Steps
 

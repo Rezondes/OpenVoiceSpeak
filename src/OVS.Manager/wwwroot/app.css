@@ -202,3 +202,46 @@ button.danger {
     border-radius: 6px;
     color: #c62828;
 }
+
+/* Package M22: the live tiles and the own SVG charts, in the M2 tokens */
+.stat-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.stat-tile {
+    display: grid;
+    gap: 4px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+}
+
+.stat-label {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.stat-value {
+    font-size: 1.4rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.line-chart {
+    margin: 0 0 12px;
+}
+
+.line-chart svg {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+}
+
+.chart-legend {
+    display: flex;
+    gap: 12px;
+    font-size: 0.85rem;
+}

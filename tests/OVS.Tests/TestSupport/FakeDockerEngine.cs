@@ -21,6 +21,9 @@ internal sealed class FakeDockerEngine : IDockerEngine
     /// <summary>Package M8: while set, start, stop and restart wait for it (an action that takes its time).</summary>
     public TaskCompletionSource? Hold { get; set; }
 
+    /// <summary>Package M22: what each container uses; none is idle.</summary>
+    public ConcurrentDictionary<string, ContainerUsage> Usage { get; } = new();
+
     /// <summary>Package M18: the images pulled, in order, as "image:tag".</summary>
     public ConcurrentQueue<string> Pulled { get; } = new();
 
@@ -78,6 +81,13 @@ internal sealed class FakeDockerEngine : IDockerEngine
         EnsureReachable();
         foreach (var line in ConsoleLines.GetValueOrDefault(containerId, []).TakeLast(tail)) yield return line;
         await Task.Delay(Timeout.Infinite, cancellation); // following: no more lines until the page leaves
+    }
+
+    public Task<ContainerUsage> StatsAsync(string containerId, CancellationToken cancellation = default)
+    {
+        EnsureReachable();
+        if (!Containers.ContainsKey(containerId)) throw new ForeignContainerException(containerId);
+        return Task.FromResult(Usage.GetValueOrDefault(containerId) ?? new ContainerUsage(0, 0));
     }
 
     public Task PullImageAsync(string image, string tag, CancellationToken cancellation = default)

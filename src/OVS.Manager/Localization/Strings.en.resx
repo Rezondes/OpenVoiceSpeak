@@ -136,6 +136,17 @@
   <data name="Link_Outdated" xml:space="preserve"><value>outdated: only start, stop and restart</value></data>
   <data name="Link_OutdatedProtocol" xml:space="preserve"><value>outdated (protocol {0}): only start, stop and restart</value></data>
   <data name="Link_Refused" xml:space="preserve"><value>The server refused: {0}</value></data>
+  <data name="Live_Bandwidth" xml:space="preserve"><value>Bandwidth</value></data>
+  <data name="Live_Cpu" xml:space="preserve"><value>CPU</value></data>
+  <data name="Live_Drops" xml:space="preserve"><value>Dropped voice packets</value></data>
+  <data name="Live_In" xml:space="preserve"><value>In</value></data>
+  <data name="Live_NoTelemetry" xml:space="preserve"><value>no telemetry</value></data>
+  <data name="Live_Out" xml:space="preserve"><value>Out</value></data>
+  <data name="Live_PerMinute" xml:space="preserve"><value>per minute</value></data>
+  <data name="Live_Ram" xml:space="preserve"><value>RAM</value></data>
+  <data name="Live_Title" xml:space="preserve"><value>Live</value></data>
+  <data name="Live_Users" xml:space="preserve"><value>Users online</value></data>
+  <data name="Live_UsersUnit" xml:space="preserve"><value>users</value></data>
   <data name="Log_Console" xml:space="preserve"><value>Without a connection to the server: the container's console output, live.</value></data>
   <data name="Log_DownloadFailed" xml:space="preserve"><value>The server did not prepare the download.</value></data>
   <data name="Log_Find" xml:space="preserve"><value>Find</value></data>
