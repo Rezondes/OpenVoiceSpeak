@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using OVS.Client.Audio.Sounds;
 using OVS.Client.Audio.Transmit;
 using OVS.Client.Input;
+using OVS.Shared.Net;
 
 namespace OVS.Client.Logging;
 

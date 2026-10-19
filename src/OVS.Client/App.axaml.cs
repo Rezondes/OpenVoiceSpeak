@@ -1,3 +1,4 @@
+using OVS.Shared.Net;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;

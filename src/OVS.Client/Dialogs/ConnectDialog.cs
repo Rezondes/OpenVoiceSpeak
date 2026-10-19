@@ -7,6 +7,7 @@ using OVS.Client.Controls;
 using OVS.Client.Localization;
 using OVS.Client.Net;
 using OVS.Client.Settings;
+using OVS.Shared.Net;
 using OVS.Shared.Protocol;
 using static OVS.Client.Dialogs.DialogControls;
 

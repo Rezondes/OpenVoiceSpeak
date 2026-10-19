@@ -1,6 +1,6 @@
-using OVS.Client.Net;
+using OVS.Shared.Net;
 
-namespace OVS.Tests.Client.Net;
+namespace OVS.Tests.Shared.Net;
 
 /// <summary>Package 170: a server link carries a host and a port, nothing else.</summary>
 public sealed class JoinLinkTests

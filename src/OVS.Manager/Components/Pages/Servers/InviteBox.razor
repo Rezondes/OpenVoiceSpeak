@@ -1,0 +1,13 @@
+<section class="invite">
+    <h2>@Strings.Invite_Title</h2>
+    @if (Link is null)
+    {
+        <p class="form-hint">@Strings.Invite_NoHost</p>
+    }
+    else
+    {
+        <p><code data-link>@Link.ProtocolLink</code> <button type="button" onclick="navigator.clipboard.writeText(this.dataset.copy)" data-copy="@Link.ProtocolLink">@Strings.Invite_Copy</button></p>
+        <p><code data-web>@Link.WebLink</code> <button type="button" onclick="navigator.clipboard.writeText(this.dataset.copy)" data-copy="@Link.WebLink">@Strings.Invite_Copy</button></p>
+    }
+    <p class="form-hint">@Strings.Invite_Fingerprint <code data-fingerprint>@FingerprintText</code></p>
+</section>

@@ -73,6 +73,10 @@
   <data name="Home_Title" xml:space="preserve"><value>OpenVoiceSpeak Verwaltung</value></data>
   <data name="Icon_Invalid" xml:space="preserve"><value>Ein quadratisches PNG von {0} bis {1} Pixeln.</value></data>
   <data name="Icon_TooLarge" xml:space="preserve"><value>Das Bild ist zu groß (höchstens {0} KB).</value></data>
+  <data name="Invite_Copy" xml:space="preserve"><value>Kopieren</value></data>
+  <data name="Invite_Fingerprint" xml:space="preserve"><value>Zertifikat zum Vergleichen beim ersten Verbinden:</value></data>
+  <data name="Invite_NoHost" xml:space="preserve"><value>Für diesen Host gibt es keinen Link. Setze OVS_MANAGER_PUBLIC_HOST.</value></data>
+  <data name="Invite_Title" xml:space="preserve"><value>Einladungslink</value></data>
   <data name="Language_English" xml:space="preserve"><value>English</value></data>
   <data name="Language_German" xml:space="preserve"><value>Deutsch</value></data>
   <data name="Language_Label" xml:space="preserve"><value>Sprache</value></data>

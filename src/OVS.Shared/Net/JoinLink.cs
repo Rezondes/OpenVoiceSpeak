@@ -3,14 +3,14 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 
-namespace OVS.Client.Net;
+namespace OVS.Shared.Net;
 
 /// <summary>
-/// Package 170: a server's address as a link, <c>ovs://host:port</c>, and the web page that hands it over to OVS. Only a
+/// Package 170 (moved to OVS.Shared in Package M14, the web manager builds the same link): a server's address as a link, <c>ovs://host:port</c>, and the web page that hands it over to OVS. Only a
 /// host and a port exist: a host name, an IPv4 address or an IPv6 address (in brackets in the link), and a port from 1 to
 /// 65535; a path, a query, user info or a longer host is refused, so a link can only ever fill in the connect dialog.
 /// </summary>
-internal sealed class JoinLink
+public sealed class JoinLink
 {
     /// <summary>The page that opens the link, or offers the download when OVS is not installed.</summary>
     public const string WebPage = "https://rezondes.github.io/OpenVoiceSpeak/";

@@ -691,13 +691,15 @@ MA8. The client parses the link with `JoinLink`; the test parses the manager's l
 
 ### Acceptance Criteria
 
-- [ ] AC1: The link holds `OVS_MANAGER_PUBLIC_HOST` (or the request's host), the port and the pinned fingerprint, and `JoinLink` of the client reads it back to the same values.
-- [ ] AC2: A copy button puts it on the clipboard; the server password is never part of it.
+- [x] AC1: The link holds `OVS_MANAGER_PUBLIC_HOST` (or the request's host), the port and the pinned fingerprint, and `JoinLink` of the client reads it back to the same values.
+- [x] AC2: A copy button puts it on the clipboard; the server password is never part of it.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `InviteLinkTests > "Build_ClientJoinLinkReadsSame"` - AC1
-2. `InviteLinkTests > "Build_NeverContainsPassword"` - AC2
+1. `InviteLinkTests > "Build_PublicHostOrRequest_ClientReadsSame"` - AC1
+2. `InviteLinkTests > "Box_ServerWithPassword_NeverContainsPassword"` (bUnit) - AC2
+
+(as built: the client's `JoinLink` (Package 170) moved to `OVS.Shared/Net` (public), so the manager builds the very link the client reads. That link carries only host and port and refuses anything else, so the fingerprint is not in it: the box shows the pinned fingerprint (M11) beside the link, to compare with the client's prompt at the first connect, and "–" before the first connect. `InviteLink.For` takes `OVS_MANAGER_PUBLIC_HOST` (`ManagerOptions.PublicHost`), else the host of the page's address. `InviteBox` on the server page shows `ovs://host:port` and the web link `…?join=host:port`, each with a copy button (`navigator.clipboard`); the password is never part of either.)
 
 ### Steps
 

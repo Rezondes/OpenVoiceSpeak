@@ -20,6 +20,7 @@ using OVS.Client.Settings;
 using OVS.Client.ViewModels;
 using Avalonia.Platform.Storage;
 using OVS.Client.Localization;
+using OVS.Shared.Net;
 
 namespace OVS.Client.Views;
 

@@ -1,3 +1,4 @@
+using OVS.Shared.Net;
 using System.Globalization;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -108,7 +109,7 @@ public sealed class ConnectionBindingTests() : TempDirectoryTest("ovs-connbind-"
         mainViewModel.Settings.Bookmarks.Add(new Bookmark(BookmarkName, "127.0.0.1", 4711, "anna"));
         mainViewModel.Bookmarks.Refresh();
 
-        Assert.True(OVS.Client.Net.JoinLink.TryParse("ovs://gilde.example.org:7000", out var link));
+        Assert.True(OVS.Shared.Net.JoinLink.TryParse("ovs://gilde.example.org:7000", out var link));
         main.OpenJoinLink(link);
         Dispatcher.UIThread.RunJobs();
         Assert.True(main.Overlay.IsOpen);
@@ -118,7 +119,7 @@ public sealed class ConnectionBindingTests() : TempDirectoryTest("ovs-connbind-"
         main.Overlay.Close();
         Dispatcher.UIThread.RunJobs();
 
-        Assert.True(OVS.Client.Net.JoinLink.TryParse("ovs://127.0.0.1:4711", out var known)); // the address of a bookmark: that bookmark
+        Assert.True(OVS.Shared.Net.JoinLink.TryParse("ovs://127.0.0.1:4711", out var known)); // the address of a bookmark: that bookmark
         main.OpenJoinLink(known);
         Dispatcher.UIThread.RunJobs();
         Assert.Contains("127.0.0.1", Texts(main));

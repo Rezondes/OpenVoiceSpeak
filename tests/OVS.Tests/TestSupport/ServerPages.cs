@@ -25,6 +25,8 @@ internal static class ServerPages
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<GroupCommands>());
         context.Services.AddSingleton<IDockerEngine>(manager.Docker);
         context.Services.AddSingleton(TimeProvider.System);
+        context.Services.AddSingleton(manager.Services.GetRequiredService<OVS.Manager.ManagerOptions>());
+        context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<OVS.Manager.Data.ManagerDbContext>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ServerLifecycle>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDeletion>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ServerAccess>());

@@ -1,4 +1,5 @@
 using OVS.Client.Net;
+using OVS.Shared.Net;
 
 namespace OVS.Client;
 

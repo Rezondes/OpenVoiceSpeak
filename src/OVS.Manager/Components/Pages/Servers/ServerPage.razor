@@ -32,6 +32,7 @@ else
         </tbody>
     </table>
     <ServerActions ServerId="@Server.Id" Busy="@Watcher.IsBusy(Server.Id)" />
+    <InviteBox ServerId="@Server.Id" Port="@Server.Port" />
     <nav class="server-nav">
         <a href="@($"/servers/{Server.Id}/settings")">@Strings.Settings_Title</a>
         <a href="@($"/servers/{Server.Id}/users")">@Strings.Users_Title</a>

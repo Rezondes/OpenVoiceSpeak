@@ -36,6 +36,9 @@ internal sealed record ManagerOptions(string DataDir)
     /// </summary>
     public string? ServerHost { get; init; }
 
+    /// <summary>Package M14 (MA8): the host clients use, <c>OVS_MANAGER_PUBLIC_HOST</c>; without it the host of the request.</summary>
+    public string? PublicHost { get; init; }
+
     /// <summary>Package M11: where the manager reaches the server <paramref name="serverId"/>.</summary>
     public string HostOf(string serverId) => ServerHost ?? Docker.ManagedLabels.ContainerName(serverId);
 
@@ -54,5 +57,6 @@ internal sealed record ManagerOptions(string DataDir)
             ServerImage = configuration["OVS_MANAGER_SERVER_IMAGE"] is { Length: > 0 } image ? image : "ghcr.io/rezondes/openvoicespeak-server",
             TimeZone = configuration["TZ"] is { Length: > 0 } zone ? zone : "UTC",
             ServerHost = configuration["OVS_MANAGER_SERVER_HOST"] is { Length: > 0 } serverHost ? serverHost : null,
+            PublicHost = configuration["OVS_MANAGER_PUBLIC_HOST"] is { Length: > 0 } publicHost ? publicHost : null,
         };
 }
