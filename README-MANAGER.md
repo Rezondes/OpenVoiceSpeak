@@ -29,7 +29,7 @@ Die Compose-Datei `deploy/manager/docker-compose.yml` startet zwei Container:
 - **ovs-manager**: das Verwaltungstool, veröffentlicht nur Port 6999. Den Port 4318 (Telemetrie der Server) veröffentlicht sie nie.
 - **socket-proxy** (`wollomatic/socket-proxy`): der einzige Weg des Verwaltungstools zu Docker. Der Docker-Socket ist nur lesend eingebunden, der Proxy veröffentlicht keinen Port, liegt nur im internen Netz `docker-proxy` und lässt pro HTTP-Methode genau die Aufrufe durch, die das Verwaltungstool braucht (Container auflisten, anlegen, starten, stoppen, löschen, Images holen, Volumes anlegen und löschen, Statistiken). Ein direkt eingebundener Socket wäre root-Zugriff auf den Host; so bleibt ein Fehler im Verwaltungstool auf diese Aufrufe beschränkt. Zusätzlich fasst das Verwaltungstool nur Container mit seinem Label `ovs.managed=true` an.
 
-Der Proxy läuft als Nutzer `nobody` mit der Gruppe des Docker-Sockets. In der Compose-Datei steht `user: "65534:999"`; passt die Gruppe auf deinem Host nicht, liefert `stat -c %g /var/run/docker.sock` die richtige Zahl.
+Der Proxy läuft als Nutzer `nobody` mit der Gruppe des Docker-Sockets, die die Compose-Variable `DOCKER_SOCKET_GID` angibt (Standard 999). Auf einem Linux-Host liefert `stat -c %g /var/run/docker.sock` die richtige Zahl, bei Docker Desktop (Windows, macOS) ist es 0. Setze sie in einer Datei `.env` neben der Compose-Datei (`DOCKER_SOCKET_GID=0`) oder in der Shell. Passt sie nicht, meldet der Proxy "permission denied" und startet immer wieder neu.
 
 Das Netz `ovs-managed` hat einen festen Namen: Das Verwaltungstool und alle seine Server liegen darin. So erreicht es jeden Server als `ovs-<id>`, und die Server schicken ihre Telemetrie an `http://ovs-manager:4318`.
 
@@ -228,7 +228,7 @@ Die Datenbank wird beim Start selbst migriert; Daten und Schlüssel bleiben im V
 
 ## Fehlersuche
 
-- **"Docker nicht erreichbar"** auf der Übersicht, `/healthz` antwortet 503: Der Socket-Proxy antwortet nicht. `docker compose -f deploy/manager/docker-compose.yml logs socket-proxy` zeigt meist "permission denied" auf dem Socket; dann stimmt die Gruppe in `user:` nicht (siehe "Einrichtung mit Docker Compose").
+- **"Docker nicht erreichbar"** auf der Übersicht, `/healthz` antwortet 503: Der Socket-Proxy antwortet nicht. `docker compose -f deploy/manager/docker-compose.yml logs socket-proxy` zeigt meist "permission denied" auf dem Socket; dann stimmt `DOCKER_SOCKET_GID` nicht (siehe "Einrichtung mit Docker Compose"; Docker Desktop braucht 0).
 - **Server bleibt "startet" oder "nicht erreichbar"**: Läuft der Container (`docker ps`)? Liegt er im Netz `ovs-managed`? Das Konsolen-Log auf der Log-Seite zeigt die Ausgabe des Servers.
 - **"Der Port ist auf dem Host schon belegt"**: Ein anderer Dienst nutzt den Port. Wähle einen anderen aus 7000 bis 7099.
 - **"Zertifikat geändert"**: Das Zertifikat des Servers ist neu (etwa nach einem Restore von woanders). Prüfe den Grund und klicke "Neues Zertifikat annehmen".

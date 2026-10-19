@@ -33,8 +33,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges
-    # The proxy runs as nobody; the second number is the group of /var/run/docker.sock on the host (stat -c %g /var/run/docker.sock).
-    user: "65534:999"
+    # The proxy runs as nobody with the group of /var/run/docker.sock on the host: DOCKER_SOCKET_GID, 999 by default.
+    # Linux: stat -c %g /var/run/docker.sock; Docker Desktop (Windows, macOS): 0. Set it in deploy/manager/.env or the shell.
+    user: "65534:${DOCKER_SOCKET_GID:-999}"
     command:
       - "-loglevel=info"
       - "-listenip=0.0.0.0"

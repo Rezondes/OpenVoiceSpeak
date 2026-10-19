@@ -31,6 +31,7 @@ public sealed class ManagerComposeTests
     {
         var proxy = ComposeFile.ReadServices(ComposePath)["socket-proxy"];
         Assert.Contains("- /var/run/docker.sock:/var/run/docker.sock:ro", proxy);
+        Assert.Contains("user: \"65534:${DOCKER_SOCKET_GID:-999}\"", proxy); // the socket's group differs by host (Docker Desktop: 0)
         Assert.DoesNotContain(proxy, line => line.StartsWith("ports:", StringComparison.Ordinal));
         Assert.Equal(["- docker-proxy"], proxy.SkipWhile(line => line != "networks:").Skip(1).TakeWhile(line => line.StartsWith('-')));
         Assert.Contains("internal: true", ComposeFile.ReadBlock(ComposePath, "networks"));
