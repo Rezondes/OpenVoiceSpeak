@@ -975,17 +975,19 @@ MA7. Counters arrive cumulative (OTLP default), so rollups store per-minute delt
 
 ### Acceptance Criteria
 
-- [ ] AC1: Raw points become 1-minute values, and those become hourly values, both with correct deltas across a server restart (counter reset).
-- [ ] AC2: Data older than its retention is deleted once an hour; the times come from `OVS_MANAGER_RETENTION_*` with the defaults of MA7.
-- [ ] AC3: Daily statistics are written at the end of each day per server and never deleted.
-- [ ] AC4: The database file stays under a size set by `OVS_MANAGER_TELEMETRY_MAX_MB` (default 5000) by deleting the oldest raw data first, with a warning on the overview.
+- [x] AC1: Raw points become 1-minute values, and those become hourly values, both with correct deltas across a server restart (counter reset).
+- [x] AC2: Data older than its retention is deleted once an hour; the times come from `OVS_MANAGER_RETENTION_*` with the defaults of MA7.
+- [x] AC3: Daily statistics are written at the end of each day per server and never deleted.
+- [x] AC4: The database file stays under a size set by `OVS_MANAGER_TELEMETRY_MAX_MB` (default 5000) by deleting the oldest raw data first, with a warning on the overview.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `RollupTests > "Counter_Restart_DeltaCorrect"` and `"Minute_ToHour"` - AC1
+1. `RollupTests > "Counter_Restart_DeltaCorrect"` and `"Minute_ToHour_GaugeLastMinMax"` (with `ManualTimeProvider`) - AC1
 2. `RetentionTests > "Old_Deleted_ByVariable"` (with `ManualTimeProvider`) - AC2
-3. `RollupTests > "DayEnd_DailyStatsWritten"` - AC3
-4. `RetentionTests > "OverSize_OldestRawFirst_Warning"` - AC4
+3. `RollupTests > "DailyStats_DayEnded_WrittenOnce"` - AC3
+4. `RetentionTests > "OverSize_OldestRawFirst_Warning"` (bUnit for the warning) - AC4
+
+(as built: `Rollup` (hosted, each minute) takes the raw points of finished minutes in time order and adds them to `MetricRollup` rows of level Minute: a gauge keeps last, lowest and highest, a sum or histogram the delta to the series' `CounterState` (another start time or a lower value is a restart, then the whole value counts); the raw points are deleted then, and every touched hour is made again from its minutes (level Hour). For each server and each finished day of the last week in its time zone without a row, `DailyStats` gets connections (`ovs.connections`), the highest `ovs.users.daily` and `ovs.users.daily.new`, and the voice and control bytes in and out (`ovs.direction`). `Retention` (hosted, each hour) deletes minute values after `OVS_MANAGER_RETENTION_MINUTE_DAYS` (7), hourly values after `OVS_MANAGER_RETENTION_HOUR_DAYS` (400), log lines after `OVS_MANAGER_RETENTION_LOG_DAYS` (30), spans after `OVS_MANAGER_RETENTION_TRACE_DAYS` (7) and raw points older than a day; daily statistics stay. While the used pages exceed `OVS_MANAGER_TELEMETRY_MAX_MB` (5000) it deletes the oldest day of raw data (spans, log lines, raw points, minute values) at a time; freed pages are reused, the file is not shrunk (no VACUUM). Then `TelemetryLimit.Reached` shows "Die Telemetriedaten haben die Grenze von N MB erreicht" on the overview. Migration `AddTelemetryRollups`.)
 
 ### Steps
 

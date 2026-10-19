@@ -21,6 +21,21 @@ internal sealed record ManagerOptions(string DataDir)
     /// <summary>Package M20: the telemetry database file in <see cref="DataDir"/>.</summary>
     public string TelemetryPath => Path.Combine(DataDir, "telemetry.db");
 
+    /// <summary>Package M21 (MA7): days of minute values, <c>OVS_MANAGER_RETENTION_MINUTE_DAYS</c>, 7 by default.</summary>
+    public int RetentionMinuteDays { get; init; } = 7;
+
+    /// <summary>Package M21 (MA7): days of hourly values, <c>OVS_MANAGER_RETENTION_HOUR_DAYS</c>, 400 by default.</summary>
+    public int RetentionHourDays { get; init; } = 400;
+
+    /// <summary>Package M21 (MA7): days of log lines, <c>OVS_MANAGER_RETENTION_LOG_DAYS</c>, 30 by default.</summary>
+    public int RetentionLogDays { get; init; } = 30;
+
+    /// <summary>Package M21 (MA7): days of spans, <c>OVS_MANAGER_RETENTION_TRACE_DAYS</c>, 7 by default.</summary>
+    public int RetentionTraceDays { get; init; } = 7;
+
+    /// <summary>Package M21 (AC4): the telemetry database's limit, <c>OVS_MANAGER_TELEMETRY_MAX_MB</c>, 5000 MB by default.</summary>
+    public long TelemetryMaxBytes { get; init; } = 5000L * 1024 * 1024;
+
     /// <summary>Package M5 (AC4): how many days audit lines are kept; null keeps them forever.</summary>
     public int? AuditDays { get; init; }
 
@@ -66,5 +81,14 @@ internal sealed record ManagerOptions(string DataDir)
             PublicHost = configuration["OVS_MANAGER_PUBLIC_HOST"] is { Length: > 0 } publicHost ? publicHost : null,
             UpdateHealthTimeout = int.TryParse(configuration["OVS_MANAGER_UPDATE_HEALTH_SECONDS"], System.Globalization.CultureInfo.InvariantCulture, out var seconds) && seconds > 0
                 ? TimeSpan.FromSeconds(seconds) : TimeSpan.FromSeconds(60),
+            RetentionMinuteDays = Positive(configuration["OVS_MANAGER_RETENTION_MINUTE_DAYS"], 7),
+            RetentionHourDays = Positive(configuration["OVS_MANAGER_RETENTION_HOUR_DAYS"], 400),
+            RetentionLogDays = Positive(configuration["OVS_MANAGER_RETENTION_LOG_DAYS"], 30),
+            RetentionTraceDays = Positive(configuration["OVS_MANAGER_RETENTION_TRACE_DAYS"], 7),
+            TelemetryMaxBytes = Positive(configuration["OVS_MANAGER_TELEMETRY_MAX_MB"], 5000) * 1024L * 1024,
         };
+
+    /// <summary>Package M21: a whole number above 0, else <paramref name="otherwise"/>.</summary>
+    static int Positive(string? text, int otherwise) =>
+        int.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out var value) && value > 0 ? value : otherwise;
 }

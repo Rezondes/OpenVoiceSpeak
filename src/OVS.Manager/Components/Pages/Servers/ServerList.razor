@@ -7,6 +7,10 @@
 {
     <p class="banner-error" role="alert">@Strings.Docker_Unreachable</p>
 }
+@if (Limit.Reached)
+{
+    <p class="banner-error" role="alert" data-telemetry-limit>@LimitText</p>
+}
 <AuthorizeView Roles="@ManagerRoles.Admin">
     <p>
         <button type="button" data-update-all disabled="@UpdatingAll" @onclick="UpdateAllAsync">@Strings.Update_All</button>

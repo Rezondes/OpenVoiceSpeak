@@ -249,6 +249,7 @@
   <data name="Status_Starting" xml:space="preserve"><value>startet</value></data>
   <data name="Status_Stopped" xml:space="preserve"><value>gestoppt</value></data>
   <data name="Status_WithExitCode" xml:space="preserve"><value>{0} (Exit-Code {1})</value></data>
+  <data name="Telemetry_LimitReached" xml:space="preserve"><value>Die Telemetriedaten haben die Grenze von {0} MB erreicht; die ältesten Rohdaten werden gelöscht.</value></data>
   <data name="Theme_Dark" xml:space="preserve"><value>Dunkel</value></data>
   <data name="Theme_Label" xml:space="preserve"><value>Darstellung</value></data>
   <data name="Theme_Light" xml:space="preserve"><value>Hell</value></data>

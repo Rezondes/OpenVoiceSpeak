@@ -17,11 +17,23 @@ internal sealed class TelemetryStore(DbContextOptions<TelemetryStore> options) :
     /// <summary>The spans.</summary>
     public DbSet<SpanRow> Spans => Set<SpanRow>();
 
+    /// <summary>Package M21: the minute and hour values.</summary>
+    public DbSet<MetricRollup> MetricRollups => Set<MetricRollup>();
+
+    /// <summary>Package M21: the last cumulative value of each counter series.</summary>
+    public DbSet<CounterState> CounterStates => Set<CounterState>();
+
+    /// <summary>Package M21: the daily statistics, never deleted.</summary>
+    public DbSet<DailyStats> DailyStats => Set<DailyStats>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<MetricPoint>().HasIndex(point => new { point.ServerId, point.Name, point.AtUnixMs });
         modelBuilder.Entity<LogRecordRow>().HasIndex(line => new { line.ServerId, line.AtUnixMs });
         modelBuilder.Entity<SpanRow>().HasIndex(span => new { span.ServerId, span.StartUnixMs });
+        modelBuilder.Entity<MetricRollup>().HasIndex(row => new { row.ServerId, row.Level, row.PeriodUnixMs });
+        modelBuilder.Entity<CounterState>().HasKey(state => new { state.ServerId, state.Name, state.Attributes });
+        modelBuilder.Entity<DailyStats>().HasKey(day => new { day.ServerId, day.Day });
     }
 }

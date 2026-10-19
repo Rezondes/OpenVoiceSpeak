@@ -20,6 +20,15 @@ sealed partial class ServerList
     [Inject]
     ServerUpdate Updates { get; set; } = null!;
 
+    [Inject]
+    OVS.Manager.Telemetry.TelemetryLimit Limit { get; set; } = null!;
+
+    [Inject]
+    OVS.Manager.ManagerOptions Options { get; set; } = null!;
+
+    /// <summary>Package M21 (AC4): the warning when the telemetry database is at its limit.</summary>
+    string LimitText => TextFormat.Of(Strings.Telemetry_LimitReached, Options.TelemetryMaxBytes / (1024 * 1024));
+
     /// <summary>Package M18 (AC3): "Alle aktualisieren" runs.</summary>
     bool UpdatingAll { get; set; }
 

@@ -94,6 +94,10 @@ builder.Services.AddHostedService(services => services.GetRequiredService<Releas
 builder.Services.AddScoped<ServerUpdate>(); // Package M18
 builder.Services.AddSingleton<Announcement>(); // Package M19
 builder.Services.AddHostedService<UpdateWindowRunner>();
+// Package M21: telemetry rolled up each minute and trimmed each hour
+builder.Services.AddSingleton<TelemetryLimit>();
+builder.Services.AddHostedService<Rollup>();
+builder.Services.AddHostedService<Retention>();
 builder.Services.AddScoped<ConsoleLog>();
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();
