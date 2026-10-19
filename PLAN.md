@@ -208,13 +208,15 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 
 ### Acceptance Criteria
 
-- [ ] AC1: `OVS.Server --protocol-version` prints the protocol version and ends with 0; `--version` stays as it is.
+- [x] AC1: `OVS.Server --protocol-version` prints the protocol version and ends with 0; `--version` stays as it is.
 - [ ] AC2 (manual): An image built by the release workflow carries `org.openvoicespeak.protocol` with that number, and the release notes contain "Protokoll: N".
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `CommandLineTests > "ProtocolVersion_Switch_PrintsWireVersion"` and `"Version_Switch_Unchanged"` - AC1
 2. Manual check AC2 on the next release run.
+
+(as built: `CommandLine.TryAnswer` answers both switches and `Program.cs` calls it first. The `version` job outputs `protocol`, the image job passes it as `OVS_PROTOCOL`, the `Dockerfile` labels the runtime stage with it (empty for a local build), and the release job writes "Protokoll: N" and a blank line above the commit list. `actionlint` 1.7.7 (run from its Docker image) found SC2155 and SC2129 in the version step; it now declares `OVS_BUILD_TIME` before exporting it and writes the outputs in one group. The version step and the notes command ran locally in bash, and `docker build --build-arg OVS_PROTOCOL=23` gave the label.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 

@@ -3,11 +3,8 @@ using System.Runtime.InteropServices;
 using OVS.Server;
 using OVS.Shared;
 
-if (args is ["--version"])
-{
-    Console.WriteLine(BuildInfo.Current.Version); // the release workflow names the release after this (Package 42)
-    return 0;
-}
+// the release workflow names the release after --version (Package 42) and labels the image with --protocol-version (Package 193)
+if (CommandLine.TryAnswer(args, Console.Out)) return 0;
 
 using var stop = new CancellationTokenSource();
 using var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, posixSignalContext => { posixSignalContext.Cancel = true; stop.Cancel(); });

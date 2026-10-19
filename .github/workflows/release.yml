@@ -65,6 +65,7 @@ jobs:
     outputs:
       build-time: ${{ steps.version.outputs.build_time }}
       version: ${{ steps.version.outputs.version }}
+      protocol: ${{ steps.version.outputs.protocol }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -74,12 +75,17 @@ jobs:
         # The server formats its own version, so the format lives in one place only.
         run: |
           set -euo pipefail
-          export OVS_BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          OVS_BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          export OVS_BUILD_TIME
           dotnet build src/OVS.Server -c Release -o out -v q
           VERSION="$(dotnet out/OVS.Server.dll --version)"
-          echo "build_time=$OVS_BUILD_TIME" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Version $VERSION"
+          PROTOCOL="$(dotnet out/OVS.Server.dll --protocol-version)"
+          {
+            echo "build_time=$OVS_BUILD_TIME"
+            echo "version=$VERSION"
+            echo "protocol=$PROTOCOL"
+          } >> "$GITHUB_OUTPUT"
+          echo "Version $VERSION, protocol $PROTOCOL"
 
   client:
     needs: version
@@ -128,6 +134,7 @@ jobs:
           push: true
           build-args: |
             OVS_BUILD_TIME=${{ needs.version.outputs.build-time }}
+            OVS_PROTOCOL=${{ needs.version.outputs.protocol }}
             GITHUB_SHA=${{ github.sha }}
             GITHUB_ACTIONS=true
           tags: |
@@ -151,6 +158,7 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.version.outputs.version }}
+          PROTOCOL: ${{ needs.version.outputs.protocol }}
         run: |
           set -euo pipefail
           PREV_TAG="$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || true)"
@@ -158,6 +166,8 @@ jobs:
             git log "$PREV_TAG..HEAD" --pretty=format:'- %s (%h)' --no-merges > /tmp/notes.md
           fi
           [ -s /tmp/notes.md ] || echo "- Erste veröffentlichte Version." > /tmp/notes.md
+          # Package 193 (A206): the web manager reads the protocol from here (or from the image label)
+          printf 'Protokoll: %s\n\n%s\n' "$PROTOCOL" "$(cat /tmp/notes.md)" > /tmp/notes.md.new && mv /tmp/notes.md.new /tmp/notes.md
           gh release create "deploy-${GITHUB_SHA::7}" \
             --title "OpenVoiceSpeak $VERSION" \
             --notes-file /tmp/notes.md \
