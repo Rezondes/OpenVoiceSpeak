@@ -36,6 +36,7 @@ internal sealed class ServerAdoption(ManagerDbContext database, IDockerEngine do
         }
 
         var server = await FromAsync(foreign, port, cancellation);
+        if (await PullFailedAsync(foreign, server.Version, cancellation) is { } missing) return missing;
         var environment = ServerFactory.Environment(server, foreign.Environment.GetValueOrDefault("OVS_PASSWORD"));
 
         await docker.StopForeignAsync(foreign.Id, cancellation);
@@ -65,7 +66,7 @@ internal sealed class ServerAdoption(ManagerDbContext database, IDockerEngine do
             Id = await NewIdAsync(cancellation), Name = variables.GetValueOrDefault("OVS_SERVER_NAME") is { Length: > 0 } name ? name : foreign.Name, Port = port,
             TimeZone = variables.GetValueOrDefault("TZ") is { Length: > 0 } zone && TimeZoneInfo.TryFindSystemTimeZoneById(zone, out _) ? zone : options.TimeZone,
             MaxUsers = int.TryParse(variables.GetValueOrDefault("OVS_MAX_USERS"), CultureInfo.InvariantCulture, out var max) && max is > 0 and <= ServerFactory.MaxUsersLimit ? max : 50,
-            Version = foreign.Tag == "latest" ? BuildInfo.Current.Version : foreign.Tag, DataSource = foreign.DataSource, CreatedAtUtc = time.GetUtcNow().UtcDateTime,
+            Version = foreign.Repository == options.ServerImage && foreign.Tag != "latest" ? foreign.Tag : BuildInfo.Current.Version, DataSource = foreign.DataSource, CreatedAtUtc = time.GetUtcNow().UtcDateTime,
         };
         using (var identity = identities.Create(server.Id)) server.AdminFingerprint = identity.Fingerprint;
         return server;
@@ -80,6 +81,24 @@ internal sealed class ServerAdoption(ManagerDbContext database, IDockerEngine do
         database.Servers.Remove(server);
         await database.SaveChangesAsync(cancellation);
         await docker.StartForeignAsync(foreign.Id, cancellation);
+    }
+
+    /// <summary>
+    /// A container of another image name (a self-built one) runs on as the manager's image of the manager's version, which is
+    /// pulled first; null when it is there, else why not (nothing was changed then).
+    /// </summary>
+    async Task<string?> PullFailedAsync(ForeignServer foreign, string version, CancellationToken cancellation)
+    {
+        if (foreign.Repository == options.ServerImage) return null;
+        try
+        {
+            await docker.PullImageAsync(options.ServerImage, version, cancellation);
+            return null;
+        }
+        catch (DockerCallException)
+        {
+            return TextFormat.Of(Strings.Adopt_ImageMissing, $"{options.ServerImage}:{version}");
+        }
     }
 
     static string Short(string containerId) => containerId.Length > 12 ? containerId[..12] : containerId;

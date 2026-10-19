@@ -70,6 +70,21 @@ public sealed class ServerAdoptionTests
         Assert.Contains(lines, line => line.Action == AuditActions.ServerAdopted && line.Detail!.StartsWith("0123456789ab -> ", StringComparison.Ordinal));
     }
 
+    /// <summary>AC1, AC2: a self-built image of another name is found by its protocol label and runs on as the manager's image of the manager's version.</summary>
+    [Fact]
+    public async Task Adopt_OtherImageName_ManagerImagePulled()
+    {
+        await using var manager = Manager();
+        manager.CreateClient().Dispose();
+        manager.Docker.Foreign[OldId] = Old() with { Image = "openvoicespeak/server:local" };
+
+        Assert.Null(await AdoptAsync(manager));
+
+        var version = OVS.Shared.BuildInfo.Current.Version;
+        Assert.Equal([$"ghcr.io/rezondes/openvoicespeak-server:{version}"], manager.Docker.Pulled);
+        Assert.Equal(version, Assert.Single(manager.Docker.Created).Version);
+    }
+
     /// <summary>AC2: a failed health check removes the new container and starts the old one again.</summary>
     [Fact]
     public async Task Adopt_HealthFails_OldStartedAgain()

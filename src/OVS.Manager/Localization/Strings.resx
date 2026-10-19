@@ -35,6 +35,7 @@
   <data name="Adopt_Done" xml:space="preserve"><value>{0} wurde übernommen.</value></data>
   <data name="Adopt_Failed" xml:space="preserve"><value>Übernahme fehlgeschlagen, der alte Container läuft wieder: {0}</value></data>
   <data name="Adopt_Image" xml:space="preserve"><value>Image</value></data>
+  <data name="Adopt_ImageMissing" xml:space="preserve"><value>Das Server-Image {0} ist nicht zu bekommen; setze OVS_MANAGER_SERVER_IMAGE auf das Image, das du nutzt. Nichts wurde geändert.</value></data>
   <data name="Adopt_Intro" xml:space="preserve"><value>Hier stehen OpenVoiceSpeak-Container, die das Verwaltungstool nicht erstellt hat. Eine Übernahme nutzt ihre Daten so, wie sie sind.</value></data>
   <data name="Adopt_NoData" xml:space="preserve"><value>Der Container hat unter /data nichts eingebunden, was übernommen werden könnte.</value></data>
   <data name="Adopt_None" xml:space="preserve"><value>Kein fremder OpenVoiceSpeak-Container gefunden.</value></data>

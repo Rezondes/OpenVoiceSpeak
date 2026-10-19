@@ -203,7 +203,7 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
     {
         var listed = await client.Containers.ListContainersAsync(new ContainersListParameters { All = true }, cancellation);
         var found = new List<ForeignServer>();
-        foreach (var container in listed.Where(container => !ManagedLabels.IsManaged(container.Labels) && IsServerImage(container.Image)))
+        foreach (var container in listed.Where(container => !ManagedLabels.IsManaged(container.Labels) && IsServerImage(container.Image, container.Labels)))
         {
             var inspected = await client.Containers.InspectContainerAsync(container.ID, cancellation);
             var data = inspected.Mounts?.FirstOrDefault(mount => mount.Destination == "/data");
@@ -246,7 +246,10 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
             throw new ForeignContainerException($"Container {containerId} is no foreign OVS server.");
     }
 
-    bool IsServerImage(string image) => image.StartsWith(options.ServerImage, StringComparison.Ordinal) || image.Contains("openvoicespeak-server", StringComparison.Ordinal);
+    /// <summary>The server image carries the label of its protocol (PLAN 193), whatever it is named, such as a self-built <c>openvoicespeak/server:local</c>.</summary>
+    bool IsServerImage(string image, IDictionary<string, string>? labels) =>
+        labels?.ContainsKey("org.openvoicespeak.protocol") == true
+        || image.StartsWith(options.ServerImage, StringComparison.Ordinal) || image.Contains("openvoicespeak-server", StringComparison.Ordinal);
 
     /// <summary>Ends the client.</summary>
     public void Dispose()

@@ -35,6 +35,7 @@
   <data name="Adopt_Done" xml:space="preserve"><value>{0} was adopted.</value></data>
   <data name="Adopt_Failed" xml:space="preserve"><value>Adoption failed, the old container runs again: {0}</value></data>
   <data name="Adopt_Image" xml:space="preserve"><value>Image</value></data>
+  <data name="Adopt_ImageMissing" xml:space="preserve"><value>The server image {0} cannot be pulled; set OVS_MANAGER_SERVER_IMAGE to the image you use. Nothing was changed.</value></data>
   <data name="Adopt_Intro" xml:space="preserve"><value>These are OpenVoiceSpeak containers the manager did not create. Adopting one uses its data as it is.</value></data>
   <data name="Adopt_NoData" xml:space="preserve"><value>The container mounts nothing at /data that could be kept.</value></data>
   <data name="Adopt_None" xml:space="preserve"><value>No foreign OpenVoiceSpeak container found.</value></data>
