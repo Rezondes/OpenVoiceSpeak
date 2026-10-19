@@ -1,0 +1,44 @@
+@page "/servers/adopt"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = ManagerRoles.Admin)]
+
+<h1>@Strings.Adopt_Title</h1>
+<p>@Strings.Adopt_Intro</p>
+@if (Result is not null)
+{
+    <p class="@ResultClass" role="status" data-result>@Result</p>
+}
+@if (Foreign.Count == 0)
+{
+    <p data-none>@Strings.Adopt_None</p>
+}
+else
+{
+    <table class="list">
+        <thead>
+            <tr><th>@Strings.Servers_Name</th><th>@Strings.Adopt_Image</th><th>@Strings.Servers_ColumnStatus</th><th>@Strings.Adopt_Data</th><th>@Strings.Servers_Port</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Foreign)
+            {
+                <tr data-foreign="@row.Server.Id">
+                    <td>@row.Server.Name</td>
+                    <td>@row.Server.Image</td>
+                    <td>@row.Server.State</td>
+                    <td>@row.Server.DataSource</td>
+                    <td><input type="number" data-port @bind="row.Port" /></td>
+                    <td><button type="button" data-adopt @onclick="AskFor(row)">@Strings.Adopt_Button</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+@if (Asked is { } asked)
+{
+    <section class="danger-zone" data-confirm>
+        <p>@ConfirmText(asked)</p>
+        <p>@Strings.Adopt_AdminNote</p>
+        <button type="button" data-confirm-adopt disabled="@Running" @onclick="AdoptAsync">@Strings.Adopt_Confirm</button>
+        <button type="button" @onclick="Cancel">@Strings.Announce_Cancel</button>
+    </section>
+}

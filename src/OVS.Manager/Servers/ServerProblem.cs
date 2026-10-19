@@ -23,4 +23,6 @@ internal enum ServerProblem
     NameMismatch,
     /// <summary>Package M25: a CPU or memory limit is out of its range.</summary>
     InvalidLimits,
+    /// <summary>Package M29: a foreign container has nothing mounted at /data to keep.</summary>
+    NoDataVolume,
 }

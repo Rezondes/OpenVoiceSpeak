@@ -56,7 +56,7 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
         catch (PortInUseException exception)
         {
             await docker.RemoveAsync(server.ContainerId, cancellation);
-            await docker.RemoveVolumeAsync(server.Id, cancellation);
+            await docker.RemoveVolumeAsync(ManagedLabels.VolumeName(server.Id), cancellation);
             database.Servers.Remove(server);
             await database.ServerIdentities.Where(row => row.ServerId == server.Id).ExecuteDeleteAsync(cancellation);
             await database.SaveChangesAsync(cancellation);
@@ -67,7 +67,8 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
     }
 
     /// <summary>AC3: exactly the start values, the time zone, the server admin and the telemetry to the manager (D6).</summary>
-    static Dictionary<string, string> Environment(ManagedServer server, string? password)
+    /// <summary>The variables of <paramref name="server"/>'s container (M7); Package M29 gives them to an adopted server too.</summary>
+    internal static Dictionary<string, string> Environment(ManagedServer server, string? password)
     {
         var port = server.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
         var variables = new Dictionary<string, string>

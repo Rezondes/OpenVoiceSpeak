@@ -27,6 +27,18 @@
   <data name="Accounts_RoleManager" xml:space="preserve"><value>Server-Manager</value></data>
   <data name="Accounts_StartPassword" xml:space="preserve"><value>Start-Passwort</value></data>
   <data name="Accounts_Title" xml:space="preserve"><value>Konten</value></data>
+  <data name="Adopt_AdminNote" xml:space="preserve"><value>Wer bisher Server-Admin ist, verliert diese Rolle beim ersten Start und wird ein normaler Nutzer mit seinen anderen Gruppen; Server-Admin ist dann das Verwaltungstool.</value></data>
+  <data name="Adopt_Button" xml:space="preserve"><value>Übernehmen</value></data>
+  <data name="Adopt_Confirm" xml:space="preserve"><value>Übernahme bestätigen</value></data>
+  <data name="Adopt_ConfirmText" xml:space="preserve"><value>{0} wird auf Port {1} übernommen: der alte Container hält an, ein neuer startet mit den Daten aus {2}, und der alte wird erst nach der Prüfung entfernt.</value></data>
+  <data name="Adopt_Data" xml:space="preserve"><value>Daten</value></data>
+  <data name="Adopt_Done" xml:space="preserve"><value>{0} wurde übernommen.</value></data>
+  <data name="Adopt_Failed" xml:space="preserve"><value>Übernahme fehlgeschlagen, der alte Container läuft wieder: {0}</value></data>
+  <data name="Adopt_Image" xml:space="preserve"><value>Image</value></data>
+  <data name="Adopt_Intro" xml:space="preserve"><value>Hier stehen OpenVoiceSpeak-Container, die das Verwaltungstool nicht erstellt hat. Eine Übernahme nutzt ihre Daten so, wie sie sind.</value></data>
+  <data name="Adopt_NoData" xml:space="preserve"><value>Der Container hat unter /data nichts eingebunden, was übernommen werden könnte.</value></data>
+  <data name="Adopt_None" xml:space="preserve"><value>Kein fremder OpenVoiceSpeak-Container gefunden.</value></data>
+  <data name="Adopt_Title" xml:space="preserve"><value>Server übernehmen</value></data>
   <data name="Announce_ActionRestart" xml:space="preserve"><value>Neustart</value></data>
   <data name="Announce_ActionStop" xml:space="preserve"><value>Stoppen</value></data>
   <data name="Announce_ActionUpdate" xml:space="preserve"><value>Update</value></data>

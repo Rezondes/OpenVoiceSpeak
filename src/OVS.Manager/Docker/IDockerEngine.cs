@@ -34,6 +34,18 @@ internal interface IDockerEngine
     /// <summary>Package M16: the last <paramref name="tail"/> lines of a managed container's output and then every new one, until <paramref name="cancellation"/>.</summary>
     IAsyncEnumerable<string> FollowLogsAsync(string containerId, int tail, CancellationToken cancellation = default);
 
+    /// <summary>Package M29 (AC1): the containers of an OVS server image without the manager's label.</summary>
+    Task<IReadOnlyList<ForeignServer>> ListForeignServersAsync(CancellationToken cancellation = default);
+
+    /// <summary>Package M29 (AC2): stops a foreign OVS server's container (nothing else that is foreign).</summary>
+    Task StopForeignAsync(string containerId, CancellationToken cancellation = default);
+
+    /// <summary>Package M29 (AC2): starts a foreign OVS server's container again after a failed adoption.</summary>
+    Task StartForeignAsync(string containerId, CancellationToken cancellation = default);
+
+    /// <summary>Package M29 (AC2): removes a foreign OVS server's container after its adoption; its data stays.</summary>
+    Task RemoveForeignAsync(string containerId, CancellationToken cancellation = default);
+
     /// <summary>Package M25: each volume's size in bytes by its name (the proxy allows <c>system/df</c>); empty when Docker cannot tell.</summary>
     Task<IReadOnlyDictionary<string, long>> VolumeSizesAsync(CancellationToken cancellation = default);
 
@@ -43,6 +55,6 @@ internal interface IDockerEngine
     /// <summary>Package M18: pulls <paramref name="image"/>:<paramref name="tag"/> (the proxy allows <c>images/create</c>).</summary>
     Task PullImageAsync(string image, string tag, CancellationToken cancellation = default);
 
-    /// <summary>Package M9: removes the volume of the server <paramref name="serverId"/> (only a manager's volume name ovs-&lt;id&gt;-data).</summary>
-    Task RemoveVolumeAsync(string serverId, CancellationToken cancellation = default);
+    /// <summary>Package M9, M29: removes the volume <paramref name="volume"/> of a server (<see cref="Servers.ManagedServer.Volume"/>).</summary>
+    Task RemoveVolumeAsync(string volume, CancellationToken cancellation = default);
 }

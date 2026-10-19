@@ -23,6 +23,12 @@ internal sealed class ManagedServer
     /// <summary>The start value of the user limit.</summary>
     public int MaxUsers { get; set; }
 
+    /// <summary>Package M29: the volume or host folder of an adopted server's data, null for the manager's own volume.</summary>
+    public string? DataSource { get; set; }
+
+    /// <summary>Package M29: the Docker volume of its /data; null when an adopted server's data is a host folder, which the manager never removes.</summary>
+    public string? Volume => DataSource is null ? ManagedLabels.VolumeName(Id) : DataSource.StartsWith('/') ? null : DataSource;
+
     /// <summary>Package M25: the container's CPU limit in cores, null for none.</summary>
     public double? CpuCores { get; set; }
 

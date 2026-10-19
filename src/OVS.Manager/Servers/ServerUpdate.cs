@@ -13,7 +13,7 @@ namespace OVS.Manager.Servers;
 /// container with the new tag, start and a health check. A server's data only migrates forward, so a failed check brings
 /// back the old image and the backup made before. Every step is reported and written to the audit log.
 /// </summary>
-internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine docker, IServerProbe probe, BackupCommands backups, ServerConnections connections,
+internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine docker, ServerHealth health, BackupCommands backups, ServerConnections connections,
     StatusWatcher watcher, ReleaseCatalog catalog, AuditLog audit, ManagerOptions options, TimeProvider time, Notifications.Notifier notifier)
 {
     /// <summary>The user name of the maintenance window in the audit log.</summary>
@@ -74,12 +74,12 @@ internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine dock
         await docker.StopAsync(old.Id, cancellation);
         await docker.RemoveAsync(old.Id, cancellation);
         await StepAsync(UpdateStep.Recreate);
-        var created = await docker.CreateAsync(new ContainerSpec(serverId, options.ServerImage, version, server.Port, environment, ServerFactory.Network, server.Limits), cancellation);
+        var created = await docker.CreateAsync(new ContainerSpec(serverId, options.ServerImage, version, server.Port, environment, ServerFactory.Network, server.Limits, server.DataSource), cancellation);
         await SaveContainerAsync(server, created, cancellation);
         await StepAsync(UpdateStep.Start);
         await docker.StartAsync(created, cancellation);
         await StepAsync(UpdateStep.Health);
-        if (await HealthyAsync(serverId, version, server.Port, cancellation))
+        if (await health.WaitAsync(serverId, version, server.Port, cancellation))
         {
             server.Version = version;
             await database.SaveChangesAsync(cancellation);
@@ -92,7 +92,7 @@ internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine dock
         await StepAsync(UpdateStep.RollBack);
         await docker.StopAsync(created, cancellation);
         await docker.RemoveAsync(created, cancellation);
-        var back = await docker.CreateAsync(new ContainerSpec(serverId, options.ServerImage, oldVersion, server.Port, environment, ServerFactory.Network, server.Limits), cancellation);
+        var back = await docker.CreateAsync(new ContainerSpec(serverId, options.ServerImage, oldVersion, server.Port, environment, ServerFactory.Network, server.Limits, server.DataSource), cancellation);
         await SaveContainerAsync(server, back, cancellation);
         await docker.StartAsync(back, cancellation);
         var reason = Strings.Update_HealthFailed;
@@ -106,20 +106,6 @@ internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine dock
     {
         server.ContainerId = containerId;
         await database.SaveChangesAsync(cancellation);
-    }
-
-    /// <summary>AC1: the container of the expected version runs and the server finishes the TLS handshake within the health timeout.</summary>
-    async Task<bool> HealthyAsync(string serverId, string version, int port, CancellationToken cancellation)
-    {
-        var deadline = time.GetUtcNow() + options.UpdateHealthTimeout;
-        while (true)
-        {
-            var container = (await docker.ListAsync(cancellation)).FirstOrDefault(entry => entry.ServerId == serverId);
-            if (container?.Version == version && (await docker.InspectAsync(container.Id, cancellation)).State == "running"
-                && await probe.AnswersAsync(options.HostOf(serverId), port, cancellation)) return true;
-            if (time.GetUtcNow() >= deadline) return false;
-            await Task.Delay(TimeSpan.FromSeconds(1), time, cancellation);
-        }
     }
 
     /// <summary>AC2: waits for the service session to the old version, so its backup can be restored.</summary>

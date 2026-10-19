@@ -27,6 +27,18 @@
   <data name="Accounts_RoleManager" xml:space="preserve"><value>Server manager</value></data>
   <data name="Accounts_StartPassword" xml:space="preserve"><value>Start password</value></data>
   <data name="Accounts_Title" xml:space="preserve"><value>Accounts</value></data>
+  <data name="Adopt_AdminNote" xml:space="preserve"><value>Whoever is server admin now loses that role at the first start and becomes a normal user with their other groups; the manager is server admin then.</value></data>
+  <data name="Adopt_Button" xml:space="preserve"><value>Adopt</value></data>
+  <data name="Adopt_Confirm" xml:space="preserve"><value>Confirm the adoption</value></data>
+  <data name="Adopt_ConfirmText" xml:space="preserve"><value>{0} is adopted on port {1}: the old container stops, a new one starts with the data of {2}, and the old one is removed only after the check.</value></data>
+  <data name="Adopt_Data" xml:space="preserve"><value>Data</value></data>
+  <data name="Adopt_Done" xml:space="preserve"><value>{0} was adopted.</value></data>
+  <data name="Adopt_Failed" xml:space="preserve"><value>Adoption failed, the old container runs again: {0}</value></data>
+  <data name="Adopt_Image" xml:space="preserve"><value>Image</value></data>
+  <data name="Adopt_Intro" xml:space="preserve"><value>These are OpenVoiceSpeak containers the manager did not create. Adopting one uses its data as it is.</value></data>
+  <data name="Adopt_NoData" xml:space="preserve"><value>The container mounts nothing at /data that could be kept.</value></data>
+  <data name="Adopt_None" xml:space="preserve"><value>No foreign OpenVoiceSpeak container found.</value></data>
+  <data name="Adopt_Title" xml:space="preserve"><value>Adopt a server</value></data>
   <data name="Announce_ActionRestart" xml:space="preserve"><value>Restart</value></data>
   <data name="Announce_ActionStop" xml:space="preserve"><value>Stop</value></data>
   <data name="Announce_ActionUpdate" xml:space="preserve"><value>Update</value></data>

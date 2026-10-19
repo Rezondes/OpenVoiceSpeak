@@ -125,7 +125,7 @@ public sealed class ServerDeletionTests
         await AsyncWait.UntilAsync(async () => (await TrashAsync(manager)).Count == 0, TimeSpan.FromSeconds(10));
 
         Assert.False(manager.Docker.Containers.ContainsKey(server.ContainerId!));
-        Assert.Equal([server.Id], manager.Docker.RemovedVolumes);
+        Assert.Equal([ManagedLabels.VolumeName(server.Id)], manager.Docker.RemovedVolumes);
         Assert.Empty(await TrashAsync(manager));
         Assert.False(await InScopeAsync(manager, services => services.GetRequiredService<ManagerDbContext>().ServerIdentities.AnyAsync(row => row.ServerId == server.Id)));
         Assert.Equal(7000, (await StatusWatcherTests.CreateAsync(manager, "Neu")).Port);

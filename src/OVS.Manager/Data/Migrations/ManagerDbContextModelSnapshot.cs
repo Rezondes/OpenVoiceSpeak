@@ -426,6 +426,9 @@ namespace OVS.Manager.Data.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DataSource")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("DeletedAtUtc")
                         .HasColumnType("TEXT");
 

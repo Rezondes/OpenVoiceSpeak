@@ -1298,17 +1298,19 @@ The allow list of M6 lets the manager inspect any container but act only on its 
 
 ### Acceptance Criteria
 
-- [ ] AC1: The admin sees containers running an `openvoicespeak-server` image without the label and can adopt one after picking a port in range.
-- [ ] AC2: Adoption stops the old container, creates the managed one on the old volume as it is (no copy), with the manager's variables and identity, and removes the old container only after a successful health check; on a failed check the old container is started again.
-- [ ] AC3: The dialog names the current server admin, who becomes a normal user with their other groups; after the adoption the manager's service session connects.
-- [ ] AC4: An audit line names old and new container.
+- [x] AC1: The admin sees containers running an `openvoicespeak-server` image without the label and can adopt one after picking a port in range.
+- [x] AC2: Adoption stops the old container, creates the managed one on the old volume as it is (no copy), with the manager's variables and identity, and removes the old container only after a successful health check; on a failed check the old container is started again.
+- [x] AC3: The dialog names the current server admin, who becomes a normal user with their other groups; after the adoption the manager's service session connects.
+- [x] AC4: An audit line names old and new container.
 
 ### Planned tests (TDD)
 
 1. `ServerAdoptionTests > "Foreign_Listed_AdoptNeedsPort"` - AC1
-2. `ServerAdoptionTests > "Adopt_VolumeKept_OldRemovedAfterHealth"` and `"HealthFails_OldStartedAgain"` - AC2
-3. `ServerAdoptionTests > "OldServerAdmin_NamedThenReplaced"` - AC3
+2. `ServerAdoptionTests > "Adopt_VolumeKept_OldRemovedAfterHealth"` and `"Adopt_HealthFails_OldStartedAgain"` - AC2
+3. `ServerAdoptionTests > "Confirm_OldServerAdmin_NamedThenReplaced"` - AC3
 4. `ServerAdoptionTests > "Adopt_Audit"` - AC4
+
+(as built: `/servers/adopt` (admin, linked in the navigation) lists every container of an `openvoicespeak-server` image without the manager's label (`IDockerEngine.ListForeignServersAsync`) with the lowest free port; `StopForeignAsync`, `StartForeignAsync` and `RemoveForeignAsync` act only on such a container. `ServerAdoption` takes name, user limit, time zone and password from the old variables and the version from the image tag, makes a new identity, and creates the managed container with the old volume or host folder as `/data` as it is (`ContainerSpec.DataSource`, `ManagedServer.DataSource`, migration `AddServerDataSource`). The health check shared with the update (`ServerHealth`, M18) decides: the old container is removed (`ServerAdopted`, "old -> new"), or the new one, its identity and row go and the old one starts again (`ServerAdoptFailed`). A container without anything at `/data` is refused. The dialog names the server admin by role, not by name: the manager has no session on a foreign server before it adopts it. Deleting an adopted server for good removes its volume (`ManagedServer.Volume`), never a host folder, and the resource page shows that volume's size.)
 
 ### Steps
 

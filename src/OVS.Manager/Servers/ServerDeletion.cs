@@ -60,7 +60,7 @@ internal sealed class ServerDeletion(ManagerDbContext database, IDockerEngine do
         {
             var server = await FindAsync(serverId, deleted: true, cancellation);
             if (await ContainerIdAsync(serverId, cancellation) is { } container) await docker.RemoveAsync(container, cancellation);
-            await docker.RemoveVolumeAsync(server.Id, cancellation);
+            if (server.Volume is { } volume) await docker.RemoveVolumeAsync(volume, cancellation);
             await database.ServerIdentities.Where(row => row.ServerId == server.Id).ExecuteDeleteAsync(cancellation);
             database.Servers.Remove(server);
             await database.SaveChangesAsync(cancellation);

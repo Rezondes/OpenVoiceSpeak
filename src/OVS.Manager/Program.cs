@@ -112,6 +112,8 @@ builder.Services.AddScoped<DashboardQuery>();
 builder.Services.AddScoped<ErrorQuery>(); // Package M24
 // Package M25: limits, usage over time and the data root's free disk
 builder.Services.AddScoped<ServerResources>();
+builder.Services.AddScoped<ServerHealth>(); // Package M18, M29
+builder.Services.AddScoped<ServerAdoption>(); // Package M29
 builder.Services.AddScoped<ResourceQuery>();
 builder.Services.AddHostedService<UsageSampler>();
 builder.Services.AddSingleton<IHostDisk, DataDirDisk>();

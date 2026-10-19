@@ -21,6 +21,9 @@ internal sealed class FakeDockerEngine : IDockerEngine
     /// <summary>Package M8: while set, start, stop and restart wait for it (an action that takes its time).</summary>
     public TaskCompletionSource? Hold { get; set; }
 
+    /// <summary>Package M29: the foreign OVS servers by id.</summary>
+    public ConcurrentDictionary<string, ForeignServer> Foreign { get; } = new();
+
     /// <summary>Package M25: each volume's size by its name.</summary>
     public ConcurrentDictionary<string, long> VolumeSizes { get; } = new();
 
@@ -33,7 +36,7 @@ internal sealed class FakeDockerEngine : IDockerEngine
     /// <summary>Package M16: the console output per container id, given out once and then followed until cancelled.</summary>
     public ConcurrentDictionary<string, string[]> ConsoleLines { get; } = new();
 
-    /// <summary>Package M9: the servers whose volume was removed, in order.</summary>
+    /// <summary>Package M9: the removed volumes, in order.</summary>
     public ConcurrentQueue<string> RemovedVolumes { get; } = new();
 
     /// <summary>Every spec created, in order.</summary>
@@ -86,6 +89,31 @@ internal sealed class FakeDockerEngine : IDockerEngine
         await Task.Delay(Timeout.Infinite, cancellation); // following: no more lines until the page leaves
     }
 
+    public Task<IReadOnlyList<ForeignServer>> ListForeignServersAsync(CancellationToken cancellation = default)
+    {
+        EnsureReachable();
+        return Task.FromResult<IReadOnlyList<ForeignServer>>([.. Foreign.Values]);
+    }
+
+    public Task StopForeignAsync(string containerId, CancellationToken cancellation = default) => SetForeignAsync(containerId, "exited");
+
+    public Task StartForeignAsync(string containerId, CancellationToken cancellation = default) => SetForeignAsync(containerId, "running");
+
+    public Task RemoveForeignAsync(string containerId, CancellationToken cancellation = default)
+    {
+        EnsureReachable();
+        if (!Foreign.TryRemove(containerId, out _)) throw new ForeignContainerException(containerId);
+        return Task.CompletedTask;
+    }
+
+    Task SetForeignAsync(string containerId, string state)
+    {
+        EnsureReachable();
+        if (!Foreign.TryGetValue(containerId, out var container)) throw new ForeignContainerException(containerId);
+        Foreign[containerId] = container with { State = state };
+        return Task.CompletedTask;
+    }
+
     public Task<IReadOnlyDictionary<string, long>> VolumeSizesAsync(CancellationToken cancellation = default)
     {
         EnsureReachable();
@@ -106,10 +134,10 @@ internal sealed class FakeDockerEngine : IDockerEngine
         return Task.CompletedTask;
     }
 
-    public Task RemoveVolumeAsync(string serverId, CancellationToken cancellation = default)
+    public Task RemoveVolumeAsync(string volume, CancellationToken cancellation = default)
     {
         EnsureReachable();
-        RemovedVolumes.Enqueue(serverId);
+        RemovedVolumes.Enqueue(volume);
         return Task.CompletedTask;
     }
 

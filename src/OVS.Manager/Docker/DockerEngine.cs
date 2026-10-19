@@ -64,8 +64,8 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
     public Task<string> CreateAsync(ContainerSpec spec, CancellationToken cancellation = default) => CallAsync(async () =>
     {
         var labels = ManagedLabels.For(spec);
-        var volume = ManagedLabels.VolumeName(spec.ServerId);
-        await client.Volumes.CreateAsync(new VolumesCreateParameters { Name = volume, Labels = labels }, cancellation);
+        var volume = spec.DataSource ?? ManagedLabels.VolumeName(spec.ServerId);
+        if (spec.DataSource is null) await client.Volumes.CreateAsync(new VolumesCreateParameters { Name = volume, Labels = labels }, cancellation);
         var port = spec.Port.ToString(CultureInfo.InvariantCulture);
         var bindings = new[] { $"{port}/tcp", $"{port}/udp" };
         var created = await client.Containers.CreateContainerAsync(new CreateContainerParameters
@@ -134,9 +134,9 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
     }
 
     /// <inheritdoc/>
-    public Task RemoveVolumeAsync(string serverId, CancellationToken cancellation = default) => CallAsync(async () =>
+    public Task RemoveVolumeAsync(string volume, CancellationToken cancellation = default) => CallAsync(async () =>
     {
-        await client.Volumes.RemoveAsync(ManagedLabels.VolumeName(serverId), force: false, cancellation);
+        await client.Volumes.RemoveAsync(volume, force: false, cancellation);
         return true;
     });
 
@@ -197,6 +197,56 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
         volumeSizes = new KeptSizes(DateTimeOffset.UtcNow, sizes); // clock: the age of a cache
         return sizes;
     }
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<ForeignServer>> ListForeignServersAsync(CancellationToken cancellation = default) => CallAsync(async () =>
+    {
+        var listed = await client.Containers.ListContainersAsync(new ContainersListParameters { All = true }, cancellation);
+        var found = new List<ForeignServer>();
+        foreach (var container in listed.Where(container => !ManagedLabels.IsManaged(container.Labels) && IsServerImage(container.Image)))
+        {
+            var inspected = await client.Containers.InspectContainerAsync(container.ID, cancellation);
+            var data = inspected.Mounts?.FirstOrDefault(mount => mount.Destination == "/data");
+            var environment = inspected.Config?.Env?.Select(variable => variable.Split('=', 2)).Where(pair => pair.Length == 2).ToDictionary(pair => pair[0], pair => pair[1]) ?? [];
+            found.Add(new ForeignServer(container.ID, inspected.Name.TrimStart('/'), container.Image, container.State,
+                data is null ? null : data.Type == "volume" ? data.Name : data.Source, environment));
+        }
+        return (IReadOnlyList<ForeignServer>)found;
+    });
+
+    /// <inheritdoc/>
+    public async Task StopForeignAsync(string containerId, CancellationToken cancellation = default)
+    {
+        await EnsureForeignServerAsync(containerId, cancellation);
+        await CallAsync(() => client.Containers.StopContainerAsync(containerId, new ContainerStopParameters { WaitBeforeKillSeconds = StopSeconds }, cancellation));
+    }
+
+    /// <inheritdoc/>
+    public async Task StartForeignAsync(string containerId, CancellationToken cancellation = default)
+    {
+        await EnsureForeignServerAsync(containerId, cancellation);
+        await CallAsync(() => client.Containers.StartContainerAsync(containerId, new ContainerStartParameters(), cancellation));
+    }
+
+    /// <inheritdoc/>
+    public async Task RemoveForeignAsync(string containerId, CancellationToken cancellation = default)
+    {
+        await EnsureForeignServerAsync(containerId, cancellation);
+        await CallAsync(async () =>
+        {
+            await client.Containers.RemoveContainerAsync(containerId, new ContainerRemoveParameters { Force = true }, cancellation);
+            return true;
+        });
+    }
+
+    /// <summary>Package M29: only an unlabelled container of the OVS server image may be touched as foreign.</summary>
+    async Task EnsureForeignServerAsync(string containerId, CancellationToken cancellation)
+    {
+        if (!(await ListForeignServersAsync(cancellation)).Any(container => container.Id == containerId))
+            throw new ForeignContainerException($"Container {containerId} is no foreign OVS server.");
+    }
+
+    bool IsServerImage(string image) => image.StartsWith(options.ServerImage, StringComparison.Ordinal) || image.Contains("openvoicespeak-server", StringComparison.Ordinal);
 
     /// <summary>Ends the client.</summary>
     public void Dispose()

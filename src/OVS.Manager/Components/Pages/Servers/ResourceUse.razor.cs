@@ -54,8 +54,8 @@ sealed partial class ResourceUse
     /// <summary>Loads the figures and the current limits.</summary>
     protected override async Task OnParametersSetAsync()
     {
-        Snapshot = await Query.ReadAsync(Id);
         var server = await Database.Servers.AsNoTracking().SingleOrDefaultAsync(row => row.Id == Id);
+        Snapshot = await Query.ReadAsync(Id, server?.Volume);
         (CpuCores, MemoryMb) = (server?.CpuCores, server?.MemoryMb);
     }
 

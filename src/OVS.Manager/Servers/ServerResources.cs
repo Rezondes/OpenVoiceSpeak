@@ -29,7 +29,7 @@ internal sealed class ServerResources(ManagerDbContext database, IDockerEngine d
             await docker.RemoveAsync(old.Id, cancellation);
             server.CpuCores = limits.CpuCores;
             server.MemoryMb = limits.MemoryMb;
-            server.ContainerId = await docker.CreateAsync(new ContainerSpec(serverId, options.ServerImage, server.Version, server.Port, environment, ServerFactory.Network, limits), cancellation);
+            server.ContainerId = await docker.CreateAsync(new ContainerSpec(serverId, options.ServerImage, server.Version, server.Port, environment, ServerFactory.Network, limits, server.DataSource), cancellation);
             await database.SaveChangesAsync(cancellation);
             if (running) await docker.StartAsync(server.ContainerId, cancellation);
             await audit.WriteAsync(actor, AuditActions.ServerLimitsChanged, server.Name, serverId, $"{limits.CpuCores?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-"} cores, {limits.MemoryMb?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-"} MB", cancellation);

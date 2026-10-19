@@ -105,6 +105,10 @@ internal static class AuditActions
     public const string ServerUpdateFailed = "ServerUpdateFailed";
     /// <summary>A server's maintenance window changed (M18); the target is "on" or "off".</summary>
     public const string UpdateWindowChanged = "UpdateWindowChanged";
+    /// <summary>A foreign OVS container was adopted (M29); the detail is "old -> new" container.</summary>
+    public const string ServerAdopted = "ServerAdopted";
+    /// <summary>An adoption failed its health check and the old container runs again (M29).</summary>
+    public const string ServerAdoptFailed = "ServerAdoptFailed";
     /// <summary>A user turned on TOTP (M28).</summary>
     public const string TwoFactorEnabled = "TwoFactorEnabled";
     /// <summary>The admin turned off a user's TOTP (M28); the target is the account.</summary>
