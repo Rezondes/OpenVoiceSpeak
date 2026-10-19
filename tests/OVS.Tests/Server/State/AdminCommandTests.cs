@@ -49,6 +49,77 @@ public class AdminCommandTests
         Assert.Null(server.State.PendingAdminToken);
     }
 
+    /// <summary>Package 190 (AC1): the manager's identity is server admin before it ever connected, without a token.</summary>
+    [Fact]
+    public async Task Preset_NoServerAdmin_UserCreatedInServerAdminNoToken()
+    {
+        using var managerId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(serverAdminFingerprint: managerId.Fingerprint);
+
+        Assert.Null(server.State.PendingAdminToken);
+        var user = Assert.Single(StoredData(server).Users, userRecord => userRecord.Fingerprint == managerId.Fingerprint);
+        Assert.Equal("", user.LastNickname);
+        Assert.Equal([PermissionRules.GuestGroupId, PermissionRules.ServerAdminGroupId], user.GroupIds);
+        Assert.Contains(server.Log, line => line.Contains($"Server admin set from OVS_SERVER_ADMIN_FINGERPRINT ({managerId.Fingerprint})", StringComparison.Ordinal));
+        Assert.DoesNotContain(server.Log, line => line.Contains("Server admin token", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Preset_KnownUser_ServerAdminAddedGroupsKept()
+    {
+        using var managerId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(managerId, "Admin"), serverAdminFingerprint: managerId.Fingerprint);
+
+        var user = Assert.Single(StoredData(server).Users, userRecord => userRecord.Fingerprint == managerId.Fingerprint);
+        Assert.Equal([PermissionRules.AdminGroupId, PermissionRules.ServerAdminGroupId], user.GroupIds);
+        Assert.Equal("Admin", user.LastNickname);
+        Assert.Null(server.State.PendingAdminToken);
+    }
+
+    /// <summary>Package 190 (AC2): the variable can stay set; with a server admin in the data it changes nothing.</summary>
+    [Fact]
+    public async Task Preset_ServerAdminExists_IgnoredLineNoToken()
+    {
+        using var ownerId = ClientIdentity.Create();
+        using var managerId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(ownerId, "Server-Admin"), serverAdminFingerprint: managerId.Fingerprint);
+
+        Assert.DoesNotContain(StoredData(server).Users, userRecord => userRecord.Fingerprint == managerId.Fingerprint);
+        Assert.Contains(server.Log, line => line.Contains("OVS_SERVER_ADMIN_FINGERPRINT ignored: the server already has a server admin", StringComparison.Ordinal));
+        Assert.DoesNotContain(server.Log, line => line.Contains("Server admin token", StringComparison.Ordinal));
+        Assert.Null(server.State.PendingAdminToken);
+    }
+
+    /// <summary>Package 190 (AC4): without the variable the token path of Package 181 is unchanged.</summary>
+    [Fact]
+    public async Task Preset_Unset_TokenAsBefore()
+    {
+        await using var server = await TestServer.StartAsync();
+
+        Assert.NotNull(server.State.PendingAdminToken);
+        Assert.Contains(server.Log, line => line.Contains("Server admin token: " + server.State.PendingAdminToken, StringComparison.Ordinal));
+        Assert.DoesNotContain(server.Log, line => line.Contains("OVS_SERVER_ADMIN_FINGERPRINT", StringComparison.Ordinal));
+    }
+
+    /// <summary>Package 190 (AC5): the preset is persisted data, valid for every later start.</summary>
+    [Fact]
+    public async Task Preset_RestartWithoutVariable_RoleKept()
+    {
+        using var managerId = ClientIdentity.Create();
+        var server = await TestServer.StartAsync(serverAdminFingerprint: managerId.Fingerprint);
+        await using var restarted = await server.RestartAsync();
+
+        var data = StoredData(restarted);
+        Assert.Null(data.FindProblem());
+        Assert.Contains(PermissionRules.ServerAdminGroupId, data.Users.Single(userRecord => userRecord.Fingerprint == managerId.Fingerprint).GroupIds);
+        Assert.Null(restarted.State.PendingAdminToken);
+        await using var manager = await TestClient.ConnectAsync(restarted, identity: managerId);
+        Assert.Equal(Permission.All | Permission.ServerAdminRank, manager.Welcome.Snapshot.Users.Single(userInfo => userInfo.SessionId == manager.Id).Permissions);
+    }
+
+    static ServerData StoredData(TestServer server) =>
+        new DataStore(Path.Combine(server.DataDir, DataStore.FileName)).LoadOrCreate(() => throw new InvalidOperationException("no data file"));
+
     /// <summary>Package 181 (AC3): the redeemer keeps their groups and becomes server admin, everyone hears it, the token is gone.</summary>
     [Fact]
     public async Task Redeem_ValidToken_ServerAdminClaimedTokenGone()

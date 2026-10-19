@@ -31,11 +31,11 @@ internal sealed class TestServer : IAsyncDisposable
     public static async Task<TestServer> StartAsync(
         Action<ServerData>? seed = null, string? dataDir = null, int maxUsers = 50, string password = "",
         TimeProvider? time = null, TimeSpan? idleTimeout = null, TimeSpan? handshakeTimeout = null,
-        TimeSpan? writeTimeout = null, int? maxPendingHandshakes = null, int? port = null)
+        TimeSpan? writeTimeout = null, int? maxPendingHandshakes = null, int? port = null, string? serverAdminFingerprint = null)
     {
         dataDir ??= Path.Combine(Path.GetTempPath(), "ovs-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dataDir);
-        var config = new ServerConfig(0, dataDir, maxUsers, "Testserver", password);
+        var config = new ServerConfig(0, dataDir, maxUsers, "Testserver", password) { ServerAdminFingerprint = serverAdminFingerprint };
 
         if (seed is not null)
         {

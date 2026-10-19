@@ -49,13 +49,13 @@ The server admin is a user (`UserRecord` with the group `...0c`), and today the 
 
 ### Acceptance Criteria
 
-- [ ] AC1: With a valid fingerprint and no server admin, the server creates the user (nickname empty until the first login, groups Guest and Server-Admin) or adds Server-Admin to an existing user, persists, writes the log line and prints no token.
-- [ ] AC2: With a server admin already in the data, the variable changes nothing, the server logs the "ignored" line and prints no token.
-- [ ] AC3: A value that is not 64 hex characters ends the start with a `ConfigException` naming the variable (exit code 1); upper case is accepted and stored in lower case.
-- [ ] AC4: Without the variable everything stays as in Package 181 (token at every start without a server admin).
-- [ ] AC5: The preset user passes `FindProblem` (one server admin) and keeps the role after a restart without the variable.
+- [x] AC1: With a valid fingerprint and no server admin, the server creates the user (nickname empty until the first login, groups Guest and Server-Admin) or adds Server-Admin to an existing user, persists, writes the log line and prints no token.
+- [x] AC2: With a server admin already in the data, the variable changes nothing, the server logs the "ignored" line and prints no token.
+- [x] AC3: A value that is not 64 hex characters ends the start with a `ConfigException` naming the variable (exit code 1); upper case is accepted and stored in lower case.
+- [x] AC4: Without the variable everything stays as in Package 181 (token at every start without a server admin).
+- [x] AC5: The preset user passes `FindProblem` (one server admin) and keeps the role after a restart without the variable.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `ServerConfigTests > "ServerAdminFingerprint_Valid_ReadLowerCase"` and `"ServerAdminFingerprint_NotHex_ConfigException"` - AC3
 2. `AdminCommandTests > "Preset_NoServerAdmin_UserCreatedInServerAdminNoToken"` - AC1
@@ -63,6 +63,8 @@ The server admin is a user (`UserRecord` with the group `...0c`), and today the 
 4. `AdminCommandTests > "Preset_ServerAdminExists_IgnoredLineNoToken"` - AC2
 5. `AdminCommandTests > "Preset_Unset_TokenAsBefore"` - AC4
 6. `AdminCommandTests > "Preset_RestartWithoutVariable_RoleKept"` - AC5
+
+(as built: `ServerAdminPreset` is a static class with `Apply`; `ServerState.ApplyServerAdminPreset` saves the data at once and logs. The README table and the note on lasting variables name `OVS_SERVER_ADMIN_FINGERPRINT`; `TestServer.StartAsync` takes the fingerprint.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s` (covers rule-lint too)
 

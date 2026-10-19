@@ -86,6 +86,7 @@ internal sealed partial class ServerState
         HintIgnoredStartValues();
         EndMutes(); // Package 166: an end that passed while the server was down, and the timer of the next
         ScheduleAfkCheck(); // Package 169
+        ApplyServerAdminPreset();
         if (!HasServerAdmin) // Package 181 (A192): also when admins exist
         {
             // The token is a secret: console only, never in a log file (files end up in backups).
@@ -94,6 +95,19 @@ internal sealed partial class ServerState
             #pragma warning restore CA1873
             logs.Server.AdminTokenCreated();
         }
+    }
+
+    /// <summary>Package 190 (A202): before the token check, so a preset server admin gets no token.</summary>
+    void ApplyServerAdminPreset()
+    {
+        if (config.ServerAdminFingerprint is not { } fingerprint) return;
+        if (!ServerAdminPreset.Apply(data, fingerprint, time.GetUtcNow()))
+        {
+            logs.Server.ServerAdminPresetIgnored();
+            return;
+        }
+        store.Save(data);
+        logs.Server.ServerAdminPreset(fingerprint);
     }
 
     /// <summary>The server admin token while nobody redeemed it.</summary>

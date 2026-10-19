@@ -165,6 +165,25 @@ public sealed class ServerConfigTests : IDisposable
         Assert.Contains(ServerConfig.FileName, exception.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>Package 190 (AC3): the manager's fingerprint, stored the way the handshake writes fingerprints.</summary>
+    [Fact]
+    public void ServerAdminFingerprint_Valid_ReadLowerCase()
+    {
+        var prefix = new string('a', 32) + new string('0', 31);
+        Assert.Null(ServerConfig.Load(Env()).ServerAdminFingerprint);
+        Assert.Equal(prefix + "f", ServerConfig.Load(Env(("OVS_SERVER_ADMIN_FINGERPRINT", $" {prefix}F "))).ServerAdminFingerprint);
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("zz00000000000000000000000000000000000000000000000000000000000000")]
+    [InlineData("00000000000000000000000000000000000000000000000000000000000000000")]
+    public void ServerAdminFingerprint_NotHex_ConfigException(string value)
+    {
+        var exception = Assert.Throws<ConfigException>(() => ServerConfig.Load(Env(("OVS_SERVER_ADMIN_FINGERPRINT", value))));
+        Assert.Contains("OVS_SERVER_ADMIN_FINGERPRINT", exception.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>Package 69: after the first start the values live in server-data.json; a differing variable is only noted.</summary>
     [Fact]
     public void Start_EnvDiffersFromStored_HintInLog()

@@ -51,7 +51,7 @@ Wenn UDP hinter Docker-NAT Probleme macht, kannst du in `docker-compose.yml` `ne
 
 Du setzt sie in `docker-compose.yml` unter `environment:`, dort stehen alle als Kommentar. Übernommen werden Änderungen mit `docker compose up -d`. Ein ungültiger Wert beendet den Server mit einer Fehlermeldung in `docker compose logs`.
 
-Nur `OVS_PORT`, `OVS_DATA_DIR` und `TZ` gehören dauerhaft zur Umgebung. Alle anderen sind **Startwerte**: Der Server übernimmt sie beim allerersten Start (bzw. einmal beim Update auf diese Version) in `server-data.json`. Danach änderst du sie im Client unter Verwaltung, Übersicht bzw. Betrieb, und sie wirken sofort. Ein später gesetzter abweichender Wert wird ignoriert, beim Start steht dazu ein Hinweis im Log.
+Nur `OVS_PORT`, `OVS_DATA_DIR`, `OVS_SERVER_ADMIN_FINGERPRINT` und `TZ` gehören dauerhaft zur Umgebung. Alle anderen sind **Startwerte**: Der Server übernimmt sie beim allerersten Start (bzw. einmal beim Update auf diese Version) in `server-data.json`. Danach änderst du sie im Client unter Verwaltung, Übersicht bzw. Betrieb, und sie wirken sofort. Ein später gesetzter abweichender Wert wird ignoriert, beim Start steht dazu ein Hinweis im Log.
 
 | Variable | Standard | Bedeutung |
 |---|---|---|
@@ -64,6 +64,7 @@ Nur `OVS_PORT`, `OVS_DATA_DIR` und `TZ` gehören dauerhaft zur Umgebung. Alle an
 | `OVS_LOG_ROTATE_DAILY` | `true` | Startwert. `true`: nach 00:00:00 beginnen neue Logdateien. `false`: die Dateien laufen bis zum nächsten Start weiter. |
 | `OVS_AUTO_RESTART` | `false` | Startwert: täglicher automatischer Neustart an (`true`) oder aus (`false`). Auch `1`/`0` und `an`/`aus` gehen. |
 | `OVS_AUTO_RESTART_TIME` | `04:00:00` | Startwert: Uhrzeit des Neustarts im Format `hh:mm:ss` |
+| `OVS_SERVER_ADMIN_FINGERPRINT` | leer | Fingerprint einer Identität (64 Hex-Zeichen), die beim Start Server-Admin wird, solange es noch keinen gibt; dann gibt es kein Token. Mit vorhandenem Server-Admin ändert sie nichts und darf gesetzt bleiben. Das Verwaltungstool setzt sie selbst. |
 | `TZ` | `UTC` im Container | Zeitzone für Neustart-Uhrzeit, Tageswechsel der Logs und Zeitstempel, z. B. `Europe/Berlin` (in der Compose-Datei gesetzt) |
 
 Für die Startwerte und den Port haben Umgebungsvariablen Vorrang vor `server-config.json`

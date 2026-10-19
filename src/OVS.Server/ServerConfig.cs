@@ -35,6 +35,9 @@ internal sealed record ServerConfig(
     /// <summary>Package 69: names of the start values that were set in the environment or the file, for the hint at startup.</summary>
     public IReadOnlySet<string> GivenStartValues { get; init; } = new HashSet<string>();
 
+    /// <summary>Package 190 (A202): the fingerprint made server admin while nobody is, in lower case; null when not set.</summary>
+    public string? ServerAdminFingerprint { get; init; }
+
     /// <summary>Reads the environment, then server-config.json, then the defaults; throws ConfigException for an invalid value.</summary>
     public static ServerConfig Load(Func<string, string?> getEnv)
     {
@@ -78,7 +81,20 @@ internal sealed record ServerConfig(
         {
             AutoRestartTime = restartTime,
             GivenStartValues = given,
+            ServerAdminFingerprint = Fingerprint("OVS_SERVER_ADMIN_FINGERPRINT", getEnv("OVS_SERVER_ADMIN_FINGERPRINT")),
         };
+    }
+
+    /// <summary>Package 190: a SHA-256 fingerprint as 64 hex characters, stored in lower case like the handshake's.</summary>
+    static string? Fingerprint(string name, string? env)
+    {
+        if (env is null) return null;
+#pragma warning disable CA1308 // the handshake writes fingerprints in lower case; upper case would never match a user record
+        var value = env.Trim().ToLowerInvariant();
+#pragma warning restore CA1308
+        if (value.Length != 64 || !value.All(char.IsAsciiHexDigitLower))
+            throw new ConfigException($"{name} must be a fingerprint of 64 hex characters, but is '{env}'.");
+        return value;
     }
 
     static FileValues ReadFile(string path)

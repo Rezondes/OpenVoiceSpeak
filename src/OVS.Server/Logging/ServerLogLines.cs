@@ -76,6 +76,13 @@ static partial class ServerLogLines
     public static partial void AdminTokenCreated(this ILogger logger);
 #pragma warning restore SYSLIB1025
 
+    /// <summary>Package 190: the fingerprint is no secret, it only names who may become server admin.</summary>
+    [LoggerMessage(Level = LogLevel.Information, Message = "Server admin set from OVS_SERVER_ADMIN_FINGERPRINT ({Fingerprint})")]
+    public static partial void ServerAdminPreset(this ILogger logger, string fingerprint);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "OVS_SERVER_ADMIN_FINGERPRINT ignored: the server already has a server admin")]
+    public static partial void ServerAdminPresetIgnored(this ILogger logger);
+
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Note: {Key}={Given} is ignored, the stored value {Stored} applies (change it in the administration under Server)")]
     public static partial void StartValueIgnored(this ILogger logger, string key, string given, string stored);

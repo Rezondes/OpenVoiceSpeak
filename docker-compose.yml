@@ -18,7 +18,8 @@ services:
       # OVS_AUTO_RESTART_TIME: "04:00:00"  # Uhrzeit des Neustarts (hh:mm:ss)
       # OVS_LOG_ROTATE_DAILY: "true"       # nach 00:00:00 neue Logdateien beginnen
       # OVS_LOG_DAYS: "30"                 # Aufbewahrung der Logs in Tagen, 0 = unbegrenzt
-      TZ: "Europe/Berlin"   # Zeitzone für Neustart-Uhrzeit, Tageswechsel und Zeitstempel (ohne: UTC)
+      # OVS_SERVER_ADMIN_FINGERPRINT: ""   # Fingerprint (64 Hex-Zeichen), der Server-Admin wird, solange es keinen gibt (statt Token)
+      TZ: "Europe/Berlin"  # Zeitzone für Neustart-Uhrzeit, Tageswechsel und Zeitstempel (ohne: UTC)
       # Telemetrie, optional: ohne OTEL_EXPORTER_OTLP_ENDPOINT exportiert der Server nichts.
       # OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"  # OTLP-Backend (Collector, Grafana, Aspire, Jaeger, Seq ...)
       # OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"                        # oder "http/protobuf" (dann meist Port 4318)
