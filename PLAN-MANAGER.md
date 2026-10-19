@@ -1378,17 +1378,19 @@ The API reuses the lifecycle and update services and the access policy of M10; i
 
 ### Acceptance Criteria
 
-- [ ] AC1: A user creates a token with name and expiry; it is shown once and stored only as a hash; it can be revoked.
-- [ ] AC2: `GET /api/servers`, `POST /api/servers/{id}/start|stop|restart|update` work with `Authorization: Bearer`, limited to the token owner's servers.
-- [ ] AC3: Every API call writes an audit line naming the token.
-- [ ] AC4: An OpenAPI document lies at `/api/openapi.json`.
+- [x] AC1: A user creates a token with name and expiry; it is shown once and stored only as a hash; it can be revoked.
+- [x] AC2: `GET /api/servers`, `POST /api/servers/{id}/start|stop|restart|update` work with `Authorization: Bearer`, limited to the token owner's servers.
+- [x] AC3: Every API call writes an audit line naming the token.
+- [x] AC4: An OpenAPI document lies at `/api/openapi.json`.
 
 ### Planned tests (TDD)
 
-1. `ServerEndpointsTests > "Token_ShownOnceHashedRevoked"` - AC1
-2. `ServerEndpointsTests > "Endpoints_OwnServersOnly"` - AC2
-3. `ServerEndpointsTests > "Call_AuditWithToken"` - AC3
-4. `ServerEndpointsTests > "OpenApi_Served"` - AC4
+1. `ServerEndpointsTests > "Token_Created_ShownOnceHashedRevoked"` - AC1
+2. `ServerEndpointsTests > "Endpoints_OtherServer_Forbidden"` - AC2
+3. `ServerEndpointsTests > "Call_WithToken_AuditNamesToken"` - AC3
+4. `ServerEndpointsTests > "OpenApi_Get_ListsEveryPath"` - AC4
+
+(as built: `/profile/api-tokens` (`ApiTokenPage`, linked from the profile) makes a token with a name and 1 to 3650 days; the secret `ovs_` plus 32 random bytes is shown once, the table `ApiTokens` (migration `AddApiTokens`) keeps only its SHA-256, and a token is revoked by removing it; a deleted account takes its tokens along. `ApiTokenHandler` is a second scheme used only by `/api`: a valid token of an account that is not locked signs in as that user with their roles. `ServerEndpoints` serve `GET /api/servers` (the servers the user sees, as the overview has them) and `POST /api/servers/{id}/start|stop|restart|update` (update without `?version=` takes the newest offer) behind the access policy of M10, so another server is 403 and no token 401. A filter writes `ApiCalled` with the token's name, method, path and status after each authorised call; the lifecycle and update write their own lines as the user. `/api/openapi.json` is a hand-written OpenAPI 3.0 document embedded in the manager, readable without a token; no OpenAPI package was added for five paths.)
 
 ### Steps
 

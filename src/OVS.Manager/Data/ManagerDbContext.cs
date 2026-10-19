@@ -49,6 +49,9 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
     /// <summary>Package M18: the maintenance window of each server with automatic updates.</summary>
     public DbSet<UpdateWindow> UpdateWindows => Set<UpdateWindow>();
 
+    /// <summary>Package M31: the users' API tokens.</summary>
+    public DbSet<Api.ApiToken> ApiTokens => Set<Api.ApiToken>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -74,6 +77,14 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
             rule.HasOne<ManagerUser>().WithMany().HasForeignKey(value => value.UserId).OnDelete(DeleteBehavior.Cascade);
         });
         builder.Entity<ManagerSetting>().HasKey(setting => setting.Key);
+        builder.Entity<Api.ApiToken>(token =>
+        {
+            token.HasKey(value => value.Id);
+            token.HasIndex(value => value.Hash).IsUnique();
+            token.Property(value => value.CreatedAtUtc).HasConversion(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
+            token.Property(value => value.ExpiresAtUtc).HasConversion(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
+            token.HasOne<ManagerUser>().WithMany().HasForeignKey(value => value.UserId).OnDelete(DeleteBehavior.Cascade); // a deleted account takes its tokens along
+        });
         builder.Entity<Notifications.AlertState>(state =>
         {
             state.HasKey(value => new { value.Key, value.Event });

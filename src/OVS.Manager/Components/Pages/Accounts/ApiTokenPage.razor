@@ -1,0 +1,43 @@
+@page "/profile/api-tokens"
+
+<h1>@Strings.ApiTokens_Title</h1>
+<p>@Strings.ApiTokens_Intro</p>
+@if (Secret is not null)
+{
+    <p class="form-ok" role="status">@Strings.ApiTokens_ShownOnce</p>
+    <p><kbd data-secret>@Secret</kbd></p>
+}
+@if (Error is not null)
+{
+    <p class="form-error" role="alert">@Error</p>
+}
+<EditForm Model="CreateModel" FormName="create-token" OnValidSubmit="CreateAsync" class="account-form">
+    <label>@Strings.ApiTokens_Name <InputText @bind-Value="CreateModel!.Name" maxlength="50" /></label>
+    <label>@Strings.ApiTokens_Days <InputNumber @bind-Value="CreateModel!.Days" min="1" max="3650" /></label>
+    <button type="submit">@Strings.ApiTokens_Create</button>
+</EditForm>
+@if (Tokens.Count > 0)
+{
+    <table class="list">
+        <thead>
+            <tr><th>@Strings.ApiTokens_Name</th><th>@Strings.ApiTokens_Created</th><th>@Strings.ApiTokens_Expires</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var token in Tokens)
+            {
+                <tr data-token="@token.Id"><td>@token.Name</td><td>@LocalTime(token.CreatedAtUtc)</td><td>@LocalTime(token.ExpiresAtUtc)</td></tr>
+            }
+        </tbody>
+    </table>
+    <EditForm Model="RevokeModel" FormName="revoke-token" OnValidSubmit="RevokeAsync" class="account-form">
+        <label>@Strings.ApiTokens_Which
+            <InputSelect @bind-Value="RevokeModel!.TokenId">
+                @foreach (var token in Tokens)
+                {
+                    <option value="@token.Id">@token.Name</option>
+                }
+            </InputSelect>
+        </label>
+        <button type="submit">@Strings.ApiTokens_Revoke</button>
+    </EditForm>
+}

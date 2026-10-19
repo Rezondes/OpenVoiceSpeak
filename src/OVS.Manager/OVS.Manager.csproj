@@ -39,6 +39,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Api\openapi.json" LogicalName="OVS.Manager.Api.openapi.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="OVS.Tests" />
   </ItemGroup>
 

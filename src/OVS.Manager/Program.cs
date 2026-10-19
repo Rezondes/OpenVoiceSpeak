@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -5,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OVS.Manager;
 using OVS.Manager.Accounts;
+using OVS.Manager.Api;
 using OVS.Manager.Appearance;
 using OVS.Manager.Audit;
 using OVS.Manager.Components;
@@ -68,7 +70,11 @@ builder.Services.AddAuthorization(authorization =>
 {
     authorization.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
     authorization.AddPolicy(ServerAccessHandler.Policy, policy => policy.RequireAuthenticatedUser().AddRequirements(new ServerAccessRequirement()));
+    ServerEndpoints.AddPolicies(authorization); // Package M31
 });
+// Package M31: API tokens as a second scheme, used only by /api
+builder.Services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, ApiTokenHandler>(ApiTokenHandler.SchemeName, null);
+builder.Services.AddScoped<ApiTokenStore>();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddSingleton<IDockerEngine, DockerEngine>(); // Package M6: Docker only through the socket proxy
 builder.Services.AddSingleton<FirstAdmin>();
@@ -159,5 +165,6 @@ AccountEndpoints.Map(app);
 AuditEndpoints.Map(app);
 BackupEndpoints.Map(app);
 LogEndpoints.Map(app);
+ServerEndpoints.Map(app);
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 await app.RunAsync();

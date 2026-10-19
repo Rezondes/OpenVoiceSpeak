@@ -258,6 +258,39 @@ namespace OVS.Manager.Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("OVS.Manager.Api.ApiToken", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ApiTokens");
+                });
+
             modelBuilder.Entity("OVS.Manager.Audit.AuditEntry", b =>
                 {
                     b.Property<long>("Id")
@@ -568,6 +601,15 @@ namespace OVS.Manager.Data.Migrations
                 });
 
             modelBuilder.Entity("OVS.Manager.Accounts.ManagerSession", b =>
+                {
+                    b.HasOne("OVS.Manager.Accounts.ManagerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OVS.Manager.Api.ApiToken", b =>
                 {
                     b.HasOne("OVS.Manager.Accounts.ManagerUser", null)
                         .WithMany()

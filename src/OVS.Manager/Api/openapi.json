@@ -1,0 +1,71 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "OpenVoiceSpeak Manager API", "version": "1" },
+  "components": {
+    "securitySchemes": { "token": { "type": "http", "scheme": "bearer", "description": "An API token from /profile/api-tokens." } },
+    "schemas": {
+      "Server": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "port": { "type": "integer" },
+          "version": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      }
+    },
+    "parameters": {
+      "id": { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+    },
+    "responses": {
+      "done": { "description": "Done." },
+      "unauthorized": { "description": "No valid token." },
+      "forbidden": { "description": "Not one of the token user's servers." },
+      "refused": { "description": "Not done, with the reason as problem details." }
+    }
+  },
+  "security": [ { "token": [] } ],
+  "paths": {
+    "/api/servers": {
+      "get": {
+        "summary": "The servers the token's user sees.",
+        "responses": {
+          "200": { "description": "The servers.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Server" } } } } },
+          "401": { "$ref": "#/components/responses/unauthorized" }
+        }
+      }
+    },
+    "/api/servers/{id}/start": {
+      "post": {
+        "summary": "Starts the server.",
+        "parameters": [ { "$ref": "#/components/parameters/id" } ],
+        "responses": { "204": { "$ref": "#/components/responses/done" }, "401": { "$ref": "#/components/responses/unauthorized" }, "403": { "$ref": "#/components/responses/forbidden" }, "409": { "$ref": "#/components/responses/refused" } }
+      }
+    },
+    "/api/servers/{id}/stop": {
+      "post": {
+        "summary": "Stops the server.",
+        "parameters": [ { "$ref": "#/components/parameters/id" } ],
+        "responses": { "204": { "$ref": "#/components/responses/done" }, "401": { "$ref": "#/components/responses/unauthorized" }, "403": { "$ref": "#/components/responses/forbidden" }, "409": { "$ref": "#/components/responses/refused" } }
+      }
+    },
+    "/api/servers/{id}/restart": {
+      "post": {
+        "summary": "Restarts the server.",
+        "parameters": [ { "$ref": "#/components/parameters/id" } ],
+        "responses": { "204": { "$ref": "#/components/responses/done" }, "401": { "$ref": "#/components/responses/unauthorized" }, "403": { "$ref": "#/components/responses/forbidden" }, "409": { "$ref": "#/components/responses/refused" } }
+      }
+    },
+    "/api/servers/{id}/update": {
+      "post": {
+        "summary": "Updates the server, with a backup before and a rollback when the new version does not come up.",
+        "parameters": [
+          { "$ref": "#/components/parameters/id" },
+          { "name": "version", "in": "query", "required": false, "description": "The version; the newest offer without it.", "schema": { "type": "string" } }
+        ],
+        "responses": { "204": { "$ref": "#/components/responses/done" }, "401": { "$ref": "#/components/responses/unauthorized" }, "403": { "$ref": "#/components/responses/forbidden" }, "409": { "$ref": "#/components/responses/refused" } }
+      }
+    }
+  }
+}

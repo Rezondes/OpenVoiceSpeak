@@ -105,6 +105,12 @@ internal static class AuditActions
     public const string ServerUpdateFailed = "ServerUpdateFailed";
     /// <summary>A server's maintenance window changed (M18); the target is "on" or "off".</summary>
     public const string UpdateWindowChanged = "UpdateWindowChanged";
+    /// <summary>A user made an API token (M31); the target is its name.</summary>
+    public const string ApiTokenCreated = "ApiTokenCreated";
+    /// <summary>A user revoked an API token (M31).</summary>
+    public const string ApiTokenRevoked = "ApiTokenRevoked";
+    /// <summary>A call of the REST API (M31); the target is the token's name, the detail method, path and status.</summary>
+    public const string ApiCalled = "ApiCalled";
     /// <summary>A new server got the contents of another (M30); the detail is "source -> clone".</summary>
     public const string ServerCloned = "ServerCloned";
     /// <summary>A foreign OVS container was adopted (M29); the detail is "old -> new" container.</summary>
