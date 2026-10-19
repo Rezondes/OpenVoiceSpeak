@@ -34,6 +34,43 @@ public sealed class ServerMetricsTests() : TempDirectoryTest("ovs-metrics-", qui
         await AsyncWait.UntilAsync(() => Online() == 0);
     }
 
+    /// <summary>Package 192 (AC1): the manager draws "Verbindungen pro Tag" from this counter.</summary>
+    [Fact]
+    public async Task Connections_AdmittedCounted_RefusedNot()
+    {
+        using var annaId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(password: "pw");
+        using var metrics = new MetricRecorder(server.State.Metrics.Meter);
+        await using (await TestClient.ConnectAsync(server, "anna", annaId, password: "pw")) { }
+        await using var bert = await TestClient.OpenAsync(server.Port);
+        Assert.IsType<Rejected>(await bert.HandshakeAsync("bert", "falsch"));
+        await using var anna = await TestClient.ConnectAsync(server, "anna", annaId, password: "pw");
+
+        Assert.Equal(2, metrics.Sum("ovs.connections"));
+        Assert.Equal(1, metrics.Sum("ovs.admission.rejections", (ServerTelemetry.ResultTag, ReasonCodes.WrongPassword)));
+    }
+
+    /// <summary>Package 192 (AC5, A204): only counts leave the server; the manager's own session is no user.</summary>
+    [Fact]
+    public async Task DailyUsers_NoPersonalTags_ServiceNotCounted()
+    {
+        using var managerId = ClientIdentity.Create();
+        using var annaId = ClientIdentity.Create();
+        await using var server = await TestServer.StartAsync(TestServer.Grant(managerId, "Server-Admin"));
+        using var metrics = new MetricRecorder(server.State.Metrics.Meter);
+        await using (await TestClient.ConnectAsync(server, "anna", annaId)) { }
+        await using var anna = await TestClient.ConnectAsync(server, "anna", annaId);
+        await using var bert = await TestClient.ConnectAsync(server, "bert");
+        await using var manager = await TestClient.ConnectAsync(server, "Serververwaltung", managerId, service: true);
+
+        metrics.Collect();
+        Assert.Equal(2, metrics.Of("ovs.users.daily")[^1].Value);
+        Assert.Equal(2, metrics.Of("ovs.users.daily.new")[^1].Value); // anna and bert were first seen today, the manager is not counted
+        Assert.Equal(3, metrics.Sum("ovs.connections"));
+        Assert.All(metrics.Measurements.Where(measured => measured.Name is "ovs.connections" or "ovs.users.daily" or "ovs.users.daily.new"),
+            measured => Assert.Empty(measured.Tags));
+    }
+
     /// <summary>Package 191 (AC5): the manager's service session is no user online.</summary>
     [Fact]
     public async Task Sessions_Service_NotCounted()

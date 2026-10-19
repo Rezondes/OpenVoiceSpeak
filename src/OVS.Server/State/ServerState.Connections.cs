@@ -126,6 +126,8 @@ internal sealed partial class ServerState
                 return new Admission(session, null);
             }
             voiceSessions[session.Id] = session;
+            Metrics.Connected(); // Package 192: a service session (191) counts as neither
+            dailyUsers.Add(fingerprint, user.FirstSeen);
             session.Outbox.Send(new Welcome(session.Id, Convert.ToBase64String(session.VoiceKey), Snapshot(session)));
             foreach (var other in sessions.Values)
                 if (other != session) other.Outbox.Send(new UserJoined(Info(session, other))); // Package 92: per recipient

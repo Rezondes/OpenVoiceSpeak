@@ -159,19 +159,21 @@ Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 
 ### Acceptance Criteria
 
-- [ ] AC1: Every admitted session adds 1 to `ovs.connections`; a refused hello does not (it stays in `ovs.admission.rejections`).
-- [ ] AC2: `ovs.users.daily` is the number of different fingerprints admitted since local midnight; the same user connecting twice counts once.
-- [ ] AC3: `ovs.users.daily.new` counts the users of today whose `FirstSeen` is today.
-- [ ] AC4: At local midnight both gauges start at 0 again (time from the run's `TimeProvider`, one clock); a restart starts at 0 as well (memory only).
-- [ ] AC5: No instrument carries a fingerprint, nickname or IP as a tag; service sessions (191) are not counted.
+- [x] AC1: Every admitted session adds 1 to `ovs.connections`; a refused hello does not (it stays in `ovs.admission.rejections`).
+- [x] AC2: `ovs.users.daily` is the number of different fingerprints admitted since local midnight; the same user connecting twice counts once.
+- [x] AC3: `ovs.users.daily.new` counts the users of today whose `FirstSeen` is today.
+- [x] AC4: At local midnight both gauges start at 0 again (time from the run's `TimeProvider`, one clock); a restart starts at 0 as well (memory only).
+- [x] AC5: No instrument carries a fingerprint, nickname or IP as a tag; service sessions (191) are not counted.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `ServerMetricsTests > "Connections_AdmittedCounted_RefusedNot"` - AC1
 2. `DailyUsersTests > "Add_SameFingerprintTwice_CountsOnce"` - AC2
 3. `DailyUsersTests > "Add_FirstSeenToday_CountsAsNew"` - AC3
 4. `DailyUsersTests > "Midnight_LocalTime_StartsAtZero"` (with `ManualTimeProvider` and a non-UTC zone) - AC4
 5. `ServerMetricsTests > "DailyUsers_NoPersonalTags_ServiceNotCounted"` - AC5
+
+(as built: `DailyUsers` keeps today's fingerprints and the new ones in two sets under its own lock, since the gauges are read from the exporter's thread; it notices the new local day on its next read or add, so no timer is needed. `ServerMetrics.Connected` and `ObserveDailyUsers` add the instruments; `ServerState.Admit` reports each admitted normal session after it joined, a service session (191) is neither a connection nor a user.)
 
 Test command: `dotnet test OpenVoiceSpeak.slnx --blame-hang-timeout 60s`
 

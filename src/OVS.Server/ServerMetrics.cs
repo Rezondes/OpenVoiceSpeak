@@ -33,7 +33,7 @@ internal sealed class ServerMetrics : IDisposable
     /// <summary>A packet that is no valid voice of a session.</summary>
     public const string Invalid = "invalid";
 
-    readonly Counter<long> requests, voicePackets, voiceBytes, voiceDrops, outboxAborts, rejections, controlFrames, controlBytes, chatMessages;
+    readonly Counter<long> requests, voicePackets, voiceBytes, voiceDrops, outboxAborts, rejections, controlFrames, controlBytes, chatMessages, connections;
     readonly Histogram<int> chatSize;
 
     /// <summary>Makes the run's meter and its instruments.</summary>
@@ -50,6 +50,7 @@ internal sealed class ServerMetrics : IDisposable
         controlBytes = Meter.CreateCounter<long>("ovs.control.bytes", "By", "Control bytes by message type and direction");
         chatMessages = Meter.CreateCounter<long>("ovs.chat.messages", "{message}", "Delivered chat messages; channel messages by channel id");
         chatSize = Meter.CreateHistogram<int>("ovs.chat.message.size", "By", "Size of delivered chat messages in UTF-8 bytes");
+        connections = Meter.CreateCounter<long>("ovs.connections", "{session}", "Admitted sessions"); // Package 192
     }
 
     /// <summary>The run's meter; tests listen to exactly this one.</summary>
@@ -61,6 +62,16 @@ internal sealed class ServerMetrics : IDisposable
     /// <summary>One handled request and its result (<see cref="ServerTelemetry.ResultOk"/> or the error code).</summary>
     public void Request(string type, string result) =>
         requests.Add(1, new KeyValuePair<string, object?>(ServerTelemetry.RequestTypeTag, type), new KeyValuePair<string, object?>(ServerTelemetry.ResultTag, result));
+
+    /// <summary>Package 192 (A204): the users of the local day, counts only, never a fingerprint.</summary>
+    public void ObserveDailyUsers(DailyUsers users)
+    {
+        Meter.CreateObservableGauge("ovs.users.daily", () => users.Count, "{user}", "Different users admitted since local midnight");
+        Meter.CreateObservableGauge("ovs.users.daily.new", () => users.NewCount, "{user}", "Users of today first seen today");
+    }
+
+    /// <summary>Package 192: one admitted session; a refused hello counts in <c>ovs.admission.rejections</c> instead.</summary>
+    public void Connected() => connections.Add(1);
 
     /// <summary>One refused hello.</summary>
     public void Rejected(string code) => rejections.Add(1, new KeyValuePair<string, object?>(ServerTelemetry.ResultTag, code));

@@ -54,7 +54,8 @@ internal sealed partial class ServerState
     DateTimeOffset nextPrune; // the next daily prune of unused guests, checked on each save
     readonly AdminToken adminToken = new();
     uint lastSessionId;
-    int serviceSessionCount; // Package 191: so the session gauge leaves them out without reading the sessions outside the lock
+    int serviceSessionCount;
+    readonly DailyUsers dailyUsers; // Package 192 // Package 191: so the session gauge leaves them out without reading the sessions outside the lock
     string? closedWith; // set by CloseAll: the reason every later handshake is rejected with
 
     /// <param name="stores">From <see cref="ServerStores.Open"/>, so the crash cleanups have run.</param>
@@ -80,6 +81,8 @@ internal sealed partial class ServerState
         Metrics = metrics;
         // ponytail: read without the lock, an int read is atomic and the gauge only samples (two reads may be off by one for a moment)
         metrics.ObserveSessions(() => sessions.Count - serviceSessionCount);
+        dailyUsers = new DailyUsers(time);
+        metrics.ObserveDailyUsers(dailyUsers);
         data = store.LoadOrCreate(() => ServerData.CreateDefault(config));
         saves = new SaveScheduler(gate, WriteData, time, logs.Server);
         bool pruned = PruneGuests(time.GetUtcNow());
