@@ -30,6 +30,11 @@ public sealed class TypeFileRuleTests
     public void Check_CodeBehindOfAView_FindsNothing() =>
         Assert.Empty(LintCase.ListRuleIds(Rule, "src/App/Views/MainWindow.axaml.cs", "namespace App.Views;\npartial class MainWindow { }"));
 
+    /// <summary>Package M1: the code-behind of a Blazor component.</summary>
+    [Fact]
+    public void Check_RazorCodeBehind_FindsNothing() =>
+        Assert.Empty(LintCase.ListRuleIds(Rule, "src/App/Components/Overview.razor.cs", "namespace App.Components;\npartial class Overview { }"));
+
     [Fact]
     public void Check_FileWithoutTypes_FindsNothing() =>
         Assert.Empty(LintCase.ListRuleIds(Rule, "src/App/Program.cs", "System.Console.WriteLine(1);"));

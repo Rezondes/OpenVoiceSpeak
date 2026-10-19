@@ -28,7 +28,7 @@ internal sealed class LintSettings
 
     /// <summary>The extensions of the text files the em dash rule reads anywhere in the repository (rule 18).</summary>
     public List<string> TextExtensions { get; init; } =
-        [".cs", ".axaml", ".md", ".resx", ".json", ".yml", ".yaml", ".props", ".targets", ".csproj", ".slnx", ".xml", ".txt", ".html", ".css", ".js", ".ps1", ".sh"];
+        [".cs", ".axaml", ".razor", ".md", ".resx", ".json", ".yml", ".yaml", ".props", ".targets", ".csproj", ".slnx", ".xml", ".txt", ".html", ".css", ".js", ".ps1", ".sh"];
 
     /// <summary>Folder names the <c>.gitignore</c> ignores at any depth (rule 7), compared ignoring case.</summary>
     public List<string> IgnoredFolderNames { get; init; } = ["Log", "Logs", "Debug", "Release", "bin", "obj", "x64", "artifacts", "publish", "Generated_Code"];

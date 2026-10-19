@@ -37,6 +37,11 @@ public sealed class PartialTypeRuleTests
         Assert.Contains(findings, finding => finding.RuleId == "RL042");
     }
 
+    /// <summary>Package M1: a Blazor component keeps its logic in <c>X.razor.cs</c>, like a view's <c>X.axaml.cs</c>.</summary>
+    [Fact]
+    public void Check_RazorCodeBehind_FindsNothing() =>
+        Assert.Empty(LintCase.ListRuleIds(Rule, "src/App/Components/Overview.razor.cs", "namespace App.Components;\npartial class Overview { }"));
+
     [Fact]
     public void Check_GeneratorPartialInOneFile_FindsNothing() =>
         Assert.Empty(LintCase.ListRuleIds(Rule, "src/App/Shop.cs", "namespace App;\npartial class Shop { }"));

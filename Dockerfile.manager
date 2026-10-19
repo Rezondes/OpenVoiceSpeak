@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1
+# Package M1: the web manager's image for linux/amd64 and linux/arm64:
+#   docker buildx build --platform linux/amd64,linux/arm64 -f Dockerfile.manager -t openvoicespeak/manager:dev .
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG TARGETARCH
+# The release workflow passes the build data so the manager carries the same version as the server (Package 42).
+ARG OVS_BUILD_TIME=""
+ARG GITHUB_SHA=""
+ARG GITHUB_ACTIONS=""
+WORKDIR /src
+COPY nuget.config Directory.Build.props .editorconfig ./
+COPY src/OVS.Shared/OVS.Shared.csproj src/OVS.Shared/
+COPY src/OVS.Manager/OVS.Manager.csproj src/OVS.Manager/
+RUN dotnet restore src/OVS.Manager/OVS.Manager.csproj -a $TARGETARCH
+COPY src/OVS.Shared/ src/OVS.Shared/
+COPY src/OVS.Manager/ src/OVS.Manager/
+RUN dotnet publish src/OVS.Manager/OVS.Manager.csproj -c Release -a $TARGETARCH --no-restore -o /app
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+LABEL org.opencontainers.image.source="https://github.com/Rezondes/OpenVoiceSpeak"
+LABEL org.opencontainers.image.description="OpenVoiceSpeak manager: creates, runs and watches OVS servers"
+# Named volumes inherit this ownership on first mount, so the non-root user can write /data (database, keys).
+RUN mkdir /data && chown $APP_UID /data
+ENV OVS_MANAGER_DATA_DIR=/data
+ENV ASPNETCORE_HTTP_PORTS=6999
+VOLUME /data
+EXPOSE 6999/tcp
+USER $APP_UID
+WORKDIR /app
+COPY --from=build /app .
+ENTRYPOINT ["dotnet", "OVS.Manager.dll"]

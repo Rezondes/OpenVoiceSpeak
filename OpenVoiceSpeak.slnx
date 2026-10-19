@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/OVS.Client/OVS.Client.csproj" />
+    <Project Path="src/OVS.Manager/OVS.Manager.csproj" />
     <Project Path="src/OVS.Server/OVS.Server.csproj" />
     <Project Path="src/OVS.Shared/OVS.Shared.csproj" />
   </Folder>

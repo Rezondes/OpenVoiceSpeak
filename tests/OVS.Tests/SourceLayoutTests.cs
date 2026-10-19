@@ -18,7 +18,19 @@ public sealed class SourceLayoutTests() : TempDirectoryTest("ovs-layout-", quiet
         Assert.Empty(Ours(typeof(OVS.Shared.BuildInfo)));
         Assert.Equal(["OVS.Shared"], Ours(typeof(OVS.Server.ServerHost)));
         Assert.Equal(["OVS.Shared"], Ours(typeof(OVS.Client.ClientOptions)));
-        Assert.Equal(["OVS.Client", "OVS.Server", "OVS.Shared"], Ours(typeof(SourceLayoutTests)));
+        Assert.Equal(["OVS.Shared"], Ours(typeof(OVS.Manager.ManagerOptions))); // Package M1: the manager uses the protocol code through Shared only
+        Assert.Equal(["OVS.Client", "OVS.Manager", "OVS.Server", "OVS.Shared"], Ours(typeof(SourceLayoutTests)));
+    }
+
+    /// <summary>Package M1 (AC4): every project under src is read, the manager too, and a Blazor code-behind counts like a view's.</summary>
+    [Fact]
+    public void Projects_Ours_AreChecked()
+    {
+        Assert.Equal(["src/OVS.Client", "src/OVS.Manager", "src/OVS.Server", "src/OVS.Shared"],
+            SourceLayout.ListProjects(RepoPaths.Root).Where(project => project.StartsWith("src/", StringComparison.Ordinal)));
+        Write("src/OVS.Manager/Components/Pages/Home.razor.cs", "namespace OVS.Manager.Components.Pages;\n\npublic sealed partial class Home\n{\n}\n");
+        Write("src/OVS.Manager/Components/Pages/Login.razor.cs", "namespace OVS.Manager.Pages;\n\npublic sealed partial class Login\n{\n}\n");
+        Assert.Equal(["src/OVS.Manager/Components/Pages/Login.razor.cs: namespace = folder: OVS.Manager.Pages, expected OVS.Manager.Components.Pages"], Check());
     }
 
     [Fact]

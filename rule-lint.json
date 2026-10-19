@@ -5,6 +5,7 @@
     { "folder": "src/OVS.Shared", "rootNamespace": "OVS.Shared", "kind": "Source" },
     { "folder": "src/OVS.Server", "rootNamespace": "OVS.Server", "kind": "Source" },
     { "folder": "src/OVS.Client", "rootNamespace": "OVS.Client", "kind": "Source" },
+    { "folder": "src/OVS.Manager", "rootNamespace": "OVS.Manager", "kind": "Source" },
     { "folder": "tests/OVS.Tests", "rootNamespace": "OVS.Tests", "kind": "Test" },
     { "folder": "tools/render-icon", "rootNamespace": "OVS.Tools", "kind": "Tool" },
     { "folder": "tools/rule-lint", "rootNamespace": "RuleLint", "kind": "Tool" },
@@ -24,6 +25,6 @@
     "s": "OVS.Client.Settings",
     "l": "OVS.Client.Localization"
   },
-  "compositionRoots": [ "src/OVS.Client/Program.cs", "src/OVS.Client/App.axaml.cs" ],
-  "clockFolders": [ "src/OVS.Client" ]
+  "compositionRoots": [ "src/OVS.Client/Program.cs", "src/OVS.Client/App.axaml.cs", "src/OVS.Manager/Program.cs" ],
+  "clockFolders": [ "src/OVS.Client", "src/OVS.Manager" ]
 }

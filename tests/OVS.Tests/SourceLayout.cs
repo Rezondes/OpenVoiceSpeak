@@ -36,8 +36,7 @@ static class SourceLayout
             foreach (var full in RepoPaths.SourceFiles(top, "*").Order(StringComparer.Ordinal))
             {
                 var path = Path.GetRelativePath(repo, full).Replace('\\', '/');
-                var parts = path.Split('/');
-                var project = parts[0] == "tools" ? "tools/render-icon" : parts[0] + "/" + parts[1];
+                var project = ProjectOf(path);
                 if (path.EndsWith(".cs", StringComparison.Ordinal))
                 {
                     try
@@ -72,6 +71,7 @@ static class SourceLayout
             var folder = string.Join('/', folders);
             var file = parts[^1];
             var name = file.EndsWith(".axaml.cs", StringComparison.Ordinal) ? file[..^".axaml.cs".Length]
+                : file.EndsWith(".razor.cs", StringComparison.Ordinal) ? file[..^".razor.cs".Length] // Package M1: a Blazor code-behind
                 : file.EndsWith(".cs", StringComparison.Ordinal) ? file[..^".cs".Length]
                 : file[..^".axaml".Length];
             var topLevel = types.Where(value => value.TopLevel).Select(value => value.Name).ToList();
@@ -122,6 +122,17 @@ static class SourceLayout
                 Problem("no namespace segment named like a type", segment);
         }
         return problems;
+    }
+
+    /// <summary>Package M1: the projects whose files <see cref="Check"/> reads, as "src/OVS.Server", "tests/OVS.Tests", "tools/render-icon".</summary>
+    public static List<string> ListProjects(string repo) =>
+        [.. Roots.Select(root => Path.Combine(repo, root)).Where(Directory.Exists).SelectMany(top => RepoPaths.SourceFiles(top, "*"))
+            .Select(full => ProjectOf(Path.GetRelativePath(repo, full).Replace('\\', '/'))).Distinct().Order(StringComparer.Ordinal)];
+
+    static string ProjectOf(string path)
+    {
+        var parts = path.Split('/');
+        return parts[0] == "tools" ? "tools/render-icon" : parts[0] + "/" + parts[1];
     }
 
     /// <summary>

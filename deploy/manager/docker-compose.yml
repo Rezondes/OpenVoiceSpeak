@@ -1,0 +1,27 @@
+# Package M1: the OpenVoiceSpeak manager on port 6999 (MA1, D1). Start from the repository root:
+#   docker compose -f deploy/manager/docker-compose.yml up -d --build
+# Until the release publishes the manager image (Package M32) it is built from the checkout.
+# HTTPS is the operator's choice (D10): put a reverse proxy in front of port 6999.
+services:
+  ovs-manager:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.manager
+    image: openvoicespeak/manager:local
+    restart: unless-stopped
+    ports:
+      - "6999:6999"
+    environment:
+      TZ: "Europe/Berlin"   # new servers take this time zone (D14 3)
+    volumes:
+      - manager-data:/data
+    networks:
+      - ovs-managed
+
+networks:
+  ovs-managed:
+    # MA6: a fixed name, so the manager reaches each server as ovs-<id> and the servers send telemetry to ovs-manager
+    name: ovs-managed
+
+volumes:
+  manager-data:

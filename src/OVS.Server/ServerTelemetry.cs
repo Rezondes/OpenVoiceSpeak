@@ -92,6 +92,10 @@ internal static class ServerTelemetry
         if (getEnv($"OTEL_EXPORTER_OTLP_{signal}_ENDPOINT") is { Length: > 0 } endpoint) options.Endpoint = new Uri(endpoint);
         if (getEnv($"OTEL_EXPORTER_OTLP_{signal}_PROTOCOL") is { Length: > 0 } protocol)
             options.Protocol = protocol == "grpc" ? OtlpExportProtocol.Grpc : OtlpExportProtocol.HttpProtobuf;
+        // Package M1: an own client, as the SDK's default does it. Where IHttpClientFactory is loaded (an ASP.NET Core process
+        // such as the tests since the manager), the SDK takes it from the service provider, which a logger factory has
+        // disposed before its last flush; those last log lines were lost (ObjectDisposedException in the SDK's self-log).
+        options.HttpClientFactory = () => new HttpClient { Timeout = TimeSpan.FromMilliseconds(options.TimeoutMilliseconds) };
     }
 
     /// <summary>

@@ -18,7 +18,7 @@ internal sealed class PartialTypeRule : IRule
     {
         if (!file.IsCode) yield break;
         var nameParts = file.FileName[..^".cs".Length].Split('.');
-        var isPartFile = nameParts.Length > 1 && !(nameParts.Length == 2 && nameParts[1] == "axaml");
+        var isPartFile = nameParts.Length > 1 && !(nameParts.Length == 2 && nameParts[1] is "axaml" or "razor"); // a code-behind is no part file (Package M1)
         foreach (var type in DeclaredTypes.ListTopLevel(file.Syntax).OfType<TypeDeclarationSyntax>())
         {
             var name = type.Identifier.ValueText;

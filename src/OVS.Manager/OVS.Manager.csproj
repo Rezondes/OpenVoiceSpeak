@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Package M1 (MA1): the web manager, ASP.NET Core with Blazor (interactive server) and EF Core on SQLite -->
+  <ItemGroup>
+    <ProjectReference Include="..\OVS.Shared\OVS.Shared.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+    <!-- the migrations are made with the dotnet-ef tool of dotnet-tools.json (dotnet tool restore), which needs this at design time -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OVS.Tests" />
+  </ItemGroup>
+
+</Project>

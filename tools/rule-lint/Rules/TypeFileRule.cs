@@ -2,7 +2,7 @@ namespace RuleLint.Rules;
 
 /// <summary>
 /// Rules 1 and 2: one top-level type per file, and the file is named after it (a generic type without its parameters,
-/// a code-behind as <c>Type.axaml.cs</c>; a part of a partial type as <c>Type.Part.cs</c>, which <see cref="PartialTypeRule"/> checks).
+/// a code-behind as <c>Type.axaml.cs</c> or <c>Type.razor.cs</c>; a part of a partial type as <c>Type.Part.cs</c>, which <see cref="PartialTypeRule"/> checks).
 /// </summary>
 internal sealed class TypeFileRule : IRule
 {

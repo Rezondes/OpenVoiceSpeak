@@ -16,21 +16,7 @@ public sealed partial class ObservabilityComposeTests
 
     static IEnumerable<string> Folders() => Directory.GetDirectories(Root).Where(folder => File.Exists(Path.Combine(folder, "docker-compose.yml")));
 
-    /// <summary>Each service of a compose file with the lines of its block.</summary>
-    static Dictionary<string, List<string>> Services(string folder)
-    {
-        var services = new Dictionary<string, List<string>>();
-        List<string>? current = null;
-        bool inServices = false;
-        foreach (var line in File.ReadAllLines(Path.Combine(folder, "docker-compose.yml")))
-        {
-            if (line.TrimStart().StartsWith('#') || line.Trim().Length == 0) continue;
-            if (!line.StartsWith(' ')) inServices = line == "services:";
-            else if (inServices && ServiceLine().Match(line) is { Success: true } service) services[service.Groups[1].Value] = current = [];
-            else if (inServices) current?.Add(line.Trim());
-        }
-        return services;
-    }
+    static Dictionary<string, List<string>> Services(string folder) => ComposeFile.ReadServices(Path.Combine(folder, "docker-compose.yml"));
 
     [Fact]
     public void Compose_Endpoint_PointsAtOwnService()
@@ -74,7 +60,7 @@ public sealed partial class ObservabilityComposeTests
             {
                 if (lines.Any(line => line.StartsWith("build:", StringComparison.Ordinal))) continue; // built from the checkout
                 var image = Assert.Single(lines, line => line.StartsWith("image:", StringComparison.Ordinal))["image:".Length..].Trim();
-                Assert.True(PinnedTag().IsMatch(image), $"{folder} {name}: {image} has no fixed version");
+                Assert.True(ComposeFile.IsPinned(image), $"{folder} {name}: {image} has no fixed version");
             }
     }
 
@@ -88,14 +74,8 @@ public sealed partial class ObservabilityComposeTests
         Assert.Contains(readme, line => line.Contains("docker compose down -v", StringComparison.Ordinal));
     }
 
-    [GeneratedRegex(@"^  ([a-z0-9-]+):$")]
-    private static partial Regex ServiceLine();
-
     [GeneratedRegex(@"""\w+://([a-z0-9-]+)[:/""]")]
     private static partial Regex EndpointHost();
-
-    [GeneratedRegex(@":v?\d+(\.\d+)+$")]
-    private static partial Regex PinnedTag();
 
     [GeneratedRegex(@"^OTEL_EXPORTER_OTLP_(TRACES_|METRICS_|LOGS_)?ENDPOINT:")]
     private static partial Regex EndpointVariable();
