@@ -48,17 +48,29 @@ internal sealed class ServerDeletion(ManagerDbContext database, IDockerEngine do
         await watcher.RefreshAsync(cancellation);
     }
 
-    /// <summary>AC3: removes a server in the trash for good: container, volume, identity and row; its port is free.</summary>
+    /// <summary>
+    /// AC3: removes a server in the trash for good: container, volume, identity and row; its port is free. False when
+    /// another action on it runs (such as the daily sweep at the same time), which then does it.
+    /// </summary>
     /// <exception cref="ServerRequestException">It is not in the trash.</exception>
-    public async Task PurgeAsync(string serverId, string actor, CancellationToken cancellation = default)
+    public async Task<bool> PurgeAsync(string serverId, string actor, CancellationToken cancellation = default)
     {
-        var server = await FindAsync(serverId, deleted: true, cancellation);
-        if (await ContainerIdAsync(serverId, cancellation) is { } container) await docker.RemoveAsync(container, cancellation);
-        await docker.RemoveVolumeAsync(server.Id, cancellation);
-        await database.ServerIdentities.Where(row => row.ServerId == server.Id).ExecuteDeleteAsync(cancellation);
-        database.Servers.Remove(server);
-        await database.SaveChangesAsync(cancellation);
-        await audit.WriteAsync(actor, AuditActions.ServerPurged, server.Name, server.Id, cancellation: cancellation);
+        if (!watcher.TryBeginAction(serverId)) return false;
+        try
+        {
+            var server = await FindAsync(serverId, deleted: true, cancellation);
+            if (await ContainerIdAsync(serverId, cancellation) is { } container) await docker.RemoveAsync(container, cancellation);
+            await docker.RemoveVolumeAsync(server.Id, cancellation);
+            await database.ServerIdentities.Where(row => row.ServerId == server.Id).ExecuteDeleteAsync(cancellation);
+            database.Servers.Remove(server);
+            await database.SaveChangesAsync(cancellation);
+            await audit.WriteAsync(actor, AuditActions.ServerPurged, server.Name, server.Id, cancellation: cancellation);
+            return true;
+        }
+        finally
+        {
+            watcher.EndAction(serverId);
+        }
     }
 
     /// <summary>AC3: purges every server deleted more than <see cref="KeepFor"/> ago; returns how many.</summary>
@@ -67,8 +79,19 @@ internal sealed class ServerDeletion(ManagerDbContext database, IDockerEngine do
         var before = (time.GetUtcNow() - KeepFor).UtcDateTime;
         var due = await database.Servers.AsNoTracking().Where(server => server.DeletedAtUtc != null && server.DeletedAtUtc <= before)
             .Select(server => server.Id).ToListAsync(cancellation);
-        foreach (var serverId in due) await PurgeAsync(serverId, SweepActor, cancellation);
-        return due.Count;
+        int purged = 0;
+        foreach (var serverId in due)
+        {
+            try
+            {
+                if (await PurgeAsync(serverId, SweepActor, cancellation)) purged++;
+            }
+            catch (ServerRequestException)
+            {
+                // purged by another sweep or by hand meanwhile
+            }
+        }
+        return purged;
     }
 
     async Task<ManagedServer> FindAsync(string serverId, bool deleted, CancellationToken cancellation) =>

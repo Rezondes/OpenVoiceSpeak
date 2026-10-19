@@ -66,9 +66,12 @@ internal static class ServerTelemetry
     static IEnumerable<KeyValuePair<string, string?>> Copied(Func<string, string?> getEnv) =>
         Variables.Where(name => getEnv(name) is not null).Select(name => KeyValuePair.Create(name, getEnv(name)));
 
-    /// <summary>The service in the backend: OTEL_SERVICE_NAME or <see cref="ServiceName"/>, with the build version.</summary>
+    /// <summary>
+    /// The service in the backend: OTEL_SERVICE_NAME or <see cref="ServiceName"/>, with the build version. Package M20: no
+    /// made-up service.instance.id, so the one of OTEL_RESOURCE_ATTRIBUTES (the manager's server id, D6) stays.
+    /// </summary>
     static ResourceBuilder Describe(ResourceBuilder resource, Func<string, string?> getEnv) =>
-        resource.AddService(getEnv("OTEL_SERVICE_NAME") is { Length: > 0 } name ? name : ServiceName, serviceVersion: BuildInfo.Current.Version);
+        resource.AddService(getEnv("OTEL_SERVICE_NAME") is { Length: > 0 } name ? name : ServiceName, serviceVersion: BuildInfo.Current.Version, autoGenerateServiceInstanceId: false);
 
     /// <summary>Registers the SDK in a run's host when <see cref="IsOn"/>; otherwise leaves the host as it is.</summary>
     public static void Add(HostApplicationBuilder builder, Func<string, string?> getEnv)

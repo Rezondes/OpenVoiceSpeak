@@ -22,7 +22,8 @@ LABEL org.opencontainers.image.description="OpenVoiceSpeak manager: creates, run
 # Named volumes inherit this ownership on first mount, so the non-root user can write /data (database, keys).
 RUN mkdir /data && chown $APP_UID /data
 ENV OVS_MANAGER_DATA_DIR=/data
-ENV ASPNETCORE_HTTP_PORTS=6999
+# Package M20: 4318 receives the servers' OTLP in ovs-managed and is never published (MA6)
+ENV ASPNETCORE_HTTP_PORTS=6999;4318
 VOLUME /data
 EXPOSE 6999/tcp
 USER $APP_UID

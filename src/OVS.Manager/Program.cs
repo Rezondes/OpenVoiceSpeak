@@ -13,6 +13,7 @@ using OVS.Manager.Data;
 using OVS.Manager.Docker;
 using OVS.Manager.Localization;
 using OVS.Manager.Servers;
+using OVS.Manager.Telemetry;
 using OVS.Shared;
 
 // Package M1: the manager's composition root (CODING-RULES rule 14)
@@ -21,6 +22,7 @@ var options = ManagerOptions.Read(builder.Configuration);
 Directory.CreateDirectory(options.DataDir);
 builder.Services.AddSingleton(options);
 builder.Services.AddDbContext<ManagerDbContext>(database => database.UseSqlite($"Data Source={options.DatabasePath}"));
+builder.Services.AddDbContext<TelemetryStore>(database => database.UseSqlite($"Data Source={options.TelemetryPath}")); // Package M20
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddSingleton(TimeProvider.System);
 
@@ -98,9 +100,13 @@ builder.Services.AddSingleton<LoginLimits>();
 
 var app = builder.Build();
 await using (var scope = app.Services.CreateAsyncScope())
+{
     await scope.ServiceProvider.GetRequiredService<ManagerDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<TelemetryStore>().Database.MigrateAsync();
+}
 await app.Services.GetRequiredService<FirstAdmin>().InitializeAsync(app.Configuration);
 
+app.UseMiddleware<TelemetryReceiver>(); // Package M20: port 4318 is OTLP only, before every page and gate
 app.UseRequestLocalization(UiCulture.CreateOptions());
 app.UseMiddleware<SetupGate>();
 app.UseAuthentication();

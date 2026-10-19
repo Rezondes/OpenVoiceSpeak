@@ -1,0 +1,43 @@
+// Package M20: the part of opentelemetry-proto v1.5.0 (https://github.com/open-telemetry/opentelemetry-proto, Apache 2.0)
+// the manager reads; the field numbers are those of the specification, fields left out are skipped when parsing.
+syntax = "proto3";
+
+package opentelemetry.proto.logs.v1;
+
+import "Telemetry/Proto/common.proto";
+import "Telemetry/Proto/resource.proto";
+
+option csharp_namespace = "OpenTelemetry.Proto.Logs.V1";
+
+// the same fields as ExportLogsServiceRequest, the body of POST /v1/logs
+message LogsData {
+  repeated ResourceLogs resource_logs = 1;
+}
+
+message ResourceLogs {
+  reserved 1000;
+  opentelemetry.proto.resource.v1.Resource resource = 1;
+  repeated ScopeLogs scope_logs = 2;
+  string schema_url = 3;
+}
+
+message ScopeLogs {
+  opentelemetry.proto.common.v1.InstrumentationScope scope = 1;
+  repeated LogRecord log_records = 2;
+  string schema_url = 3;
+}
+
+message LogRecord {
+  reserved 4;
+  fixed64 time_unix_nano = 1;
+  fixed64 observed_time_unix_nano = 11;
+  int32 severity_number = 2;
+  string severity_text = 3;
+  opentelemetry.proto.common.v1.AnyValue body = 5;
+  repeated opentelemetry.proto.common.v1.KeyValue attributes = 6;
+  uint32 dropped_attributes_count = 7;
+  fixed32 flags = 8;
+  bytes trace_id = 9;
+  bytes span_id = 10;
+  string event_name = 12;
+}

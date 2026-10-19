@@ -1,0 +1,87 @@
+// Package M20: the part of opentelemetry-proto v1.5.0 (https://github.com/open-telemetry/opentelemetry-proto, Apache 2.0)
+// the manager reads; the field numbers are those of the specification, fields left out are skipped when parsing.
+syntax = "proto3";
+
+package opentelemetry.proto.metrics.v1;
+
+import "Telemetry/Proto/common.proto";
+import "Telemetry/Proto/resource.proto";
+
+option csharp_namespace = "OpenTelemetry.Proto.Metrics.V1";
+
+// the same fields as ExportMetricsServiceRequest, the body of POST /v1/metrics
+message MetricsData {
+  repeated ResourceMetrics resource_metrics = 1;
+}
+
+message ResourceMetrics {
+  reserved 1000;
+  opentelemetry.proto.resource.v1.Resource resource = 1;
+  repeated ScopeMetrics scope_metrics = 2;
+  string schema_url = 3;
+}
+
+message ScopeMetrics {
+  opentelemetry.proto.common.v1.InstrumentationScope scope = 1;
+  repeated Metric metrics = 2;
+  string schema_url = 3;
+}
+
+message Metric {
+  reserved 4, 6, 8;
+  string name = 1;
+  string description = 2;
+  string unit = 3;
+  oneof data {
+    Gauge gauge = 5;
+    Sum sum = 7;
+    Histogram histogram = 9;
+  }
+}
+
+message Gauge {
+  repeated NumberDataPoint data_points = 1;
+}
+
+message Sum {
+  repeated NumberDataPoint data_points = 1;
+  AggregationTemporality aggregation_temporality = 2;
+  bool is_monotonic = 3;
+}
+
+message Histogram {
+  repeated HistogramDataPoint data_points = 1;
+  AggregationTemporality aggregation_temporality = 2;
+}
+
+enum AggregationTemporality {
+  AGGREGATION_TEMPORALITY_UNSPECIFIED = 0;
+  AGGREGATION_TEMPORALITY_DELTA = 1;
+  AGGREGATION_TEMPORALITY_CUMULATIVE = 2;
+}
+
+message NumberDataPoint {
+  reserved 1;
+  repeated opentelemetry.proto.common.v1.KeyValue attributes = 7;
+  fixed64 start_time_unix_nano = 2;
+  fixed64 time_unix_nano = 3;
+  oneof value {
+    double as_double = 4;
+    sfixed64 as_int = 6;
+  }
+  uint32 flags = 8;
+}
+
+message HistogramDataPoint {
+  reserved 1;
+  repeated opentelemetry.proto.common.v1.KeyValue attributes = 9;
+  fixed64 start_time_unix_nano = 2;
+  fixed64 time_unix_nano = 3;
+  fixed64 count = 4;
+  optional double sum = 5;
+  repeated fixed64 bucket_counts = 6;
+  repeated double explicit_bounds = 7;
+  uint32 flags = 10;
+  optional double min = 11;
+  optional double max = 12;
+}

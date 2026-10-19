@@ -14,7 +14,7 @@ public sealed class ManagerComposeTests
         var lines = File.ReadAllLines(Path.Combine(RepoPaths.Root, "Dockerfile.manager")).Select(line => line.Trim()).ToList();
         var runtime = lines.Skip(lines.FindLastIndex(line => line.StartsWith("FROM ", StringComparison.Ordinal))).ToList();
         Assert.Contains("USER $APP_UID", runtime);
-        Assert.Contains("ENV ASPNETCORE_HTTP_PORTS=6999", runtime);
+        Assert.Contains("ENV ASPNETCORE_HTTP_PORTS=6999;4318", runtime); // Package M20: 4318 is OTLP, never published
         Assert.Contains("EXPOSE 6999/tcp", runtime);
         Assert.Contains("ENV OVS_MANAGER_DATA_DIR=/data", runtime);
         Assert.Contains("VOLUME /data", runtime);

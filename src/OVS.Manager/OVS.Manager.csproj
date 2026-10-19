@@ -10,6 +10,12 @@
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
     <!-- the migrations are made with the dotnet-ef tool of dotnet-tools.json (dotnet tool restore), which needs this at design time -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" PrivateAssets="all" />
+    <!-- Package M20 (D6): OTLP over http/protobuf; the classes are made from Telemetry/Proto at build time, internal to the manager -->
+    <PackageReference Include="Google.Protobuf" Version="3.28.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.66.0" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <Protobuf Include="Telemetry/Proto/*.proto" ProtoRoot="." GrpcServices="None" Access="Internal" />
   </ItemGroup>
 
   <!-- Package M2: German is the neutral language, English comes as a satellite assembly (like the client, Package 45) -->

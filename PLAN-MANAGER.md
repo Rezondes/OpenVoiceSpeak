@@ -935,17 +935,19 @@ D6. The server exports with `http/protobuf` when the manager sets it (M7). The s
 
 ### Acceptance Criteria
 
-- [ ] AC1: A real OVS server (in-process, with the manager's variables) sends metrics, logs and spans, and the store holds them under its server id.
-- [ ] AC2: Requests without a known `service.instance.id`, or from outside the internal network, are refused (403) and not stored.
-- [ ] AC3: Bodies over 4 MB and malformed protobuf are refused (413, 400) without breaking the receiver.
-- [ ] AC4: Port 4318 serves no page and the web port 6999 accepts no OTLP.
+- [x] AC1: A real OVS server (in-process, with the manager's variables) sends metrics, logs and spans, and the store holds them under its server id.
+- [x] AC2: Requests without a known `service.instance.id`, or from outside the internal network, are refused (403) and not stored.
+- [x] AC3: Bodies over 4 MB and malformed protobuf are refused (413, 400) without breaking the receiver.
+- [x] AC4: Port 4318 serves no page and the web port 6999 accepts no OTLP.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `OtlpReceiverTests > "RealServer_AllSignalsStored"` - AC1
-2. `OtlpReceiverTests > "UnknownInstance_Refused"` and `"OutsideNetwork_Refused"` - AC2
-3. `OtlpReceiverTests > "TooLarge_413"` and `"Malformed_400"` - AC3
-4. `OtlpReceiverTests > "Ports_Separated"` - AC4
+1. `OtlpReceiverTests > "RealServer_AllSignals_Stored"` - AC1
+2. `OtlpReceiverTests > "Receive_UnknownInstance_403NothingStored"`, `"Receive_OutsideNetwork_403"` and `"IsInternal_Address_PrivateOnly"` - AC2
+3. `OtlpReceiverTests > "Receive_TooLargeOrMalformed_413And400ThenStillWorks"` - AC3
+4. `OtlpReceiverTests > "Ports_Separated_EachServesOnlyItsOwn"` - AC4
+
+(as built: the receiver is the middleware `TelemetryReceiver` (named so beside the tests' own `OtlpReceiver`), placed before every other middleware: on port 4318 it answers only `POST /v1/traces`, `/v1/metrics` and `/v1/logs` (`application/x-protobuf`, gzip allowed, 4 MB after unpacking) and 404 or 405 for everything else, and on the web port those three paths are 404. A request must come from loopback or a private address (the Docker networks) and every resource in it must name a server of the manager by `service.instance.id`, else 403 and nothing is stored. The `.proto` files in `Telemetry/Proto` are the part of opentelemetry-proto v1.5.0 that is read (data messages, which have the fields of the export requests), compiled by `Grpc.Tools` 2.66.0 into internal classes with `Google.Protobuf` 3.28.0. `OtlpConversion` makes `SpanRow`, `LogRecordRow` and `MetricPoint` rows (times in Unix milliseconds, ids as hex, attributes as a JSON object) in `TelemetryStore`, a SQLite database of its own (`telemetry.db`, migration `AddTelemetryTables`). The image listens on 6999 and 4318 (`ASPNETCORE_HTTP_PORTS`); compose publishes 6999 only. Found on the way: the server's `AddService` made up a random `service.instance.id` that replaced the manager's; `autoGenerateServiceInstanceId: false` keeps the one of `OTEL_RESOURCE_ATTRIBUTES`. The AC1 test runs a real server run exporting to the tests' OTLP receiver and posts its bodies to the manager, which also proves the field numbers.)
 
 ### Steps
 

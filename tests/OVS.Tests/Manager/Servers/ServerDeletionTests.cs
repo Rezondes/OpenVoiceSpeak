@@ -121,7 +121,8 @@ public sealed class ServerDeletionTests
         time.Advance(ServerDeletion.KeepFor - TimeSpan.FromMinutes(1));
         Assert.Equal(0, await InScopeAsync(manager, services => services.GetRequiredService<ServerDeletion>().SweepAsync()));
         time.Advance(TimeSpan.FromMinutes(2));
-        Assert.Equal(1, await InScopeAsync(manager, services => services.GetRequiredService<ServerDeletion>().SweepAsync()));
+        await InScopeAsync(manager, services => services.GetRequiredService<ServerDeletion>().SweepAsync()); // or the hosted sweep on the advanced clock
+        await AsyncWait.UntilAsync(async () => (await TrashAsync(manager)).Count == 0, TimeSpan.FromSeconds(10));
 
         Assert.False(manager.Docker.Containers.ContainsKey(server.ContainerId!));
         Assert.Equal([server.Id], manager.Docker.RemovedVolumes);

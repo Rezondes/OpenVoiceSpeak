@@ -18,6 +18,9 @@ internal sealed record ManagerOptions(string DataDir)
     /// <summary>The database file in <see cref="DataDir"/>.</summary>
     public string DatabasePath => Path.Combine(DataDir, "manager.db");
 
+    /// <summary>Package M20: the telemetry database file in <see cref="DataDir"/>.</summary>
+    public string TelemetryPath => Path.Combine(DataDir, "telemetry.db");
+
     /// <summary>Package M5 (AC4): how many days audit lines are kept; null keeps them forever.</summary>
     public int? AuditDays { get; init; }
 
