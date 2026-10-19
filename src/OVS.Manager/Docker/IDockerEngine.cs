@@ -30,4 +30,7 @@ internal interface IDockerEngine
 
     /// <summary>Removes a managed container (its volume stays).</summary>
     Task RemoveAsync(string containerId, CancellationToken cancellation = default);
+
+    /// <summary>Package M9: removes the volume of the server <paramref name="serverId"/> (only a manager's volume name ovs-&lt;id&gt;-data).</summary>
+    Task RemoveVolumeAsync(string serverId, CancellationToken cancellation = default);
 }

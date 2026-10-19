@@ -1,0 +1,43 @@
+@page "/servers/trash"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = ManagerRoles.Admin)]
+
+<h1>@Strings.Trash_Title</h1>
+@if (Error is not null)
+{
+    <p class="form-error" role="alert">@Error</p>
+}
+@if (Deleted.Count == 0)
+{
+    <p>@Strings.Trash_Empty</p>
+}
+else
+{
+    <table class="list">
+        <thead>
+            <tr><th>@Strings.Servers_Name</th><th>@Strings.Servers_ColumnPort</th><th>@Strings.Trash_ColumnUntil</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var server in Deleted)
+            {
+                <tr @key="server.Id" data-server="@server.Id">
+                    <td>@server.Name</td>
+                    <td>@server.Port</td>
+                    <td>@PurgeDate(server)</td>
+                    <td>
+                        <button type="button" @onclick="@Restore(server)">@Strings.Trash_Restore</button>
+                        @if (Confirming == server.Id)
+                        {
+                            <span class="form-error">@Strings.Trash_ConfirmDeleteNow</span>
+                            <button type="button" class="danger" data-confirm @onclick="@Purge(server)">@Strings.Trash_Confirm</button>
+                        }
+                        else
+                        {
+                            <button type="button" class="danger" @onclick="@AskToConfirm(server)">@Strings.Trash_DeleteNow</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

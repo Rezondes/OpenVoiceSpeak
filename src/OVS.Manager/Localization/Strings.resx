@@ -61,6 +61,7 @@
   <data name="Nav_Home" xml:space="preserve"><value>Übersicht</value></data>
   <data name="Nav_NewServer" xml:space="preserve"><value>Neuer Server</value></data>
   <data name="Nav_Profile" xml:space="preserve"><value>Mein Konto</value></data>
+  <data name="Nav_Trash" xml:space="preserve"><value>Papierkorb</value></data>
   <data name="Profile_EmailSaved" xml:space="preserve"><value>Die E-Mail-Adresse wurde gespeichert.</value></data>
   <data name="Profile_EmailTitle" xml:space="preserve"><value>E-Mail</value></data>
   <data name="Profile_EndOthers" xml:space="preserve"><value>Überall sonst abmelden</value></data>
@@ -82,12 +83,16 @@
   <data name="Servers_ColumnUsers" xml:space="preserve"><value>Nutzer online</value></data>
   <data name="Servers_Create" xml:space="preserve"><value>Anlegen und starten</value></data>
   <data name="Servers_CreateTitle" xml:space="preserve"><value>Neuen Server anlegen</value></data>
+  <data name="Servers_Delete" xml:space="preserve"><value>Server löschen</value></data>
+  <data name="Servers_DeleteConfirmName" xml:space="preserve"><value>Name des Servers</value></data>
+  <data name="Servers_DeleteHint" xml:space="preserve"><value>Tippe den Namen des Servers, um ihn zu löschen. Er wird gestoppt und bleibt 7 Tage im Papierkorb.</value></data>
   <data name="Servers_Empty" xml:space="preserve"><value>Noch keine Server.</value></data>
   <data name="Servers_InvalidMaxUsers" xml:space="preserve"><value>Die maximale Nutzerzahl muss zwischen 1 und {0} liegen.</value></data>
   <data name="Servers_InvalidName" xml:space="preserve"><value>Der Name ist leer, zu lang oder enthält unerlaubte Zeichen.</value></data>
   <data name="Servers_InvalidTimeZone" xml:space="preserve"><value>Diese Zeitzone ist unbekannt (Beispiel: Europe/Berlin).</value></data>
   <data name="Servers_MaxUsers" xml:space="preserve"><value>Maximale Nutzer</value></data>
   <data name="Servers_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Servers_NameMismatch" xml:space="preserve"><value>Der Name stimmt nicht.</value></data>
   <data name="Servers_NotFound" xml:space="preserve"><value>Diesen Server gibt es nicht mehr.</value></data>
   <data name="Servers_Password" xml:space="preserve"><value>Serverpasswort (freiwillig)</value></data>
   <data name="Servers_Port" xml:space="preserve"><value>Port (TCP und UDP)</value></data>
@@ -113,4 +118,11 @@
   <data name="Theme_Label" xml:space="preserve"><value>Darstellung</value></data>
   <data name="Theme_Light" xml:space="preserve"><value>Hell</value></data>
   <data name="Theme_System" xml:space="preserve"><value>System</value></data>
+  <data name="Trash_ColumnUntil" xml:space="preserve"><value>Endgültig gelöscht am</value></data>
+  <data name="Trash_Confirm" xml:space="preserve"><value>Ja, endgültig löschen</value></data>
+  <data name="Trash_ConfirmDeleteNow" xml:space="preserve"><value>Wirklich? Container und Daten sind danach weg.</value></data>
+  <data name="Trash_DeleteNow" xml:space="preserve"><value>Jetzt endgültig löschen</value></data>
+  <data name="Trash_Empty" xml:space="preserve"><value>Der Papierkorb ist leer.</value></data>
+  <data name="Trash_Restore" xml:space="preserve"><value>Wiederherstellen</value></data>
+  <data name="Trash_Title" xml:space="preserve"><value>Papierkorb</value></data>
 </root>

@@ -41,4 +41,10 @@ internal static class AuditActions
     public const string ServerStopped = "ServerStopped";
     /// <summary>A server was restarted (M8).</summary>
     public const string ServerRestarted = "ServerRestarted";
+    /// <summary>A server was moved to the trash (M9).</summary>
+    public const string ServerDeleted = "ServerDeleted";
+    /// <summary>A server came back from the trash (M9).</summary>
+    public const string ServerRestored = "ServerRestored";
+    /// <summary>A server's container and volume were removed for good (M9).</summary>
+    public const string ServerPurged = "ServerPurged";
 }

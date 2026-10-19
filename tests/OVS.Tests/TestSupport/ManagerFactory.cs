@@ -19,6 +19,9 @@ internal sealed class ManagerFactory(params (string Key, string Value)[] setting
     /// <summary>Package M8: the servers' answer to the status check's TLS handshake.</summary>
     public FakeServerProbe Probe { get; } = new();
 
+    /// <summary>Package M9: the manager's clock; null keeps the system's.</summary>
+    public TimeProvider? Time { get; init; }
+
     /// <summary>Package M6: the real <c>DockerEngine</c> instead of <see cref="Docker"/>.</summary>
     public bool RealDocker { get; init; }
 
@@ -32,6 +35,7 @@ internal sealed class ManagerFactory(params (string Key, string Value)[] setting
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<IServerProbe>(Probe);
+            if (Time is not null) services.AddSingleton(Time);
             if (!RealDocker) services.AddSingleton<IDockerEngine>(Docker);
         });
     }

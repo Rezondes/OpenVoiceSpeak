@@ -33,7 +33,7 @@ internal sealed class StatusWatcher(IDockerEngine docker, IServerProbe probe, IS
     /// <summary>Raised after every check and when an action on a server begins or ends; on any thread.</summary>
     public event Action? Changed;
 
-    /// <summary>Every server at the last check, by name.</summary>
+    /// <summary>Every server at the last check, by name; not those in the trash (M9).</summary>
     public IReadOnlyList<ServerSnapshot> Servers => Volatile.Read(ref servers);
 
     /// <summary>AC2: an action runs on <paramref name="serverId"/>, so its buttons are off.</summary>
@@ -60,7 +60,7 @@ internal sealed class StatusWatcher(IDockerEngine docker, IServerProbe probe, IS
     {
         List<ManagedServer> rows;
         await using (var scope = scopes.CreateAsyncScope())
-            rows = await scope.ServiceProvider.GetRequiredService<ManagerDbContext>().Servers.AsNoTracking().OrderBy(server => server.Name).ToListAsync(cancellation);
+            rows = await scope.ServiceProvider.GetRequiredService<ManagerDbContext>().Servers.AsNoTracking().Where(server => server.DeletedAtUtc == null).OrderBy(server => server.Name).ToListAsync(cancellation);
         var containers = (await docker.ListAsync(cancellation)).DistinctBy(container => container.ServerId).ToDictionary(container => container.ServerId);
         ServerSnapshot[] checkedServers = await Task.WhenAll(rows.Select(row => CheckAsync(row, containers.GetValueOrDefault(row.Id), cancellation)));
         Volatile.Write(ref servers, checkedServers);

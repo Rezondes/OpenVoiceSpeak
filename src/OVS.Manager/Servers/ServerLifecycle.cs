@@ -25,14 +25,14 @@ internal sealed class ServerLifecycle(ManagerDbContext database, IDockerEngine d
     public Task<bool> RestartAsync(string serverId, string actor, CancellationToken cancellation = default) =>
         RunAsync(serverId, actor, AuditActions.ServerRestarted, docker.RestartAsync, cancellation);
 
-    /// <exception cref="ServerRequestException">The server or its container is gone.</exception>
+    /// <exception cref="ServerRequestException">The server or its container is gone, or it is in the trash (M9).</exception>
     /// <exception cref="DockerCallException">Docker did not do it.</exception>
     async Task<bool> RunAsync(string serverId, string actor, string action, Func<string, CancellationToken, Task> call, CancellationToken cancellation)
     {
         if (!watcher.TryBeginAction(serverId)) return false;
         try
         {
-            var server = await database.Servers.AsNoTracking().SingleOrDefaultAsync(row => row.Id == serverId, cancellation)
+            var server = await database.Servers.AsNoTracking().SingleOrDefaultAsync(row => row.Id == serverId && row.DeletedAtUtc == null, cancellation)
                          ?? throw new ServerRequestException(ServerProblem.NotFound);
             var container = (await docker.ListAsync(cancellation)).FirstOrDefault(container => container.ServerId == serverId)
                             ?? throw new ServerRequestException(ServerProblem.NotFound);

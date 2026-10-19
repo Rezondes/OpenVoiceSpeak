@@ -408,7 +408,7 @@ D2, D3, D6, MA4, MA6. The container gets `OVS_PORT`, `OVS_SERVER_NAME`, `OVS_MAX
 4. `ServerFactoryTests > "Create_Manager_Forbidden"` and `"Create_Admin_AuditLine"` - AC4
 5. Manual check AC5.
 
-(as built: `ManagedServer` and `ServerIdentity` (migration `AddServers`: a migration class named `Servers` would clash with the namespace, one server per port as a unique index); `ServerIdentityStore` makes one `ClientIdentity` per server and keeps its PKCS#8 key only protected by Data Protection (keys in `/data/keys`, application name `OVS.Manager`). `ServerFactory` checks name (`TextRules`), user limit (1 to 1000), time zone and port (`PortPool`), creates the container through `IDockerEngine`, saves, starts and writes `ServerCreated`; a port Docker reports as taken on the host (`PortInUseException`) removes the container and the rows again and shows "Der Port ist auf dem Host schon belegt" (its empty volume stays for M9). `ManagerOptions` gives `OVS_MANAGER_SERVER_IMAGE` (default `ghcr.io/rezondes/openvoicespeak-server`) and `TZ` (default UTC). Docker failures are `DockerCallException` and show a text instead of a 500. Manual check AC5 (19 October 2026, Docker Desktop 29.2.1): the compose file with a locally built server image, the admin from the environment, a server created through `/servers/new` on port 7050: the container `ovs-<id>` ran with exactly the labels, the volume, the network and `unless-stopped`, and its log showed "Server admin set from OVS_SERVER_ADMIN_FINGERPRINT" and no token. It also found the proxy's version prefix (M6). The client's connection is still to be checked by hand.)
+(as built: `ManagedServer` and `ServerIdentity` (migration `AddServers`: a migration class named `Servers` would clash with the namespace, one server per port as a unique index); `ServerIdentityStore` makes one `ClientIdentity` per server and keeps its PKCS#8 key only protected by Data Protection (keys in `/data/keys`, application name `OVS.Manager`). `ServerFactory` checks name (`TextRules`), user limit (1 to 1000), time zone and port (`PortPool`), creates the container through `IDockerEngine`, saves, starts and writes `ServerCreated`; a port Docker reports as taken on the host (`PortInUseException`) removes the container and the rows again and shows "Der Port ist auf dem Host schon belegt" (since M9 its empty volume too). `ManagerOptions` gives `OVS_MANAGER_SERVER_IMAGE` (default `ghcr.io/rezondes/openvoicespeak-server`) and `TZ` (default UTC). Docker failures are `DockerCallException` and show a text instead of a 500. Manual check AC5 (19 October 2026, Docker Desktop 29.2.1): the compose file with a locally built server image, the admin from the environment, a server created through `/servers/new` on port 7050: the container `ovs-<id>` ran with exactly the labels, the volume, the network and `unless-stopped`, and its log showed "Server admin set from OVS_SERVER_ADMIN_FINGERPRINT" and no token. It also found the proxy's version prefix (M6). The client's connection is still to be checked by hand.)
 
 ### Steps
 
@@ -482,17 +482,19 @@ D4 and MA9. The port stays taken while the server is in the trash.
 
 ### Acceptance Criteria
 
-- [ ] AC1: Delete is offered only to the admin and needs the exact server name typed; the server is stopped and listed in the trash with its end date.
-- [ ] AC2: Restoring within 7 days brings back the same container, volume, port and assignments.
-- [ ] AC3: After 7 days the daily sweep removes container and volume and frees the port; "jetzt endgültig löschen" does it at once after a second confirmation.
-- [ ] AC4: Every step writes an audit line.
+- [x] AC1: Delete is offered only to the admin and needs the exact server name typed; the server is stopped and listed in the trash with its end date.
+- [x] AC2: Restoring within 7 days brings back the same container, volume, port and assignments.
+- [x] AC3: After 7 days the daily sweep removes container and volume and frees the port; "jetzt endgültig löschen" does it at once after a second confirmation.
+- [x] AC4: Every step writes an audit line.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `ServerDeletionTests > "Delete_NameWrong_Refused"` and `"Delete_Admin_StoppedInTrash"` - AC1
+1. `ServerDeletionTests > "Delete_NameWrong_Refused"` and `"Delete_Admin_StoppedInTrash"` (bUnit, and 403 on the trash for a manager) - AC1
 2. `ServerDeletionTests > "Restore_WithinPeriod_SameServer"` - AC2
 3. `ServerDeletionTests > "Sweep_AfterSevenDays_RemovedPortFree"` and `"DeleteNow_Confirmed_Removed"` - AC3
-4. `ServerDeletionTests > "Steps_AuditLines"` - AC4
+4. `ServerDeletionTests > "Steps_DeleteRestorePurge_AuditLines"` - AC4
+
+(as built: `ManagedServer.DeletedAtUtc` marks a server in the trash (migration `AddServerDeletion`). `ServerDeletion` deletes (exact name, `ServerProblem.NameMismatch` otherwise; container stopped), restores (container started again), purges (container, volume through the new `IDockerEngine.RemoveVolumeAsync`, identity and row) and sweeps; every step writes `ServerDeleted`, `ServerRestored` or `ServerPurged`, the sweep as "system". `DeletionSweep` runs at the start and then daily. The watcher and `ServerLifecycle` leave servers in the trash out, while `PortPool` still counts their ports. The dialog `DeleteServerDialog` sits on the server page for the admin only; the trash `/servers/trash` (admin only, link "Papierkorb") lists the day each server goes for good and asks a second time before "Jetzt endgültig löschen". Assignments (M10) live in their own rows and stay untouched by delete and restore.)
 
 ### Steps
 

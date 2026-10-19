@@ -19,4 +19,7 @@ else
         </tbody>
     </table>
     <ServerActions ServerId="@Server.Id" Busy="@Watcher.IsBusy(Server.Id)" />
+    <AuthorizeView Roles="@ManagerRoles.Admin">
+        <DeleteServerDialog ServerId="@Server.Id" ServerName="@Server.Name" />
+    </AuthorizeView>
 }

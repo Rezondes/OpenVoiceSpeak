@@ -1,0 +1,10 @@
+<section class="danger-zone">
+    <h2>@Strings.Servers_Delete</h2>
+    <p class="form-hint">@Strings.Servers_DeleteHint</p>
+    <label>@Strings.Servers_DeleteConfirmName <input @bind="TypedName" @bind:event="oninput" /></label>
+    <button type="button" class="danger" disabled="@(TypedName != ServerName)" @onclick="DeleteAsync">@Strings.Servers_Delete</button>
+    @if (Error is not null)
+    {
+        <p class="form-error" role="alert">@Error</p>
+    }
+</section>

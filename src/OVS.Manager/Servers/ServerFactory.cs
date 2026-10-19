@@ -53,7 +53,8 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
         }
         catch (PortInUseException exception)
         {
-            await docker.RemoveAsync(server.ContainerId, cancellation); // ponytail: its empty volume stays; M9's cleanup takes such leftovers
+            await docker.RemoveAsync(server.ContainerId, cancellation);
+            await docker.RemoveVolumeAsync(server.Id, cancellation);
             database.Servers.Remove(server);
             await database.ServerIdentities.Where(row => row.ServerId == server.Id).ExecuteDeleteAsync(cancellation);
             await database.SaveChangesAsync(cancellation);

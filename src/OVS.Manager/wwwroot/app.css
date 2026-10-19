@@ -128,6 +128,13 @@ table.list td {
     color: var(--muted);
 }
 
+/* Package M9: deleting a server */
+.danger-zone {
+    margin-top: 32px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
 button.danger {
     border-color: #c62828;
     color: #c62828;

@@ -128,6 +128,13 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
         });
     }
 
+    /// <inheritdoc/>
+    public Task RemoveVolumeAsync(string serverId, CancellationToken cancellation = default) => CallAsync(async () =>
+    {
+        await client.Volumes.RemoveAsync(ManagedLabels.VolumeName(serverId), force: false, cancellation);
+        return true;
+    });
+
     /// <summary>Ends the client.</summary>
     public void Dispose() => client.Dispose();
 

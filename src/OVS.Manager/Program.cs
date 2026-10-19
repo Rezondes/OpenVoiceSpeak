@@ -66,6 +66,8 @@ builder.Services.AddSingleton<IServerProbe, TlsServerProbe>();
 builder.Services.AddSingleton<StatusWatcher>();
 builder.Services.AddHostedService(services => services.GetRequiredService<StatusWatcher>());
 builder.Services.AddScoped<ServerLifecycle>();
+builder.Services.AddScoped<ServerDeletion>(); // Package M9: the trash and its daily sweep
+builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();
 
 var app = builder.Build();

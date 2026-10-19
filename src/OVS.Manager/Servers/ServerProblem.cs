@@ -19,4 +19,6 @@ internal enum ServerProblem
     PortInUseOnHost,
     /// <summary>Package M8: the server or its container is gone.</summary>
     NotFound,
+    /// <summary>Package M9: the name typed to delete it is not exactly the server's.</summary>
+    NameMismatch,
 }

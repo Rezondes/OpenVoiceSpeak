@@ -15,6 +15,7 @@ internal static class ServerTexts
         ServerProblem.PortTaken => Strings.Servers_PortTaken,
         ServerProblem.NoFreePort => Strings.Servers_AllPortsTaken,
         ServerProblem.PortInUseOnHost => Strings.Servers_PortInUseOnHost,
+        ServerProblem.NameMismatch => Strings.Servers_NameMismatch,
         _ => Strings.Servers_NotFound,
     };
 

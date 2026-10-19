@@ -61,6 +61,7 @@
   <data name="Nav_Home" xml:space="preserve"><value>Overview</value></data>
   <data name="Nav_NewServer" xml:space="preserve"><value>New server</value></data>
   <data name="Nav_Profile" xml:space="preserve"><value>My account</value></data>
+  <data name="Nav_Trash" xml:space="preserve"><value>Trash</value></data>
   <data name="Profile_EmailSaved" xml:space="preserve"><value>The e-mail address was saved.</value></data>
   <data name="Profile_EmailTitle" xml:space="preserve"><value>E-mail</value></data>
   <data name="Profile_EndOthers" xml:space="preserve"><value>Log out everywhere else</value></data>
@@ -82,12 +83,16 @@
   <data name="Servers_ColumnUsers" xml:space="preserve"><value>Users online</value></data>
   <data name="Servers_Create" xml:space="preserve"><value>Create and start</value></data>
   <data name="Servers_CreateTitle" xml:space="preserve"><value>Create a new server</value></data>
+  <data name="Servers_Delete" xml:space="preserve"><value>Delete server</value></data>
+  <data name="Servers_DeleteConfirmName" xml:space="preserve"><value>Server name</value></data>
+  <data name="Servers_DeleteHint" xml:space="preserve"><value>Type the server's name to delete it. It is stopped and stays in the trash for 7 days.</value></data>
   <data name="Servers_Empty" xml:space="preserve"><value>No servers yet.</value></data>
   <data name="Servers_InvalidMaxUsers" xml:space="preserve"><value>The maximum users must be between 1 and {0}.</value></data>
   <data name="Servers_InvalidName" xml:space="preserve"><value>The name is empty, too long or has forbidden characters.</value></data>
   <data name="Servers_InvalidTimeZone" xml:space="preserve"><value>This time zone is unknown (example: Europe/Berlin).</value></data>
   <data name="Servers_MaxUsers" xml:space="preserve"><value>Maximum users</value></data>
   <data name="Servers_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Servers_NameMismatch" xml:space="preserve"><value>The name does not match.</value></data>
   <data name="Servers_NotFound" xml:space="preserve"><value>This server no longer exists.</value></data>
   <data name="Servers_Password" xml:space="preserve"><value>Server password (optional)</value></data>
   <data name="Servers_Port" xml:space="preserve"><value>Port (TCP and UDP)</value></data>
@@ -113,4 +118,11 @@
   <data name="Theme_Label" xml:space="preserve"><value>Theme</value></data>
   <data name="Theme_Light" xml:space="preserve"><value>Light</value></data>
   <data name="Theme_System" xml:space="preserve"><value>System</value></data>
+  <data name="Trash_ColumnUntil" xml:space="preserve"><value>Deleted for good on</value></data>
+  <data name="Trash_Confirm" xml:space="preserve"><value>Yes, delete for good</value></data>
+  <data name="Trash_ConfirmDeleteNow" xml:space="preserve"><value>Really? Container and data are gone afterwards.</value></data>
+  <data name="Trash_DeleteNow" xml:space="preserve"><value>Delete for good now</value></data>
+  <data name="Trash_Empty" xml:space="preserve"><value>The trash is empty.</value></data>
+  <data name="Trash_Restore" xml:space="preserve"><value>Restore</value></data>
+  <data name="Trash_Title" xml:space="preserve"><value>Trash</value></data>
 </root>

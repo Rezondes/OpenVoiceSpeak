@@ -24,6 +24,9 @@ internal sealed class ManagedServer
     /// <summary>When it was created, in UTC.</summary>
     public DateTime CreatedAtUtc { get; set; }
 
+    /// <summary>Package M9 (MA9): when the admin deleted it, in UTC; null while it is not in the trash.</summary>
+    public DateTime? DeletedAtUtc { get; set; }
+
     /// <summary>Docker's id of its container, null until it is created.</summary>
     public string? ContainerId { get; set; }
 

@@ -33,6 +33,7 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
             server.HasKey(value => value.Id);
             server.HasIndex(value => value.Port).IsUnique(); // D2: one server per port
             server.Property(value => value.CreatedAtUtc).HasConversion(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
+            server.Property(value => value.DeletedAtUtc).HasConversion(value => value, value => value == null ? null : DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
         });
         builder.Entity<ServerIdentity>(identity => identity.HasKey(value => value.ServerId));
         builder.Entity<AuditEntry>(entry =>
