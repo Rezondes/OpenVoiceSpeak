@@ -168,6 +168,10 @@ Multi-Arch-Image:
 docker buildx build --platform linux/amd64,linux/arm64 -t openvoicespeak/server:dev .
 ```
 
+## Verwaltungstool
+
+Mehrere Server auf einem Docker-Host legst du bequem mit dem Verwaltungstool an: einer Web-App, die Server anlegt, aktualisiert, sichert und beobachtet und auf jedem davon Server-Admin ist. Einrichtung und Bedienung stehen in [README-MANAGER.md](README-MANAGER.md).
+
 ## Client (Windows)
 
 Die fertige `OVS.Client.exe` liegt unter [Releases](https://github.com/Rezondes/OpenVoiceSpeak/releases). Sie läuft ohne installiertes .NET. Jeder Push auf `main` baut sie nach grünen Tests neu (`.github/workflows/release.yml`). Die Version ist eine Build-Kennung aus Datum und Uhrzeit in UTC, z. B. `280926.0a1k`, lokale Builds heissen `dev.<...>`. Die Einstellungen zeigen sie unter "Über", der Server schreibt sie beim Start ins Log (`OVS.Server --version` gibt sie aus). Die exe ist nicht signiert, Windows SmartScreen fragt deshalb beim ersten Start nach.

@@ -1504,19 +1504,21 @@ D13. `README.md` explains setup, ports, variables, logs, telemetry, backup and u
 
 ### Acceptance Criteria
 
-- [ ] AC1: `README-MANAGER.md` covers: what the manager is; setup with Docker Compose (port 6999, the network `ovs-managed`, the socket proxy and why); every environment variable with default and meaning; the first admin; roles and assignments; creating, starting, stopping, deleting and restoring servers and the port range 7000 to 7099; the manager as server admin and how an owner works through it; settings, users, groups, bans, invite link, backups and server log; versions, updates, rollback and maintenance windows; telemetry (what is received, retention, live view, history, errors and error IDs); resources and limits; e-mail, password reset and notifications; two-factor login; adopting and cloning servers; the API with its tokens; backup and restore of the manager itself (M33); HTTPS behind Nginx Proxy Manager, other proxies or the bundled Caddy; updating the manager itself; troubleshooting.
-- [ ] AC2: Every environment variable the manager reads appears in `README-MANAGER.md`, and every variable named there is read by the manager.
-- [ ] AC3: Every compose file and path named in `README-MANAGER.md` exists.
-- [ ] AC4: `README.md` links to `README-MANAGER.md` and no longer describes the manager itself.
+- [x] AC1: `README-MANAGER.md` covers: what the manager is; setup with Docker Compose (port 6999, the network `ovs-managed`, the socket proxy and why); every environment variable with default and meaning; the first admin; roles and assignments; creating, starting, stopping, deleting and restoring servers and the port range 7000 to 7099; the manager as server admin and how an owner works through it; settings, users, groups, bans, invite link, backups and server log; versions, updates, rollback and maintenance windows; telemetry (what is received, retention, live view, history, errors and error IDs); resources and limits; e-mail, password reset and notifications; two-factor login; adopting and cloning servers; the API with its tokens; backup and restore of the manager itself (M33); HTTPS behind Nginx Proxy Manager, other proxies or the bundled Caddy; updating the manager itself; troubleshooting.
+- [x] AC2: Every environment variable the manager reads appears in `README-MANAGER.md`, and every variable named there is read by the manager.
+- [x] AC3: Every compose file and path named in `README-MANAGER.md` exists.
+- [x] AC4: `README.md` links to `README-MANAGER.md` and no longer describes the manager itself.
 - [ ] AC5 (manual): Someone sets up the manager on a fresh Docker host only by `README-MANAGER.md`, creates a server and connects to it with a client.
 
 ### Planned tests (TDD)
 
-1. `ManagerDocsTests > "Readme_CoversEveryTopic"` (a heading per topic of AC1) - AC1
-2. `ManagerDocsTests > "Variables_ReadmeAndCodeMatch"` (variables found in `src/OVS.Manager` against the README) - AC2
-3. `ManagerDocsTests > "NamedFiles_Exist"` - AC3
-4. `ManagerDocsTests > "MainReadme_LinksManagerReadme"` - AC4
+1. `ManagerDocsTests > "Readme_Headings_CoverEveryTopic"` (a heading per topic of AC1) - AC1
+2. `ManagerDocsTests > "Variables_ReadmeAndCode_Match"` (variables found in `src/OVS.Manager` against the README) - AC2
+3. `ManagerDocsTests > "NamedFiles_Readme_Exist"` - AC3
+4. `ManagerDocsTests > "MainReadme_Manager_OnlyLinked"` - AC4
 5. Manual check AC5.
+
+(as built: `README-MANAGER.md` (German, "ss" like `README.md`) has one section per topic of AC1, a table of every variable with default and meaning, the setup with the socket proxy and its group, the proxies (Nginx Proxy Manager, others, the bundled Caddy), the update of the manager and a troubleshooting list. `ManagerDocsTests` compares the `OVS_MANAGER_*` and `SMTP_*` variables of `src/OVS.Manager` and `deploy/manager` (where `OVS_MANAGER_DOMAIN` lives, read by Compose for Caddy) with the README in both directions, checks that every repository path in backticks exists, and that `README.md` only links to it in its new section "Verwaltungstool". AC5 stays manual.)
 
 ### Steps
 
