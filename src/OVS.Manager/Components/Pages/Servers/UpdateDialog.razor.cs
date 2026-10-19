@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using OVS.Manager.Audit;
+using OVS.Manager.Control;
 using OVS.Manager.Data;
 using OVS.Manager.Localization;
 using OVS.Manager.Servers;
@@ -28,6 +29,9 @@ sealed partial class UpdateDialog
 
     [Inject]
     AuditLog Audit { get; set; } = null!;
+
+    [Inject]
+    Announcement Announcements { get; set; } = null!;
 
     [CascadingParameter]
     Task<AuthenticationState> Authentication { get; set; } = null!;
@@ -55,6 +59,11 @@ sealed partial class UpdateDialog
     /// <summary>The last update failed.</summary>
     bool Failed { get; set; }
 
+    /// <summary>Package M19 (AC1): the update's lead time in minutes, 0 is at once.</summary>
+    int LeadMinutes { get; set; }
+
+    static IReadOnlyList<int> LeadOptions => Announcement.LeadOptions;
+
     /// <summary>The server's maintenance window in the form.</summary>
     UpdateWindow Window { get; set; } = new();
 
@@ -69,9 +78,20 @@ sealed partial class UpdateDialog
     async Task UpdateAsync()
     {
         if (Offer is not { } offer) return;
-        Running = true;
         Steps.Clear();
         Result = null;
+        if (LeadMinutes > 0)
+        {
+            // Package M19: the update runs on its own after the announcement; pull and backup come right before it
+            var serverId = ServerId;
+            var actor = await ActorAsync();
+            Failed = !Announcements.Schedule(serverId, AnnouncedAction.Update, LeadMinutes,
+                (services, cancellation) => services.GetRequiredService<ServerUpdate>().UpdateAsync(serverId, offer.Version, actor, cancellation: cancellation));
+            if (!Failed) Steps.Add(UpdateStep.Announce);
+            Result = Failed ? Strings.Announce_AlreadyPending : TextFormat.Of(Strings.Update_Announced, offer.Version);
+            return;
+        }
+        Running = true;
         var progress = new Progress<UpdateStep>(step =>
         {
             Steps.Add(step);
@@ -94,6 +114,13 @@ sealed partial class UpdateDialog
         Result = Strings.Settings_Saved;
         Failed = false;
     }
+
+    static string LeadText(int minutes) => minutes switch
+    {
+        0 => Strings.Announce_Now,
+        1 => Strings.Announce_InOneMinute,
+        _ => TextFormat.Of(Strings.Announce_InMinutes, minutes),
+    };
 
     static string OfferText(Release offer) => TextFormat.Of(Strings.Update_To, offer.Version);
 

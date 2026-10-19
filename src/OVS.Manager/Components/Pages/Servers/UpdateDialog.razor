@@ -2,6 +2,14 @@
     <h2>@Strings.Update_Title</h2>
     @if (Offer is { } offer)
     {
+        <label>@Strings.Announce_Lead
+            <select data-update-lead @bind="LeadMinutes">
+                @foreach (var minutes in LeadOptions)
+                {
+                    <option value="@minutes">@LeadText(minutes)</option>
+                }
+            </select>
+        </label>
         <button type="button" data-update disabled="@Running" @onclick="UpdateAsync">@OfferText(offer)</button>
     }
     else

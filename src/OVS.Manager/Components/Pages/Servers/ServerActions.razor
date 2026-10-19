@@ -1,7 +1,20 @@
 <span class="server-actions">
-    <button type="button" disabled="@Busy" @onclick="StartAsync">@Strings.Servers_Start</button>
-    <button type="button" disabled="@Busy" @onclick="StopAsync">@Strings.Servers_Stop</button>
-    <button type="button" disabled="@Busy" @onclick="RestartAsync">@Strings.Servers_Restart</button>
+    <label>@Strings.Announce_Lead
+        <select data-lead @bind="LeadMinutes">
+            @foreach (var minutes in LeadOptions)
+            {
+                <option value="@minutes">@LeadText(minutes)</option>
+            }
+        </select>
+    </label>
+    <button type="button" disabled="@Locked" @onclick="StartAsync">@Strings.Servers_Start</button>
+    <button type="button" disabled="@Locked" @onclick="StopAsync">@Strings.Servers_Stop</button>
+    <button type="button" disabled="@Locked" @onclick="RestartAsync">@Strings.Servers_Restart</button>
+    @if (Pending is { } pending)
+    {
+        <span class="form-hint" role="status" data-pending>@PendingText(pending)</span>
+        <button type="button" data-cancel @onclick="CancelAsync">@Strings.Announce_Cancel</button>
+    }
     @if (Error is not null)
     {
         <span class="form-error" role="alert">@Error</span>

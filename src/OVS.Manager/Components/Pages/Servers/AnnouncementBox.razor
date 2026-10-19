@@ -1,0 +1,10 @@
+<form class="account-form" @onsubmit="SendAsync">
+    <label>@Strings.Announce_Chat
+        <input type="text" data-chat-text maxlength="@OVS.Shared.Protocol.ProtocolLimits.MaxChatLength" @bind="Text" />
+    </label>
+    <button type="submit" data-chat-send disabled="@Sending">@Strings.Announce_Send</button>
+    @if (Result is not null)
+    {
+        <span class="@ResultClass" role="status" data-chat-result>@Result</span>
+    }
+</form>

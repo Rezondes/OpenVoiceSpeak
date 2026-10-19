@@ -90,6 +90,7 @@ builder.Services.AddSingleton(services => new ReleaseCatalog(services.GetRequire
     BuildInfo.Current, services.GetRequiredService<TimeProvider>(), services.GetRequiredService<ILogger<ReleaseCatalog>>()));
 builder.Services.AddHostedService(services => services.GetRequiredService<ReleaseCatalog>());
 builder.Services.AddScoped<ServerUpdate>(); // Package M18
+builder.Services.AddSingleton<Announcement>(); // Package M19
 builder.Services.AddHostedService<UpdateWindowRunner>();
 builder.Services.AddScoped<ConsoleLog>();
 builder.Services.AddHostedService<DeletionSweep>();

@@ -895,15 +895,17 @@ The service session may send server chat; clients show its nickname ("Serververw
 
 ### Acceptance Criteria
 
-- [ ] AC1: Restart, stop and update offer "sofort", "in 1 / 5 / 15 Minuten"; with a lead time the server chat gets "Der Server wird in N Minuten neu gestartet/gestoppt/aktualisiert." and a reminder one minute before.
-- [ ] AC2: A pending action can be cancelled; the chat then says "abgebrochen".
-- [ ] AC3: A free text can be sent to the server chat from the server page (audit line).
+- [x] AC1: Restart, stop and update offer "sofort", "in 1 / 5 / 15 Minuten"; with a lead time the server chat gets "Der Server wird in N Minuten neu gestartet/gestoppt/aktualisiert." and a reminder one minute before.
+- [x] AC2: A pending action can be cancelled; the chat then says "abgebrochen".
+- [x] AC3: A free text can be sent to the server chat from the server page (audit line).
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `AnnouncementTests > "Restart_FiveMinutes_ChatAndReminder"` (with `ManualTimeProvider`) - AC1
-2. `AnnouncementTests > "Cancel_ChatSaysCancelled"` - AC2
-3. `AnnouncementTests > "FreeText_SentAndAudited"` - AC3
+2. `AnnouncementTests > "Stop_Cancelled_ChatSaysCancelled"` - AC2
+3. `AnnouncementTests > "FreeText_Sent_InChatAndAudit"` - AC3
+
+(as built: `Announcement` (singleton) sends `SendChat` to the server chat over the service session and takes the server's echo to its sender as the proof it went out. A lead time of 1, 5 or 15 minutes ("sofort" runs at once as before) makes a pending action per server: the chat gets "Der Server wird in N Minuten neu gestartet/gestoppt/aktualisiert." at once and "in 1 Minute" a minute before; the waits go by absolute due times, so a clock that moved on does not lose them. The action then runs on its own in a fresh scope, so it does not end with the page. `ServerActions` offers the lead time for stop and restart, shows the pending action and "Abbrechen", which says "Der angekündigte Neustart wurde abgebrochen." (or Stoppen, Update) in the chat; the buttons are off while something is announced. `ServerLifecycle` stays unchanged: the lead time sits in front of it. The update dialog offers the lead time as well; an announced update runs pull and backup after the announcement, right before the stop, so the backup holds the last minutes too (M18 AC1 order otherwise). `AnnouncementBox` on the server page sends a free text with the audit line `ServerChatSent`. With no service session the countdown still runs and the action still comes; only the chat lines are missing.)
 
 ### Steps
 

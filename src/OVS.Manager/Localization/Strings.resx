@@ -27,6 +27,29 @@
   <data name="Accounts_RoleManager" xml:space="preserve"><value>Server-Manager</value></data>
   <data name="Accounts_StartPassword" xml:space="preserve"><value>Start-Passwort</value></data>
   <data name="Accounts_Title" xml:space="preserve"><value>Konten</value></data>
+  <data name="Announce_ActionRestart" xml:space="preserve"><value>Neustart</value></data>
+  <data name="Announce_ActionStop" xml:space="preserve"><value>Stoppen</value></data>
+  <data name="Announce_ActionUpdate" xml:space="preserve"><value>Update</value></data>
+  <data name="Announce_AlreadyPending" xml:space="preserve"><value>Für diesen Server ist schon etwas angekündigt.</value></data>
+  <data name="Announce_Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="Announce_Chat" xml:space="preserve"><value>Nachricht an den Server-Chat</value></data>
+  <data name="Announce_Empty" xml:space="preserve"><value>Die Nachricht ist leer.</value></data>
+  <data name="Announce_InMinutes" xml:space="preserve"><value>in {0} Minuten</value></data>
+  <data name="Announce_InOneMinute" xml:space="preserve"><value>in 1 Minute</value></data>
+  <data name="Announce_Lead" xml:space="preserve"><value>Ankündigung</value></data>
+  <data name="Announce_Minutes" xml:space="preserve"><value>{0} Minuten</value></data>
+  <data name="Announce_Now" xml:space="preserve"><value>sofort</value></data>
+  <data name="Announce_OneMinute" xml:space="preserve"><value>1 Minute</value></data>
+  <data name="Announce_Pending" xml:space="preserve"><value>{0} angekündigt für {1} Uhr.</value></data>
+  <data name="Announce_Refused" xml:space="preserve"><value>Der Server hat die Nachricht abgelehnt: {0}</value></data>
+  <data name="Announce_Restart" xml:space="preserve"><value>Der Server wird in {0} neu gestartet.</value></data>
+  <data name="Announce_RestartCancelled" xml:space="preserve"><value>Der angekündigte Neustart wurde abgebrochen.</value></data>
+  <data name="Announce_Send" xml:space="preserve"><value>Senden</value></data>
+  <data name="Announce_Sent" xml:space="preserve"><value>Gesendet.</value></data>
+  <data name="Announce_Stop" xml:space="preserve"><value>Der Server wird in {0} gestoppt.</value></data>
+  <data name="Announce_StopCancelled" xml:space="preserve"><value>Das angekündigte Stoppen wurde abgebrochen.</value></data>
+  <data name="Announce_Update" xml:space="preserve"><value>Der Server wird in {0} aktualisiert.</value></data>
+  <data name="Announce_UpdateCancelled" xml:space="preserve"><value>Das angekündigte Update wurde abgebrochen.</value></data>
   <data name="App_Title" xml:space="preserve"><value>OpenVoiceSpeak Verwaltung</value></data>
   <data name="Assignments_Managers" xml:space="preserve"><value>Zugewiesene Serververwalter</value></data>
   <data name="Assignments_NoManagers" xml:space="preserve"><value>Es gibt noch keine Serververwalter.</value></data>
@@ -249,6 +272,7 @@
   <data name="Update_All" xml:space="preserve"><value>Alle aktualisieren</value></data>
   <data name="Update_AllDone" xml:space="preserve"><value>{0} Server aktualisiert.</value></data>
   <data name="Update_AllStopped" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Update_Announced" xml:space="preserve"><value>Update auf {0} angekündigt.</value></data>
   <data name="Update_Auto" xml:space="preserve"><value>Automatische Updates im Wartungsfenster (Tag und Uhrzeit, eine Stunde)</value></data>
   <data name="Update_Busy" xml:space="preserve"><value>Mit diesem Server läuft gerade eine andere Aktion.</value></data>
   <data name="Update_Done" xml:space="preserve"><value>Aktualisiert auf {0}.</value></data>

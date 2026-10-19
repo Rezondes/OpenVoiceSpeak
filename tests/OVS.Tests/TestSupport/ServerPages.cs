@@ -21,6 +21,7 @@ internal static class ServerPages
         context.Services.AddSingleton(manager.Services.GetRequiredService<StatusWatcher>());
         context.Services.AddSingleton(manager.Services.GetRequiredService<ServerConnections>());
         context.Services.AddSingleton(manager.Services.GetRequiredService<ReleaseCatalog>());
+        context.Services.AddSingleton(manager.Services.GetRequiredService<OVS.Manager.Control.Announcement>()); // Package M19
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<SettingsCommands>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ModerationCommands>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<GroupCommands>());
