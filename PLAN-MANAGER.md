@@ -1216,17 +1216,19 @@ Events: crashed, restart loop, not reachable over 5 minutes, server full, voice 
 
 ### Acceptance Criteria
 
-- [ ] AC1: Each user picks per event and channel (e-mail, webhook URL) for their servers; the admin also for manager events (disk, manager update).
-- [ ] AC2: An event is sent once and again only after it was resolved (no repeat while the server loops); a resolved event sends "wieder ok".
-- [ ] AC3: Thresholds (drops %, minutes) are set per server.
-- [ ] AC4: A failed send is retried 3 times and shown in the settings.
+- [x] AC1: Each user picks per event and channel (e-mail, webhook URL) for their servers; the admin also for manager events (disk, manager update).
+- [x] AC2: An event is sent once and again only after it was resolved (no repeat while the server loops); a resolved event sends "wieder ok".
+- [x] AC3: Thresholds (drops %, minutes) are set per server.
+- [x] AC4: A failed send is retried 3 times and shown in the settings.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `NotifierTests > "Pick_PerEventAndChannel"` - AC1
+1. `NotifierTests > "Rules_PerEventAndChannel_EachUserTold"` - AC1
 2. `NotifierTests > "Loop_SentOnce_ResolvedOk"` - AC2
 3. `NotifierTests > "Drops_OverThreshold_FiveMinutes"` (with `ManualTimeProvider`) - AC3
-4. `NotifierTests > "SendFails_RetriedAndShown"` - AC4
+4. `NotifierTests > "Send_Fails_RetriedAndShown"` (bUnit) and `"Webhook_PrivateAddress_Refused"` - AC4
+
+(as built: `Notifier` (hosted, each minute) looks at every server of the status watcher and at the manager: crashed, restart loop, not reachable for 5 minutes, full (users without the service session at the server's limit), drops (every one of the server's last N finished minutes above its percent of the voice packets received, `ServerAlertSettings`, 5 % and 5 minutes by default), update available, and for the admin Docker's disk below 10 % and a new manager version; an update reports its failure or success (`ReportUpdateAsync`). `AlertState` keeps what was sent, so an event goes out once and "Wieder ok" once when it is over, also across a restart of the manager. `NotificationRule` holds per user, event and channel the target; a user gets a server's events only when they see the server, the manager's events only as admin. One class per channel behind `INotificationChannel`: `EmailChannel` (the account's address, M26), `WebhookChannel` (JSON with event, server, resolved, text, time) and `DiscordWebhookChannel` (`content`, also Fluxer). A send is tried 3 more times after 0.25, 0.5 and 1 s; the last error stays at the rule and shows in `/settings/notifications` (in the navigation), where each user ticks events per channel, enters the webhook URLs and sets the thresholds of their servers. Webhooks go through a client that connects only to public addresses (`PublicOnly`, checked on every connection) and follows no redirect, so no URL reaches the socket proxy or a server. Migration `AddNotifications`.)
 
 ### Steps
 

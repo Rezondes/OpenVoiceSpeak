@@ -13,6 +13,7 @@ using OVS.Manager.Data;
 using OVS.Manager.Docker;
 using OVS.Manager.Localization;
 using OVS.Manager.Mail;
+using OVS.Manager.Notifications;
 using OVS.Manager.Servers;
 using OVS.Manager.Telemetry;
 using OVS.Shared;
@@ -113,6 +114,14 @@ builder.Services.AddScoped<ServerResources>();
 builder.Services.AddScoped<ResourceQuery>();
 builder.Services.AddHostedService<UsageSampler>();
 builder.Services.AddSingleton<IHostDisk, DataDirDisk>();
+// Package M27: notifications by mail and webhook; webhooks reach only public addresses and follow no redirect
+builder.Services.AddHttpClient(Notifier.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(10))
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { ConnectCallback = PublicOnly.ConnectAsync, AllowAutoRedirect = false });
+builder.Services.AddSingleton<INotificationChannel, EmailChannel>();
+builder.Services.AddSingleton<INotificationChannel, WebhookChannel>();
+builder.Services.AddSingleton<INotificationChannel, DiscordWebhookChannel>();
+builder.Services.AddSingleton<Notifier>();
+builder.Services.AddHostedService(services => services.GetRequiredService<Notifier>());
 builder.Services.AddScoped<ConsoleLog>();
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();

@@ -14,7 +14,7 @@ namespace OVS.Manager.Servers;
 /// back the old image and the backup made before. Every step is reported and written to the audit log.
 /// </summary>
 internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine docker, IServerProbe probe, BackupCommands backups, ServerConnections connections,
-    StatusWatcher watcher, ReleaseCatalog catalog, AuditLog audit, ManagerOptions options, TimeProvider time)
+    StatusWatcher watcher, ReleaseCatalog catalog, AuditLog audit, ManagerOptions options, TimeProvider time, Notifications.Notifier notifier)
 {
     /// <summary>The user name of the maintenance window in the audit log.</summary>
     public const string WindowActor = "system";
@@ -85,6 +85,7 @@ internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine dock
             await database.SaveChangesAsync(cancellation);
             await StepAsync(UpdateStep.Done);
             await audit.WriteAsync(actor, AuditActions.ServerUpdated, server.Name, serverId, $"{oldVersion} -> {version}", cancellation);
+            await notifier.ReportUpdateAsync(serverId, server.Name, failed: false, cancellation); // Package M27
             return null;
         }
 
@@ -97,6 +98,7 @@ internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine dock
         var reason = Strings.Update_HealthFailed;
         var restored = await ConnectedAsync(serverId, cancellation) && await backups.RestoreAsync(serverId, backup.FileName!, actor, cancellation) is null;
         await audit.WriteAsync(actor, AuditActions.ServerUpdateFailed, server.Name, serverId, $"{oldVersion} -> {version}: {reason}", cancellation);
+        await notifier.ReportUpdateAsync(serverId, server.Name, failed: true, cancellation); // Package M27
         return TextFormat.Of(restored ? Strings.Update_RolledBack : Strings.Update_RolledBackWithoutBackup, reason);
     }
 

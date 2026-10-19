@@ -1,0 +1,53 @@
+@page "/settings/notifications"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<h1>@Strings.NotifySettings_Title</h1>
+<div class="account-form">
+    <label>@Strings.NotifySettings_WebhookUrl <input type="url" data-webhook-url @bind="WebhookUrl" /></label>
+    <label>@Strings.NotifySettings_DiscordUrl <input type="url" data-discord-url @bind="DiscordUrl" /></label>
+</div>
+<table class="list">
+    <thead>
+        <tr><th>@Strings.NotifySettings_Event</th><th>@Strings.Field_Email</th><th>@Strings.NotifySettings_Webhook</th><th>@Strings.NotifySettings_Discord</th><th>@Strings.NotifySettings_LastError</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var row in Rows)
+        {
+            <tr data-event="@row.Event">
+                <td>@EventName(row.Event)</td>
+                <td><input type="checkbox" data-channel="Email" @bind="row.Email" /></td>
+                <td><input type="checkbox" data-channel="Webhook" @bind="row.Webhook" /></td>
+                <td><input type="checkbox" data-channel="Discord" @bind="row.Discord" /></td>
+                <td class="form-error" data-last-error>@row.LastError</td>
+            </tr>
+        }
+    </tbody>
+</table>
+<p>
+    <button type="button" data-save @onclick="SaveAsync">@Strings.Settings_Save</button>
+    @if (Result is not null)
+    {
+        <span class="@ResultClass" role="status" data-result>@Result</span>
+    }
+</p>
+@if (Thresholds.Count > 0)
+{
+    <h2>@Strings.NotifySettings_Thresholds</h2>
+    <table class="list">
+        <thead>
+            <tr><th>@Strings.Servers_Name</th><th>@Strings.NotifySettings_DropsPercent</th><th>@Strings.NotifySettings_DropsMinutes</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var server in Thresholds)
+            {
+                <tr data-threshold="@server.ServerId">
+                    <td>@server.Name</td>
+                    <td><input type="number" step="0.5" data-drops-percent @bind="server.DropsPercent" /></td>
+                    <td><input type="number" data-drops-minutes @bind="server.DropsMinutes" /></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p><button type="button" data-save-thresholds @onclick="SaveThresholdsAsync">@Strings.Settings_Save</button></p>
+}

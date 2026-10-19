@@ -13,6 +13,9 @@ internal static class MailTemplates
     /// <summary>AC3: the admin's test mail.</summary>
     public static OutgoingMail Test(string to, string? language) => new(to, Text(nameof(Strings.Mail_TestSubject), language), Text(nameof(Strings.Mail_TestBody), language));
 
+    /// <summary>Package M27: the text <paramref name="name"/> of <c>Strings</c> in <paramref name="language"/>.</summary>
+    public static string Localized(string name, string? language) => Text(name, language);
+
     static string Text(string name, string? language) =>
         Strings.ResourceManager.GetString(name, CultureInfo.GetCultureInfo(language is "en" ? "en" : "de")) ?? name;
 }

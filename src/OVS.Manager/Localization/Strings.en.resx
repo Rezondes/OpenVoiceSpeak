@@ -231,6 +231,38 @@ If you did not ask for it, ignore this mail.</value></data>
   <data name="Nav_NewServer" xml:space="preserve"><value>New server</value></data>
   <data name="Nav_Profile" xml:space="preserve"><value>My account</value></data>
   <data name="Nav_Trash" xml:space="preserve"><value>Trash</value></data>
+  <data name="NotifyEvent_Crashed" xml:space="preserve"><value>Crashed</value></data>
+  <data name="NotifyEvent_DiskLow" xml:space="preserve"><value>Docker disk almost full</value></data>
+  <data name="NotifyEvent_Drops" xml:space="preserve"><value>Many dropped voice packets</value></data>
+  <data name="NotifyEvent_Full" xml:space="preserve"><value>Server full</value></data>
+  <data name="NotifyEvent_ManagerUpdate" xml:space="preserve"><value>New manager version</value></data>
+  <data name="NotifyEvent_NotReachable" xml:space="preserve"><value>Not reachable (5 minutes)</value></data>
+  <data name="NotifyEvent_RestartLoop" xml:space="preserve"><value>Restart loop</value></data>
+  <data name="NotifyEvent_UpdateAvailable" xml:space="preserve"><value>Update available</value></data>
+  <data name="NotifyEvent_UpdateFailed" xml:space="preserve"><value>Update failed</value></data>
+  <data name="NotifySettings_Discord" xml:space="preserve"><value>Discord</value></data>
+  <data name="NotifySettings_DiscordUrl" xml:space="preserve"><value>Discord or Fluxer webhook URL</value></data>
+  <data name="NotifySettings_DropsMinutes" xml:space="preserve"><value>Minutes in a row</value></data>
+  <data name="NotifySettings_DropsPercent" xml:space="preserve"><value>Dropped above %</value></data>
+  <data name="NotifySettings_Event" xml:space="preserve"><value>Event</value></data>
+  <data name="NotifySettings_InvalidThreshold" xml:space="preserve"><value>Percent above 0 up to 100, minutes 1 to 60.</value></data>
+  <data name="NotifySettings_InvalidUrl" xml:space="preserve"><value>A webhook URL starts with http:// or https://.</value></data>
+  <data name="NotifySettings_LastError" xml:space="preserve"><value>Last error</value></data>
+  <data name="NotifySettings_Thresholds" xml:space="preserve"><value>Thresholds per server</value></data>
+  <data name="NotifySettings_Title" xml:space="preserve"><value>Notifications</value></data>
+  <data name="NotifySettings_Webhook" xml:space="preserve"><value>Webhook</value></data>
+  <data name="NotifySettings_WebhookUrl" xml:space="preserve"><value>Webhook URL (JSON)</value></data>
+  <data name="Notify_Crashed" xml:space="preserve"><value>{0} crashed.</value></data>
+  <data name="Notify_DiskLow" xml:space="preserve"><value>Less than 10 % of the Docker disk is free.</value></data>
+  <data name="Notify_Drops" xml:space="preserve"><value>{0} drops too many voice packets.</value></data>
+  <data name="Notify_Full" xml:space="preserve"><value>{0} is full.</value></data>
+  <data name="Notify_Manager" xml:space="preserve"><value>Manager</value></data>
+  <data name="Notify_ManagerUpdate" xml:space="preserve"><value>A new version of the manager is available.</value></data>
+  <data name="Notify_NotReachable" xml:space="preserve"><value>{0} has not been reachable for over 5 minutes.</value></data>
+  <data name="Notify_Resolved" xml:space="preserve"><value>OK again: {0}</value></data>
+  <data name="Notify_RestartLoop" xml:space="preserve"><value>{0} restarts again and again.</value></data>
+  <data name="Notify_UpdateAvailable" xml:space="preserve"><value>An update is available for {0}.</value></data>
+  <data name="Notify_UpdateFailed" xml:space="preserve"><value>The update of {0} failed.</value></data>
   <data name="Perm_BackupsManage" xml:space="preserve"><value>Manage backups</value></data>
   <data name="Perm_BansView" xml:space="preserve"><value>View bans</value></data>
   <data name="Perm_ChannelCreate" xml:space="preserve"><value>Create channels</value></data>

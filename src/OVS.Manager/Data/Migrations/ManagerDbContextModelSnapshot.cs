@@ -325,6 +325,72 @@ namespace OVS.Manager.Data.Migrations
                     b.ToTable("BackupSchedules");
                 });
 
+            modelBuilder.Entity("OVS.Manager.Notifications.AlertState", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Event")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("SentAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Key", "Event");
+
+                    b.ToTable("AlertStates");
+                });
+
+            modelBuilder.Entity("OVS.Manager.Notifications.NotificationRule", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Channel")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Event")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastErrorAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Event", "Channel")
+                        .IsUnique();
+
+                    b.ToTable("NotificationRules");
+                });
+
+            modelBuilder.Entity("OVS.Manager.Notifications.ServerAlertSettings", b =>
+                {
+                    b.Property<string>("ServerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DropsMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("DropsPercent")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("ServerId");
+
+                    b.ToTable("ServerAlertSettings");
+                });
+
             modelBuilder.Entity("OVS.Manager.Servers.ManagedServer", b =>
                 {
                     b.Property<string>("Id")
@@ -503,6 +569,24 @@ namespace OVS.Manager.Data.Migrations
                 });
 
             modelBuilder.Entity("OVS.Manager.Control.BackupSchedule", b =>
+                {
+                    b.HasOne("OVS.Manager.Servers.ManagedServer", null)
+                        .WithMany()
+                        .HasForeignKey("ServerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OVS.Manager.Notifications.NotificationRule", b =>
+                {
+                    b.HasOne("OVS.Manager.Accounts.ManagerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OVS.Manager.Notifications.ServerAlertSettings", b =>
                 {
                     b.HasOne("OVS.Manager.Servers.ManagedServer", null)
                         .WithMany()

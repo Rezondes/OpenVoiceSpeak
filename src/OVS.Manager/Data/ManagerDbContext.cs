@@ -34,6 +34,15 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
     /// <summary>Package M15: the backups the manager made for a reason.</summary>
     public DbSet<BackupMark> BackupMarks => Set<BackupMark>();
 
+    /// <summary>Package M27: what each user wants to be told, and how.</summary>
+    public DbSet<Notifications.NotificationRule> NotificationRules => Set<Notifications.NotificationRule>();
+
+    /// <summary>Package M27: the events sent and not yet over.</summary>
+    public DbSet<Notifications.AlertState> AlertStates => Set<Notifications.AlertState>();
+
+    /// <summary>Package M27: the servers' thresholds.</summary>
+    public DbSet<Notifications.ServerAlertSettings> ServerAlertSettings => Set<Notifications.ServerAlertSettings>();
+
     /// <summary>Package M18: the maintenance window of each server with automatic updates.</summary>
     public DbSet<UpdateWindow> UpdateWindows => Set<UpdateWindow>();
 
@@ -54,6 +63,22 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
             schedule.HasKey(value => value.ServerId);
             schedule.Property(value => value.LastRunUtc).HasConversion(value => value, value => value == null ? null : DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
             schedule.HasOne<ManagedServer>().WithMany().HasForeignKey(value => value.ServerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<Notifications.NotificationRule>(rule =>
+        {
+            rule.HasIndex(value => new { value.UserId, value.Event, value.Channel }).IsUnique();
+            rule.Property(value => value.LastErrorAtUtc).HasConversion(value => value, value => value == null ? null : DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
+            rule.HasOne<ManagerUser>().WithMany().HasForeignKey(value => value.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<Notifications.AlertState>(state =>
+        {
+            state.HasKey(value => new { value.Key, value.Event });
+            state.Property(value => value.SentAtUtc).HasConversion(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
+        });
+        builder.Entity<Notifications.ServerAlertSettings>(settings =>
+        {
+            settings.HasKey(value => value.ServerId);
+            settings.HasOne<ManagedServer>().WithMany().HasForeignKey(value => value.ServerId).OnDelete(DeleteBehavior.Cascade);
         });
         builder.Entity<UpdateWindow>(window =>
         {
