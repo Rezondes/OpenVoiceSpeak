@@ -180,16 +180,18 @@ The client is German with English (`src/OVS.Client/Localization/`), so the manag
 ### Acceptance Criteria
 
 - [ ] AC1: Without a choice the browser's language decides (German for `de-*`, otherwise English); the choice of a logged-in user is stored with the account and wins.
-- [ ] AC2: Every key of `Strings.resx` exists in `Strings.en.resx` and the other way round.
-- [ ] AC3: The theme follows the system until the user picks light or dark; the pick is stored.
-- [ ] AC4: No page contains a German or English text outside the resources (checked by a test over the `.razor` files).
+- [x] AC2: Every key of `Strings.resx` exists in `Strings.en.resx` and the other way round.
+- [x] AC3: The theme follows the system until the user picks light or dark; the pick is stored.
+- [x] AC4: No page contains a German or English text outside the resources (checked by a test over the `.razor` files).
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `ManagerLocalizationTests > "Culture_BrowserGerman_German"` and `"Culture_StoredChoice_Wins"` - AC1
-2. `ManagerLocalizationTests > "Resources_SameKeys"` - AC2
+2. `ManagerLocalizationTests > "Resources_GermanAndEnglish_SameKeys"` - AC2
 3. `LayoutTests > "Theme_Picked_StoredAndApplied"` - AC3
-4. `ManagerLocalizationTests > "Razor_NoLiteralText"` - AC4
+4. `ManagerLocalizationTests > "Razor_ManagerPages_NoLiteralText"` - AC4
+
+(as built: the pages are rendered on the server per request (static SSR), so the login of M3 can set its cookie; a page with live data opts into interactive server rendering itself. `UiCulture.CreateOptions` is the request localization: the culture cookie, then `Accept-Language`, then English; `de-*` falls back to German. The choice is stored in the culture cookie for now; storing it with the account comes with the own account page of M4, which then writes the same cookie at login. `/culture` and `/theme` store the pick in a cookie and go back to a local address only (anything else is 400, no open redirect); `ThemeCookie` keeps `Theme` (system, light, dark) and `App` sets `data-theme` only for a pick, so `app.css` follows `prefers-color-scheme` otherwise. No bUnit yet: the layout tests read the rendered HTML through `ManagerFactory`. Razor generates public components, so CA1515 is off for `src/OVS.Manager/Components/**.razor.cs` in `.editorconfig`.)
 
 ### Steps
 

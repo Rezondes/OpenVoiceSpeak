@@ -1,0 +1,72 @@
+/* Package M2: the colour tokens of the manager; the system decides until the user picks light or dark (data-theme). */
+:root {
+    --background: #f6f7f9;
+    --surface: #ffffff;
+    --text: #1d2229;
+    --muted: #5d6673;
+    --accent: #2f6fde;
+    --border: #d9dde3;
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --background: #15181d;
+        --surface: #1e2229;
+        --text: #e7eaee;
+        --muted: #9aa3ae;
+        --accent: #6d9cf0;
+        --border: #313741;
+        color-scheme: dark;
+    }
+}
+
+:root[data-theme="dark"] {
+    --background: #15181d;
+    --surface: #1e2229;
+    --text: #e7eaee;
+    --muted: #9aa3ae;
+    --accent: #6d9cf0;
+    --border: #313741;
+    color-scheme: dark;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--background);
+    color: var(--text);
+}
+
+a {
+    color: var(--accent);
+}
+
+.top-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.app-title {
+    font-weight: 600;
+    margin-right: auto;
+}
+
+.switch {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.switch-label {
+    color: var(--muted);
+}
+
+main {
+    padding: 16px;
+}

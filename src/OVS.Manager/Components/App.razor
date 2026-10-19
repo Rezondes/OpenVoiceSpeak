@@ -1,14 +1,15 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="@Language" data-theme="@ThemeName">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
-    <title>OpenVoiceSpeak Manager</title>
-    <HeadOutlet @rendermode="InteractiveServer" />
+    <title>@Strings.App_Title</title>
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <HeadOutlet />
 </head>
 <body>
-    <Routes @rendermode="InteractiveServer" />
+    <Routes />
     <script src="_framework/blazor.web.js"></script>
 </body>
 </html>

@@ -40,3 +40,7 @@ dotnet_diagnostic.CA1716.severity = none
 # CA5394: tests make their data with Random on purpose; no security depends on it.
 [{tests,tools/rule-lint-tests}/**/*.cs]
 dotnet_diagnostic.CA5394.severity = none
+
+# CA1515: Razor generates every component as a public class, so its code-behind (X.razor.cs, Package M2) cannot be internal.
+[src/OVS.Manager/Components/**.razor.cs]
+dotnet_diagnostic.CA1515.severity = none

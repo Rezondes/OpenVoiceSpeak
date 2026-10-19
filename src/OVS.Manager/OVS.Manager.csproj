@@ -8,6 +8,20 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" PrivateAssets="all" />
   </ItemGroup>
 
+  <!-- Package M2: German is the neutral language, English comes as a satellite assembly (like the client, Package 45) -->
+  <PropertyGroup>
+    <NeutralLanguage>de</NeutralLanguage>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Update="Localization\Strings.resx">
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>OVS.Manager.Localization</StronglyTypedNamespace>
+      <StronglyTypedClassName>Strings</StronglyTypedClassName>
+      <StronglyTypedFileName>$(IntermediateOutputPath)Strings.Designer.cs</StronglyTypedFileName>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="OVS.Tests" />
   </ItemGroup>
