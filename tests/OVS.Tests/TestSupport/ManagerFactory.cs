@@ -19,6 +19,9 @@ internal sealed class ManagerFactory(params (string Key, string Value)[] setting
     /// <summary>Package M8: the servers' answer to the status check's TLS handshake.</summary>
     public FakeServerProbe Probe { get; } = new();
 
+    /// <summary>Package M17: GitHub's release list, empty unless a test fills it.</summary>
+    public FakeHttp GitHub { get; } = new(_ => FakeHttp.Json(Array.Empty<object>()));
+
     /// <summary>Package M9: the manager's clock; null keeps the system's.</summary>
     public TimeProvider? Time { get; init; }
 
@@ -35,6 +38,8 @@ internal sealed class ManagerFactory(params (string Key, string Value)[] setting
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<IServerProbe>(Probe);
+            services.AddSingleton(provider => new ReleaseCatalog(new HttpClient(GitHub), OVS.Shared.BuildInfo.Current, provider.GetRequiredService<TimeProvider>(),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<ReleaseCatalog>.Instance)); // Package M17: never GitHub in a test
             if (Time is not null) services.AddSingleton(Time);
             if (!RealDocker) services.AddSingleton<IDockerEngine>(Docker);
         });

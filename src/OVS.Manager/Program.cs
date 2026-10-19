@@ -84,6 +84,11 @@ builder.Services.AddScoped<GroupCommands>();
 builder.Services.AddScoped<BackupCommands>(); // Package M15
 builder.Services.AddHostedService<BackupScheduler>();
 builder.Services.AddScoped<LogCommands>(); // Package M16
+// Package M17: the OVS releases from GitHub, hourly
+builder.Services.AddHttpClient(nameof(ReleaseCatalog));
+builder.Services.AddSingleton(services => new ReleaseCatalog(services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ReleaseCatalog)),
+    BuildInfo.Current, services.GetRequiredService<TimeProvider>(), services.GetRequiredService<ILogger<ReleaseCatalog>>()));
+builder.Services.AddHostedService(services => services.GetRequiredService<ReleaseCatalog>());
 builder.Services.AddScoped<ConsoleLog>();
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();

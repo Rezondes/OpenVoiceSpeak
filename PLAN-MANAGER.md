@@ -811,17 +811,19 @@ MA5, A206 of PLAN.md. `DDMMYY.stamp` is compared by release date, never as text.
 
 ### Acceptance Criteria
 
-- [ ] AC1: Each server shows its version and, if a newer release with the manager's protocol exists, "Update auf <Version> verfügbar".
-- [ ] AC2: Releases with a newer protocol than the manager's are never offered for servers; the banner says "Neue Version des Verwaltungstools verfügbar" with the compose command to update it.
-- [ ] AC3: Release order follows the release date (a test with versions whose text order differs).
-- [ ] AC4: Without network or with a GitHub error the last known catalog stays, with its age shown.
+- [x] AC1: Each server shows its version and, if a newer release with the manager's protocol exists, "Update auf <Version> verfügbar".
+- [x] AC2: Releases with a newer protocol than the manager's are never offered for servers; the banner says "Neue Version des Verwaltungstools verfügbar" with the compose command to update it.
+- [x] AC3: Release order follows the release date (a test with versions whose text order differs).
+- [x] AC4: Without network or with a GitHub error the last known catalog stays, with its age shown.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `ReleaseCatalogTests > "Newer_SameProtocol_Offered"` (`FakeHttp`) - AC1
-2. `ReleaseCatalogTests > "NewerProtocol_NotOffered_ManagerBanner"` - AC2
-3. `ReleaseCatalogTests > "Order_ByDateNotText"` - AC3
-4. `ReleaseCatalogTests > "Offline_LastCatalogWithAge"` - AC4
+2. `ReleaseCatalogTests > "NewerProtocol_NotOffered_ManagerBanner"` (bUnit) - AC2
+3. `ReleaseCatalogTests > "Order_TextOrderDiffers_ByDate"` - AC3
+4. `ReleaseCatalogTests > "Offline_LastCatalog_KeptWithAge"` (bUnit) - AC4
+
+(as built: `ReleaseCatalog` (singleton and hosted service) fetches `releases?per_page=50` of the public repository at the start and then hourly; a release is "OpenVoiceSpeak <version>" with its `published_at` and the protocol from its notes ("Protokoll: N", PLAN 193; reading the image label from GHCR was not needed). Releases are ordered by `published_at` only. A server is offered the newest release of the manager's own protocol when it was published after the server's version (or the server's version is not in the catalog), shown as "Update auf <Version> verfügbar" in the overview. A CI-built manager older than the newest release gets the banner "Neue Version des Verwaltungstools verfügbar" with `docker compose pull ovs-manager && docker compose up -d ovs-manager` (`ManagerUpdateBanner` in the layout). A failed fetch keeps the last catalog and the banner says "Versionsprüfung nicht möglich, Stand vor N Stunden", or "Versionsprüfung nicht möglich." before any catalog. The tests never reach GitHub: `ManagerFactory.GitHub` answers with an empty list. Found on the way: `BackupScheduler.RunDueAsync` runs one at a time now, so the minutely check and a slow run never make the same backup twice.)
 
 ### Steps
 

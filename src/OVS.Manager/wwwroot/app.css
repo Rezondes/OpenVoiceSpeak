@@ -153,6 +153,18 @@ table.list td {
     white-space: pre-wrap;
 }
 
+/* Package M17: a newer release */
+.update-offer {
+    color: var(--accent);
+    font-size: 0.85em;
+}
+
+.banner-info {
+    padding: 8px 12px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+}
+
 /* Package M9: deleting a server */
 .danger-zone {
     margin-top: 32px;

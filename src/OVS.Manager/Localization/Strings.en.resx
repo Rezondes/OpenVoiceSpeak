@@ -265,4 +265,8 @@
   <data name="Users_SpeechTime" xml:space="preserve"><value>Speech time</value></data>
   <data name="Users_Title" xml:space="preserve"><value>Users</value></data>
   <data name="Users_Unmute" xml:space="preserve"><value>Unmute</value></data>
+  <data name="Versions_CheckFailed" xml:space="preserve"><value>Version check not possible.</value></data>
+  <data name="Versions_ManagerUpdate" xml:space="preserve"><value>A new version of the manager is available: {0}. Update with</value></data>
+  <data name="Versions_Stale" xml:space="preserve"><value>Version check not possible, as of {0} hours ago.</value></data>
+  <data name="Versions_UpdateAvailable" xml:space="preserve"><value>Update to {0} available</value></data>
 </root>

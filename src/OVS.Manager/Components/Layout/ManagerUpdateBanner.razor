@@ -1,0 +1,10 @@
+@implements IDisposable
+
+@if (Catalog.ManagerUpdate is { } update)
+{
+    <p class="banner-info" role="status" data-manager-update>@UpdateText(update) <code>@UpdateCommand</code></p>
+}
+@if (CheckText is { } check)
+{
+    <p class="form-hint" data-catalog-state>@check</p>
+}

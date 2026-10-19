@@ -20,6 +20,7 @@ internal static class ServerPages
         var context = new BunitContext();
         context.Services.AddSingleton(manager.Services.GetRequiredService<StatusWatcher>());
         context.Services.AddSingleton(manager.Services.GetRequiredService<ServerConnections>());
+        context.Services.AddSingleton(manager.Services.GetRequiredService<ReleaseCatalog>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<SettingsCommands>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ModerationCommands>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<GroupCommands>());

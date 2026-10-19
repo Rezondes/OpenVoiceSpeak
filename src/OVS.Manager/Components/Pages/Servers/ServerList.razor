@@ -26,7 +26,7 @@ else
                 <tr @key="server.Id" data-server="@server.Id">
                     <td><a href="@($"/servers/{server.Id}")">@server.Name</a> <span class="link-state">@ServerTexts.Link(Connections.LinkOf(server.Id))</span></td>
                     <td data-status="@server.Status">@ServerTexts.Status(server)</td>
-                    <td>@server.Version</td>
+                    <td>@server.Version <span class="update-offer">@OfferText(server)</span></td>
                     <td>@server.Port</td>
                     <td>@ServerTexts.UsersOnline(Connections.LinkOf(server.Id))</td>
                     <td>@ServerTexts.Uptime(server, Time.GetUtcNow())</td>

@@ -7,8 +7,31 @@ namespace OVS.Manager.Control;
 /// <summary>Package M15 (AC2): once a minute, makes the due scheduled backups of the connected servers.</summary>
 internal sealed partial class BackupScheduler(IServiceScopeFactory scopes, TimeProvider time, ILogger<BackupScheduler> logger) : BackgroundService
 {
+    /// <summary>One run at a time, so a slow run and the next check never make the same backup twice.</summary>
+    readonly SemaphoreSlim running = new(1, 1);
+
     /// <summary>Makes every due backup now; returns how many were made.</summary>
     public async Task<int> RunDueAsync(CancellationToken cancellation = default)
+    {
+        await running.WaitAsync(cancellation);
+        try
+        {
+            return await RunDueOnceAsync(cancellation);
+        }
+        finally
+        {
+            running.Release();
+        }
+    }
+
+    /// <summary>Ends the checks.</summary>
+    public override void Dispose()
+    {
+        running.Dispose();
+        base.Dispose();
+    }
+
+    async Task<int> RunDueOnceAsync(CancellationToken cancellation)
     {
         await using var scope = scopes.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<ManagerDbContext>();
