@@ -5,6 +5,7 @@ using OVS.Manager.Control;
 using OVS.Manager.Data;
 using OVS.Manager.Docker;
 using OVS.Manager.Servers;
+using OVS.Server.Data.Records;
 using OVS.Tests.Manager.Accounts;
 
 namespace OVS.Tests.TestSupport;
@@ -54,10 +55,12 @@ internal static class ServerLinks
         AsyncWait.UntilAsync(() => manager.Services.GetRequiredService<ServerConnections>().LinkOf(id)?.Status == ServerLinkStatus.Connected, Within);
 
     /// <summary>A started in-process server with the manager as its server admin and the manager's open service session to it.</summary>
-    public static async Task<LinkedServer> StartAsync(ManagerFactory manager)
+    /// <param name="manager">The manager.</param>
+    /// <param name="seed">Package M13: the server's data before its start (a channel, a user).</param>
+    public static async Task<LinkedServer> StartAsync(ManagerFactory manager, Action<ServerData>? seed = null)
     {
         var added = await AddAsync(manager);
-        var server = await TestServer.StartAsync(serverAdminFingerprint: added.AdminFingerprint);
+        var server = await TestServer.StartAsync(seed, serverAdminFingerprint: added.AdminFingerprint);
         await RunAtAsync(manager, added.Id, server.Port);
         await ConnectedAsync(manager, added.Id);
         return new LinkedServer(added.Id, server);

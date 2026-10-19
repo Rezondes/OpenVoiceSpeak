@@ -57,4 +57,30 @@ internal static class AuditActions
     public const string ServerSettingsChanged = "ServerSettingsChanged";
     /// <summary>A server's icon was set or removed (M12).</summary>
     public const string ServerIconChanged = "ServerIconChanged";
+    /// <summary>A user was kicked from a server (M13); the detail is the reason.</summary>
+    public const string UserKicked = "UserKicked";
+    /// <summary>A user was banned on a server (M13); the detail is the reason and the duration.</summary>
+    public const string UserBanned = "UserBanned";
+    /// <summary>A ban on a server was lifted (M13).</summary>
+    public const string UserUnbanned = "UserUnbanned";
+    /// <summary>A user was server-muted (M13); the detail is the duration.</summary>
+    public const string UserMuted = "UserMuted";
+    /// <summary>A user's server mute was lifted (M13).</summary>
+    public const string UserUnmuted = "UserUnmuted";
+    /// <summary>A user was moved into another channel (M13); the detail is the channel.</summary>
+    public const string UserMoved = "UserMoved";
+    /// <summary>A known user was deleted with its data (M13).</summary>
+    public const string KnownUserDeleted = "KnownUserDeleted";
+    /// <summary>A user got a group (M13); the detail is the group.</summary>
+    public const string GroupAssigned = "GroupAssigned";
+    /// <summary>A user's group was taken (M13); the detail is the group.</summary>
+    public const string GroupUnassigned = "GroupUnassigned";
+    /// <summary>A group was created (M13).</summary>
+    public const string GroupCreated = "GroupCreated";
+    /// <summary>A group's name or rights changed (M13).</summary>
+    public const string GroupChanged = "GroupChanged";
+    /// <summary>A group was deleted (M13).</summary>
+    public const string GroupDeleted = "GroupDeleted";
+    /// <summary>The order of the groups changed (M13); the target is the moved group.</summary>
+    public const string GroupsReordered = "GroupsReordered";
 }

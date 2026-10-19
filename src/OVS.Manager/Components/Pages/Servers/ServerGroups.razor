@@ -1,0 +1,46 @@
+@page "/servers/{Id}/groups"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = ServerAccessHandler.Policy)]
+@implements IDisposable
+
+<h1>@Strings.Groups_Title</h1>
+@if (Error is not null)
+{
+    <p class="form-error" role="alert">@Error</p>
+}
+<table class="list">
+    <tbody>
+        @foreach (var group in Groups)
+        {
+            <tr @key="group.Id" data-group="@group.Name">
+                <td>@group.Name</td>
+                <td>@RightsCount(group)</td>
+                <td>
+                    <button type="button" data-up @onclick="@Move(group, -1)">@Strings.Groups_Up</button>
+                    <button type="button" data-down @onclick="@Move(group, 1)">@Strings.Groups_Down</button>
+                    @if (GroupCommands.IsFixed(group))
+                    {
+                        <span class="form-hint">@Strings.Groups_Fixed</span>
+                    }
+                    else
+                    {
+                        <button type="button" data-edit @onclick="@Edit(group)">@Strings.Groups_Edit</button>
+                    }
+                    @if (!GroupCommands.IsProtected(group))
+                    {
+                        <button type="button" class="danger" data-delete @onclick="@Delete(group)">@Strings.Groups_Delete</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<section class="account-form group-form">
+    <h2>@FormTitle</h2>
+    <label>@Strings.Groups_Name <input @bind="Name" @bind:event="oninput" /></label>
+    @foreach (var right in Rights)
+    {
+        <label><input type="checkbox" checked="@Chosen.HasFlag(right)" @onchange="@Toggle(right)" /> @RightText(right)</label>
+    }
+    <button type="button" data-save @onclick="SaveAsync">@SaveText</button>
+</section>

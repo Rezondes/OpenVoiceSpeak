@@ -5,6 +5,7 @@ using OVS.Manager.Localization;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.ServerInfo;
+using Error = OVS.Shared.Protocol.Messages.Connection.Error;
 
 namespace OVS.Manager.Control;
 
@@ -26,8 +27,8 @@ internal sealed class SettingsCommands(ServerConnections connections, ManagerDbC
         string? password = input.RemovePassword ? "" : input.NewPassword.Length > 0 ? input.NewPassword : null;
         var limits = new ServerLimits(input.MaxUsers, input.LogDays, input.LogRotateDaily, input.AutoRestart, input.AutoRestartTime,
             before.Limits?.AfkChannelId, before.Limits?.AfkMinutes ?? 0);
-        var refused = await link.RequestAsync(new UpdateServerSettings(input.Name, input.WelcomeText, password, limits), message => message is ServerSettingsChanged, cancellation);
-        if (refused is not null) return ServerTexts.Refusal(refused);
+        if (await link.RequestAsync(new UpdateServerSettings(input.Name, input.WelcomeText, password, limits), message => message is ServerSettingsChanged, cancellation) is Error refused)
+            return ServerTexts.Refusal(refused);
         await database.Servers.Where(server => server.Id == serverId).ExecuteUpdateAsync(setters => setters.SetProperty(server => server.Name, input.Name.Trim()), cancellation);
         await audit.WriteAsync(actor, AuditActions.ServerSettingsChanged, input.Name.Trim(), serverId, Changes(From(before), input, password), cancellation);
         return null;
@@ -39,8 +40,8 @@ internal sealed class SettingsCommands(ServerConnections connections, ManagerDbC
         if (png is not null && png.Length > ServerIconFormat.MaxBytes) return TextFormat.Of(Strings.Icon_TooLarge, ServerIconFormat.MaxBytes / 1024);
         if (png is not null && ServerIconFormat.Validate(png) is not null) return TextFormat.Of(Strings.Icon_Invalid, ServerIconFormat.MinSize, ServerIconFormat.MaxSize);
         if (connections.LinkOf(serverId) is not { Status: ServerLinkStatus.Connected } link) return Strings.Link_NotConnected;
-        var refused = await link.RequestAsync(new SetServerIcon(png is null ? null : Convert.ToBase64String(png)), message => message is ServerSettingsChanged, cancellation);
-        if (refused is not null) return ServerTexts.Refusal(refused);
+        if (await link.RequestAsync(new SetServerIcon(png is null ? null : Convert.ToBase64String(png)), message => message is ServerSettingsChanged, cancellation) is Error refused)
+            return ServerTexts.Refusal(refused);
         await audit.WriteAsync(actor, AuditActions.ServerIconChanged, link.Read(mirror => mirror.Settings.Name, ""), serverId, png is null ? "removed" : "set", cancellation);
         return null;
     }

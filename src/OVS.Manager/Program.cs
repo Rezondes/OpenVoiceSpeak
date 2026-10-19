@@ -79,6 +79,8 @@ builder.Services.AddScoped<ServerAssignmentList>();
 builder.Services.AddSingleton<ServerConnections>();
 builder.Services.AddHostedService(services => services.GetRequiredService<ServerConnections>());
 builder.Services.AddScoped<SettingsCommands>(); // Package M12
+builder.Services.AddScoped<ModerationCommands>(); // Package M13
+builder.Services.AddScoped<GroupCommands>();
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();
 

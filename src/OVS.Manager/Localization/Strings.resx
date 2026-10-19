@@ -43,6 +43,16 @@
   <data name="Audit_Title" xml:space="preserve"><value>Protokoll</value></data>
   <data name="Audit_To" xml:space="preserve"><value>bis</value></data>
   <data name="Audit_User" xml:space="preserve"><value>Benutzer</value></data>
+  <data name="Bans_Active" xml:space="preserve"><value>aktiv</value></data>
+  <data name="Bans_By" xml:space="preserve"><value>Gebannt von</value></data>
+  <data name="Bans_Empty" xml:space="preserve"><value>Keine Bans.</value></data>
+  <data name="Bans_Ends" xml:space="preserve"><value>Endet</value></data>
+  <data name="Bans_Expired" xml:space="preserve"><value>abgelaufen</value></data>
+  <data name="Bans_Lifted" xml:space="preserve"><value>aufgehoben</value></data>
+  <data name="Bans_Permanent" xml:space="preserve"><value>dauerhaft</value></data>
+  <data name="Bans_State" xml:space="preserve"><value>Stand</value></data>
+  <data name="Bans_Title" xml:space="preserve"><value>Bans</value></data>
+  <data name="Bans_Unban" xml:space="preserve"><value>Entbannen</value></data>
   <data name="Docker_CallFailed" xml:space="preserve"><value>Docker hat den Auftrag nicht ausgeführt. Läuft der Socket-Proxy?</value></data>
   <data name="Docker_Unreachable" xml:space="preserve"><value>Docker nicht erreichbar: Server können gerade nicht gestartet, gestoppt oder angelegt werden.</value></data>
   <data name="Field_ConfirmPassword" xml:space="preserve"><value>Passwort wiederholen</value></data>
@@ -51,6 +61,15 @@
   <data name="Field_OldPassword" xml:space="preserve"><value>Bisheriges Passwort</value></data>
   <data name="Field_Password" xml:space="preserve"><value>Passwort</value></data>
   <data name="Field_UserName" xml:space="preserve"><value>Benutzername</value></data>
+  <data name="Groups_Create" xml:space="preserve"><value>Neue Gruppe</value></data>
+  <data name="Groups_Delete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="Groups_Down" xml:space="preserve"><value>nach unten</value></data>
+  <data name="Groups_Edit" xml:space="preserve"><value>Bearbeiten</value></data>
+  <data name="Groups_Fixed" xml:space="preserve"><value>fest</value></data>
+  <data name="Groups_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Groups_RightsCount" xml:space="preserve"><value>{0} Rechte</value></data>
+  <data name="Groups_Title" xml:space="preserve"><value>Gruppen</value></data>
+  <data name="Groups_Up" xml:space="preserve"><value>nach oben</value></data>
   <data name="Home_Title" xml:space="preserve"><value>OpenVoiceSpeak Verwaltung</value></data>
   <data name="Icon_Invalid" xml:space="preserve"><value>Ein quadratisches PNG von {0} bis {1} Pixeln.</value></data>
   <data name="Icon_TooLarge" xml:space="preserve"><value>Das Bild ist zu groß (höchstens {0} KB).</value></data>
@@ -77,6 +96,33 @@
   <data name="Nav_NewServer" xml:space="preserve"><value>Neuer Server</value></data>
   <data name="Nav_Profile" xml:space="preserve"><value>Mein Konto</value></data>
   <data name="Nav_Trash" xml:space="preserve"><value>Papierkorb</value></data>
+  <data name="Perm_BackupsManage" xml:space="preserve"><value>Backups verwalten</value></data>
+  <data name="Perm_BansView" xml:space="preserve"><value>Bans sehen</value></data>
+  <data name="Perm_ChannelCreate" xml:space="preserve"><value>Channels anlegen</value></data>
+  <data name="Perm_ChannelDelete" xml:space="preserve"><value>Channels löschen</value></data>
+  <data name="Perm_ChannelEdit" xml:space="preserve"><value>Channels bearbeiten</value></data>
+  <data name="Perm_ChannelJoinFull" xml:space="preserve"><value>Volle Channel betreten</value></data>
+  <data name="Perm_ChannelLink" xml:space="preserve"><value>Channels verlinken</value></data>
+  <data name="Perm_ChannelPasswordBypass" xml:space="preserve"><value>Passwort-Lock umgehen</value></data>
+  <data name="Perm_ChatChannel" xml:space="preserve"><value>Im Channel schreiben</value></data>
+  <data name="Perm_ChatPrivate" xml:space="preserve"><value>Privat schreiben</value></data>
+  <data name="Perm_ChatServer" xml:space="preserve"><value>Serverweit schreiben</value></data>
+  <data name="Perm_GroupsAssign" xml:space="preserve"><value>Gruppen zuweisen</value></data>
+  <data name="Perm_GroupsCreate" xml:space="preserve"><value>Gruppen anlegen</value></data>
+  <data name="Perm_GroupsDelete" xml:space="preserve"><value>Gruppen löschen</value></data>
+  <data name="Perm_GroupsManage" xml:space="preserve"><value>Gruppen bearbeiten</value></data>
+  <data name="Perm_GroupsView" xml:space="preserve"><value>Gruppen sehen</value></data>
+  <data name="Perm_LogsDownload" xml:space="preserve"><value>Logs herunterladen</value></data>
+  <data name="Perm_LogsView" xml:space="preserve"><value>Logs ansehen</value></data>
+  <data name="Perm_ServerConfig" xml:space="preserve"><value>Servereinstellungen ändern</value></data>
+  <data name="Perm_Speak" xml:space="preserve"><value>Sprechen</value></data>
+  <data name="Perm_SpeakLinked" xml:space="preserve"><value>Über Links sprechen</value></data>
+  <data name="Perm_UserBan" xml:space="preserve"><value>Nutzer bannen und entbannen</value></data>
+  <data name="Perm_UserDelete" xml:space="preserve"><value>Nutzer löschen</value></data>
+  <data name="Perm_UserKick" xml:space="preserve"><value>Nutzer kicken</value></data>
+  <data name="Perm_UserMove" xml:space="preserve"><value>Nutzer verschieben</value></data>
+  <data name="Perm_UserMute" xml:space="preserve"><value>Nutzer stummschalten</value></data>
+  <data name="Perm_UsersView" xml:space="preserve"><value>Nutzerübersicht sehen</value></data>
   <data name="Profile_EmailSaved" xml:space="preserve"><value>Die E-Mail-Adresse wurde gespeichert.</value></data>
   <data name="Profile_EmailTitle" xml:space="preserve"><value>E-Mail</value></data>
   <data name="Profile_EndOthers" xml:space="preserve"><value>Überall sonst abmelden</value></data>
@@ -153,4 +199,32 @@
   <data name="Trash_Empty" xml:space="preserve"><value>Der Papierkorb ist leer.</value></data>
   <data name="Trash_Restore" xml:space="preserve"><value>Wiederherstellen</value></data>
   <data name="Trash_Title" xml:space="preserve"><value>Papierkorb</value></data>
+  <data name="Users_Act" xml:space="preserve"><value>Aktion …</value></data>
+  <data name="Users_Assign" xml:space="preserve"><value>Gruppe geben</value></data>
+  <data name="Users_Ban" xml:space="preserve"><value>Bannen</value></data>
+  <data name="Users_Channel" xml:space="preserve"><value>Channel</value></data>
+  <data name="Users_Delete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="Users_DeleteConfirm" xml:space="preserve"><value>Wirklich mit allen Daten löschen</value></data>
+  <data name="Users_FirstSeen" xml:space="preserve"><value>Zuerst gesehen</value></data>
+  <data name="Users_Groups" xml:space="preserve"><value>Gruppen</value></data>
+  <data name="Users_Hours" xml:space="preserve"><value>{0} h {1} min</value></data>
+  <data name="Users_IncludeIp" xml:space="preserve"><value>Auch die IP-Adresse bannen</value></data>
+  <data name="Users_Kick" xml:space="preserve"><value>Kicken</value></data>
+  <data name="Users_Known" xml:space="preserve"><value>Bekannte Nutzer</value></data>
+  <data name="Users_LastLogin" xml:space="preserve"><value>Letzter Login</value></data>
+  <data name="Users_Minutes" xml:space="preserve"><value>Dauer in Minuten (leer = dauerhaft)</value></data>
+  <data name="Users_Move" xml:space="preserve"><value>Verschieben</value></data>
+  <data name="Users_Mute" xml:space="preserve"><value>Stummschalten</value></data>
+  <data name="Users_Muted" xml:space="preserve"><value>Stummgeschaltet</value></data>
+  <data name="Users_MutedUntil" xml:space="preserve"><value>bis {0}</value></data>
+  <data name="Users_MutedYes" xml:space="preserve"><value>ja</value></data>
+  <data name="Users_Nickname" xml:space="preserve"><value>Nickname</value></data>
+  <data name="Users_Online" xml:space="preserve"><value>Online</value></data>
+  <data name="Users_OnlineTime" xml:space="preserve"><value>Online-Zeit</value></data>
+  <data name="Users_Reason" xml:space="preserve"><value>Grund</value></data>
+  <data name="Users_Remove" xml:space="preserve"><value>entfernen</value></data>
+  <data name="Users_Since" xml:space="preserve"><value>Verbunden seit</value></data>
+  <data name="Users_SpeechTime" xml:space="preserve"><value>Sprechzeit</value></data>
+  <data name="Users_Title" xml:space="preserve"><value>Nutzer</value></data>
+  <data name="Users_Unmute" xml:space="preserve"><value>Stummschaltung aufheben</value></data>
 </root>

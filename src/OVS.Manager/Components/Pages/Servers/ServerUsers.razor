@@ -1,0 +1,93 @@
+@page "/servers/{Id}/users"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = ServerAccessHandler.Policy)]
+@implements IDisposable
+
+<h1>@Strings.Users_Title</h1>
+@if (Error is not null)
+{
+    <p class="form-error" role="alert">@Error</p>
+}
+<h2>@Strings.Users_Online</h2>
+<table class="list">
+    <thead>
+        <tr><th>@Strings.Users_Nickname</th><th>@Strings.Users_Channel</th><th>@Strings.Users_Groups</th><th>@Strings.Users_Muted</th><th>@Strings.Users_Since</th><th></th></tr>
+    </thead>
+    <tbody>
+        @foreach (var user in Online)
+        {
+            <tr @key="user.SessionId" data-session="@user.SessionId">
+                <td>@user.Nickname</td>
+                <td>@Channels.GetValueOrDefault(user.ChannelId)</td>
+                <td>@GroupNames(user.GroupIds)</td>
+                <td>@MutedText(user)</td>
+                <td>@Since(user)</td>
+                <td><button type="button" data-select @onclick="@Select(user)">@Strings.Users_Act</button></td>
+            </tr>
+        }
+    </tbody>
+</table>
+@if (Selected is { } selected)
+{
+    <section class="user-actions account-form" data-selected="@selected.SessionId">
+        <h3>@selected.Nickname</h3>
+        <label>@Strings.Users_Reason <input @bind="Reason" @bind:event="oninput" /></label>
+        <label>@Strings.Users_Minutes <input type="number" @bind="Minutes" /></label>
+        <label><input type="checkbox" @bind="IncludeIp" /> @Strings.Users_IncludeIp</label>
+        <label>@Strings.Users_Channel
+            <select @bind="MoveTo">
+                @foreach (var channel in Channels)
+                {
+                    <option value="@channel.Key">@channel.Value</option>
+                }
+            </select>
+        </label>
+        <span class="server-actions">
+            <button type="button" data-action="kick" @onclick="KickAsync">@Strings.Users_Kick</button>
+            <button type="button" data-action="ban" class="danger" @onclick="BanAsync">@Strings.Users_Ban</button>
+            <button type="button" data-action="mute" @onclick="ToggleMuteAsync">@MuteText(selected)</button>
+            <button type="button" data-action="move" @onclick="MoveAsync">@Strings.Users_Move</button>
+        </span>
+    </section>
+}
+<h2>@Strings.Users_Known</h2>
+<table class="list">
+    <thead>
+        <tr><th>@Strings.Users_Nickname</th><th>@Strings.Users_FirstSeen</th><th>@Strings.Users_LastLogin</th><th>@Strings.Users_OnlineTime</th><th>@Strings.Users_SpeechTime</th><th>@Strings.Users_Groups</th><th></th></tr>
+    </thead>
+    <tbody>
+        @foreach (var user in Known)
+        {
+            <tr @key="user.Fingerprint" data-known="@user.LastNickname">
+                <td>@user.LastNickname</td>
+                <td>@Local(user.FirstSeen)</td>
+                <td>@Local(user.LastLogin)</td>
+                <td>@Hours(user.OnlineTime)</td>
+                <td>@Hours(user.SpeechTime)</td>
+                <td>
+                    @foreach (var group in GroupsOf(user))
+                    {
+                        <span class="chip">@group.Name <button type="button" data-unassign="@group.Name" @onclick="@Unassign(user, group)">@Strings.Users_Remove</button></span>
+                    }
+                    <select @bind="AssignChoice">
+                        @foreach (var group in Groups)
+                        {
+                            <option value="@group.Id">@group.Name</option>
+                        }
+                    </select>
+                    <button type="button" data-assign @onclick="@Assign(user)">@Strings.Users_Assign</button>
+                </td>
+                <td>
+                    @if (DeleteConfirm == user.Fingerprint)
+                    {
+                        <button type="button" class="danger" data-confirm @onclick="@Delete(user)">@Strings.Users_DeleteConfirm</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="danger" @onclick="@AskDelete(user)">@Strings.Users_Delete</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

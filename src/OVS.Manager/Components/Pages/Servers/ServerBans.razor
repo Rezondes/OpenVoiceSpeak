@@ -1,0 +1,39 @@
+@page "/servers/{Id}/bans"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = ServerAccessHandler.Policy)]
+
+<h1>@Strings.Bans_Title</h1>
+@if (Error is not null)
+{
+    <p class="form-error" role="alert">@Error</p>
+}
+@if (Bans.Count == 0)
+{
+    <p>@Strings.Bans_Empty</p>
+}
+else
+{
+    <table class="list">
+        <thead>
+            <tr><th>@Strings.Users_Nickname</th><th>@Strings.Users_Reason</th><th>@Strings.Bans_By</th><th>@Strings.Bans_Ends</th><th>@Strings.Bans_State</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var ban in Bans)
+            {
+                <tr @key="ban.Id" data-ban="@ban.Nickname">
+                    <td>@ban.Nickname</td>
+                    <td>@ban.Reason</td>
+                    <td>@ban.CreatedBy</td>
+                    <td>@Ends(ban)</td>
+                    <td>@StateText(ban)</td>
+                    <td>
+                        @if (IsActive(ban))
+                        {
+                            <button type="button" data-unban @onclick="@Lift(ban)">@Strings.Bans_Unban</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

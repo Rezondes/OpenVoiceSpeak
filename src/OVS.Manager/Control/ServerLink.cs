@@ -11,6 +11,8 @@ using OVS.Shared.Net;
 using OVS.Shared.Protocol;
 using OVS.Shared.Protocol.Messages;
 using OVS.Shared.Protocol.Messages.Connection;
+using OVS.Shared.Protocol.Messages.Moderation;
+using OVS.Shared.Protocol.Messages.Users;
 
 namespace OVS.Manager.Control;
 
@@ -92,25 +94,54 @@ internal sealed partial class ServerLink : IAsyncDisposable
     }
 
     /// <summary>
-    /// Package M12: sends <paramref name="request"/> with a new request id and waits until the server refuses it (the
-    /// <see cref="Error"/> is returned) or sends the message <paramref name="done"/> accepts (null is returned).
+    /// Package M12: sends <paramref name="request"/> with a new request id and returns the server's answer: its
+    /// <see cref="Error"/>, a list carrying the id (M13), or the message <paramref name="done"/> accepts.
     /// </summary>
     /// <exception cref="InvalidOperationException">The link is not connected.</exception>
     /// <exception cref="TimeoutException">No answer within <see cref="RequestTimeout"/>.</exception>
-    public async Task<Error?> RequestAsync(Request request, Func<Message, bool> done, CancellationToken cancellation = default)
+    public async Task<Message> RequestAsync(Request request, Func<Message, bool>? done = null, CancellationToken cancellation = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var id = Guid.NewGuid().ToString("N");
-        var answer = new PendingRequest(id, done);
+        var answer = new PendingRequest(Guid.NewGuid().ToString("N"), done);
         lock (gate) pending.Add(answer);
         try
         {
-            await SendAsync(request with { RequestId = id }, cancellation);
+            await SendAsync(request with { RequestId = answer.RequestId }, cancellation);
             return await answer.Result.Task.WaitAsync(RequestTimeout, time, cancellation);
         }
         finally
         {
             lock (gate) pending.Remove(answer);
+        }
+    }
+
+    /// <summary>
+    /// Package M13: sends <paramref name="action"/>, which the server confirms to nobody, and then a cheap request it
+    /// always answers (an avatar that does not exist; lists are throttled to 2 a second); the server answers in order,
+    /// so that answer shows the action was taken. Returns the action's <see cref="Error"/> when it was refused, else null.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The link is not connected.</exception>
+    /// <exception cref="TimeoutException">No answer within <see cref="RequestTimeout"/>.</exception>
+    public async Task<Error?> RequestConfirmedAsync(Request action, CancellationToken cancellation = default)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        var actionAnswer = new PendingRequest(Guid.NewGuid().ToString("N"), null);
+        var barrier = new PendingRequest(Guid.NewGuid().ToString("N"), null);
+        lock (gate) pending.AddRange([actionAnswer, barrier]);
+        try
+        {
+            await SendAsync(action with { RequestId = actionAnswer.RequestId }, cancellation);
+            await SendAsync(new GetAvatar(AvatarHash.Of([])) { RequestId = barrier.RequestId }, cancellation);
+            await barrier.Result.Task.WaitAsync(RequestTimeout, time, cancellation);
+            return actionAnswer.Result.Task.IsCompleted ? await actionAnswer.Result.Task as Error : null;
+        }
+        finally
+        {
+            lock (gate)
+            {
+                pending.Remove(actionAnswer);
+                pending.Remove(barrier);
+            }
         }
     }
 
@@ -200,7 +231,7 @@ internal sealed partial class ServerLink : IAsyncDisposable
                 answered = [.. pending.Where(request => request.Answers(received.Message))];
             }
             if (changed) Changed?.Invoke();
-            foreach (var request in answered) request.Result.TrySetResult(received.Message as Error);
+            foreach (var request in answered) request.Result.TrySetResult(received.Message);
         }
         void OnDisconnected(object? sender, DisconnectedEventArgs disconnected) => ended.TrySetResult();
         open.MessageReceived += OnMessage;
@@ -238,13 +269,23 @@ internal sealed partial class ServerLink : IAsyncDisposable
     [LoggerMessage(Level = LogLevel.Warning, Message = "Server {ServerId} shows another certificate; the service session waits for the admin")]
     static partial void LogCertificateChanged(ILogger logger, string serverId);
 
-    /// <summary>Package M12: a request waiting for its <see cref="Error"/> or for the message that shows it was done.</summary>
-    sealed class PendingRequest(string requestId, Func<Message, bool> done)
+    /// <summary>Package M12: a request waiting for its answer: an <see cref="Error"/> or list with its id, or the message that shows it was done.</summary>
+    sealed class PendingRequest(string requestId, Func<Message, bool>? done)
     {
-        /// <summary>The refusal, or null when it was done.</summary>
-        public TaskCompletionSource<Error?> Result { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        /// <summary>The request's id.</summary>
+        public string RequestId => requestId;
+
+        /// <summary>The answer.</summary>
+        public TaskCompletionSource<Message> Result { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         /// <summary>True when <paramref name="message"/> ends the request.</summary>
-        public bool Answers(Message message) => message is Error error ? error.RequestId == requestId : done(message);
+        public bool Answers(Message message) => message switch
+        {
+            Error error => error.RequestId == requestId,
+            UserList list => list.RequestId == requestId,
+            BanList list => list.RequestId == requestId,
+            Avatar avatar => avatar.RequestId == requestId,
+            _ => done?.Invoke(message) ?? false,
+        };
     }
 }

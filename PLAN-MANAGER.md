@@ -648,19 +648,21 @@ The protocol has kick, ban, unban, server mute (timed), move, delete known user,
 
 ### Acceptance Criteria
 
-- [ ] AC1: The online list shows nickname, channel, groups, muted state and connect time live; kick, ban (with reason and duration), server mute (with duration) and move work from it.
-- [ ] AC2: The known users list shows first and last login, online and speech time and lets the manager assign and remove groups, among them Admin.
-- [ ] AC3: The ban list shows reason, end and who banned; unban works.
-- [ ] AC4: Groups are created, changed, ordered and deleted; Guest, Admin and Server-Admin show as fixed like in the client.
-- [ ] AC5: Every action writes an audit line in the manager besides the server's own.
+- [x] AC1: The online list shows nickname, channel, groups, muted state and connect time live; kick, ban (with reason and duration), server mute (with duration) and move work from it.
+- [x] AC2: The known users list shows first and last login, online and speech time and lets the manager assign and remove groups, among them Admin.
+- [x] AC3: The ban list shows reason, end and who banned; unban works.
+- [x] AC4: Groups are created, changed, ordered and deleted; Guest, Admin and Server-Admin show as fixed like in the client.
+- [x] AC5: Every action writes an audit line in the manager besides the server's own.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `ModerationCommandsTests > "Online_LiveAndActions"` - AC1
+1. `ModerationCommandsTests > "Online_MuteMoveKickBan_Followed"` - AC1
 2. `GroupCommandsTests > "KnownUser_AssignAdmin_Sent"` - AC2
-3. `ModerationCommandsTests > "Bans_ListAndUnban"` - AC3
-4. `GroupCommandsTests > "FixedGroups_NotEditable"` and `"Groups_CreateReorderDelete"` - AC4
-5. `ModerationCommandsTests > "Actions_AuditLines"` - AC5
+3. `ModerationCommandsTests > "Bans_Unban_ListedAndLifted"` - AC3
+4. `GroupCommandsTests > "FixedGroups_Page_NotEditable"` (bUnit) and `"Groups_CreateMoveDelete_ChangedOnServer"` - AC4
+5. `ModerationCommandsTests > "Actions_EachOne_AuditLine"` - AC5
+
+(as built: `ModerationCommands` reads the users online and the channels from the mirror and kicks, bans (reason, minutes or for good, with the IP when asked), server-mutes (minutes or until lifted) and moves through the service session, each waiting for the broadcast that shows it (`UserLeft`, `UserUpdated`); the known users (first page of 200) and the bans come with `ListUsers` and `ListBans`, an unban answers with the fresh ban list. Actions the server confirms to nobody (assign and take a group, delete a known user) use `ServerLink.RequestConfirmedAsync`: the action, then a `GetAvatar` of an avatar that does not exist, which the server always answers (lists are throttled to 2 a second); its answer shows the action was taken, and the action's refusal comes before it. Taking Admin from the last admin is refused by the server ("LastAdmin"), which the page shows. `GroupCommands` creates, changes, moves (one place up or down with `ReorderGroups`) and deletes groups, waiting for `GroupsChanged`; Admin and Server-Admin have fixed rights and Guest, Admin and Server-Admin cannot be deleted, as `GroupRules` says for the client. The rights are the client's `Perm_*` texts. Every action writes its own audit line (`UserKicked`, `UserBanned`, `UserUnbanned`, `UserMuted`, `UserUnmuted`, `UserMoved`, `KnownUserDeleted`, `GroupAssigned`, `GroupUnassigned`, `GroupCreated`, `GroupChanged`, `GroupDeleted`, `GroupsReordered`). Pages: `/servers/{id}/users` (online with an action panel, known users with their groups), `/servers/{id}/bans` and `/servers/{id}/groups`, all with the policy `ServerAccess`, linked from the server page. The connect time of a user online is the known user's last login (`UserInfo` has none).)
 
 ### Steps
 

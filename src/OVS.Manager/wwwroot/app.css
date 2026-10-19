@@ -134,6 +134,15 @@ table.list td {
     font-size: 0.85em;
 }
 
+/* Package M13: a group a user holds, with its remove button */
+.chip {
+    display: inline-block;
+    margin: 0 4px 4px 0;
+    padding: 0 6px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
 /* Package M9: deleting a server */
 .danger-zone {
     margin-top: 32px;
