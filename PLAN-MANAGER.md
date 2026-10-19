@@ -523,17 +523,19 @@ D4 and D3: the owner of a server gets a manager account with that server and so 
 
 ### Acceptance Criteria
 
-- [ ] AC1: The admin assigns any number of servers to a manager and any number of managers to a server, on the account and on the server page.
-- [ ] AC2: A manager's overview lists only assigned servers; any page, action or API call for another server answers 403 (also by typing the URL).
-- [ ] AC3: A manager may start, stop, restart, update and operate assigned servers but never create, delete or assign.
-- [ ] AC4: Every change of an assignment writes an audit line.
+- [x] AC1: The admin assigns any number of servers to a manager and any number of managers to a server, on the account and on the server page.
+- [x] AC2: A manager's overview lists only assigned servers; any page, action or API call for another server answers 403 (also by typing the URL).
+- [x] AC3: A manager may start, stop, restart, update and operate assigned servers but never create, delete or assign.
+- [x] AC4: Every change of an assignment writes an audit line.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
-1. `ServerAccessTests > "Assign_BothDirections"` - AC1
+1. `ServerAccessTests > "Assign_AccountAndServerPage_SameAssignments"` - AC1
 2. `ServerAccessTests > "Manager_OtherServer_Forbidden"` (pages and endpoints) - AC2
 3. `ServerAccessTests > "Manager_CreateDeleteAssign_Forbidden"` - AC3
-4. `ServerAccessTests > "Assign_AuditLine"` - AC4
+4. `ServerAccessTests > "Assign_EachChange_AuditLine"` - AC4
+
+(as built: `ServerAssignment` rows (migration `AddServerAssignments`, key manager and server, deleted with the account or the purged server; delete and restore of M9 keep them). `ServerAccess` replaces M5's `AuditScope`: the admin sees every server, a manager the assigned ones, for the overview, the server page and the audit page and export. `ServerAccessHandler` (with `ServerAccessRequirement`) is the policy `ServerAccess` on `/servers/{id}` and answers 403 for a server that is not the manager's. `ServerAssignmentList` lists managers and servers and sets an assignment, only for a manager, writing `ServerAssigned` or `ServerUnassigned` with the manager as target. The component `Assignments` shows the checkboxes on a manager's account page and on the server page, for the admin only; creating, deleting and assigning stay admin pages. `TestSupport/ManagerSignIn` makes and logs in a manager for the tests. The REST API of M31 checks the same `ServerAccess`.)
 
 ### Steps
 

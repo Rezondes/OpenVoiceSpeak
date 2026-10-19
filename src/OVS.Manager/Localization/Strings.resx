@@ -28,6 +28,10 @@
   <data name="Accounts_StartPassword" xml:space="preserve"><value>Start-Passwort</value></data>
   <data name="Accounts_Title" xml:space="preserve"><value>Konten</value></data>
   <data name="App_Title" xml:space="preserve"><value>OpenVoiceSpeak Verwaltung</value></data>
+  <data name="Assignments_Managers" xml:space="preserve"><value>Zugewiesene Serververwalter</value></data>
+  <data name="Assignments_NoManagers" xml:space="preserve"><value>Es gibt noch keine Serververwalter.</value></data>
+  <data name="Assignments_NoServers" xml:space="preserve"><value>Es gibt noch keine Server.</value></data>
+  <data name="Assignments_Servers" xml:space="preserve"><value>Zugewiesene Server</value></data>
   <data name="Audit_Action" xml:space="preserve"><value>Aktion</value></data>
   <data name="Audit_Detail" xml:space="preserve"><value>Detail</value></data>
   <data name="Audit_Export" xml:space="preserve"><value>Als CSV herunterladen</value></data>

@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using OVS.Manager.Servers;
 
 namespace OVS.Manager.Audit;
 
@@ -9,9 +10,10 @@ internal static class AuditEndpoints
 {
     /// <summary>Adds the endpoint to <paramref name="app"/>.</summary>
     public static void Map(WebApplication app) =>
-        app.MapGet("/audit/export", async (HttpContext context, AuditLog audit, TimeProvider time, string? user, string? server, string? action, string? from, string? to) =>
+        app.MapGet("/audit/export", async (HttpContext context, AuditLog audit, ServerAccess access, TimeProvider time, string? user, string? server, string? action, string? from, string? to) =>
         {
-            var lines = await audit.QueryAsync(Filter(user, server, action, from, to, time.LocalTimeZone), AuditScope.For(context.User), context.RequestAborted);
+            var visible = await access.VisibleAsync(context.User, context.RequestAborted);
+            var lines = await audit.QueryAsync(Filter(user, server, action, from, to, time.LocalTimeZone), visible, context.RequestAborted);
             return Results.Text(AuditCsv.Format(lines, time.LocalTimeZone), "text/csv", System.Text.Encoding.UTF8);
         });
 

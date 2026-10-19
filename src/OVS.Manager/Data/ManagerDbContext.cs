@@ -24,6 +24,9 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
     /// <summary>Package M7 (MA4): the manager's identity per server, the private key encrypted.</summary>
     public DbSet<ServerIdentity> ServerIdentities => Set<ServerIdentity>();
 
+    /// <summary>Package M10: which manager may operate which server.</summary>
+    public DbSet<ServerAssignment> ServerAssignments => Set<ServerAssignment>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -36,6 +39,13 @@ internal sealed class ManagerDbContext(DbContextOptions<ManagerDbContext> option
             server.Property(value => value.DeletedAtUtc).HasConversion(value => value, value => value == null ? null : DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
         });
         builder.Entity<ServerIdentity>(identity => identity.HasKey(value => value.ServerId));
+        builder.Entity<ServerAssignment>(assignment =>
+        {
+            assignment.HasKey(value => new { value.UserId, value.ServerId });
+            assignment.HasIndex(value => value.ServerId);
+            assignment.HasOne<ManagerUser>().WithMany().HasForeignKey(value => value.UserId).OnDelete(DeleteBehavior.Cascade); // a deleted account takes its assignments along
+            assignment.HasOne<ManagedServer>().WithMany().HasForeignKey(value => value.ServerId).OnDelete(DeleteBehavior.Cascade); // and so does a purged server (M9)
+        });
         builder.Entity<AuditEntry>(entry =>
         {
             entry.Property(value => value.AtUtc).HasConversion(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc)); // SQLite keeps no kind

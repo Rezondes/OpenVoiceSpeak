@@ -325,6 +325,21 @@ namespace OVS.Manager.Data.Migrations
                     b.ToTable("Servers");
                 });
 
+            modelBuilder.Entity("OVS.Manager.Servers.ServerAssignment", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ServerId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("UserId", "ServerId");
+
+                    b.HasIndex("ServerId");
+
+                    b.ToTable("ServerAssignments");
+                });
+
             modelBuilder.Entity("OVS.Manager.Servers.ServerIdentity", b =>
                 {
                     b.Property<string>("ServerId")
@@ -396,6 +411,21 @@ namespace OVS.Manager.Data.Migrations
 
             modelBuilder.Entity("OVS.Manager.Accounts.ManagerSession", b =>
                 {
+                    b.HasOne("OVS.Manager.Accounts.ManagerUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OVS.Manager.Servers.ServerAssignment", b =>
+                {
+                    b.HasOne("OVS.Manager.Servers.ManagedServer", null)
+                        .WithMany()
+                        .HasForeignKey("ServerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("OVS.Manager.Accounts.ManagerUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")

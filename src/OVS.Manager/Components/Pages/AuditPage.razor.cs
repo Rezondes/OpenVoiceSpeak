@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
 using OVS.Manager.Audit;
+using OVS.Manager.Servers;
 
 namespace OVS.Manager.Components.Pages;
 
@@ -13,6 +14,9 @@ sealed partial class AuditPage
 
     [Inject]
     TimeProvider Time { get; set; } = null!;
+
+    [Inject]
+    ServerAccess Access { get; set; } = null!;
 
     [CascadingParameter]
     HttpContext HttpContext { get; set; } = null!;
@@ -40,7 +44,7 @@ sealed partial class AuditPage
 
     /// <summary>Loads the lines the user may read.</summary>
     protected override async Task OnInitializedAsync() =>
-        Lines = await Audit.QueryAsync(AuditEndpoints.Filter(User, Server, Action, From, To, Time.LocalTimeZone), AuditScope.For(HttpContext.User));
+        Lines = await Audit.QueryAsync(AuditEndpoints.Filter(User, Server, Action, From, To, Time.LocalTimeZone), await Access.VisibleAsync(HttpContext.User));
 
     string LocalTime(AuditEntry entry) => TimeZoneInfo.ConvertTimeFromUtc(entry.AtUtc, Time.LocalTimeZone).ToString("g", CultureInfo.CurrentCulture);
 }

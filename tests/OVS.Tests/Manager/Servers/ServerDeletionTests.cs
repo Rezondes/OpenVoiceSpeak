@@ -76,13 +76,8 @@ public sealed class ServerDeletionTests
         var other = watcher.Servers.Single();
         Assert.Empty(managerContext.Render<ServerPage>(parameters => parameters.Add(component => component.Id, other.Id)).FindAll("section.danger-zone"));
 
-        using var client = manager.CreateClient();
-        (await LoginTests.LoginAsync(client, "chef", FirstAdminTests.Password)).Dispose();
-        await InScopeAsync(manager, services => services.GetRequiredService<AccountService>().CreateManagerAsync("anna", "start-Passwort-12", null));
-        using var annaClient = manager.CreateClient();
-        (await LoginTests.LoginAsync(annaClient, "anna", "start-Passwort-12")).Dispose();
-        (await ManagerForm.SubmitAsync(annaClient, "/profile", "password", ("PasswordModel.OldPassword", "start-Passwort-12"),
-            ("PasswordModel.NewPassword", "neues-Passwort-34"), ("PasswordModel.ConfirmPassword", "neues-Passwort-34"))).Dispose();
+        await ManagerSignIn.CreateAsync(manager, "anna");
+        using var annaClient = await ManagerSignIn.LoginAsync(manager, "anna");
         using var trash = await annaClient.GetAsync(new Uri("/servers/trash", UriKind.Relative));
         Assert.Equal(HttpStatusCode.Forbidden, trash.StatusCode);
     }

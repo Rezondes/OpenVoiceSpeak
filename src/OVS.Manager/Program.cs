@@ -53,7 +53,11 @@ builder.Services.ConfigureApplicationCookie(cookie =>
     cookie.LoginPath = "/login";
     cookie.AccessDeniedPath = "/login";
 });
-builder.Services.AddAuthorization(authorization => authorization.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+builder.Services.AddAuthorization(authorization =>
+{
+    authorization.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+    authorization.AddPolicy(ServerAccessHandler.Policy, policy => policy.RequireAuthenticatedUser().AddRequirements(new ServerAccessRequirement()));
+});
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddSingleton<IDockerEngine, DockerEngine>(); // Package M6: Docker only through the socket proxy
 builder.Services.AddSingleton<FirstAdmin>();
@@ -67,6 +71,9 @@ builder.Services.AddSingleton<StatusWatcher>();
 builder.Services.AddHostedService(services => services.GetRequiredService<StatusWatcher>());
 builder.Services.AddScoped<ServerLifecycle>();
 builder.Services.AddScoped<ServerDeletion>(); // Package M9: the trash and its daily sweep
+builder.Services.AddScoped<ServerAccess>(); // Package M10: a manager sees and operates the assigned servers only
+builder.Services.AddScoped<IAuthorizationHandler, ServerAccessHandler>();
+builder.Services.AddScoped<ServerAssignmentList>();
 builder.Services.AddHostedService<DeletionSweep>();
 builder.Services.AddSingleton<LoginLimits>();
 

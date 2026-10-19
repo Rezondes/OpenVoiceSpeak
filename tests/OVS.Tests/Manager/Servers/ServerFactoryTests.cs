@@ -74,15 +74,8 @@ public sealed class ServerFactoryTests
     {
         await using var manager = WithAdmin();
         manager.CreateClient().Dispose();
-        await using (var scope = manager.Services.CreateAsyncScope())
-        {
-            var accounts = scope.ServiceProvider.GetRequiredService<AccountService>();
-            await accounts.CreateManagerAsync("anna", "start-Passwort-12", null);
-        }
-        using var client = manager.CreateClient();
-        (await LoginTests.LoginAsync(client, "anna", "start-Passwort-12")).Dispose();
-        (await ManagerForm.SubmitAsync(client, "/profile", "password", ("PasswordModel.OldPassword", "start-Passwort-12"),
-            ("PasswordModel.NewPassword", "neues-Passwort-34"), ("PasswordModel.ConfirmPassword", "neues-Passwort-34"))).Dispose();
+        await ManagerSignIn.CreateAsync(manager, "anna");
+        using var client = await ManagerSignIn.LoginAsync(manager, "anna");
         using var page = await client.GetAsync(new Uri("/servers/new", UriKind.Relative));
         Assert.Equal(HttpStatusCode.Forbidden, page.StatusCode);
     }

@@ -47,4 +47,8 @@ internal static class AuditActions
     public const string ServerRestored = "ServerRestored";
     /// <summary>A server's container and volume were removed for good (M9).</summary>
     public const string ServerPurged = "ServerPurged";
+    /// <summary>A server was assigned to a manager (M10); the target is the manager.</summary>
+    public const string ServerAssigned = "ServerAssigned";
+    /// <summary>A server's assignment to a manager ended (M10); the target is the manager.</summary>
+    public const string ServerUnassigned = "ServerUnassigned";
 }

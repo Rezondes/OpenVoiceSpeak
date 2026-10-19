@@ -24,6 +24,10 @@
         <AntiforgeryToken />
         <button type="submit">@LockText</button>
     </form>
+    @if (Account.Role == ManagerRoles.Manager)
+    {
+        <OVS.Manager.Components.Pages.Servers.Assignments UserId="@Account.Id" @rendermode="InteractiveServer" />
+    }
     <form method="post" @onsubmit="DeleteAsync" @formname="delete">
         <AntiforgeryToken />
         <button type="submit" class="danger">@Strings.Account_Delete</button>

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using OVS.Manager.Audit;
 using OVS.Manager.Servers;
 
 namespace OVS.Manager.Components.Pages.Servers;
@@ -20,6 +19,9 @@ public abstract class ServerWatchPage : ComponentBase, IDisposable
     [Inject]
     internal TimeProvider Time { get; set; } = null!;
 
+    [Inject]
+    ServerAccess Access { get; set; } = null!;
+
     [CascadingParameter]
     Task<AuthenticationState> Authentication { get; set; } = null!;
 
@@ -29,7 +31,7 @@ public abstract class ServerWatchPage : ComponentBase, IDisposable
     /// <summary>Finds what the user may see and follows the watcher.</summary>
     protected override async Task OnInitializedAsync()
     {
-        visible = AuditScope.For((await Authentication).User);
+        visible = await Access.VisibleAsync((await Authentication).User);
         Watcher.Changed += Redraw;
     }
 

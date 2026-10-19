@@ -1,0 +1,13 @@
+<section class="assignments">
+    <h2>@Title</h2>
+    @if (Choices.Count == 0)
+    {
+        <p class="form-hint">@Empty</p>
+    }
+    @foreach (var choice in Choices)
+    {
+        <label class="assignment" data-choice="@choice.Id">
+            <input type="checkbox" checked="@Assigned.Contains(choice.Id)" @onchange="@Toggle(choice.Id)" /> @choice.Name
+        </label>
+    }
+</section>
