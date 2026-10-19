@@ -60,6 +60,12 @@ internal sealed record ManagerOptions(string DataDir)
     /// <summary>Package M14 (MA8): the host clients use, <c>OVS_MANAGER_PUBLIC_HOST</c>; without it the host of the request.</summary>
     public string? PublicHost { get; init; }
 
+    /// <summary>Package M32 (AC2): the address users reach the manager at, <c>OVS_MANAGER_BASE_URL</c>; null takes the request's.</summary>
+    public Uri? BaseUrl { get; init; }
+
+    /// <summary>Package M32 (AC2): the proxies whose forwarded headers count, <c>OVS_MANAGER_TRUSTED_PROXIES</c>; none by default.</summary>
+    public IReadOnlyList<System.Net.IPNetwork> TrustedProxies { get; init; } = [];
+
     /// <summary>Package M11: where the manager reaches the server <paramref name="serverId"/>.</summary>
     public string HostOf(string serverId) => ServerHost ?? Docker.ManagedLabels.ContainerName(serverId);
 
@@ -86,6 +92,8 @@ internal sealed record ManagerOptions(string DataDir)
             RetentionLogDays = Positive(configuration["OVS_MANAGER_RETENTION_LOG_DAYS"], 30),
             RetentionTraceDays = Positive(configuration["OVS_MANAGER_RETENTION_TRACE_DAYS"], 7),
             TelemetryMaxBytes = Positive(configuration["OVS_MANAGER_TELEMETRY_MAX_MB"], 5000) * 1024L * 1024,
+            BaseUrl = ManagerProxy.ParseBaseUrl(configuration[ManagerProxy.BaseUrlVariable]),
+            TrustedProxies = ManagerProxy.ParseTrustedProxies(configuration[ManagerProxy.TrustedProxiesVariable]),
         };
 
     /// <summary>Package M21: a whole number above 0, else <paramref name="otherwise"/>.</summary>

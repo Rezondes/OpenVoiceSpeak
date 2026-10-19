@@ -1,0 +1,5 @@
+# Package M32: HTTPS for the manager's domain; Caddy passes WebSockets (the live pages) and X-Forwarded-* on by itself.
+{$OVS_MANAGER_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy ovs-manager:6999
+}

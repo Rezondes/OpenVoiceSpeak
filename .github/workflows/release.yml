@@ -112,7 +112,7 @@ jobs:
           if-no-files-found: error
 
   image:
-    # Package 44: the server image for amd64 and arm64 in the GitHub Container Registry.
+    # Package 44: the server image for amd64 and arm64 in the GitHub Container Registry; Package M32: the manager image too.
     needs: version
     runs-on: ubuntu-latest
     permissions:
@@ -140,6 +140,20 @@ jobs:
           tags: |
             ghcr.io/rezondes/openvoicespeak-server:latest
             ghcr.io/rezondes/openvoicespeak-server:${{ needs.version.outputs.version }}
+      # Package M32 (AC3): the manager image, with the server's version
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.manager
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            OVS_BUILD_TIME=${{ needs.version.outputs.build-time }}
+            GITHUB_SHA=${{ github.sha }}
+            GITHUB_ACTIONS=true
+          tags: |
+            ghcr.io/rezondes/openvoicespeak-manager:latest
+            ghcr.io/rezondes/openvoicespeak-manager:${{ needs.version.outputs.version }}
 
   release:
     # Only when the exe and the image are both there.

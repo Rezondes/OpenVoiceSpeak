@@ -62,7 +62,7 @@ builder.Services.ConfigureApplicationCookie(cookie =>
     cookie.EventsType = typeof(SessionCookieEvents); // Package M4: sessions, the start password, 403 for a forbidden page
     cookie.Cookie.HttpOnly = true;
     cookie.Cookie.SameSite = SameSiteMode.Strict;
-    cookie.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // Secure behind HTTPS; the forwarded headers come with M32
+    cookie.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // Secure behind HTTPS, seen through the trusted proxy or the base URL (M32)
     cookie.LoginPath = "/login";
     cookie.AccessDeniedPath = "/login";
 });
@@ -144,7 +144,10 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 await app.Services.GetRequiredService<FirstAdmin>().InitializeAsync(app.Configuration);
 
+// Package M32 (D10): forwarded headers only from the trusted proxies, then the base URL for links and cookies
+if (options.TrustedProxies.Count > 0) app.UseForwardedHeaders(ManagerProxy.ForwardedHeaders(options.TrustedProxies));
 app.UseMiddleware<TelemetryReceiver>(); // Package M20: port 4318 is OTLP only, before every page and gate
+if (options.BaseUrl is { } baseUrl) app.Use((context, next) => ManagerProxy.UseBaseUrlAsync(context, next, baseUrl));
 app.UseRequestLocalization(UiCulture.CreateOptions());
 app.UseMiddleware<SetupGate>();
 app.UseAuthentication();

@@ -1,0 +1,40 @@
+# Package M32 (D10, D11): the manager over HTTPS on 443 through Caddy, which gets and renews its certificate by itself.
+# It extends deploy/manager/docker-compose.yml; point the domain at this host and start from the repository root:
+#   OVS_MANAGER_DOMAIN=manager.example.org docker compose -f deploy/manager/docker-compose.yml -f deploy/manager/caddy/docker-compose.yml up -d --build
+# Paths here are relative to deploy/manager, the folder of the first file.
+services:
+  ovs-manager:
+    ports: !reset []   # reachable only through Caddy
+    environment:
+      OVS_MANAGER_BASE_URL: "https://${OVS_MANAGER_DOMAIN:?set OVS_MANAGER_DOMAIN to the manager's domain}"
+      OVS_MANAGER_TRUSTED_PROXIES: "10.255.250.2"   # Caddy's fixed address in the network edge
+    networks:
+      - edge
+
+  caddy:
+    image: caddy:2.10.0
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      OVS_MANAGER_DOMAIN: "${OVS_MANAGER_DOMAIN:?set OVS_MANAGER_DOMAIN to the manager's domain}"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      edge:
+        ipv4_address: 10.255.250.2
+
+networks:
+  # Caddy and the manager only; a fixed subnet so the manager trusts exactly Caddy's forwarded headers
+  edge:
+    ipam:
+      config:
+        - subnet: 10.255.250.0/29
+
+volumes:
+  caddy-data:
+  caddy-config:

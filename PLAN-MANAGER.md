@@ -1420,16 +1420,18 @@ D10, D11. The user runs Nginx Proxy Manager, which needs WebSocket support on fo
 
 ### Acceptance Criteria
 
-- [ ] AC1: The Caddy compose file serves the manager over HTTPS on 443 for `OVS_MANAGER_DOMAIN`, with images pinned.
-- [ ] AC2: Forwarded headers are honoured only from the trusted proxies; links and cookies use `OVS_MANAGER_BASE_URL`.
+- [x] AC1: The Caddy compose file serves the manager over HTTPS on 443 for `OVS_MANAGER_DOMAIN`, with images pinned.
+- [x] AC2: Forwarded headers are honoured only from the trusted proxies; links and cookies use `OVS_MANAGER_BASE_URL`.
 - [ ] AC3 (manual): The release workflow pushes the manager image with the same version as the server.
 - [ ] AC4 (manual): Behind Nginx Proxy Manager with WebSocket support on, login and live pages work.
 
 ### Planned tests (TDD)
 
 1. `ManagerComposeTests > "Caddy_Https443_Pinned"` - AC1
-2. `ManagerHostTests > "ForwardedHeaders_OnlyTrusted"` and `"BaseUrl_UsedForLinks"` - AC2
+2. `ManagerHostTests > "ForwardedHeaders_FromAddress_OnlyTrustedCount"`, `"ForwardedHeaders_NoTrustedProxy_Ignored"`, `"Options_InvalidProxySetting_Refused"` and `"BaseUrl_Set_UsedForLinksAndCookies"` - AC2
 3. Manual checks AC3 and AC4.
+
+(as built: `ManagerProxy` turns forwarded headers (For, Proto, Host; one proxy) on only when `OVS_MANAGER_TRUSTED_PROXIES` names addresses or CIDR networks, and only from those; an empty list never reaches ASP.NET, which would trust everyone then. `OVS_MANAGER_BASE_URL` (an http or https origin without a path) gives every request its scheme and host, so reset links, the invite link, redirects and the Secure flag of the cookies follow it; a sub path is not supported. Both are checked at the start with the variable's name in the error. `deploy/manager/caddy/docker-compose.yml` extends the manager's compose file (`-f ... -f ...`): Caddy 2.10.0 on 80 and 443 for `OVS_MANAGER_DOMAIN` with its certificate, the manager publishes no port then, and both share the network `edge` (10.255.250.0/29) where Caddy has the fixed address the manager trusts. The release workflow builds `Dockerfile.manager` for amd64 and arm64 in the image job and pushes `openvoicespeak-manager:latest` and `:<version>`; the manager's compose file still builds from the checkout until a release exists. AC3 and AC4 stay manual.)
 
 ### Steps
 

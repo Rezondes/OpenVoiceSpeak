@@ -43,6 +43,26 @@ public sealed class ManagerComposeTests
         ], allowed);
     }
 
+    /// <summary>Package M32 (AC1): Caddy serves the manager on 443 for the domain; the manager publishes nothing then, trusts only Caddy and takes the domain as its base URL.</summary>
+    [Fact]
+    public void Caddy_Https443_Pinned()
+    {
+        var caddyCompose = Path.Combine(RepoPaths.Root, "deploy", "manager", "caddy", "docker-compose.yml");
+        var services = ComposeFile.ReadServices(caddyCompose);
+        var caddy = services["caddy"];
+        Assert.True(ComposeFile.IsPinned(Assert.Single(caddy, line => line.StartsWith("image:", StringComparison.Ordinal))["image:".Length..].Trim()));
+        Assert.Contains("- \"443:443\"", caddy);
+        Assert.Contains("- ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro", caddy);
+        Assert.Contains("ipv4_address: 10.255.250.2", caddy);
+        var manager = services["ovs-manager"];
+        Assert.Contains(manager, line => line.StartsWith("ports: !reset []", StringComparison.Ordinal));
+        Assert.Contains(manager, line => line.StartsWith("OVS_MANAGER_BASE_URL: \"https://${OVS_MANAGER_DOMAIN", StringComparison.Ordinal));
+        Assert.Contains(manager, line => line.StartsWith("OVS_MANAGER_TRUSTED_PROXIES: \"10.255.250.2\"", StringComparison.Ordinal));
+        var caddyfile = File.ReadAllLines(Path.Combine(RepoPaths.Root, "deploy", "manager", "caddy", "Caddyfile")).Select(line => line.Trim()).ToList();
+        Assert.Contains("{$OVS_MANAGER_DOMAIN} {", caddyfile);
+        Assert.Contains("reverse_proxy ovs-manager:6999", caddyfile);
+    }
+
     /// <summary>AC3: only 6999 is published, the network has its fixed name and every image it pulls a fixed version.</summary>
     [Fact]
     public void Compose_Services_OnlyPort6999NetworkNamedImagesPinned()
