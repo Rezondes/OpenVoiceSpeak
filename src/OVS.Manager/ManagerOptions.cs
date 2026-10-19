@@ -9,10 +9,25 @@ internal sealed record ManagerOptions(string DataDir)
     /// <summary>The environment variable of <see cref="DataDir"/>.</summary>
     public const string DataDirVariable = "OVS_MANAGER_DATA_DIR";
 
+    /// <summary>Package M5: the environment variable of <see cref="AuditDays"/>.</summary>
+    public const string AuditDaysVariable = "OVS_MANAGER_AUDIT_DAYS";
+
     /// <summary>The database file in <see cref="DataDir"/>.</summary>
     public string DatabasePath => Path.Combine(DataDir, "manager.db");
 
+    /// <summary>Package M5 (AC4): how many days audit lines are kept; null keeps them forever.</summary>
+    public int? AuditDays { get; init; }
+
     /// <summary>The settings in <paramref name="configuration"/>, the data folder as a full path.</summary>
+    /// <exception cref="InvalidOperationException">A value is set but invalid.</exception>
     public static ManagerOptions Read(IConfiguration configuration) =>
-        new(Path.GetFullPath(configuration[DataDirVariable] is { Length: > 0 } folder ? folder : "/data"));
+        new(Path.GetFullPath(configuration[DataDirVariable] is { Length: > 0 } folder ? folder : "/data"))
+        {
+            AuditDays = configuration[AuditDaysVariable] switch
+            {
+                null or "" => null,
+                var text when int.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out var days) && days > 0 => days,
+                var text => throw new InvalidOperationException($"{AuditDaysVariable} must be a number of days above 0, but is '{text}'."),
+            },
+        };
 }

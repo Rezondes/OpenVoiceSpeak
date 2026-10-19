@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using OVS.Manager.Audit;
 
 namespace OVS.Manager.Accounts;
 
@@ -10,8 +11,9 @@ internal static class AccountEndpoints
 {
     /// <summary>Adds the endpoint to <paramref name="app"/>.</summary>
     public static void Map(WebApplication app) =>
-        app.MapPost("/logout", async (SignInManager<ManagerUser> signIn) =>
+        app.MapPost("/logout", async (SignInManager<ManagerUser> signIn, AuditLog audit, HttpContext context) =>
         {
+            if (context.User.Identity?.Name is { } name) await audit.WriteAsync(name, AuditActions.Logout, name); // Package M5 (AC2)
             await signIn.SignOutAsync();
             return Results.LocalRedirect("/login");
         }).WithMetadata(new RequireAntiforgeryTokenAttribute());

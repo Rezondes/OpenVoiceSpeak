@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using OVS.Manager.Accounts;
+using OVS.Manager.Audit;
 using OVS.Manager.Localization;
 
 namespace OVS.Manager.Components.Pages;
@@ -19,6 +20,9 @@ sealed partial class Setup
 
     [Inject]
     NavigationManager Navigation { get; set; } = null!;
+
+    [Inject]
+    AuditLog Audit { get; set; } = null!;
 
     [SupplyParameterFromForm]
     SetupInput? Model { get; set; }
@@ -42,6 +46,7 @@ sealed partial class Setup
             Error = AccountErrors.Describe(result);
             return;
         }
+        await Audit.WriteAsync(Model!.UserName.Trim(), AuditActions.AdminCreated, Model!.UserName.Trim()); // Package M5 (AC2)
         await SignIn.SignInAsync((await Users.FindByNameAsync(Model!.UserName.Trim()))!, isPersistent: false);
         Navigation.NavigateTo("/");
     }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using OVS.Manager.Accounts;
+using OVS.Manager.Audit;
 using OVS.Manager.Localization;
 
 namespace OVS.Manager.Components.Pages;
@@ -21,6 +22,9 @@ sealed partial class Login
     [Inject]
     NavigationManager Navigation { get; set; } = null!;
 
+    [Inject]
+    AuditLog Audit { get; set; } = null!;
+
     [CascadingParameter]
     HttpContext HttpContext { get; set; } = null!;
 
@@ -39,12 +43,15 @@ sealed partial class Login
     async Task LoginAsync()
     {
         var address = HttpContext.Connection.RemoteIpAddress;
+        var userName = Model!.UserName.Trim();
         if (Limits.IsBlocked(address))
         {
+            await Audit.WriteAsync(userName, AuditActions.LoginRefused, userName, detail: address?.ToString()); // Package M5 (AC2)
             Error = Strings.Login_TooMany;
             return;
         }
-        var result = await SignIn.PasswordSignInAsync(Model!.UserName.Trim(), Model!.Password, isPersistent: false, lockoutOnFailure: true);
+        var result = await SignIn.PasswordSignInAsync(userName, Model!.Password, isPersistent: false, lockoutOnFailure: true);
+        await Audit.WriteAsync(userName, result.Succeeded ? AuditActions.Login : AuditActions.LoginFailed, userName, detail: address?.ToString());
         if (!result.Succeeded)
         {
             Limits.RecordFailure(address);

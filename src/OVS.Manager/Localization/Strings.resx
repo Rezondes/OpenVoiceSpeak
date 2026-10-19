@@ -28,6 +28,17 @@
   <data name="Accounts_StartPassword" xml:space="preserve"><value>Start-Passwort</value></data>
   <data name="Accounts_Title" xml:space="preserve"><value>Konten</value></data>
   <data name="App_Title" xml:space="preserve"><value>OpenVoiceSpeak Verwaltung</value></data>
+  <data name="Audit_Action" xml:space="preserve"><value>Aktion</value></data>
+  <data name="Audit_Detail" xml:space="preserve"><value>Detail</value></data>
+  <data name="Audit_Export" xml:space="preserve"><value>Als CSV herunterladen</value></data>
+  <data name="Audit_Filter" xml:space="preserve"><value>Filtern</value></data>
+  <data name="Audit_From" xml:space="preserve"><value>von</value></data>
+  <data name="Audit_Server" xml:space="preserve"><value>Server</value></data>
+  <data name="Audit_Target" xml:space="preserve"><value>Ziel</value></data>
+  <data name="Audit_Time" xml:space="preserve"><value>Zeit</value></data>
+  <data name="Audit_Title" xml:space="preserve"><value>Protokoll</value></data>
+  <data name="Audit_To" xml:space="preserve"><value>bis</value></data>
+  <data name="Audit_User" xml:space="preserve"><value>Benutzer</value></data>
   <data name="Field_ConfirmPassword" xml:space="preserve"><value>Passwort wiederholen</value></data>
   <data name="Field_Email" xml:space="preserve"><value>E-Mail-Adresse (freiwillig)</value></data>
   <data name="Field_NewPassword" xml:space="preserve"><value>Neues Passwort</value></data>
@@ -44,6 +55,7 @@
   <data name="Login_Wrong" xml:space="preserve"><value>Benutzername oder Passwort falsch.</value></data>
   <data name="Logout" xml:space="preserve"><value>Abmelden</value></data>
   <data name="Nav_Accounts" xml:space="preserve"><value>Konten</value></data>
+  <data name="Nav_Audit" xml:space="preserve"><value>Protokoll</value></data>
   <data name="Nav_Home" xml:space="preserve"><value>Übersicht</value></data>
   <data name="Nav_Profile" xml:space="preserve"><value>Mein Konto</value></data>
   <data name="Profile_EmailSaved" xml:space="preserve"><value>Die E-Mail-Adresse wurde gespeichert.</value></data>

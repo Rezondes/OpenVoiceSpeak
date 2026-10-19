@@ -1,0 +1,29 @@
+@page "/audit"
+
+<h1>@Strings.Audit_Title</h1>
+<form method="get" class="filter-form">
+    <label>@Strings.Audit_User <input name="user" value="@User" /></label>
+    <label>@Strings.Audit_Server <input name="server" value="@Server" /></label>
+    <label>@Strings.Audit_Action <input name="action" value="@Action" /></label>
+    <label>@Strings.Audit_From <input type="date" name="from" value="@From" /></label>
+    <label>@Strings.Audit_To <input type="date" name="to" value="@To" /></label>
+    <button type="submit">@Strings.Audit_Filter</button>
+    <a href="@ExportLink" data-enhance-nav="false">@Strings.Audit_Export</a>
+</form>
+<table class="list">
+    <thead>
+        <tr>
+            <th>@Strings.Audit_Time</th><th>@Strings.Audit_User</th><th>@Strings.Audit_Action</th>
+            <th>@Strings.Audit_Target</th><th>@Strings.Audit_Server</th><th>@Strings.Audit_Detail</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var entry in Lines)
+        {
+            <tr>
+                <td>@LocalTime(entry)</td><td>@entry.UserName</td><td>@entry.Action</td>
+                <td>@entry.Target</td><td>@entry.ServerId</td><td>@entry.Detail</td>
+            </tr>
+        }
+    </tbody>
+</table>

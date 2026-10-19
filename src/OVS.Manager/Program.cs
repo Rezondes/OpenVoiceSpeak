@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using OVS.Manager;
 using OVS.Manager.Accounts;
 using OVS.Manager.Appearance;
+using OVS.Manager.Audit;
 using OVS.Manager.Components;
 using OVS.Manager.Data;
 using OVS.Manager.Localization;
@@ -34,6 +35,9 @@ builder.Services.AddIdentity<ManagerUser, IdentityRole>(identity =>
     })
     .AddEntityFrameworkStores<ManagerDbContext>()
     .AddDefaultTokenProviders();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AuditLog>(); // Package M5
+builder.Services.AddHostedService<AuditRetention>();
 builder.Services.AddScoped<SessionStore>();
 builder.Services.AddScoped<SessionCookieEvents>();
 builder.Services.AddScoped<AccountService>();
@@ -66,5 +70,6 @@ app.MapStaticAssets().AllowAnonymous();
 app.MapGet("/healthz", () => Results.Ok(new { Status = "ok", BuildInfo.Current.Version })).AllowAnonymous();
 AppearanceEndpoints.Map(app);
 AccountEndpoints.Map(app);
+AuditEndpoints.Map(app);
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 await app.RunAsync();

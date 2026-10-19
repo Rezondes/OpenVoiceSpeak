@@ -309,17 +309,19 @@ Comes before every server action so that M7 ff. write their lines from the start
 
 ### Acceptance Criteria
 
-- [ ] AC1: Each entry holds time (UTC, shown in local time), user, action, target (account or server) and a short detail; it is never changed afterwards.
-- [ ] AC2: Logins, failed logins and every action of M4 write an entry.
-- [ ] AC3: The admin filters by user, server, action and time span and exports the result as CSV; a manager sees only entries of their assigned servers.
-- [ ] AC4: With `OVS_MANAGER_AUDIT_DAYS` older entries are deleted once a day.
+- [x] AC1: Each entry holds time (UTC, shown in local time), user, action, target (account or server) and a short detail; it is never changed afterwards.
+- [x] AC2: Logins, failed logins and every action of M4 write an entry.
+- [x] AC3: The admin filters by user, server, action and time span and exports the result as CSV; a manager sees only entries of their assigned servers.
+- [x] AC4: With `OVS_MANAGER_AUDIT_DAYS` older entries are deleted once a day.
 
-### Planned tests (TDD)
+### Tests (TDD)
 
 1. `AuditLogTests > "Write_Entry_AllFieldsReadOnly"` - AC1
 2. `AuditLogTests > "Accounts_Actions_Recorded"` and `"Login_Failed_Recorded"` - AC2
-3. `AuditLogTests > "Filter_ByServerAndUser"`, `"Export_Csv"`, `"Manager_SeesOnlyAssigned"` - AC3
+3. `AuditLogTests > "Filter_ServerAndUser_OnlyTheirLines"`, `"Export_FilteredLines_Csv"`, `"Query_ManagerScope_OnlyAssignedServers"` - AC3
 4. `AuditLogTests > "Retention_Set_OldEntriesDeleted"` - AC4
+
+(as built: `AuditEntry` has init-only fields and `AtUtc` as a UTC `DateTime` (SQLite cannot compare `DateTimeOffset`; a converter gives the kind back); migration `AuditLog` with indexes on time, server and user. `AuditLog` writes and queries (newest first, at most 1000 lines); `AccountService` writes every change of M4 with the acting user of the request (`IHttpContextAccessor`, "system" outside one), the login, setup and logout write theirs. `AuditScope` gives the admin every line and a manager the lines of their servers, none until M10 assigns any. `/audit` filters by user, server, action and local days; `/audit/export` gives the same filter as CSV (RFC 4180, a leading formula character defused). `AuditRetention` (a hosted service on the run's `TimeProvider`) deletes once a day with `OVS_MANAGER_AUDIT_DAYS`; `ManagerOptions` refuses a value that is no number of days above 0. `ManagerHostTests > Model_Current_NoPendingChanges` makes sure every model change has its migration.)
 
 ### Steps
 

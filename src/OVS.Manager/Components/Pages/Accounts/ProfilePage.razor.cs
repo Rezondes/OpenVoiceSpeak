@@ -106,7 +106,7 @@ sealed partial class ProfilePage
     async Task EndOthersAsync()
     {
         if (CurrentSession is not { } current) return;
-        await Sessions.EndOthersAsync(user.Id, current);
+        await Accounts.EndOtherSessionsAsync(user, current);
         SessionList = await Sessions.ListAsync(user.Id);
         Message = Strings.Profile_OthersEnded;
     }

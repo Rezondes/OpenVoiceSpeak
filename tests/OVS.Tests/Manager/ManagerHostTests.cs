@@ -34,6 +34,16 @@ public sealed class ManagerHostTests
         Assert.NotEmpty(await database.GetAppliedMigrationsAsync());
     }
 
+    /// <summary>Package M5: every change of the model has its migration, so a start never meets a database it cannot read.</summary>
+    [Fact]
+    public async Task Model_Current_NoPendingChanges()
+    {
+        await using var manager = new ManagerFactory();
+        manager.CreateClient().Dispose();
+        await using var scope = manager.Services.CreateAsyncScope();
+        Assert.False(scope.ServiceProvider.GetRequiredService<ManagerDbContext>().Database.HasPendingModelChanges());
+    }
+
     /// <summary>Package M1 (AC6): the logic of a component lives in its <c>X.razor.cs</c>, where rule-lint reads it.</summary>
     [Fact]
     public void Razor_ManagerFiles_NoCodeBlocks()
