@@ -14,6 +14,8 @@ services:
     environment:
       TZ: "Europe/Berlin"   # new servers take this time zone (D14 3)
       OVS_MANAGER_DOCKER_HOST: "tcp://socket-proxy:2375"
+      # the server image without its tag; a self-built one (such as openvoicespeak/server) goes into .env beside this file
+      OVS_MANAGER_SERVER_IMAGE: "${OVS_MANAGER_SERVER_IMAGE:-ghcr.io/rezondes/openvoicespeak-server}"
     volumes:
       - manager-data:/data
     networks:

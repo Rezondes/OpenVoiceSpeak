@@ -46,7 +46,7 @@ Alle Variablen sind optional. Setze sie im Abschnitt `environment` von `ovs-mana
 | `OVS_MANAGER_ADMIN_USER` | leer | Name des ersten Admins, der beim Start angelegt wird, solange es kein Konto gibt. Nur zusammen mit dem Passwort. |
 | `OVS_MANAGER_ADMIN_PASSWORD` | leer | Passwort dieses Admins (mindestens 12 Zeichen). Gibt es schon ein Konto, werden beide ignoriert (Hinweis im Log). |
 | `OVS_MANAGER_DOCKER_HOST` | `tcp://socket-proxy:2375` | Adresse der Docker-API, im Compose-Setup der Socket-Proxy. |
-| `OVS_MANAGER_SERVER_IMAGE` | `ghcr.io/rezondes/openvoicespeak-server` | Image der Server ohne Tag; ein selbst gebautes Image funktioniert genauso. |
+| `OVS_MANAGER_SERVER_IMAGE` | `ghcr.io/rezondes/openvoicespeak-server` | Image der Server ohne Tag; ein selbst gebautes Image funktioniert genauso (z. B. `OVS_MANAGER_SERVER_IMAGE=openvoicespeak/server` in der `.env` neben der Compose-Datei). |
 | `OVS_MANAGER_SERVER_HOST` | leer | Ein Host für alle Server statt `ovs-<id>`; nur für ein Verwaltungstool ausserhalb von Docker (Entwicklung). |
 | `OVS_MANAGER_PUBLIC_HOST` | leer | Host, den die Clients benutzen, für die Einladungslinks; ohne ihn der Host der aufgerufenen Seite. |
 | `OVS_MANAGER_BASE_URL` | leer | Adresse, unter der Nutzer das Verwaltungstool erreichen, z. B. `https://manager.example.org` (ohne Pfad). Links in Mails, Weiterleitungen und das Secure-Flag der Cookies folgen ihr. |
