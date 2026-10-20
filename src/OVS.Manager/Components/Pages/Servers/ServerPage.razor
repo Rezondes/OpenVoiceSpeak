@@ -10,6 +10,17 @@
 else
 {
     <h1>@Server.Name</h1>
+    <nav class="server-nav" aria-label="@Server.Name">
+        <a href="@($"/servers/{Server.Id}/settings")">@Strings.Settings_Title</a>
+        <a href="@($"/servers/{Server.Id}/users")">@Strings.Users_Title</a>
+        <a href="@($"/servers/{Server.Id}/groups")">@Strings.Groups_Title</a>
+        <a href="@($"/servers/{Server.Id}/bans")">@Strings.Bans_Title</a>
+        <a href="@($"/servers/{Server.Id}/backups")">@Strings.Backups_Title</a>
+        <a href="@($"/servers/{Server.Id}/log")">@Strings.Log_Title</a>
+        <a href="@($"/servers/{Server.Id}/history")">@Strings.History_Title</a>
+        <a href="@($"/servers/{Server.Id}/errors")">@Strings.Errors_Title</a>
+        <a href="@($"/servers/{Server.Id}/resources")">@Strings.Resources_Title</a>
+    </nav>
     <table class="list">
         <tbody>
             <tr><th>@Strings.Servers_ColumnStatus</th><td data-status="@Server.Status">@ServerTexts.Status(Server)</td></tr>
@@ -36,17 +47,6 @@ else
     <UpdateDialog ServerId="@Server.Id" Version="@Server.Version" />
     <AnnouncementBox ServerId="@Server.Id" />
     <LiveView ServerId="@Server.Id" />
-    <nav class="server-nav">
-        <a href="@($"/servers/{Server.Id}/history")">@Strings.History_Title</a>
-        <a href="@($"/servers/{Server.Id}/errors")">@Strings.Errors_Title</a>
-        <a href="@($"/servers/{Server.Id}/resources")">@Strings.Resources_Title</a>
-        <a href="@($"/servers/{Server.Id}/settings")">@Strings.Settings_Title</a>
-        <a href="@($"/servers/{Server.Id}/users")">@Strings.Users_Title</a>
-        <a href="@($"/servers/{Server.Id}/bans")">@Strings.Bans_Title</a>
-        <a href="@($"/servers/{Server.Id}/groups")">@Strings.Groups_Title</a>
-        <a href="@($"/servers/{Server.Id}/backups")">@Strings.Backups_Title</a>
-        <a href="@($"/servers/{Server.Id}/log")">@Strings.Log_Title</a>
-    </nav>
     <AuthorizeView Roles="@ManagerRoles.Admin">
         <Assignments ServerId="@Server.Id" />
         <DeleteServerDialog ServerId="@Server.Id" ServerName="@Server.Name" />

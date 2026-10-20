@@ -1,36 +1,61 @@
 @inherits LayoutComponentBase
 
-<header class="top-bar">
-    <span class="app-title">@Strings.App_Title</span>
-    <AuthorizeView>
-        <nav class="main-nav">
-            <a href="/">@Strings.Nav_Home</a>
-            <a href="/profile">@Strings.Nav_Profile</a>
-            <a href="/audit">@Strings.Nav_Audit</a>
-            <a href="/errors">@Strings.ErrorLookup_Title</a>
-            <a href="/settings/notifications">@Strings.NotifySettings_Title</a>
-            <AuthorizeView Roles="@ManagerRoles.Admin" Context="admin">
-                <a href="/accounts">@Strings.Nav_Accounts</a>
-                <a href="/servers/new">@Strings.Nav_NewServer</a>
-                <a href="/servers/trash">@Strings.Nav_Trash</a>
-                <a href="/servers/adopt">@Strings.Adopt_Title</a>
-                <a href="/settings/mail">@Strings.MailSettings_Title</a>
-                <a href="/settings/backup">@Strings.ManagerBackup_Title</a>
-            </AuthorizeView>
-        </nav>
-    </AuthorizeView>
-    <LanguageSwitch />
-    <ThemeSwitch />
-    <AuthorizeView>
-        <form method="post" action="/logout" class="logout">
-            <AntiforgeryToken />
-            <button type="submit" name="logout" value="logout">@Strings.Logout</button>
-        </form>
-    </AuthorizeView>
-</header>
-<main>
-    <AuthorizeView>
-        <ManagerUpdateBanner />
-    </AuthorizeView>
-    @Body
-</main>
+<a class="skip-link" href="#main">@Strings.Layout_SkipToContent</a>
+<AuthorizeView>
+    <Authorized>
+        <div class="app-shell">
+            <aside class="sidebar">
+                <a class="brand" href="/">
+                    <span class="brand-mark" aria-hidden="true"></span>
+                    <span class="app-title">@Strings.App_Title</span>
+                </a>
+                <nav class="main-nav" aria-label="@Strings.Layout_Navigation">
+                    <span class="nav-group">@Strings.Layout_General</span>
+                    <NavLink href="/" Match="NavLinkMatch.All">@Strings.Nav_Home</NavLink>
+                    <NavLink href="/audit">@Strings.Nav_Audit</NavLink>
+                    <NavLink href="/errors">@Strings.ErrorLookup_Title</NavLink>
+                    <NavLink href="/settings/notifications">@Strings.NotifySettings_Title</NavLink>
+                    <NavLink href="/profile">@Strings.Nav_Profile</NavLink>
+                    <AuthorizeView Roles="@ManagerRoles.Admin" Context="admin">
+                        <span class="nav-group">@Strings.Layout_Admin</span>
+                        <NavLink href="/servers/new">@Strings.Nav_NewServer</NavLink>
+                        <NavLink href="/servers/adopt">@Strings.Adopt_Title</NavLink>
+                        <NavLink href="/servers/trash">@Strings.Nav_Trash</NavLink>
+                        <NavLink href="/accounts">@Strings.Nav_Accounts</NavLink>
+                        <NavLink href="/settings/mail">@Strings.MailSettings_Title</NavLink>
+                        <NavLink href="/settings/backup">@Strings.ManagerBackup_Title</NavLink>
+                    </AuthorizeView>
+                </nav>
+            </aside>
+            <div class="app-main">
+                <header class="top-bar">
+                    <LanguageSwitch />
+                    <ThemeSwitch />
+                    <form method="post" action="/logout" class="logout">
+                        <AntiforgeryToken />
+                        <button type="submit" name="logout" value="logout" class="secondary">@Strings.Logout</button>
+                    </form>
+                </header>
+                <main id="main" tabindex="-1">
+                    <ManagerUpdateBanner />
+                    @Body
+                </main>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="auth-shell">
+            <header class="top-bar">
+                <span class="brand">
+                    <span class="brand-mark" aria-hidden="true"></span>
+                    <span class="app-title">@Strings.App_Title</span>
+                </span>
+                <LanguageSwitch />
+                <ThemeSwitch />
+            </header>
+            <main id="main" tabindex="-1">
+                @Body
+            </main>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>

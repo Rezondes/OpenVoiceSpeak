@@ -9,5 +9,11 @@ sealed partial class ThemeSwitch
     [Inject]
     NavigationManager Navigation { get; set; } = null!;
 
+    [CascadingParameter]
+    Microsoft.AspNetCore.Http.HttpContext? HttpContext { get; set; }
+
+    /// <summary>"true" for the picked theme, so the switch marks it; null leaves the attribute out.</summary>
+    string? Current(Theme theme) => HttpContext is { } context && ThemeCookie.Read(context) == theme ? "true" : null;
+
     string Link(Theme theme) => $"/theme?value={ThemeCookie.Format(theme)}&returnUrl={Uri.EscapeDataString("/" + Navigation.ToBaseRelativePath(Navigation.Uri))}";
 }
