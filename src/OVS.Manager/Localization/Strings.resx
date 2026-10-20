@@ -76,7 +76,10 @@
   <data name="ApiTokens_Title" xml:space="preserve"><value>API-Tokens</value></data>
   <data name="ApiTokens_Which" xml:space="preserve"><value>Token</value></data>
   <data name="Api_NoUpdate" xml:space="preserve"><value>Für diesen Server gibt es kein Update.</value></data>
+  <data name="App_Stage" xml:space="preserve"><value>Alpha</value></data>
+  <data name="App_StageNote" xml:space="preserve"><value>Frühe Testversion: Funktionen, Oberfläche und gespeicherte Daten können sich mit jeder Version noch ändern.</value></data>
   <data name="App_Title" xml:space="preserve"><value>OpenVoiceSpeak Verwaltung</value></data>
+  <data name="App_TitleWithStage" xml:space="preserve"><value>OpenVoiceSpeak Verwaltung (Alpha)</value></data>
   <data name="Assignments_Managers" xml:space="preserve"><value>Zugewiesene Serververwalter</value></data>
   <data name="Assignments_NoManagers" xml:space="preserve"><value>Es gibt noch keine Serververwalter.</value></data>
   <data name="Assignments_NoServers" xml:space="preserve"><value>Es gibt noch keine Server.</value></data>

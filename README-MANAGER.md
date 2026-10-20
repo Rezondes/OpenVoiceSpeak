@@ -1,6 +1,8 @@
 <img src="docs/logo.png" alt="OpenVoiceSpeak-Logo" width="96">
 
-# OpenVoiceSpeak Verwaltungstool
+# OpenVoiceSpeak Verwaltungstool (Alpha)
+
+> **Alpha:** Das Verwaltungstool ist eine frühe Testversion. Funktionen, Oberfläche und gespeicherte Daten können sich mit jeder Version noch ändern. Sichere die Server und das Verwaltungstool vor jedem Update und setze es noch nicht ein, wo ein Ausfall weh tut.
 
 Das Verwaltungstool ist eine Web-App, mit der du auf einem Docker-Host bis zu 100 OpenVoiceSpeak-Server anlegst, betreibst, aktualisierst und beobachtest. Server und Client beschreibt `README.md`; hier steht alles über das Verwaltungstool selbst. Die Packages dahinter (M1 bis M34) stehen in `PLAN-MANAGER.md`.
 

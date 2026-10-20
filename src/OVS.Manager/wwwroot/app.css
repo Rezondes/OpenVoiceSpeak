@@ -246,6 +246,18 @@ a.brand:hover {
     letter-spacing: -0.01em;
 }
 
+/* the manager's release stage beside its name: a status, so in the warning colours */
+.stage-badge {
+    flex: none;
+    padding: 0 var(--space-2);
+    border-radius: 999px;
+    background: var(--warning-soft);
+    color: var(--warning);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: help;
+}
+
 .main-nav {
     display: flex;
     flex-direction: column;

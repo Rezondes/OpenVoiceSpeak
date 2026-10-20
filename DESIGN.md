@@ -14,7 +14,7 @@ Tokens in `:root`, again for dark under `prefers-color-scheme` and `[data-theme=
 - `--accent` #2F6FEB in both themes: the logo's blue, used as a fill only: the primary button, the brand mark, chart lines. White label 4.57:1; against the surface 4.57:1 (light) and 3.52:1 (dark).
 - `--accent-text` #1D4FC4 / #7AA7FF: the accent as text (links, the current nav item, the update chip): 7.08:1 and 6.75:1. `#2F6FEB` as text on `--background` is only 4.19:1, so it is never used for text.
 - `--accent-soft` #E3ECFE / #1B2A45: the plane behind the current nav item and info banners (accent text on it 5.96:1 and 6.01:1).
-- `--danger` #B91C1C / #F87171, `--success` #15803D / #22C55E, `--warning` #92400E / #FBBF24, each with a `-soft` plane: semantic only (status dots, results, the danger zone), never decorative. All pass 4.5:1 as text.
+- `--danger` #B91C1C / #F87171, `--success` #15803D / #22C55E, `--warning` #92400E / #FBBF24, each with a `-soft` plane: semantic only (status dots, results, the danger zone, the "Alpha" badge beside the name), never decorative. All pass 4.5:1 as text.
 - `--console-bg` #0B0D11, `--console-text` #D6DBE2: the log console stays dark in both themes, as a terminal does. `--qr-bg` #FFFFFF: a QR code needs white.
 
 ## Typography

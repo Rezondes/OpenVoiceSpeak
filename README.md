@@ -168,9 +168,9 @@ Multi-Arch-Image:
 docker buildx build --platform linux/amd64,linux/arm64 -t openvoicespeak/server:dev .
 ```
 
-## Verwaltungstool
+## Verwaltungstool (Alpha)
 
-Mehrere Server auf einem Docker-Host legst du bequem mit dem Verwaltungstool an: einer Web-App, die Server anlegt, aktualisiert, sichert und beobachtet und auf jedem davon Server-Admin ist. Einrichtung und Bedienung stehen in [README-MANAGER.md](README-MANAGER.md).
+Mehrere Server auf einem Docker-Host legst du bequem mit dem Verwaltungstool an: einer Web-App, die Server anlegt, aktualisiert, sichert und beobachtet und auf jedem davon Server-Admin ist. Es ist noch eine Alpha: Funktionen und gespeicherte Daten können sich mit jeder Version ändern. Einrichtung und Bedienung stehen in [README-MANAGER.md](README-MANAGER.md).
 
 ## Client (Windows)
 
