@@ -123,6 +123,28 @@ public sealed partial class ManagerHostTests
     [GeneratedRegex(@"https?://\S+/reset-password\?\S+")]
     private static partial Regex ResetLink();
 
+    /// <summary>
+    /// The page's Blazor script is served, so the interactive pages work. Dockerfile.manager restores before the .razor files
+    /// are copied, so the project must ask for the script's package itself (RequiresAspNetWebAssets), and the page must name
+    /// the script through the asset map.
+    /// </summary>
+    [Fact]
+    public async Task BlazorScript_Page_ServedAndRestoredWithoutRazorFiles()
+    {
+        Assert.Contains("<RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>", await File.ReadAllTextAsync(Path.Combine(RepoPaths.Root, "src", "OVS.Manager", "OVS.Manager.csproj")), StringComparison.Ordinal);
+        await using var manager = new ManagerFactory();
+        using var client = manager.CreateClient();
+
+        var script = BlazorScript().Match(await client.GetStringAsync(new Uri("/setup", UriKind.Relative))).Groups[1].Value;
+        using var answer = await client.GetAsync(new Uri(script, UriKind.Relative));
+
+        Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
+        Assert.Contains("javascript", answer.Content.Headers.ContentType?.MediaType, StringComparison.Ordinal);
+    }
+
+    [GeneratedRegex(@"<script src=""(_framework/blazor\.web\.[a-z0-9]+\.js)""")]
+    private static partial Regex BlazorScript();
+
     /// <summary>Package M1 (AC6): the logic of a component lives in its <c>X.razor.cs</c>, where rule-lint reads it.</summary>
     [Fact]
     public void Razor_ManagerFiles_NoCodeBlocks()

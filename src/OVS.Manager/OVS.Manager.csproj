@@ -1,6 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <!-- Package M1 (MA1): the web manager, ASP.NET Core with Blazor (interactive server) and EF Core on SQLite -->
+  <PropertyGroup>
+    <!-- Dockerfile.manager restores before the .razor files are copied; without this the SDK decides at restore that no
+         Blazor scripts are needed, and the image serves no _framework/blazor.web.js, so no page becomes interactive -->
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\OVS.Shared\OVS.Shared.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
