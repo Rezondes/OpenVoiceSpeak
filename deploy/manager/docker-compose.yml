@@ -43,7 +43,7 @@ services:
       - "-listenip=0.0.0.0"
       - "-allowfrom=ovs-manager"
       - "-shutdowngracetime=5"
-      - "-allowGET=^(/v1\\.[0-9]+)?/(_ping|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs|stats)|images/.+/json|system/df)$"
+      - "-allowGET=^(/v1\\.[0-9]+)?/(_ping|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs|stats)|images/json|images/.+/json|system/df)$"
       - "-allowPOST=^(/v1\\.[0-9]+)?/(containers/create|containers/[a-zA-Z0-9_.-]+/(start|stop|restart)|images/create|volumes/create|networks/[a-zA-Z0-9_.-]+/connect)$"
       - "-allowDELETE=^(/v1\\.[0-9]+)?/(containers|volumes)/[a-zA-Z0-9_.-]+$"
     volumes:

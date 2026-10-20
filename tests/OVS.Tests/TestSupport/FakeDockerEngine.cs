@@ -130,6 +130,15 @@ internal sealed class FakeDockerEngine : IDockerEngine
     /// <summary>The images ("image:tag") the host lacks and no registry has; every other one is there.</summary>
     public ConcurrentDictionary<string, bool> MissingImages { get; } = new();
 
+    /// <summary>The newest local tag per image, none unless a test sets one.</summary>
+    public ConcurrentDictionary<string, string> NewestTags { get; } = new();
+
+    public Task<string?> NewestTagAsync(string image, CancellationToken cancellation = default)
+    {
+        EnsureReachable();
+        return Task.FromResult(NewestTags.GetValueOrDefault(image));
+    }
+
     /// <summary>The images ("image:tag") the host lacks but a pull brings.</summary>
     public ConcurrentDictionary<string, bool> NotOnHost { get; } = new();
 

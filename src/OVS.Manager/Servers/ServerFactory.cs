@@ -18,11 +18,28 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
     /// <summary>The highest start value of the user limit.</summary>
     public const int MaxUsersLimit = 1000;
 
-    /// <summary>
-    /// The version a new server gets when none is given: the manager's own for a released manager; a locally built one
-    /// ("dev.…") is never published, so its servers take the image's "latest".
-    /// </summary>
+    /// <summary>The version a new server gets without one and without a local image: the manager's own for a released manager, else "latest".</summary>
     public static string DefaultVersion => BuildInfo.Current.IsCi ? BuildInfo.Current.Version : "latest";
+
+    /// <summary>
+    /// The version a new or adopted server gets when none is given. A released manager gives its own, the release's. A locally
+    /// built one ("dev.…") is never published, so it takes the newest server image built on the host (such as ":local" of
+    /// docker-compose.build.yml), else <see cref="DefaultVersion"/>.
+    /// </summary>
+    public static async Task<string> DefaultVersionAsync(IDockerEngine docker, string image, CancellationToken cancellation = default)
+    {
+        ArgumentNullException.ThrowIfNull(docker);
+        if (BuildInfo.Current.IsCi) return BuildInfo.Current.Version;
+        try
+        {
+            // ponytail: the newest local build stands for the current protocol; local builds carry no protocol label to check
+            return await docker.NewestTagAsync(image, cancellation) ?? DefaultVersion;
+        }
+        catch (DockerCallException)
+        {
+            return DefaultVersion; // a proxy without images/json (compose file older than this manager)
+        }
+    }
 
     /// <summary>The network of the manager and its servers (MA6).</summary>
     public const string Network = "ovs-managed";
@@ -45,7 +62,7 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
             case PortProblem.Taken: throw new ServerRequestException(ServerProblem.PortTaken);
         }
 
-        var version = string.IsNullOrWhiteSpace(request.Version) ? DefaultVersion : request.Version.Trim();
+        var version = string.IsNullOrWhiteSpace(request.Version) ? await DefaultVersionAsync(docker, options.ServerImage, cancellation) : request.Version.Trim();
         await EnsureImageAsync(version, cancellation);
         var server = new ManagedServer
         {

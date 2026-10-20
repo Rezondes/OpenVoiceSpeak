@@ -38,7 +38,7 @@ public sealed class ManagerComposeTests
         var allowed = proxy.Where(line => line.StartsWith("- \"-allow", StringComparison.Ordinal) && !line.StartsWith("- \"-allowfrom", StringComparison.Ordinal)).ToList();
         Assert.Equal(
         [
-            @"- ""-allowGET=^(/v1\\.[0-9]+)?/(_ping|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs|stats)|images/.+/json|system/df)$""", // Package M25: system/df for the volume sizes
+            @"- ""-allowGET=^(/v1\\.[0-9]+)?/(_ping|containers/json|containers/[a-zA-Z0-9_.-]+/(json|logs|stats)|images/json|images/.+/json|system/df)$""", // Package M25: system/df for the volume sizes; images/json for a local build's default version
             @"- ""-allowPOST=^(/v1\\.[0-9]+)?/(containers/create|containers/[a-zA-Z0-9_.-]+/(start|stop|restart)|images/create|volumes/create|networks/[a-zA-Z0-9_.-]+/connect)$""",
             @"- ""-allowDELETE=^(/v1\\.[0-9]+)?/(containers|volumes)/[a-zA-Z0-9_.-]+$""",
         ], allowed);

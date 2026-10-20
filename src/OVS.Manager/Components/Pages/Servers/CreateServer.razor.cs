@@ -40,7 +40,11 @@ sealed partial class CreateServer
     /// <summary>The lowest free port, shown in the empty field.</summary>
     string DefaultPort { get; set; } = "";
 
-    static string DefaultVersion => ServerFactory.DefaultVersion;
+    [Inject]
+    OVS.Manager.Docker.IDockerEngine Docker { get; set; } = null!;
+
+    /// <summary>The version a server gets with the field left empty, shown in it.</summary>
+    string DefaultVersion { get; set; } = ServerFactory.DefaultVersion;
 
     string DefaultTimeZone => Options.TimeZone;
 
@@ -57,6 +61,7 @@ sealed partial class CreateServer
         var free = PortPool.FindFree(await Database.Servers.Select(server => server.Port).ToListAsync());
         NoFreePort = free is null;
         DefaultPort = free?.ToString(CultureInfo.InvariantCulture) ?? "";
+        DefaultVersion = await ServerFactory.DefaultVersionAsync(Docker, Options.ServerImage);
         Sources = await Database.Servers.AsNoTracking().Where(server => server.DeletedAtUtc == null).OrderBy(server => server.Name).ToListAsync();
     }
 

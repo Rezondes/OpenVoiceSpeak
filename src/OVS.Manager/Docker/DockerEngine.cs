@@ -164,6 +164,17 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
     }
 
     /// <inheritdoc/>
+    public Task<string?> NewestTagAsync(string image, CancellationToken cancellation = default) => CallAsync(async () =>
+    {
+        var listed = await client.Images.ListImagesAsync(new ImagesListParameters
+        {
+            Filters = new Dictionary<string, IDictionary<string, bool>> { ["reference"] = new Dictionary<string, bool> { [image] = true } },
+        }, cancellation);
+        return listed.OrderByDescending(found => found.Created).SelectMany(found => found.RepoTags ?? [])
+            .Where(tag => tag.StartsWith(image + ":", StringComparison.Ordinal)).Select(tag => tag[(image.Length + 1)..]).FirstOrDefault();
+    });
+
+    /// <inheritdoc/>
     public async Task<bool> ImageExistsAsync(string image, string tag, CancellationToken cancellation = default)
     {
         try
