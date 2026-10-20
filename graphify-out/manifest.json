@@ -1,8 +1,8 @@
 {
   "OpenVoiceSpeak.slnx": {
-    "mtime": 1791835029.7760584,
-    "seen": 1792164858.0615132,
-    "ast_hash": "4bab901b4bee5815c3ff223bd49a3777",
+    "mtime": 1792402113.6934369,
+    "seen": 1792403075.7972095,
+    "ast_hash": "82b188e45df556b56295d7041a24868a",
     "semantic_hash": ""
   },
   "native/ovs_audio/Cargo.toml": {
@@ -168,9 +168,9 @@
     "semantic_hash": ""
   },
   "rule-lint.json": {
-    "mtime": 1791834739.682287,
-    "seen": 1792164858.0615132,
-    "ast_hash": "180ef6fc4b7be0b5feac22d54169ff21",
+    "mtime": 1792402113.715589,
+    "seen": 1792403075.7972095,
+    "ast_hash": "b45d6d879ff9366807448eab88d24b72",
     "semantic_hash": ""
   },
   "src/OVS.Client/Animations/AnimationCounter.cs": {
@@ -246,9 +246,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/App.axaml.cs": {
-    "mtime": 1792058248.8304026,
-    "seen": 1792164858.0615132,
-    "ast_hash": "5bb0ca6a46fb7260d84e5ebf4d4b1436",
+    "mtime": 1792414400.9773207,
+    "seen": 1792414663.2700365,
+    "ast_hash": "02122504235c65923a280f87d124d1e5",
     "semantic_hash": ""
   },
   "src/OVS.Client/Appearance/BackgroundTransparency.cs": {
@@ -258,15 +258,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Audio/AudioEngine.cs": {
-    "mtime": 1792110894.3528402,
-    "seen": 1792164858.0615132,
-    "ast_hash": "f4ef50f51d81da53e6b93740fb21c7a8",
+    "mtime": 1792280317.3707876,
+    "seen": 1792280734.749014,
+    "ast_hash": "3fa5d9f7e14c9140748f42e0b9f5f0ef",
     "semantic_hash": ""
   },
   "src/OVS.Client/Audio/Capture/CapturePipeline.cs": {
-    "mtime": 1792110691.4266481,
-    "seen": 1792164858.0615132,
-    "ast_hash": "9aa2fe8b055e7fe97053ca5386345815",
+    "mtime": 1792275836.6318808,
+    "seen": 1792277205.6468525,
+    "ast_hash": "51f25b0935c89c7812cb7d33a665c2b7",
     "semantic_hash": ""
   },
   "src/OVS.Client/Audio/Capture/FrameChunker.cs": {
@@ -306,9 +306,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Audio/Codec/VoiceEncoder.cs": {
-    "mtime": 1792109835.887822,
-    "seen": 1792164858.0615132,
-    "ast_hash": "a9dd9893d2b781eaf1edaaa95841ded6",
+    "mtime": 1792396485.7386506,
+    "seen": 1792398238.49077,
+    "ast_hash": "d7ec9561be05709dcb4abfbaeb9da040",
     "semantic_hash": ""
   },
   "src/OVS.Client/Audio/Devices/AudioDevice.cs": {
@@ -342,9 +342,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Audio/Devices/IAudioHardware.cs": {
-    "mtime": 1792103022.0082774,
-    "seen": 1792164858.0615132,
-    "ast_hash": "f3b4980bd641945d2652e1ca91cf79e4",
+    "mtime": 1792277293.1870563,
+    "seen": 1792277738.9101634,
+    "ast_hash": "8e21ab97de526924ba5c35b1023cbb7e",
     "semantic_hash": ""
   },
   "src/OVS.Client/Audio/Devices/IPlaybackBuffer.cs": {
@@ -354,9 +354,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Audio/Devices/WasapiHardware.cs": {
-    "mtime": 1792108260.1290562,
-    "seen": 1792164858.0615132,
-    "ast_hash": "7ab60cb2f58ca51a58146acd1d41087e",
+    "mtime": 1792277652.6838958,
+    "seen": 1792277738.9101634,
+    "ast_hash": "fc93dcb54e726f8f7dcbfdca1a8c4ffe",
     "semantic_hash": ""
   },
   "src/OVS.Client/Audio/Playback/ActiveSpeaker.cs": {
@@ -534,9 +534,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Audio/Transmit/TransmitRule.cs": {
-    "mtime": 1791897452.1528084,
-    "seen": 1792164858.0615132,
-    "ast_hash": "63271609c873131d69eb46875fd89cce",
+    "mtime": 1792279739.4449203,
+    "seen": 1792280734.749014,
+    "ast_hash": "d6d968da28e7c68c75a00f60d6d8cb6e",
     "semantic_hash": ""
   },
   "src/OVS.Client/Audio/Transmit/VoiceActivityDetector.cs": {
@@ -564,15 +564,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/ClientOptions.cs": {
-    "mtime": 1792058248.8288996,
-    "seen": 1792164858.0615132,
-    "ast_hash": "abf0f106de21075a42fd451c7b4ea983",
+    "mtime": 1792414400.9773207,
+    "seen": 1792414663.2700365,
+    "ast_hash": "8f9f17a65d525de2aad803a561d7f0f9",
     "semantic_hash": ""
   },
   "src/OVS.Client/ClientServices.cs": {
-    "mtime": 1791897452.1538148,
-    "seen": 1792164858.0615132,
-    "ast_hash": "2dd39b99e11119c2bc33eec8230fdb62",
+    "mtime": 1792277293.21076,
+    "seen": 1792277738.9101634,
+    "ast_hash": "ea62b0f1e04994c43ac40db65a01c067",
     "semantic_hash": ""
   },
   "src/OVS.Client/Collections/CollectionSync.cs": {
@@ -750,9 +750,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Dialogs/ConnectDialog.cs": {
-    "mtime": 1792058279.2250373,
-    "seen": 1792164858.0615132,
-    "ast_hash": "9e9bf17a5850bdac9e98b4bb7b463b3b",
+    "mtime": 1792414400.9773207,
+    "seen": 1792414663.2700365,
+    "ast_hash": "2fb7202a5ebc8815e40b6889e2963e51",
     "semantic_hash": ""
   },
   "src/OVS.Client/Dialogs/ConnectionDetailsDialog.cs": {
@@ -905,12 +905,6 @@
     "ast_hash": "7c46404be4cbf0aa5ef954ccc284a51f",
     "semantic_hash": ""
   },
-  "src/OVS.Client/Exceptions/ConnectionRejectedException.cs": {
-    "mtime": 1791906783.7997487,
-    "seen": 1792164858.0615132,
-    "ast_hash": "1f1c32da42496e7acb212d63106bb71a",
-    "semantic_hash": ""
-  },
   "src/OVS.Client/Exceptions/DebugApiException.cs": {
     "mtime": 1791906783.7997487,
     "seen": 1792164858.0615132,
@@ -1044,9 +1038,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Interop/UrlProtocol.cs": {
-    "mtime": 1792058029.318793,
-    "seen": 1792164858.0615132,
-    "ast_hash": "8c386056f10a4062bf4e58e36c9d5678",
+    "mtime": 1792414400.9773207,
+    "seen": 1792414663.2700365,
+    "ast_hash": "357f1240661a95b7ff325ea5ed6a0dd8",
     "semantic_hash": ""
   },
   "src/OVS.Client/Interop/WNDCLASSEXW.cs": {
@@ -1134,15 +1128,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Logging/ClientLogLines.cs": {
-    "mtime": 1792110914.6832283,
-    "seen": 1792164858.0615132,
-    "ast_hash": "b9fa618e6e4bfef8af55571e42870e86",
+    "mtime": 1792414400.97897,
+    "seen": 1792414663.2700365,
+    "ast_hash": "aff8a44482c655f0c929ddd1fe223319",
     "semantic_hash": ""
   },
   "src/OVS.Client/Logging/ProtocolLogText.cs": {
-    "mtime": 1792054315.2341857,
-    "seen": 1792164858.0615132,
-    "ast_hash": "9d7750f2dd704f3296632f34549d1118",
+    "mtime": 1792411520.2553072,
+    "seen": 1792411974.0496733,
+    "ast_hash": "1b6b0d5a76222be8d43dbb0b06bc038b",
     "semantic_hash": ""
   },
   "src/OVS.Client/Models/AdminPlace.cs": {
@@ -1343,16 +1337,10 @@
     "ast_hash": "24d3f2294a42e12db1046baac8d9b7a3",
     "semantic_hash": ""
   },
-  "src/OVS.Client/Net/ChannelPair.cs": {
-    "mtime": 1791897452.1708202,
-    "seen": 1792164858.0615132,
-    "ast_hash": "937e0a1d2943fe238e163f9ecf78d503",
-    "semantic_hash": ""
-  },
   "src/OVS.Client/Net/ClientConnection.cs": {
-    "mtime": 1791906904.8203862,
-    "seen": 1792164858.0615132,
-    "ast_hash": "b585f03607100012c4ec5123f6db9312",
+    "mtime": 1792401390.6217902,
+    "seen": 1792401846.1354504,
+    "ast_hash": "33eb10d233dc4d6120dfeb257251a123",
     "semantic_hash": ""
   },
   "src/OVS.Client/Net/ClientPaths.cs": {
@@ -1367,12 +1355,6 @@
     "ast_hash": "9894a920bf6652e12cd1637917964785",
     "semantic_hash": ""
   },
-  "src/OVS.Client/Net/JoinLink.cs": {
-    "mtime": 1792057882.5419161,
-    "seen": 1792164858.0615132,
-    "ast_hash": "704633658a659d9a7b6943e7769d91de",
-    "semantic_hash": ""
-  },
   "src/OVS.Client/Net/RoundTripSample.cs": {
     "mtime": 1791897452.1708202,
     "seen": 1792164858.0615132,
@@ -1383,12 +1365,6 @@
     "mtime": 1791897452.1708202,
     "seen": 1792164858.0615132,
     "ast_hash": "611c772562d4e05bf19d26b8503368fc",
-    "semantic_hash": ""
-  },
-  "src/OVS.Client/Net/StateMirror.cs": {
-    "mtime": 1791897452.172325,
-    "seen": 1792164858.0615132,
-    "ast_hash": "838cf155f93b179ed47789fc9e0c22cb",
     "semantic_hash": ""
   },
   "src/OVS.Client/Net/TofuPrompt.cs": {
@@ -1422,9 +1398,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Net/Updates/UpdateInstaller.cs": {
-    "mtime": 1792058248.8314056,
-    "seen": 1792164858.0615132,
-    "ast_hash": "d9336fee412ccca0c8dd8358d66ece0f",
+    "mtime": 1792414400.9814806,
+    "seen": 1792414663.2700365,
+    "ast_hash": "c2bbcba316b0a7e2a1647b835964af87",
     "semantic_hash": ""
   },
   "src/OVS.Client/Net/Updates/UpdateOffer.cs": {
@@ -1446,9 +1422,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Net/VoiceClient.cs": {
-    "mtime": 1791897452.1738467,
-    "seen": 1792164858.0615132,
-    "ast_hash": "b1fa9aef39dce6e7d6135ea7ac2fcfa6",
+    "mtime": 1792275888.631336,
+    "seen": 1792277205.6468525,
+    "ast_hash": "40f2a11ef9bbf13055cf5bf8d2831e83",
     "semantic_hash": ""
   },
   "src/OVS.Client/OVS.Client.csproj": {
@@ -1542,15 +1518,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Services/EngineConnectionState.cs": {
-    "mtime": 1791854678.8929362,
-    "seen": 1792164858.0615132,
-    "ast_hash": "25e32755d05d0fdc367e825a54e5b39f",
+    "mtime": 1792279739.4464405,
+    "seen": 1792280734.750517,
+    "ast_hash": "e8dbb115aeb9a6a8a7f8c54da4b4b9cf",
     "semantic_hash": ""
   },
   "src/OVS.Client/Services/EngineSync.cs": {
-    "mtime": 1792104592.3839421,
-    "seen": 1792164858.0615132,
-    "ast_hash": "1c6135de10bb5be50c5b8d046255ef0d",
+    "mtime": 1792411520.2553072,
+    "seen": 1792411974.0496733,
+    "ast_hash": "55b189f86f5ace730118c4d2eec052f2",
     "semantic_hash": ""
   },
   "src/OVS.Client/Services/IconImport.cs": {
@@ -1566,9 +1542,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Services/ImportMapping.cs": {
-    "mtime": 1792063014.5225346,
-    "seen": 1792164858.0615132,
-    "ast_hash": "e101e24c92d073a69a89a342a8cfe426",
+    "mtime": 1792277293.2298007,
+    "seen": 1792277738.9101634,
+    "ast_hash": "4d8f865fc82fed320bf415ba1a8d1637",
     "semantic_hash": ""
   },
   "src/OVS.Client/Services/LeaveTimer.cs": {
@@ -1668,9 +1644,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Services/VoiceLink.cs": {
-    "mtime": 1791890912.1507547,
-    "seen": 1792164858.0620177,
-    "ast_hash": "ef6b64c608c4b5a463f72badc6bfe8a0",
+    "mtime": 1792275860.298202,
+    "seen": 1792277205.6468525,
+    "ast_hash": "3f41f00ca4a451b4dee6ba6dff76114d",
     "semantic_hash": ""
   },
   "src/OVS.Client/Services/VoiceLinkFigures.cs": {
@@ -1686,15 +1662,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Settings/AudioImportResult.cs": {
-    "mtime": 1792061849.118217,
-    "seen": 1792164858.0620177,
-    "ast_hash": "8092a3a9c9c698c4a0fe830a91377718",
+    "mtime": 1792278717.862951,
+    "seen": 1792279205.9449503,
+    "ast_hash": "29221d606da1c2219a528f0ca0f519f0",
     "semantic_hash": ""
   },
   "src/OVS.Client/Settings/AudioImportSource.cs": {
-    "mtime": 1792061835.2239752,
-    "seen": 1792164858.0620177,
-    "ast_hash": "df2e8f449ba9e67ef51452750ae42f97",
+    "mtime": 1792278529.8570278,
+    "seen": 1792279205.9449503,
+    "ast_hash": "acea1d24f2c690bfcd228abdab4e87d7",
     "semantic_hash": ""
   },
   "src/OVS.Client/Settings/BackgroundAppearance.cs": {
@@ -1710,9 +1686,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Settings/ChatAppAudioImport.cs": {
-    "mtime": 1792061818.3563876,
-    "seen": 1792164858.0620177,
-    "ast_hash": "fc2074ea0adf38b23716986f8fb7ac9e",
+    "mtime": 1792278717.8619509,
+    "seen": 1792279205.9449503,
+    "ast_hash": "4e2d302499f8df47b5b0fd55d2b2b34e",
     "semantic_hash": ""
   },
   "src/OVS.Client/Settings/ClientSettings.cs": {
@@ -1800,15 +1776,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/ChannelDialogViewModel.cs": {
-    "mtime": 1791904818.503413,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a81ff17c2db7a1cc6d916a71ab14ab1b",
+    "mtime": 1792323283.7387538,
+    "seen": 1792323823.3462481,
+    "ast_hash": "d3c42bb1c848448ae82904ae5de2d4f5",
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/ChannelTreeViewModel.cs": {
-    "mtime": 1792056486.8762987,
-    "seen": 1792164858.0620177,
-    "ast_hash": "c995e364cf336547d2f2c2e86395b6d1",
+    "mtime": 1792411520.2553072,
+    "seen": 1792411974.0496733,
+    "ast_hash": "cd6e08ce930b70fc7fd7045b249dbc1e",
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/ChannelViewModel.cs": {
@@ -1836,9 +1812,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/ConnectionViewModel.cs": {
-    "mtime": 1792104611.775205,
-    "seen": 1792164858.0620177,
-    "ast_hash": "5a58f1a2efaedcc5eb5ff0d259df850a",
+    "mtime": 1792411520.2563105,
+    "seen": 1792411974.0496733,
+    "ast_hash": "0c3aff15ae185f6a27189a6b34757252",
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/GroupAssignmentViewModel.cs": {
@@ -1848,9 +1824,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/GroupEditViewModel.cs": {
-    "mtime": 1792050946.6141708,
-    "seen": 1792164858.0620177,
-    "ast_hash": "117d6742e9db6e5f5cba310213ec4429",
+    "mtime": 1792262611.325666,
+    "seen": 1792263716.8905914,
+    "ast_hash": "69dc891567d28a188b8b45fa7be1855a",
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/GroupListViewModel.cs": {
@@ -1884,9 +1860,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/LinkMatrixViewModel.cs": {
-    "mtime": 1791903191.2094736,
-    "seen": 1792164858.0620177,
-    "ast_hash": "0247c0038687aadbacebb75d300a2ce5",
+    "mtime": 1792411520.2563105,
+    "seen": 1792411974.0496733,
+    "ast_hash": "ae76cfe46e98f625d556b17c46c830ea",
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/LinkRowViewModel.cs": {
@@ -1920,9 +1896,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/MainViewModel.cs": {
-    "mtime": 1792110935.4241998,
-    "seen": 1792164858.0620177,
-    "ast_hash": "4409b59207e5d2cf1f6e13479f6f8d04",
+    "mtime": 1792279754.4588313,
+    "seen": 1792280734.750517,
+    "ast_hash": "98bf1bf0bc557d3c92dc90317ff588fb",
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/MemberListViewModel.cs": {
@@ -1938,9 +1914,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/PageFlowViewModel.cs": {
-    "mtime": 1792061245.61715,
-    "seen": 1792164858.0620177,
-    "ast_hash": "52ece53d49ddcce681aee3ef56ee4d87",
+    "mtime": 1792278596.811972,
+    "seen": 1792279205.9449503,
+    "ast_hash": "1ed6837e92d241fb3c0a967aba93d49b",
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/PendingActionViewModel.cs": {
@@ -1980,15 +1956,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/ServerViewModel.cs": {
-    "mtime": 1792058248.8314056,
-    "seen": 1792164858.0620177,
-    "ast_hash": "59bef620aaa1d80f8ae2fcdba6e26f0e",
+    "mtime": 1792411520.2563105,
+    "seen": 1792411974.0496733,
+    "ast_hash": "06e4f78956a80def7993d6929fb35226",
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/SettingsViewModel.cs": {
-    "mtime": 1792063014.524066,
-    "seen": 1792164858.0620177,
-    "ast_hash": "40d729c6d41c1e8700e5c75364ccc579",
+    "mtime": 1792278596.8109717,
+    "seen": 1792279205.9449503,
+    "ast_hash": "6bcf4e912ec4be8102c151016337cf97",
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/SoundRowViewModel.cs": {
@@ -2004,9 +1980,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/ViewModels/UsersAndBansViewModel.cs": {
-    "mtime": 1792053582.2383897,
-    "seen": 1792164858.0620177,
-    "ast_hash": "65ad296a6e38df27105398e18328eb2f",
+    "mtime": 1792411562.3308485,
+    "seen": 1792411974.0496733,
+    "ast_hash": "c12937208f33919d065eb94c6d0df16c",
     "semantic_hash": ""
   },
   "src/OVS.Client/Views/AdminView.axaml.cs": {
@@ -2028,9 +2004,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Client/Views/MainWindow.axaml.cs": {
-    "mtime": 1792058248.8304026,
-    "seen": 1792164858.0620177,
-    "ast_hash": "0557295ffd6aebe1e9c64ff45fd8587a",
+    "mtime": 1792414400.9814806,
+    "seen": 1792414663.2700365,
+    "ast_hash": "8f7cc12fe4e176f3a6a06063eb6b3807",
     "semantic_hash": ""
   },
   "src/OVS.Client/Views/MemberListView.axaml.cs": {
@@ -2070,9 +2046,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/ControlServer.cs": {
-    "mtime": 1791923899.2499137,
-    "seen": 1792164858.0620177,
-    "ast_hash": "21a1460ff29777b9ca778148571838e7",
+    "mtime": 1792399129.918303,
+    "seen": 1792400023.8874958,
+    "ast_hash": "92110eac7c47b6ed05c7e524e3dc0173",
     "semantic_hash": ""
   },
   "src/OVS.Server/Data/AvatarStore.cs": {
@@ -2082,9 +2058,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/Data/BackupArchive.cs": {
-    "mtime": 1792052834.8087504,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a0e33d8a6aac48d87f3b3613cf9a4fe4",
+    "mtime": 1792482552.56745,
+    "seen": 1792483082.849199,
+    "ast_hash": "7bf40709a4daf2688d712f835d1c3251",
     "semantic_hash": ""
   },
   "src/OVS.Server/Data/BackupContent.cs": {
@@ -2136,15 +2112,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/Data/Records/ChannelRecord.cs": {
-    "mtime": 1791897452.19846,
-    "seen": 1792164858.0620177,
-    "ast_hash": "669e9dfe623a78158f66f473b4a5fd97",
+    "mtime": 1792274607.279948,
+    "seen": 1792275492.218825,
+    "ast_hash": "e2ed019f5542b862a29ac2d104826bc1",
     "semantic_hash": ""
   },
   "src/OVS.Server/Data/Records/ServerData.cs": {
-    "mtime": 1791897452.19946,
-    "seen": 1792164858.0620177,
-    "ast_hash": "d08e75585104b58f991aeb7291fc75d1",
+    "mtime": 1792482552.56745,
+    "seen": 1792483082.849199,
+    "ast_hash": "b84a6de018febea46e871d6935e54da8",
     "semantic_hash": ""
   },
   "src/OVS.Server/Data/Records/ServerSettings.cs": {
@@ -2250,9 +2226,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/Logging/ServerLogLines.cs": {
-    "mtime": 1792055697.0647402,
-    "seen": 1792164858.0620177,
-    "ast_hash": "b49e991da0ff7f23d05e36f8df1842b3",
+    "mtime": 1792399045.2231746,
+    "seen": 1792400023.8874958,
+    "ast_hash": "98f6520847d3ac5cad157f030ab978b9",
     "semantic_hash": ""
   },
   "src/OVS.Server/Logging/ServerLogWriter.cs": {
@@ -2274,15 +2250,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/Permissions/PermissionRules.cs": {
-    "mtime": 1791897452.2024767,
-    "seen": 1792164858.0620177,
-    "ast_hash": "2b6ae69f9a90d4ff85c043649fc6d2f6",
+    "mtime": 1792259260.0994232,
+    "seen": 1792262091.0804803,
+    "ast_hash": "9d02cf40eb86f4671b02d8679da9d8bb",
     "semantic_hash": ""
   },
   "src/OVS.Server/Program.cs": {
-    "mtime": 1791851801.1840146,
-    "seen": 1792164858.0620177,
-    "ast_hash": "271c2d3b72ccd4c4d99fce48c9c89f05",
+    "mtime": 1792400124.2189987,
+    "seen": 1792400425.1073093,
+    "ast_hash": "ce86c0226fb7893dc631ce1c9499361f",
     "semantic_hash": ""
   },
   "src/OVS.Server/RequestShape.cs": {
@@ -2340,9 +2316,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/ServerConfig.cs": {
-    "mtime": 1791897452.2049935,
-    "seen": 1792164858.0620177,
-    "ast_hash": "cb46d264b529a868034c0c40c6512475",
+    "mtime": 1792397951.822013,
+    "seen": 1792398238.4917705,
+    "ast_hash": "762da1f77d293093e5a32542b17f7e4d",
     "semantic_hash": ""
   },
   "src/OVS.Server/ServerHost.cs": {
@@ -2358,9 +2334,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/ServerMetrics.cs": {
-    "mtime": 1791923420.5662665,
-    "seen": 1792164858.0620177,
-    "ast_hash": "d52696065c9f8e2f68845fb6eb342e1e",
+    "mtime": 1792399391.8339326,
+    "seen": 1792400023.8874958,
+    "ast_hash": "969235cc5ed7c06562843ed3405d9833",
     "semantic_hash": ""
   },
   "src/OVS.Server/ServerStores.cs": {
@@ -2370,9 +2346,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/ServerTelemetry.cs": {
-    "mtime": 1791927942.090609,
-    "seen": 1792164858.0620177,
-    "ast_hash": "729c796bade2b9fbb9b67e2886c5d95c",
+    "mtime": 1792440646.4851756,
+    "seen": 1792442211.0559337,
+    "ast_hash": "db51e6b77b4397078897068239863595",
     "semantic_hash": ""
   },
   "src/OVS.Server/ServerTuning.cs": {
@@ -2382,9 +2358,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/Session.cs": {
-    "mtime": 1792055697.0627422,
-    "seen": 1792164858.0620177,
-    "ast_hash": "3fb1805ad1e9c54e1be0d7d8fcb7fc43",
+    "mtime": 1792398875.5091016,
+    "seen": 1792399041.1012576,
+    "ast_hash": "61c0f0b88f2d73a5b7e013cc2cf5274e",
     "semantic_hash": ""
   },
   "src/OVS.Server/SessionOutbox.cs": {
@@ -2394,15 +2370,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Admin.cs": {
-    "mtime": 1792055697.0617342,
-    "seen": 1792164858.0620177,
-    "ast_hash": "8ac14833f308d4d7364aeeb62c34d3fe",
+    "mtime": 1792399129.9085698,
+    "seen": 1792400023.8874958,
+    "ast_hash": "399ec2378bfa511531456dfe111cbdd0",
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Afk.cs": {
-    "mtime": 1792055806.8859897,
-    "seen": 1792164858.0620177,
-    "ast_hash": "13a5d26cc7f664ed35bcc9e1d4464df1",
+    "mtime": 1792399129.9100804,
+    "seen": 1792400023.8874958,
+    "ast_hash": "3352b3aa0b19e2a756834e2b188ce5bb",
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Avatar.cs": {
@@ -2412,9 +2388,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Backup.cs": {
-    "mtime": 1791904730.120363,
-    "seen": 1792164858.0620177,
-    "ast_hash": "ed3270feb5cc723e9ace6cb944bbf275",
+    "mtime": 1792399129.9085698,
+    "seen": 1792400023.8874958,
+    "ast_hash": "e4be329131d733a9cff2a4f58b8e3782",
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Broadcast.cs": {
@@ -2424,21 +2400,21 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Channel.cs": {
-    "mtime": 1792055697.063742,
-    "seen": 1792164858.0620177,
-    "ast_hash": "f8bf81508b33461bc7ddb91f2cd213ed",
+    "mtime": 1792399129.9019096,
+    "seen": 1792400023.8874958,
+    "ast_hash": "6a6f78e0a288b52c489a5f6745182d97",
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Chat.cs": {
-    "mtime": 1792055697.063742,
-    "seen": 1792164858.0620177,
-    "ast_hash": "ce801022dc2e5533d7fb976904908f2c",
+    "mtime": 1792399186.7148361,
+    "seen": 1792400023.8874958,
+    "ast_hash": "810fcf1151ac4375b0ad6433c6e01dac",
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Connections.cs": {
-    "mtime": 1792055697.063742,
-    "seen": 1792164858.0620177,
-    "ast_hash": "244bfd75b8c8c7bbacc9448ccac02679",
+    "mtime": 1792399391.8455904,
+    "seen": 1792400023.8874958,
+    "ast_hash": "c2de439790e06ae7c0150117f4ff2885",
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Link.cs": {
@@ -2454,9 +2430,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Moderation.cs": {
-    "mtime": 1792052852.585491,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a49a225ae021a89696088e5d4d01e80d",
+    "mtime": 1792399129.8817902,
+    "seen": 1792400023.8874958,
+    "ast_hash": "b170303c7dc83804984cca75b4420d41",
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Persistence.cs": {
@@ -2472,15 +2448,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.Voice.cs": {
-    "mtime": 1792055697.0627422,
-    "seen": 1792164858.0620177,
-    "ast_hash": "79b90948004283b0f9435114497df3ca",
+    "mtime": 1792399129.9173033,
+    "seen": 1792400023.8874958,
+    "ast_hash": "4ab96a6ca1a3e32464345e24428f8af6",
     "semantic_hash": ""
   },
   "src/OVS.Server/State/ServerState.cs": {
-    "mtime": 1792055697.0627422,
-    "seen": 1792164858.0620177,
-    "ast_hash": "f5117b7f2606e008dbeb056aeb36dc4f",
+    "mtime": 1792399391.844026,
+    "seen": 1792400023.8874958,
+    "ast_hash": "621a83d2363eccf339b505f3713ae066",
     "semantic_hash": ""
   },
   "src/OVS.Server/Throttling/AdminTokenGuessLimit.cs": {
@@ -2640,9 +2616,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Shared/Permissions/ChannelAccess.cs": {
-    "mtime": 1791854678.9155245,
-    "seen": 1792164858.0620177,
-    "ast_hash": "f2a1d90e39c99a28dcecfab1279d28ad",
+    "mtime": 1792259260.0772057,
+    "seen": 1792262091.0804803,
+    "ast_hash": "75225e4ca7049abe66842acfd9224a64",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Permissions/ChannelCapacity.cs": {
@@ -2652,15 +2628,15 @@
     "semantic_hash": ""
   },
   "src/OVS.Shared/Permissions/GroupRules.cs": {
-    "mtime": 1791871928.0423667,
-    "seen": 1792164858.0620177,
-    "ast_hash": "6cfc7fae93df53494967fbddbd1e2e2e",
+    "mtime": 1792259260.0651844,
+    "seen": 1792262091.0804803,
+    "ast_hash": "131d3be57ef19a8cb9012ba402a105bc",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Permissions/Permission.cs": {
-    "mtime": 1791906904.8243978,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a705c7dc7ed9a3f790ea1ccc3dbee3d9",
+    "mtime": 1792259260.047272,
+    "seen": 1792262091.0804803,
+    "ast_hash": "9361db9344331e799a07aa241c8fd093",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Permissions/PermissionExtensions.cs": {
@@ -2670,9 +2646,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Shared/Permissions/WellKnownGroups.cs": {
-    "mtime": 1791871928.0423667,
-    "seen": 1792164858.0620177,
-    "ast_hash": "f9bbfd2d127b3bc5e7f2ccac0052d6cf",
+    "mtime": 1792259260.0462735,
+    "seen": 1792262091.0804803,
+    "ast_hash": "a5c04001f189663816a39a80d6a0d8fd",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/AvatarFormat.cs": {
@@ -2796,9 +2772,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/Messages/Connection/ClientHello.cs": {
-    "mtime": 1791871928.04688,
-    "seen": 1792164858.0620177,
-    "ast_hash": "70382beac6a83c748211e953487cf56a",
+    "mtime": 1792399164.2633054,
+    "seen": 1792400023.8874958,
+    "ast_hash": "0432c9e0e02a2c1a5052775d575f1fc0",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/Messages/Connection/ClientProof.cs": {
@@ -2838,9 +2814,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/Messages/Connection/ServerSnapshot.cs": {
-    "mtime": 1791871928.0478845,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a8ffedbd1037250d402554817df3330a",
+    "mtime": 1792259859.8777285,
+    "seen": 1792262091.0804803,
+    "ast_hash": "edd33a97611550683dc93b82a477b96e",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/Messages/Connection/Welcome.cs": {
@@ -2886,9 +2862,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/Messages/Groups/RedeemAdminToken.cs": {
-    "mtime": 1791871928.0508943,
-    "seen": 1792164858.0620177,
-    "ast_hash": "0e155576196101ecebd644eea4a2b3e9",
+    "mtime": 1792259550.2238948,
+    "seen": 1792262091.0804803,
+    "ast_hash": "d06cf6633bbaec3108382cd578920f8e",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/Messages/Groups/ReorderGroups.cs": {
@@ -3024,9 +3000,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/Messages/Message.cs": {
-    "mtime": 1792052458.0117352,
-    "seen": 1792164858.0620177,
-    "ast_hash": "5e8eb2b03e38712247ab27a3eaaa50bc",
+    "mtime": 1792259550.2228909,
+    "seen": 1792262091.0804803,
+    "ast_hash": "07a40e011a983e0fe5b50ba5a083f1fb",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/Messages/Moderation/BanInfo.cs": {
@@ -3288,21 +3264,21 @@
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/ProtocolDefaults.cs": {
-    "mtime": 1791871928.0609417,
-    "seen": 1792164858.0620177,
-    "ast_hash": "7bec4815ce71034c092ae5f78b4b406b",
+    "mtime": 1792274539.0223937,
+    "seen": 1792275492.2198305,
+    "ast_hash": "690992a490182bac614ab7e20f79c7ed",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/ProtocolLimits.cs": {
-    "mtime": 1792055697.0617342,
-    "seen": 1792164858.0620177,
-    "ast_hash": "975dc96dced0b2d350b1a6c4504a9394",
+    "mtime": 1792275623.367909,
+    "seen": 1792277205.6468525,
+    "ast_hash": "b287665877a9b995ca678f092abc9998",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/ReasonCodes.cs": {
-    "mtime": 1791871928.0609417,
-    "seen": 1792164858.0620177,
-    "ast_hash": "c862762043b04f3f5bfae419df2f2f28",
+    "mtime": 1792398818.710909,
+    "seen": 1792399041.1012576,
+    "ast_hash": "86d0c73b392f0e9f86be946587de8fc4",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/ServerIconFormat.cs": {
@@ -3318,9 +3294,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Shared/Protocol/WireProtocol.cs": {
-    "mtime": 1792055697.0617342,
-    "seen": 1792164858.0620177,
-    "ast_hash": "9f507800b693151c9e14d7f4fcce6b9a",
+    "mtime": 1792398843.9840448,
+    "seen": 1792399041.1012576,
+    "ast_hash": "ec10ac99049b117893a4b27cecd9d58b",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Voice/LossReport.cs": {
@@ -3354,9 +3330,9 @@
     "semantic_hash": ""
   },
   "src/OVS.Shared/Voice/RelayPayload.cs": {
-    "mtime": 1791871928.0624464,
-    "seen": 1792164858.0620177,
-    "ast_hash": "949514f18ba3f3138602dc58c33ad4ae",
+    "mtime": 1792276731.5520144,
+    "seen": 1792277205.6468525,
+    "ast_hash": "273b9455cd732a6ce233bc04f1ae3865",
     "semantic_hash": ""
   },
   "src/OVS.Shared/Voice/ReplayWindow.cs": {
@@ -3414,9 +3390,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Animations/LiveMotionTests.cs": {
-    "mtime": 1791990346.3395972,
-    "seen": 1792164858.0620177,
-    "ast_hash": "2c762e4a207d384ccca2a481aea05862",
+    "mtime": 1792277805.104503,
+    "seen": 1792278387.5060613,
+    "ast_hash": "cdd291be3e8e2b068c147eb434a66d90",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Animations/MotionCoverageTests.cs": {
@@ -3516,9 +3492,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Audio/IdleCostTests.cs": {
-    "mtime": 1792110737.323117,
-    "seen": 1792164858.0620177,
-    "ast_hash": "f73ca4cbf4fe76e91e99716e1b48ac1a",
+    "mtime": 1792275991.972819,
+    "seen": 1792277205.6468525,
+    "ast_hash": "aa378514b00f38124efbc4b5f6393b17",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Audio/Playback/PlaybackLoopTests.cs": {
@@ -3546,9 +3522,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Audio/Processing/VoiceFilterTests.cs": {
-    "mtime": 1791881796.302927,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a7d70992a8575fd1dcb2e3510896eebd",
+    "mtime": 1792396486.0736177,
+    "seen": 1792398238.4917705,
+    "ast_hash": "ec750dbc5064417e89ae01ebc90c90dc",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Audio/Processing/VolumeCurveTests.cs": {
@@ -3600,9 +3576,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Audio/Sounds/SoundTests.cs": {
-    "mtime": 1791996763.5517623,
-    "seen": 1792164858.0620177,
-    "ast_hash": "687eb1d3078798476f552dbe213e7ab7",
+    "mtime": 1792279874.6765096,
+    "seen": 1792280734.750517,
+    "ast_hash": "93362eb2a19956268c80b67fa5bbb78b",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Audio/Transmit/LossAdapterTests.cs": {
@@ -3618,9 +3594,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Audio/Transmit/SendPathTests.cs": {
-    "mtime": 1792110737.3266833,
-    "seen": 1792164858.0620177,
-    "ast_hash": "c91ad3216ff22c80a39bcfe9614c7b40",
+    "mtime": 1792396486.4887896,
+    "seen": 1792398238.4917705,
+    "ast_hash": "23d8e6c3d83ea5a02aecbb553d348365",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Behaviors/ReorderDragTests.cs": {
@@ -3756,9 +3732,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Layout/ResponsiveTests.cs": {
-    "mtime": 1792062379.1201644,
-    "seen": 1792164858.0620177,
-    "ast_hash": "de8e97625dcb6787652c9428432dc1f3",
+    "mtime": 1792277805.0954845,
+    "seen": 1792278387.5060613,
+    "ast_hash": "06b3d292e34f0702cd84b13bfe0ba508",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Layout/SideNavTests.cs": {
@@ -3786,21 +3762,21 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Localization/LocalizationTests.cs": {
-    "mtime": 1791905617.2962062,
-    "seen": 1792164858.0620177,
-    "ast_hash": "3b5632c168b17a358ca3fd7387c270e9",
+    "mtime": 1792398716.4602416,
+    "seen": 1792399041.1012576,
+    "ast_hash": "45379fe8619a4674f48c1affc022fa53",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Logging/ClientLogTests.cs": {
-    "mtime": 1791905617.2967103,
-    "seen": 1792164858.0620177,
-    "ast_hash": "17c924518ffc14ad4584b794a92376c2",
+    "mtime": 1792276235.5414205,
+    "seen": 1792277205.6468525,
+    "ast_hash": "cfd4b961fa29170aa9ecaf6a4713ba31",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Logging/ProtocolLogTextTests.cs": {
-    "mtime": 1792054315.2341857,
-    "seen": 1792164858.0620177,
-    "ast_hash": "3f78c71da6eb88bb5634402dd43a0659",
+    "mtime": 1792411520.257311,
+    "seen": 1792411974.0496733,
+    "ast_hash": "3620500abe9fe5de60bed20109d4f783",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Models/ChannelSlotsTests.cs": {
@@ -3815,28 +3791,10 @@
     "ast_hash": "48d94ad2e2d1d4b938b591018b5c3c7e",
     "semantic_hash": ""
   },
-  "tests/OVS.Tests/Client/Net/ChannelPairTests.cs": {
-    "mtime": 1791848917.3386703,
-    "seen": 1792164858.0620177,
-    "ast_hash": "9be992c65623ce1aa730c03d7723c90e",
-    "semantic_hash": ""
-  },
   "tests/OVS.Tests/Client/Net/ClientNetTests.cs": {
-    "mtime": 1791918968.2127793,
-    "seen": 1792164858.0620177,
-    "ast_hash": "5217796e9b12c8b0cd3ce70b3967e86c",
-    "semantic_hash": ""
-  },
-  "tests/OVS.Tests/Client/Net/JoinLinkTests.cs": {
-    "mtime": 1792058393.550668,
-    "seen": 1792164858.0620177,
-    "ast_hash": "fdf9a6c9ab45f177adf052d136cc288a",
-    "semantic_hash": ""
-  },
-  "tests/OVS.Tests/Client/Net/StateMirrorTests.cs": {
-    "mtime": 1791867270.9200141,
-    "seen": 1792164858.0620177,
-    "ast_hash": "e0099c57c90e249cd5d093f64617b4eb",
+    "mtime": 1792411520.2578156,
+    "seen": 1792411974.0496733,
+    "ast_hash": "4d61f3bfa1871d72447906f7c75efd21",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Net/Updates/Unseekable.cs": {
@@ -3918,9 +3876,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Services/EngineSyncTests.cs": {
-    "mtime": 1792107386.020571,
-    "seen": 1792164858.0620177,
-    "ast_hash": "0bcc649f346d9d74766cc5a20d0551ce",
+    "mtime": 1792411520.2578156,
+    "seen": 1792411974.0496733,
+    "ast_hash": "f3ad4374b830e8076f5970d969d1c9d4",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Services/EngineSyncWiringTests.cs": {
@@ -3996,9 +3954,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Services/VoiceLinkTests.cs": {
-    "mtime": 1791890912.153772,
-    "seen": 1792164858.0620177,
-    "ast_hash": "ed068a2165d6004cd2e3d66323ef86c8",
+    "mtime": 1792276235.5659492,
+    "seen": 1792277205.6468525,
+    "ast_hash": "ff4990ff0760c6d8cfa02b3b7e370ba9",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Settings/ClientFileFixtureTests.cs": {
@@ -4008,9 +3966,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Settings/DiscordAudioImportTests.cs": {
-    "mtime": 1792062062.6319642,
-    "seen": 1792164858.0620177,
-    "ast_hash": "2dd0c84f438d13a92a482c14c522acad",
+    "mtime": 1792278717.8798285,
+    "seen": 1792279205.9449503,
+    "ast_hash": "e38121b6e6dcf617c1ce8988bcc79a85",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Settings/LevelDbReaderTests.cs": {
@@ -4026,9 +3984,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Settings/SettingsTests.cs": {
-    "mtime": 1792063089.9231498,
-    "seen": 1792164858.0620177,
-    "ast_hash": "4fa56e0ecfd767087dec0b29910c7bb5",
+    "mtime": 1792279124.6984115,
+    "seen": 1792279205.9449503,
+    "ast_hash": "060ab944c141ccd0c2933c0462e2273c",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/SplashTests.cs": {
@@ -4068,9 +4026,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/ChannelDialogViewModelTests.cs": {
-    "mtime": 1791895700.404425,
-    "seen": 1792164858.0620177,
-    "ast_hash": "be52e829f31634c4c9d587739f5703ae",
+    "mtime": 1792323255.6438463,
+    "seen": 1792323823.3462481,
+    "ast_hash": "6a6b6a800ee419936499c20b60926c8b",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/ChannelTreeViewModelTests.cs": {
@@ -4080,9 +4038,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/ChatViewModelTests.cs": {
-    "mtime": 1791895700.404425,
-    "seen": 1792164858.0620177,
-    "ast_hash": "0cc26e7bde45ed226a5578fc95e9a77a",
+    "mtime": 1792398732.0449293,
+    "seen": 1792399041.1012576,
+    "ast_hash": "c8971974b701ae0b9c9257c41e81995e",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/ConnectionRig.cs": {
@@ -4098,9 +4056,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/ConnectionViewModelTests.cs": {
-    "mtime": 1792104780.2839904,
-    "seen": 1792164858.0620177,
-    "ast_hash": "b8c5bdb7b9f9c0fc68e10c7ff3c16f81",
+    "mtime": 1792284686.0928571,
+    "seen": 1792285080.8738477,
+    "ast_hash": "12890b17ac06777df4459b3354f0dbbf",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/DeviceCounts.cs": {
@@ -4110,15 +4068,15 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/GroupListViewModelTests.cs": {
-    "mtime": 1791870219.4638338,
-    "seen": 1792164858.0620177,
-    "ast_hash": "94d73a505479b4226446634c07ebaff8",
+    "mtime": 1792262582.0519753,
+    "seen": 1792263716.8925447,
+    "ast_hash": "55a96ae737b17478868f229dcf6453a0",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/ImportMappingTests.cs": {
-    "mtime": 1792063014.524066,
-    "seen": 1792164858.0620177,
-    "ast_hash": "cbaf6b1bc684a3aeb9ac492f139efe32",
+    "mtime": 1792277311.2252743,
+    "seen": 1792277738.9116728,
+    "ast_hash": "16f8a433d5dcd21c8be0c9f9487b9597",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/KnownUserViewModelTests.cs": {
@@ -4152,9 +4110,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/MainViewModelTests.cs": {
-    "mtime": 1791917133.2951856,
-    "seen": 1792164858.0620177,
-    "ast_hash": "2120dd494904d3121d928fd420d86380",
+    "mtime": 1792276235.542948,
+    "seen": 1792277205.6468525,
+    "ast_hash": "7cfffeadbcb17fff43ee83ecf798fec4",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/MemberListViewModelTests.cs": {
@@ -4194,9 +4152,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/ReconnectTests.cs": {
-    "mtime": 1791906783.9356961,
-    "seen": 1792164858.0620177,
-    "ast_hash": "7668bd971cf2b694bb4efc97e07bc242",
+    "mtime": 1792401423.0654726,
+    "seen": 1792401846.1364508,
+    "ast_hash": "8e0b104522df0a3c7e2837a071464521",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/SelfStateSeen.cs": {
@@ -4230,15 +4188,15 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/ServerViewModelTests.cs": {
-    "mtime": 1791919154.2234783,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a19ae5a78e9c32a3e3a24a36c7a7ded0",
+    "mtime": 1792262510.2656384,
+    "seen": 1792263716.8925447,
+    "ast_hash": "8912b36bcd1f1ae99420f62673b687cc",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/ViewModels/UsersAndBansViewModelTests.cs": {
-    "mtime": 1791991875.7279515,
-    "seen": 1792164858.0620177,
-    "ast_hash": "9e2cfc553dc1068adb2e2e60e566fce7",
+    "mtime": 1792262582.0519753,
+    "seen": 1792263716.8925447,
+    "ast_hash": "65717440dc477a300e95f00969be4ec3",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Views/CollectingSink.cs": {
@@ -4248,21 +4206,21 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Views/ConnectionBindingTests.cs": {
-    "mtime": 1792058466.2738934,
-    "seen": 1792164858.0620177,
-    "ast_hash": "eafb20a9fac94353f328895fefd0215f",
+    "mtime": 1792414468.5021577,
+    "seen": 1792414663.2710361,
+    "ast_hash": "dbfbae054c44a48699f6a24d2efccd5a",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Views/PerformanceTests.cs": {
-    "mtime": 1791881496.80974,
-    "seen": 1792164858.0620177,
-    "ast_hash": "aab211994b8ce369b35fa7d42ea4513c",
+    "mtime": 1792411520.2578156,
+    "seen": 1792411974.0512328,
+    "ast_hash": "823e61f5e9fd4bef2109ffc22d58ef50",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Views/SettingsSearchTests.cs": {
-    "mtime": 1791995900.2535667,
-    "seen": 1792164858.0620177,
-    "ast_hash": "4d4ff024c1dd4408ff59161103c2260e",
+    "mtime": 1792277805.0974832,
+    "seen": 1792278387.5060613,
+    "ast_hash": "4cae1910b63d9979511203feb20aeaa3",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Views/StreamerModeTests.cs": {
@@ -4272,9 +4230,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Client/Views/UiSmokeTests.cs": {
-    "mtime": 1792049242.5680037,
-    "seen": 1792164858.0620177,
-    "ast_hash": "2f6ad294db1c621020fd56baed21aab7",
+    "mtime": 1792323437.7721,
+    "seen": 1792323823.3462481,
+    "ast_hash": "2b76ec010368c2ff4acc99953d63ad4b",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/NoticesTests.cs": {
@@ -4284,15 +4242,15 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/OVS.Tests.csproj": {
-    "mtime": 1791846397.8149128,
-    "seen": 1792164858.0620177,
-    "ast_hash": "97ed4c23eb98935504645529a82162b5",
+    "mtime": 1792408518.0968275,
+    "seen": 1792409868.4687693,
+    "ast_hash": "c55c8cb3c6ccdf41277faf76f2055821",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/PlanCriterion.cs": {
-    "mtime": 1791896390.7616508,
-    "seen": 1792164858.0620177,
-    "ast_hash": "18aad8effd346d6f970e962459081a15",
+    "mtime": 1792396486.8034296,
+    "seen": 1792398238.4927716,
+    "ast_hash": "42253ac4f7efb999c842e007ae0993ab",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/PlanParse.cs": {
@@ -4302,15 +4260,15 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/PlanReference.cs": {
-    "mtime": 1792101574.5544076,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a9965e45c40732bea57df8534beaa36c",
+    "mtime": 1792396487.4266007,
+    "seen": 1792398238.4927716,
+    "ast_hash": "5f10c53aa8c27e1036d7e08a9ae66382",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/PlanReferenceTests.cs": {
-    "mtime": 1792101554.7076306,
-    "seen": 1792164858.0620177,
-    "ast_hash": "7aab09794000566755289c241dfd5c22",
+    "mtime": 1792396487.7384448,
+    "seen": 1792398238.4927716,
+    "ast_hash": "d1a089b8a47bbff8f822eff06c60aa9a",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Base64InputTests.cs": {
@@ -4344,9 +4302,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Data/BackupTests.cs": {
-    "mtime": 1792053012.821594,
-    "seen": 1792164858.0620177,
-    "ast_hash": "aff95b3a3108d21d50adb91d74f4255b",
+    "mtime": 1792259818.3274,
+    "seen": 1792262091.0804803,
+    "ast_hash": "3279de59a6d557bc1f255a13fdb0be3f",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Data/BackupUploadTests.cs": {
@@ -4356,15 +4314,15 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Data/DataStoreTests.cs": {
-    "mtime": 1791923899.2509134,
-    "seen": 1792164858.0620177,
-    "ast_hash": "d96e5a436b2aa42634a4000bc95d25f1",
+    "mtime": 1792276114.3702364,
+    "seen": 1792277205.6468525,
+    "ast_hash": "b661be310dfce2eda29f69c4d2941c32",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Data/PersistedFixtureTests.cs": {
-    "mtime": 1791895700.413946,
-    "seen": 1792164858.0620177,
-    "ast_hash": "18f9964132276bd8ed58d08e34598d7f",
+    "mtime": 1792275114.7203512,
+    "seen": 1792275492.2198305,
+    "ast_hash": "1bcee2963d64c287211c9ab3dfe60cf1",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Data/Records/BanRecordTests.cs": {
@@ -4374,9 +4332,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Data/Records/ServerDataTests.cs": {
-    "mtime": 1792056990.4588652,
-    "seen": 1792164858.0620177,
-    "ast_hash": "5637bc7343d92c5d2a25aabbf0e80429",
+    "mtime": 1792274430.2137434,
+    "seen": 1792275492.2198305,
+    "ast_hash": "a0af77bdf80e155751af72524ebc7eb3",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Data/SaveSchedulerTests.cs": {
@@ -4404,9 +4362,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/HandshakeTests.cs": {
-    "mtime": 1791895700.4154503,
-    "seen": 1792164858.0620177,
-    "ast_hash": "6eca12457e12c47232e5bdaee9f49a51",
+    "mtime": 1792398606.5944877,
+    "seen": 1792399041.1012576,
+    "ast_hash": "cb12e3576069857b820ab724d1550e10",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Logging/LogDownloadTests.cs": {
@@ -4434,21 +4392,21 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Logging/ServerLogWriterTests.cs": {
-    "mtime": 1791920781.5728233,
-    "seen": 1792164858.0620177,
-    "ast_hash": "54391a81caa491027e752c55edd7a9ea",
+    "mtime": 1792260318.8658564,
+    "seen": 1792262091.0804803,
+    "ast_hash": "145b15372359baa1902e81cf899c08db",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/ObservabilityComposeTests.cs": {
-    "mtime": 1791927161.4733756,
-    "seen": 1792164858.0620177,
-    "ast_hash": "733b5381c0a3125654655dee1639273d",
+    "mtime": 1792402015.1820605,
+    "seen": 1792403075.79821,
+    "ast_hash": "04c6df31deab9a0571005e443f381beb",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Permissions/PermissionRulesTests.cs": {
-    "mtime": 1791864040.545309,
-    "seen": 1792164858.0620177,
-    "ast_hash": "4c36fb7bd50b5692aa969503115491ae",
+    "mtime": 1792260318.9027152,
+    "seen": 1792262091.0804803,
+    "ast_hash": "0864135b45fa405ab772cadf03177598",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/RestartScheduleTests.cs": {
@@ -4464,9 +4422,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Rules/ChannelSettingsRuleTests.cs": {
-    "mtime": 1791854678.946704,
-    "seen": 1792164858.0620177,
-    "ast_hash": "beb449626709204a46a2053d477cead4",
+    "mtime": 1792276719.0329988,
+    "seen": 1792277205.6468525,
+    "ast_hash": "15a705e9a8f286a01b9dc79d6b06d5bc",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Rules/ModerationRuleTests.cs": {
@@ -4494,9 +4452,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/ServerConfigTests.cs": {
-    "mtime": 1791923899.2519636,
-    "seen": 1792164858.0620177,
-    "ast_hash": "efc663c04fa68bb247fba5eb108974f4",
+    "mtime": 1792397975.2476854,
+    "seen": 1792398238.4927716,
+    "ast_hash": "0f40abb2a38366b7a8be27b53bb54d2a",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/ServerHostTests.cs": {
@@ -4506,9 +4464,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/ServerMetricsTests.cs": {
-    "mtime": 1791924018.9693627,
-    "seen": 1792164858.0620177,
-    "ast_hash": "12d2d03519ca8a94ad7bf65c828d6808",
+    "mtime": 1792400036.5589526,
+    "seen": 1792400425.1073093,
+    "ast_hash": "7f1ff8ffeeecc11950e1b99c21aceb07",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/ServerStoresTests.cs": {
@@ -4518,9 +4476,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/ServerTelemetryTests.cs": {
-    "mtime": 1791927801.1684432,
-    "seen": 1792164858.0620177,
-    "ast_hash": "9d2fe8a3d0bc539a5a9d58095cea9489",
+    "mtime": 1792259517.2370448,
+    "seen": 1792262091.0804803,
+    "ast_hash": "2528d73e0473db086b95ed9f5bfa8e13",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/ServerTracingTests.cs": {
@@ -4548,9 +4506,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/AdminCommandTests.cs": {
-    "mtime": 1792056990.4538584,
-    "seen": 1792164858.0620177,
-    "ast_hash": "ea6f866e85e0ce8fd6d9982359fbad9e",
+    "mtime": 1792397864.675878,
+    "seen": 1792398238.4927716,
+    "ast_hash": "b40660088024d6b37faa9f4f6c83a3e5",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/AfkWatchTests.cs": {
@@ -4560,9 +4518,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/AuditLineTests.cs": {
-    "mtime": 1792052993.603106,
-    "seen": 1792164858.0620177,
-    "ast_hash": "0c0cce87173c79667a72133e4a255499",
+    "mtime": 1792259501.6487417,
+    "seen": 1792262091.0804803,
+    "ast_hash": "c3e345749808a27cc3c6a2e22c3514c8",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/AvatarCommandTests.cs": {
@@ -4572,9 +4530,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/ChannelCommandTests.cs": {
-    "mtime": 1791901845.1988313,
-    "seen": 1792164858.0620177,
-    "ast_hash": "64d313415bec839b22f3fd922d078c46",
+    "mtime": 1792276731.5520144,
+    "seen": 1792277205.6468525,
+    "ast_hash": "233443aec47c3bb38b95e5c7d7a3f184",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/ChannelLockTests.cs": {
@@ -4590,9 +4548,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/ChatTests.cs": {
-    "mtime": 1791895700.421488,
-    "seen": 1792164858.0620177,
-    "ast_hash": "6e74d25f9ff071489b696f8d402504c1",
+    "mtime": 1792399204.2225053,
+    "seen": 1792400023.8884962,
+    "ast_hash": "08948653acb4a4970ed484a217f9bb0e",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/DispatchTests.cs": {
@@ -4620,9 +4578,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/ModerationTests.cs": {
-    "mtime": 1792018459.0148745,
-    "seen": 1792164858.0620177,
-    "ast_hash": "6ee65778a3cc7a866b9fb797f6e2f08b",
+    "mtime": 1792261696.635749,
+    "seen": 1792262091.0804803,
+    "ast_hash": "692a8ebd6556836dca3cfa114efaeb38",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/PersistenceTests.cs": {
@@ -4638,9 +4596,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/StateSyncTests.cs": {
-    "mtime": 1791864040.5483103,
-    "seen": 1792164858.0620177,
-    "ast_hash": "1c59b861406f61ffb9eaac53f1e2e56c",
+    "mtime": 1792411585.8602538,
+    "seen": 1792411974.0512328,
+    "ast_hash": "301cf669198960ac112883ee71c25e19",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/State/UserStatsTests.cs": {
@@ -4686,9 +4644,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Voice/VoiceRelayTests.cs": {
-    "mtime": 1792057052.8831155,
-    "seen": 1792164858.0620177,
-    "ast_hash": "feac69f80094c645e9246bd283f1a0e3",
+    "mtime": 1792276731.561625,
+    "seen": 1792277205.6468525,
+    "ast_hash": "c3c0c923143dfbdb6f1365df37e2d3be",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Server/Voice/VoiceRoutingTests.cs": {
@@ -4740,9 +4698,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Shared/Permissions/ChannelAccessTests.cs": {
-    "mtime": 1791852647.8194468,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a0c6fdc66857f73d8d3ac852fa332101",
+    "mtime": 1792261696.6142097,
+    "seen": 1792262091.0804803,
+    "ast_hash": "aac47555b16739480cab332d5ad102b0",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Shared/Permissions/ChannelCapacityTests.cs": {
@@ -4752,9 +4710,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Shared/Permissions/GroupRulesTests.cs": {
-    "mtime": 1791289712.2629356,
-    "seen": 1792164858.0620177,
-    "ast_hash": "f8b9b17937e418e19afa985d35f61a96",
+    "mtime": 1792259214.8895507,
+    "seen": 1792262091.0804803,
+    "ast_hash": "71a88d249fac75110f6cee9e4a7598a3",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Shared/Protocol/AvatarFormatTests.cs": {
@@ -4782,9 +4740,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Shared/Protocol/WireFreezeTests.cs": {
-    "mtime": 1792056666.2237728,
-    "seen": 1792164858.0620177,
-    "ast_hash": "9408c570ed279b0437a4fb50340fc166",
+    "mtime": 1792398775.3365018,
+    "seen": 1792399041.1012576,
+    "ast_hash": "0723418eaedc5f587e9776b29551edf8",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Shared/Voice/ReplayWindowTests.cs": {
@@ -4794,27 +4752,27 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Shared/Voice/VoicePacketTests.cs": {
-    "mtime": 1791865239.0511837,
-    "seen": 1792164858.0620177,
-    "ast_hash": "3bcd59b64f244cf0a8fc82728489d743",
+    "mtime": 1792276731.5535178,
+    "seen": 1792277205.6478531,
+    "ast_hash": "b916da08f05c52d440bc72bce19ed0aa",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/SmokeTests.cs": {
-    "mtime": 1792056666.2227733,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a710099d5f0ca50d333c604d3790c3a5",
+    "mtime": 1792399633.514627,
+    "seen": 1792400023.8884962,
+    "ast_hash": "f50bae15ea0c318d43cba0d0e4d571c1",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/SourceLayout.cs": {
-    "mtime": 1791895700.4241843,
-    "seen": 1792164858.0620177,
-    "ast_hash": "066bd14776c6cbf7442b11faecb5e64c",
+    "mtime": 1792402069.862398,
+    "seen": 1792403075.79821,
+    "ast_hash": "c2ce11a0b590e2bc79dee40f05be6b8c",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/SourceLayoutTests.cs": {
-    "mtime": 1791896357.7248974,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a47743c616feea82b2c1bed71499d237",
+    "mtime": 1792402069.862398,
+    "seen": 1792403075.79821,
+    "ast_hash": "0b94386e0c08f87c18c21fa27cdc5e34",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/AdminPages.cs": {
@@ -4842,9 +4800,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/BrokenServerData.cs": {
-    "mtime": 1791852647.949334,
-    "seen": 1792164858.0620177,
-    "ast_hash": "84a25a9951a07a626f90ece24935de37",
+    "mtime": 1792276719.0329988,
+    "seen": 1792277205.6478531,
+    "ast_hash": "6286de6013053d6b88999b765539a277",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/ClientRig.cs": {
@@ -4920,15 +4878,15 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/FakeAudioHardware.cs": {
-    "mtime": 1792104667.97603,
-    "seen": 1792164858.0620177,
-    "ast_hash": "52eb8a4541e969260d11f66ec07b8f32",
+    "mtime": 1792277293.1890643,
+    "seen": 1792277738.9121764,
+    "ast_hash": "3327cab67466dfcb8c0b1e8e12032a9b",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/FakeHttp.cs": {
-    "mtime": 1791215741.4834423,
-    "seen": 1792164858.0620177,
-    "ast_hash": "7e3ceb847bc04abdcaed89007338148a",
+    "mtime": 1792416519.1670322,
+    "seen": 1792416742.999462,
+    "ast_hash": "cf18811726eb3cc1f6386c3bfbf68def",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/FakeKeys.cs": {
@@ -4938,9 +4896,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/FakeServers.cs": {
-    "mtime": 1791897452.2200482,
-    "seen": 1792164858.0620177,
-    "ast_hash": "02e71dd4f5a54bc638faf7e003890092",
+    "mtime": 1792411520.2588174,
+    "seen": 1792411974.0512328,
+    "ast_hash": "43468a8548a07b5c7674835bfda70428",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/FakeSpeaker.cs": {
@@ -5208,9 +5166,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/Snapshots.cs": {
-    "mtime": 1791854678.9575398,
-    "seen": 1792164858.0620177,
-    "ast_hash": "8b27ba1b2bc6bf32fd16fe42c051d5dd",
+    "mtime": 1792411520.2588174,
+    "seen": 1792411974.0512328,
+    "ast_hash": "dd84717382fce5afe5f687341980ed99",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/StateHarness.cs": {
@@ -5232,9 +5190,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/TestClient.cs": {
-    "mtime": 1791906904.8264039,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a5363747d0dfb4ac5dedd9fd6434fd0d",
+    "mtime": 1792401410.2332394,
+    "seen": 1792401846.1364508,
+    "ast_hash": "95d2797485f32ca547e5e818d9cbe659",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/TestCulture.cs": {
@@ -5262,9 +5220,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/TestServer.cs": {
-    "mtime": 1791923899.2519636,
-    "seen": 1792164858.0620177,
-    "ast_hash": "d3ebbfd3501f2d7dc3f2d587665c8a35",
+    "mtime": 1792397914.501609,
+    "seen": 1792398238.4927716,
+    "ast_hash": "1756a306dc8a23af8299a4b2fce0a36f",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/TestSupport/TestTones.cs": {
@@ -5304,9 +5262,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Website/ShowcaseServer.cs": {
-    "mtime": 1791905497.080728,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a29fa421901924c319e6054de4d6e6d9",
+    "mtime": 1792411520.2588174,
+    "seen": 1792411974.0512328,
+    "ast_hash": "8391819393a3fd0adfc90862b0b2d3b1",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Website/WebsiteScene.cs": {
@@ -5316,9 +5274,9 @@
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Website/WebsiteShots.cs": {
-    "mtime": 1792153139.1317408,
-    "seen": 1792164858.0620177,
-    "ast_hash": "b3cf7b0c54d489988939f309d2d2576c",
+    "mtime": 1792277805.0994918,
+    "seen": 1792278387.5060613,
+    "ast_hash": "6bca3c2ffb4346d3048bc5e45429732a",
     "semantic_hash": ""
   },
   "tests/OVS.Tests/Website/WebsiteShotsTests.cs": {
@@ -5406,9 +5364,9 @@
     "semantic_hash": ""
   },
   "tools/rule-lint-tests/Rules/EmDashRuleTests.cs": {
-    "mtime": 1791854678.961418,
-    "seen": 1792164858.0620177,
-    "ast_hash": "0e963662d1d0bd7f846a5e8fdaea7767",
+    "mtime": 1792401866.5756748,
+    "seen": 1792403075.7992098,
+    "ast_hash": "440b78623c6729744caba79add766daa",
     "semantic_hash": ""
   },
   "tools/rule-lint-tests/Rules/EnglishTextRuleTests.cs": {
@@ -5460,9 +5418,9 @@
     "semantic_hash": ""
   },
   "tools/rule-lint-tests/Rules/PartialTypeRuleTests.cs": {
-    "mtime": 1791835734.1130888,
-    "seen": 1792164858.0620177,
-    "ast_hash": "f089ba636e617869294f51ffc8af3fb7",
+    "mtime": 1792401860.35411,
+    "seen": 1792403075.7992098,
+    "ast_hash": "86d73b6cd91805fc73447f0005ab70a3",
     "semantic_hash": ""
   },
   "tools/rule-lint-tests/Rules/PrimaryConstructorRuleTests.cs": {
@@ -5496,9 +5454,9 @@
     "semantic_hash": ""
   },
   "tools/rule-lint-tests/Rules/TypeFileRuleTests.cs": {
-    "mtime": 1791835727.6521747,
-    "seen": 1792164858.0620177,
-    "ast_hash": "d3d28f79a673015031f086ae4aef339c",
+    "mtime": 1792401860.35411,
+    "seen": 1792403075.7992098,
+    "ast_hash": "3d95297b6260804237c7296f9535e162",
     "semantic_hash": ""
   },
   "tools/rule-lint-tests/Rules/TypeNameRuleTests.cs": {
@@ -5568,9 +5526,9 @@
     "semantic_hash": ""
   },
   "tools/rule-lint/LintSettings.cs": {
-    "mtime": 1791897452.2336335,
-    "seen": 1792164858.0620177,
-    "ast_hash": "e3aa775120224af6e71028e86c4e7ed2",
+    "mtime": 1792401878.3595266,
+    "seen": 1792403075.7992098,
+    "ast_hash": "3c1a496edb92617d0c75126e22e757bc",
     "semantic_hash": ""
   },
   "tools/rule-lint/Linter.cs": {
@@ -5688,9 +5646,9 @@
     "semantic_hash": ""
   },
   "tools/rule-lint/Rules/PartialTypeRule.cs": {
-    "mtime": 1791897452.2461772,
-    "seen": 1792164858.0620177,
-    "ast_hash": "c56c32b997ab4cee7f846eb2895a4899",
+    "mtime": 1792401878.3595266,
+    "seen": 1792403075.7992098,
+    "ast_hash": "7ba11b4771cae5bc6c8f6d29d771ee4d",
     "semantic_hash": ""
   },
   "tools/rule-lint/Rules/PrimaryConstructorRule.cs": {
@@ -5724,9 +5682,9 @@
     "semantic_hash": ""
   },
   "tools/rule-lint/Rules/TypeFileRule.cs": {
-    "mtime": 1791897452.2476823,
-    "seen": 1792164858.0620177,
-    "ast_hash": "307ee9733f7071249b378972eb8e966c",
+    "mtime": 1792401878.3595266,
+    "seen": 1792403075.7992098,
+    "ast_hash": "f1b6ad8ef2226cd260d93dcd708eecd2",
     "semantic_hash": ""
   },
   "tools/rule-lint/Rules/TypeNameRule.cs": {
@@ -5874,45 +5832,33 @@
     "semantic_hash": ""
   },
   ".github/workflows/release.yml": {
-    "mtime": 1792101636.6413107,
-    "seen": 1792164858.0620177,
-    "ast_hash": "d4cd3d31dd495d4bfc0917b3bf3809a6",
+    "mtime": 1792450317.0399241,
+    "seen": 1792450920.4996808,
+    "ast_hash": "d5cc6db5d310a2b19ea3cd64cdae92dc",
     "semantic_hash": ""
   },
   "CODING-RULES-OVS.md": {
-    "mtime": 1792111177.2448604,
-    "seen": 1792164858.0620177,
-    "ast_hash": "280fa005a5d4c4d2a60166f6df6b8fff",
+    "mtime": 1792414400.9952023,
+    "seen": 1792414663.2720366,
+    "ast_hash": "f071e55e2af0ebfcfc437943e45a768a",
     "semantic_hash": ""
   },
   "CODING-RULES.md": {
-    "mtime": 1792110015.0309095,
-    "seen": 1792164858.0620177,
-    "ast_hash": "2e0e99a3151946757b584569fd132554",
-    "semantic_hash": ""
-  },
-  "HANDOFF.md": {
-    "mtime": 1791913025.117896,
-    "seen": 1792164858.0620177,
-    "ast_hash": "b84f84310a121ebfe3ef588e7b5bb7c3",
-    "semantic_hash": ""
-  },
-  "MESSUNG-VERBUNDEN-STOCKEN.md": {
-    "mtime": 1792098367.6111994,
-    "seen": 1792164858.0620177,
-    "ast_hash": "a915f11c1e1e5ccedd4cb6ecc6a8c983",
+    "mtime": 1792167782.7811902,
+    "seen": 1792167894.3297453,
+    "ast_hash": "7186abb8a0e937c884f92317ca7d34e3",
     "semantic_hash": ""
   },
   "PLAN.md": {
-    "mtime": 1792111661.875234,
-    "seen": 1792164858.0620177,
-    "ast_hash": "afc67cd794249ea90f525bcf94e32453",
+    "mtime": 1792401482.2404463,
+    "seen": 1792401846.1364508,
+    "ast_hash": "76d6d4332df45d0576e6577ba7f784a3",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1792154500.0369804,
-    "seen": 1792164858.0620177,
-    "ast_hash": "40f15189b5d437ac4472684893a18bdc",
+    "mtime": 1792492560.6182888,
+    "seen": 1792493037.1745508,
+    "ast_hash": "d5e0625127a72946e9be96460d14bf5c",
     "semantic_hash": ""
   },
   "THIRD-PARTY-NOTICES.md": {
@@ -5994,15 +5940,15 @@
     "semantic_hash": ""
   },
   "docker-compose.yml": {
-    "mtime": 1791922047.7043705,
-    "seen": 1792164858.0620177,
-    "ast_hash": "515d845ed4d8a304c836ba184a4d6d28",
+    "mtime": 1792398267.3480432,
+    "seen": 1792399041.1022625,
+    "ast_hash": "1f6efc77c7f4b318087100c2ba082c8a",
     "semantic_hash": ""
   },
   "docs/AUDIO.md": {
-    "mtime": 1792154489.1592908,
-    "seen": 1792164858.0620177,
-    "ast_hash": "fcdb5b3cf2da77506900d43f2cfa19dc",
+    "mtime": 1792396485.2530174,
+    "seen": 1792398238.4927716,
+    "ast_hash": "418151523103df8e75a3a183b1600901",
     "semantic_hash": ""
   },
   "website/index.html": {
@@ -6555,6 +6501,2526 @@
     "mtime": 1792153248.079657,
     "seen": 1792164858.0620177,
     "ast_hash": "8e8e72efce76d6551546f4541c44c5d3",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1792488096.441997,
+    "seen": 1792488481.212279,
+    "ast_hash": "3942ad09162fb93ce855a1b4a58b7714",
+    "semantic_hash": ""
+  },
+  "src/OVS.Shared/Protocol/Messages/Groups/ServerAdminClaimed.cs": {
+    "mtime": 1792259550.164304,
+    "seen": 1792262091.0804803,
+    "ast_hash": "cc1fc2a9d51ffec7a295aa2ef0b5bc85",
+    "semantic_hash": ""
+  },
+  "src/OVS.Client/Settings/AudioImportApp.cs": {
+    "mtime": 1792278466.4963028,
+    "seen": 1792279205.9449503,
+    "ast_hash": "a381d7f13b492ae52b27e3f4ef53206f",
+    "semantic_hash": ""
+  },
+  "src/OVS.Client/ViewModels/ChatAppImportViewModel.cs": {
+    "mtime": 1792278491.3308098,
+    "seen": 1792279205.9449503,
+    "ast_hash": "43305134243c8a05b3a8d877b2ec193e",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Client/ViewModels/ChatAppImportViewModelTests.cs": {
+    "mtime": 1792279124.6994102,
+    "seen": 1792279205.9449503,
+    "ast_hash": "ca0e897d5b1a7876e53b1b8ed50dccdb",
+    "semantic_hash": ""
+  },
+  "src/OVS.Client/Audio/Sounds/TalkKeyTone.cs": {
+    "mtime": 1792280270.5645344,
+    "seen": 1792280734.749014,
+    "ast_hash": "82b0730f6d31cf6c920eabe43f108a86",
+    "semantic_hash": ""
+  },
+  "src/OVS.Server/State/ServerAdminPreset.cs": {
+    "mtime": 1792398043.5572047,
+    "seen": 1792398238.4917705,
+    "ast_hash": "b6a05da0424cf4c34c84ccea05acd195",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/PlanFiles.cs": {
+    "mtime": 1792396487.1193807,
+    "seen": 1792398238.4927716,
+    "ast_hash": "8c3b42ff7834153360c954206c108b26",
+    "semantic_hash": ""
+  },
+  "PLAN-MANAGER.md": {
+    "mtime": 1792452220.7326572,
+    "seen": 1792452626.7749407,
+    "ast_hash": "1882396a373b060ca11198f81b33f453",
+    "semantic_hash": ""
+  },
+  "docs/archive/PLAN-ARCHIVE.md": {
+    "mtime": 1792396373.4984422,
+    "seen": 1792398238.4927716,
+    "ast_hash": "ffdf53608e293bae556c1889761226fc",
+    "semantic_hash": ""
+  },
+  "src/OVS.Server/State/ServiceSessions.cs": {
+    "mtime": 1792398888.0565462,
+    "seen": 1792399041.1012576,
+    "ast_hash": "c932bab7514b5998767f2cb1def85eaa",
+    "semantic_hash": ""
+  },
+  "src/OVS.Server/DailyUsers.cs": {
+    "mtime": 1792399376.085982,
+    "seen": 1792400023.8874958,
+    "ast_hash": "da3293fbc97c28c1cb8c110e2a7972e4",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Server/DailyUsersTests.cs": {
+    "mtime": 1792399334.4793484,
+    "seen": 1792400023.8884962,
+    "ast_hash": "7144276bbfce175ae45e4eeacb1a8a9a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Server/CommandLine.cs": {
+    "mtime": 1792400105.0069904,
+    "seen": 1792400425.1073093,
+    "ast_hash": "0ed7bbfd1062e8848d0b191f50cc41fa",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Server/CommandLineTests.cs": {
+    "mtime": 1792400090.6471908,
+    "seen": 1792400425.1073093,
+    "ast_hash": "f77d8eccaee623bfa6ab9952d67899a6",
+    "semantic_hash": ""
+  },
+  "src/OVS.Shared/Exceptions/ConnectionRejectedException.cs": {
+    "mtime": 1792401199.6287296,
+    "seen": 1792401846.1354504,
+    "ast_hash": "b141ecc2e20b5b94421e1ceb79d2bc4c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Shared/Net/ControlConnection.cs": {
+    "mtime": 1792401371.8696952,
+    "seen": 1792401846.1354504,
+    "ast_hash": "bc30bcb499ea352e2947572087d1a4e8",
+    "semantic_hash": ""
+  },
+  "src/OVS.Shared/Net/DisconnectedEventArgs.cs": {
+    "mtime": 1792401378.5225658,
+    "seen": 1792401846.1354504,
+    "ast_hash": "defb59a3b909520436e9622bfd26c80e",
+    "semantic_hash": ""
+  },
+  "src/OVS.Shared/Net/MessageReceivedEventArgs.cs": {
+    "mtime": 1792401378.5215595,
+    "seen": 1792401846.1354504,
+    "ast_hash": "54217b2a259e596f98cac62d89e47332",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Shared/Net/ControlConnectionTests.cs": {
+    "mtime": 1792401450.1543822,
+    "seen": 1792401846.1364508,
+    "ast_hash": "8b33d92d35a4d91b4de6bcb3e0edc469",
+    "semantic_hash": ""
+  },
+  "dotnet-tools.json": {
+    "mtime": 1792402123.0887055,
+    "seen": 1792403075.7972095,
+    "ast_hash": "6b99028a0012cf3e092b306bce420c83",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Appearance/AppearanceEndpoints.cs": {
+    "mtime": 1792404341.2034657,
+    "seen": 1792404851.4297602,
+    "ast_hash": "c2b580c8557591fc26865335caaec565",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Appearance/Theme.cs": {
+    "mtime": 1792402426.4250648,
+    "seen": 1792403075.79821,
+    "ast_hash": "a77d23cb399848282bf0adf3bcc2a565",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Appearance/ThemeCookie.cs": {
+    "mtime": 1792402426.4260654,
+    "seen": 1792403075.79821,
+    "ast_hash": "103f6209a18fb4b33560765ec1a57c0a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/App.razor": {
+    "mtime": 1792492526.0696833,
+    "seen": 1792493037.1735475,
+    "ast_hash": "f33658038aa485207d86194e0599e179",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/App.razor.cs": {
+    "mtime": 1792402426.4275694,
+    "seen": 1792403075.79821,
+    "ast_hash": "c74eb0fbfdcdc27c15269f6bbc377ae6",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Layout/LanguageSwitch.razor": {
+    "mtime": 1792454578.0115452,
+    "seen": 1792455035.2754204,
+    "ast_hash": "26ac8b419ba422a8f4f7d60d4a6465e5",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Layout/LanguageSwitch.razor.cs": {
+    "mtime": 1792454578.0115452,
+    "seen": 1792455035.2754204,
+    "ast_hash": "d128cc430a1000bd733c21af5db240a1",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Layout/MainLayout.razor": {
+    "mtime": 1792492526.0696833,
+    "seen": 1792493037.1735475,
+    "ast_hash": "2940f62d2b155f103ef9dce2c2782482",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Layout/ThemeSwitch.razor": {
+    "mtime": 1792454578.0115452,
+    "seen": 1792455035.2754204,
+    "ast_hash": "140165ba7c0e64660dbbd625c8123a34",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Layout/ThemeSwitch.razor.cs": {
+    "mtime": 1792454578.0115452,
+    "seen": 1792455035.2754204,
+    "ast_hash": "1516a02b7226021e9041b7d132a9de6a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Routes.razor": {
+    "mtime": 1792402104.4383185,
+    "seen": 1792403075.79821,
+    "ast_hash": "7306ec6d6bfd002c0e51087968f8e355",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/_Imports.razor": {
+    "mtime": 1792442301.1953924,
+    "seen": 1792442702.5390506,
+    "ast_hash": "b3fefe40fe17d4175934741d5eb9a810",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/ManagerDbContext.cs": {
+    "mtime": 1792449502.866194,
+    "seen": 1792450057.624186,
+    "ast_hash": "cdcf4503d40b17aa36102b7185034380",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/Initial.Designer.cs": {
+    "mtime": 1792402126.6491685,
+    "seen": 1792403075.79821,
+    "ast_hash": "c4b82d36590157401d8dc049a498e329",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/Initial.cs": {
+    "mtime": 1792402221.8369007,
+    "seen": 1792403075.79821,
+    "ast_hash": "436e6fdb269fc83e7e62c3adf357fb43",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/ManagerDbContextModelSnapshot.cs": {
+    "mtime": 1792481126.5671015,
+    "seen": 1792481835.530165,
+    "ast_hash": "12491ce59aaf5fa482e281234441c09b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Localization/UiCulture.cs": {
+    "mtime": 1792404341.2115161,
+    "seen": 1792404851.4297602,
+    "ast_hash": "cb9a2645c6012fe74584e50274c5c2a3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/ManagerOptions.cs": {
+    "mtime": 1792481085.7155533,
+    "seen": 1792481835.530165,
+    "ast_hash": "1eb817817c1f6d4d89893847f25bc7d9",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/OVS.Manager.csproj": {
+    "mtime": 1792456714.918092,
+    "seen": 1792457386.282288,
+    "ast_hash": "816ec3129e0d169b6a0d340ece3afc99",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Program.cs": {
+    "mtime": 1792482552.56745,
+    "seen": 1792483082.849199,
+    "ast_hash": "b47d71c2c72146c16f086bb5a2ca619e",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Components/LayoutTests.cs": {
+    "mtime": 1792492526.0666425,
+    "seen": 1792493037.1745508,
+    "ast_hash": "a70b0ffcd9284a4c9a60d418ba268ea8",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Localization/ManagerLocalizationTests.cs": {
+    "mtime": 1792403753.0919373,
+    "seen": 1792404200.0184557,
+    "ast_hash": "935b2dcf657ff20090e4d681b8c660b0",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/ManagerComposeTests.cs": {
+    "mtime": 1792481927.7424598,
+    "seen": 1792482372.3011246,
+    "ast_hash": "fd0aaa0b20593ec999626dbfb6153419",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/ManagerHostTests.cs": {
+    "mtime": 1792456973.051015,
+    "seen": 1792457386.2832916,
+    "ast_hash": "b98543a91d2ecc63c3289fdc075c0c14",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/ComposeFile.cs": {
+    "mtime": 1792402015.087105,
+    "seen": 1792403075.79821,
+    "ast_hash": "e23bae97bd15f78b76d29dd3b1875fa2",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/ManagerFactory.cs": {
+    "mtime": 1792445662.379228,
+    "seen": 1792445687.6268685,
+    "ast_hash": "fdfafb250da56077037f4a0445fa035c",
+    "semantic_hash": ""
+  },
+  "deploy/manager/docker-compose.yml": {
+    "mtime": 1792480163.4303434,
+    "seen": 1792480402.6679707,
+    "ast_hash": "1c5a6ef725b037e84ea869a301d5a707",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/AccountEndpoints.cs": {
+    "mtime": 1792404950.3242295,
+    "seen": 1792405759.7984643,
+    "ast_hash": "b3a9997a281bb1536778affb35102f0c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/AccountErrors.cs": {
+    "mtime": 1792404341.2145176,
+    "seen": 1792404851.4297602,
+    "ast_hash": "d40631506a190c18f24a79357ff79df9",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/FirstAdmin.cs": {
+    "mtime": 1792403643.5944514,
+    "seen": 1792404200.0184557,
+    "ast_hash": "39923456569d95bf7ef11184cb104942",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/LoginLimits.cs": {
+    "mtime": 1792403566.8096926,
+    "seen": 1792404200.0184557,
+    "ast_hash": "a1180c0c2b7bc0b226c204c414234338",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/ManagerRoles.cs": {
+    "mtime": 1792403566.8086925,
+    "seen": 1792404200.0184557,
+    "ast_hash": "65fdddd162cdd3f10dde8e89e36cf1af",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/ManagerUser.cs": {
+    "mtime": 1792404311.0084858,
+    "seen": 1792404851.4297602,
+    "ast_hash": "54f32fe25256f36bd8b23a32871afcf5",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/SetupGate.cs": {
+    "mtime": 1792451335.9290824,
+    "seen": 1792451970.3094633,
+    "ast_hash": "172e8788a2f2475c8fa8e90784bfecfb",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Login.razor": {
+    "mtime": 1792491100.0321727,
+    "seen": 1792492009.1774635,
+    "ast_hash": "533662d4e94b0c62b0b6836f4a5b30f3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Login.razor.cs": {
+    "mtime": 1792446136.1752684,
+    "seen": 1792446321.942822,
+    "ast_hash": "d9c7b152f4f5509f4b428a5a5b1482cd",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Setup.razor": {
+    "mtime": 1792491100.042856,
+    "seen": 1792492009.1774635,
+    "ast_hash": "b1069121cbb6e5a89d56c4f2196a5029",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Setup.razor.cs": {
+    "mtime": 1792491113.477607,
+    "seen": 1792492009.1774635,
+    "ast_hash": "674a39ca37920de2a149124056a41b53",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/Identity.Designer.cs": {
+    "mtime": 1792403717.3432417,
+    "seen": 1792404200.0184557,
+    "ast_hash": "39942d352b4ee79358fa69b90b016fff",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/Identity.cs": {
+    "mtime": 1792403724.931135,
+    "seen": 1792404200.0184557,
+    "ast_hash": "5b620058b8dfaa920f3e4120e7ea110b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/LocalUrls.cs": {
+    "mtime": 1792403615.4769924,
+    "seen": 1792404200.0184557,
+    "ast_hash": "606c2bebf9c2350ebba80454ef9e9ab9",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Accounts/FirstAdminTests.cs": {
+    "mtime": 1792491172.428045,
+    "seen": 1792492009.1790285,
+    "ast_hash": "dea4396afba0ba30b81384fd96a8ec3b",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Accounts/LoginTests.cs": {
+    "mtime": 1792403822.9478998,
+    "seen": 1792404200.0184557,
+    "ast_hash": "0269c30c49bc78af884d9e393cc41699",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/ManagerForm.cs": {
+    "mtime": 1792403453.1087914,
+    "seen": 1792404200.0194623,
+    "ast_hash": "3c6bc9525122ebd130d954f05405a39f",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/AccountClaims.cs": {
+    "mtime": 1792446136.17416,
+    "seen": 1792446321.942822,
+    "ast_hash": "c4b80ec69be2ef99107f3e83dd9a9cdc",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/AccountService.cs": {
+    "mtime": 1792446136.17416,
+    "seen": 1792446321.942822,
+    "ast_hash": "0735585ebf837f97755f44b53e27c3ad",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/AccountSummary.cs": {
+    "mtime": 1792446245.5796034,
+    "seen": 1792446321.942822,
+    "ast_hash": "9426520eaf3736f054c1ceab74ed9e07",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/ManagerSession.cs": {
+    "mtime": 1792404311.00974,
+    "seen": 1792404851.4297602,
+    "ast_hash": "db1a8ae296dbb6bd0d8042e41471c164",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/PasswordChangeGate.cs": {
+    "mtime": 1792404341.2135143,
+    "seen": 1792404851.4297602,
+    "ast_hash": "f5ce2a35a0e47542539d7e651372057f",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/SessionCookieEvents.cs": {
+    "mtime": 1792446136.17416,
+    "seen": 1792446321.942822,
+    "ast_hash": "a1e7b3895a26aab3c0b24f03f5e54d41",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/SessionStore.cs": {
+    "mtime": 1792404311.0107446,
+    "seen": 1792404851.4297602,
+    "ast_hash": "2e619c428b81eb7a54831499c101c97d",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Appearance/PreferenceCookie.cs": {
+    "mtime": 1792404341.1693077,
+    "seen": 1792404851.4297602,
+    "ast_hash": "5445b43fafe16056712ebe5222fc8973",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Accounts/AccountEdit.razor": {
+    "mtime": 1792491100.0321727,
+    "seen": 1792492009.1774635,
+    "ast_hash": "0a2670207d324641e6ce09edda7ea833",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Accounts/AccountEdit.razor.cs": {
+    "mtime": 1792446136.1758337,
+    "seen": 1792446321.942822,
+    "ast_hash": "de89900b742e6676e7952881e650e8d2",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Accounts/AccountList.razor": {
+    "mtime": 1792491100.0331728,
+    "seen": 1792492009.1774635,
+    "ast_hash": "11401bf0cb6ea15d2e449a531497d1fa",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Accounts/AccountList.razor.cs": {
+    "mtime": 1792446245.5796034,
+    "seen": 1792446321.942822,
+    "ast_hash": "8a2ee8a106a85d2836dac99f5a7933c1",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Accounts/ProfilePage.razor": {
+    "mtime": 1792491420.5309837,
+    "seen": 1792492009.1774635,
+    "ast_hash": "cf1cf159a53cd356d65e95dcdee2c6ed",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Accounts/ProfilePage.razor.cs": {
+    "mtime": 1792491242.4994595,
+    "seen": 1792492009.1774635,
+    "ast_hash": "ff086d27224a4cfdb8c934d0f9872dcd",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AccountsAndSessions.Designer.cs": {
+    "mtime": 1792404459.097534,
+    "seen": 1792404851.4297602,
+    "ast_hash": "1aecc78cf4e09977e2129d47b9777362",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AccountsAndSessions.cs": {
+    "mtime": 1792404459.1795807,
+    "seen": 1792404851.4297602,
+    "ast_hash": "887a275afe1703b59320d265c593857b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Localization/TextFormat.cs": {
+    "mtime": 1792404419.663803,
+    "seen": 1792404851.4297602,
+    "ast_hash": "51839ccfb0285cfa48aca6912d80de57",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Accounts/AccountServiceTests.cs": {
+    "mtime": 1792404238.4308844,
+    "seen": 1792404851.4297602,
+    "ast_hash": "cd02f1d0eb6274ebfdb0dcbbf8234f14",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Components/AccountPagesTests.cs": {
+    "mtime": 1792491263.3067417,
+    "seen": 1792492009.1795573,
+    "ast_hash": "780d15273caf1d19ab07af76994938cb",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Audit/AuditActions.cs": {
+    "mtime": 1792482552.56745,
+    "seen": 1792483082.84864,
+    "ast_hash": "633156c6053546642a50b9142c862fcc",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Audit/AuditCsv.cs": {
+    "mtime": 1792404905.380008,
+    "seen": 1792405759.7984643,
+    "ast_hash": "17d48f25b09649a5f6236c28c5443e15",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Audit/AuditEndpoints.cs": {
+    "mtime": 1792410951.3666146,
+    "seen": 1792411974.0496733,
+    "ast_hash": "53c22c6495830b54a9b6180f8364c08d",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Audit/AuditEntry.cs": {
+    "mtime": 1792404905.3774965,
+    "seen": 1792405759.7984643,
+    "ast_hash": "85bf005b85ec21cee5453255b3d99510",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Audit/AuditFilter.cs": {
+    "mtime": 1792404905.3790028,
+    "seen": 1792405759.7984643,
+    "ast_hash": "7113616877d3acd83b0a93d34d4b380c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Audit/AuditLog.cs": {
+    "mtime": 1792404905.3790028,
+    "seen": 1792405759.7984643,
+    "ast_hash": "32bbf463a7d94ef143553950b9bbec68",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Audit/AuditRetention.cs": {
+    "mtime": 1792404905.3805552,
+    "seen": 1792405759.7984643,
+    "ast_hash": "ab9ea2e2a2dfbf8c6712dce674ce05d7",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/AuditPage.razor": {
+    "mtime": 1792404996.156138,
+    "seen": 1792405759.7984643,
+    "ast_hash": "6be7e2c4c743a1f109985d6deef2755b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/AuditPage.razor.cs": {
+    "mtime": 1792410951.383722,
+    "seen": 1792411974.0496733,
+    "ast_hash": "5b01722a211776f1a74db6a1bf86a275",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AuditLog.Designer.cs": {
+    "mtime": 1792405007.029199,
+    "seen": 1792405759.7984643,
+    "ast_hash": "778ba9e38eca7c497f04e5000ac02fea",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AuditLog.cs": {
+    "mtime": 1792405007.1185348,
+    "seen": 1792405759.7984643,
+    "ast_hash": "d3ebb8582da87877fb51a4df2a07ea18",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/ContainerSpec.cs": {
+    "mtime": 1792446898.8753047,
+    "seen": 1792447767.837063,
+    "ast_hash": "e46183843c3e41b3b0e6d80c0b4d78e8",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/DockerEngine.cs": {
+    "mtime": 1792486617.9627707,
+    "seen": 1792487241.8549573,
+    "ast_hash": "745d59982a8b2afe78ccc0302fe0083a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/IDockerEngine.cs": {
+    "mtime": 1792486231.8708365,
+    "seen": 1792487241.8549573,
+    "ast_hash": "141923e14ff4bee83cd02c44a62b1ca5",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/ManagedContainer.cs": {
+    "mtime": 1792405533.2815936,
+    "seen": 1792405759.7984643,
+    "ast_hash": "06c3d97fc36d5f7a589d369e0b43d479",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/ManagedLabels.cs": {
+    "mtime": 1792405533.280587,
+    "seen": 1792405759.7984643,
+    "ast_hash": "eb5a2bbfb9c669aa2f01eafdecc718b4",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Exceptions/ForeignContainerException.cs": {
+    "mtime": 1792405533.2800674,
+    "seen": 1792405759.7984643,
+    "ast_hash": "b535e7f7ad2a9d063e46a0123d2d6aaf",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Audit/AuditLogTests.cs": {
+    "mtime": 1792405087.8380265,
+    "seen": 1792405759.7984643,
+    "ast_hash": "c057366a7ccdd735b20fa3ebcd6224fb",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Docker/DockerEngineTests.cs": {
+    "mtime": 1792486270.5290058,
+    "seen": 1792487241.8559616,
+    "ast_hash": "422d0ff06e383c8cbfd28eafcd46744c",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/FakeDockerApi.cs": {
+    "mtime": 1792486185.2645698,
+    "seen": 1792487241.8559616,
+    "ast_hash": "a19f6f67716fd17d647c4545ede09f70",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/FakeDockerEngine.cs": {
+    "mtime": 1792481085.7166996,
+    "seen": 1792481835.531168,
+    "ast_hash": "bf40ce94ea7345fcbb85859b975cb294",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/CreateServer.razor": {
+    "mtime": 1792491100.0331728,
+    "seen": 1792492009.1774635,
+    "ast_hash": "1f7110d2d548c75e3ad094318adf84f6",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/CreateServer.razor.cs": {
+    "mtime": 1792490949.0888941,
+    "seen": 1792492009.1774635,
+    "ast_hash": "63545e5c19cc989b5d9d656feddd04ab",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Exceptions/PortInUseException.cs": {
+    "mtime": 1792405998.8574266,
+    "seen": 1792406238.067111,
+    "ast_hash": "e0cf8df03d0b499d1fd68d7e9c69fa9b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Exceptions/ServerRequestException.cs": {
+    "mtime": 1792405998.8859298,
+    "seen": 1792406238.067111,
+    "ast_hash": "0ca144cb7c141c30586ff770d2f81306",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/CreateServerRequest.cs": {
+    "mtime": 1792481085.7155533,
+    "seen": 1792481835.530165,
+    "ast_hash": "c25849a0133332cf712632df35f3d3b2",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ManagedServer.cs": {
+    "mtime": 1792481085.7155533,
+    "seen": 1792481835.530165,
+    "ast_hash": "061e99ab024a6cbbc2f2d01c65099b23",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/PortPool.cs": {
+    "mtime": 1792405958.4072556,
+    "seen": 1792406238.067111,
+    "ast_hash": "2b24c4db6890e2f044f42a2df8bf99ce",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/PortProblem.cs": {
+    "mtime": 1792405958.4062567,
+    "seen": 1792406238.067111,
+    "ast_hash": "0d2687e1598ef296c919bdabc35400fd",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerFactory.cs": {
+    "mtime": 1792481396.199315,
+    "seen": 1792481835.530165,
+    "ast_hash": "476c5b2692ad203cb38128977b578c59",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerIdentity.cs": {
+    "mtime": 1792405958.404252,
+    "seen": 1792406238.067111,
+    "ast_hash": "b99802818b832a4c46d6101ef05365a1",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerIdentityStore.cs": {
+    "mtime": 1792405958.4082596,
+    "seen": 1792406238.067111,
+    "ast_hash": "b2d13edbd6f0d62e540f67f19a5becbb",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerProblem.cs": {
+    "mtime": 1792482552.56745,
+    "seen": 1792483082.849199,
+    "ast_hash": "c7474c6e04d69be6b94e3215aa16694c",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/PortPoolTests.cs": {
+    "mtime": 1792406244.3915017,
+    "seen": 1792408321.2633421,
+    "ast_hash": "87c1bc379e87c7223e8a83de902c635a",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/ServerFactoryTests.cs": {
+    "mtime": 1792490926.5323524,
+    "seen": 1792492009.1795573,
+    "ast_hash": "c1e13dbfc41593160232836988e6158b",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/DockerApiRequest.cs": {
+    "mtime": 1792405807.6060064,
+    "seen": 1792406238.0681145,
+    "ast_hash": "c9e3cc6b443ca070aa239fabacd8f563",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddServers.Designer.cs": {
+    "mtime": 1792406878.2615678,
+    "seen": 1792408321.2633421,
+    "ast_hash": "4c7ad17d5edf9defe5b03aaafcf959bd",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddServers.cs": {
+    "mtime": 1792406878.2615678,
+    "seen": 1792408321.2633421,
+    "ast_hash": "cc2c36537aa88433338e2281aac2f31a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Exceptions/DockerCallException.cs": {
+    "mtime": 1792406446.6260433,
+    "seen": 1792408321.2633421,
+    "ast_hash": "c7bbf84c7e8b8ea891fc064d96a916f3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerActions.razor": {
+    "mtime": 1792417897.5714765,
+    "seen": 1792418566.7072022,
+    "ast_hash": "a2c34d631df5f589d5d13dea6a322714",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerActions.razor.cs": {
+    "mtime": 1792417950.0819921,
+    "seen": 1792418566.7072022,
+    "ast_hash": "48ecd2355a473ca1042254c4f7c13288",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerList.razor": {
+    "mtime": 1792444315.4054039,
+    "seen": 1792444339.0114596,
+    "ast_hash": "42bc3505c6525047865c9594086213dd",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerList.razor.cs": {
+    "mtime": 1792444315.4054039,
+    "seen": 1792444339.0114596,
+    "ast_hash": "b839f164a30e0d8c4d329f78d8f358cb",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerPage.razor": {
+    "mtime": 1792485774.58902,
+    "seen": 1792487241.8549573,
+    "ast_hash": "056eda98b660f9d60c932556a00804f8",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerPage.razor.cs": {
+    "mtime": 1792412169.0712397,
+    "seen": 1792412438.1143663,
+    "ast_hash": "76b0f64b23c549207a6dbaed3c8bddf2",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerWatchPage.cs": {
+    "mtime": 1792412169.0712397,
+    "seen": 1792412438.1143663,
+    "ast_hash": "e4495e18851434d929efa1fc3729594c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/InspectedContainer.cs": {
+    "mtime": 1792416519.1650302,
+    "seen": 1792416742.999462,
+    "ast_hash": "04d5129494699a88bdbe28e260ecd193",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Localization/ServerTexts.cs": {
+    "mtime": 1792482552.5689545,
+    "seen": 1792483082.849199,
+    "ast_hash": "c385c8335d2f402cbfc22c72fd245895",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/IServerProbe.cs": {
+    "mtime": 1792408786.2750497,
+    "seen": 1792409868.4687693,
+    "ast_hash": "7a388e72bf1ee3260fda05724ecf08d6",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerLifecycle.cs": {
+    "mtime": 1792410285.5937815,
+    "seen": 1792411974.0496733,
+    "ast_hash": "53098c998c5caa258a3cbeb5b7fc6619",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerSnapshot.cs": {
+    "mtime": 1792408775.0284777,
+    "seen": 1792409868.4687693,
+    "ast_hash": "06c9b00dd579f58978d0de0d817f4721",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerStatus.cs": {
+    "mtime": 1792408764.2490344,
+    "seen": 1792409868.4687693,
+    "ast_hash": "3c8fc5707ef5e95a1056f5c7ea1ba312",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/StatusWatcher.cs": {
+    "mtime": 1792411784.358502,
+    "seen": 1792411974.0496733,
+    "ast_hash": "886fe1969d97272dd2ea042cbdb8bc64",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/TlsServerProbe.cs": {
+    "mtime": 1792409145.8356092,
+    "seen": 1792409868.4687693,
+    "ast_hash": "dcdf86d9b384282f4532303960de4fda",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/ServerLifecycleTests.cs": {
+    "mtime": 1792409411.9063163,
+    "seen": 1792409868.4687693,
+    "ast_hash": "7e3322b0e7b2adfb2b6d1f240d651a4f",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/StatusWatcherTests.cs": {
+    "mtime": 1792411910.9305987,
+    "seen": 1792411974.0512328,
+    "ast_hash": "87ebcd5beee3e9f17f805fa4b96bbc0f",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/TlsServerProbeTests.cs": {
+    "mtime": 1792409411.9048111,
+    "seen": 1792409868.4687693,
+    "ast_hash": "52c21d4f3c477a6a3beabc26ee1902a6",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/FakeServerProbe.cs": {
+    "mtime": 1792416519.1670322,
+    "seen": 1792416742.999462,
+    "ast_hash": "290c3c449d3b1f021572ba9d5a9d8760",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/ServerPages.cs": {
+    "mtime": 1792482552.5689545,
+    "seen": 1792483082.85036,
+    "ast_hash": "b2c2ea1be88cfacc16db0625d9997f14",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/Assignments.razor": {
+    "mtime": 1792410951.3407207,
+    "seen": 1792411974.0496733,
+    "ast_hash": "6ce1d713ada119a7c72f41c714b56b90",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/Assignments.razor.cs": {
+    "mtime": 1792411282.1450107,
+    "seen": 1792411974.0496733,
+    "ast_hash": "38a93ef603231c18f6b5cf8be76dfa8f",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/DeleteServerDialog.razor": {
+    "mtime": 1792410400.9333496,
+    "seen": 1792411974.0496733,
+    "ast_hash": "8d90bd2328ca81616cf335ad4e5b2f85",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/DeleteServerDialog.razor.cs": {
+    "mtime": 1792410400.9333496,
+    "seen": 1792411974.0496733,
+    "ast_hash": "dcebdc27ebcca3f101ade69e300a0ee9",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/Trash.razor": {
+    "mtime": 1792410640.7784538,
+    "seen": 1792411974.0496733,
+    "ast_hash": "98a620a4eeccae119f176eef7912d2df",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/Trash.razor.cs": {
+    "mtime": 1792410640.7784538,
+    "seen": 1792411974.0496733,
+    "ast_hash": "8aa2de76877a68564938253853a745fe",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/ServerConnections.cs": {
+    "mtime": 1792411784.3402872,
+    "seen": 1792411974.0496733,
+    "ast_hash": "d6caacd1c2b9cef4ce46ee5807d04906",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/ServerLink.cs": {
+    "mtime": 1792415695.886683,
+    "seen": 1792415907.5480964,
+    "ast_hash": "de6842dbb2022dc8bbca53193d45c731",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/ServerLinkStatus.cs": {
+    "mtime": 1792411784.3402872,
+    "seen": 1792411974.0496733,
+    "ast_hash": "82fe12c4581636dbcfe973acfb82e731",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddCertificateFingerprint.Designer.cs": {
+    "mtime": 1792411811.9309213,
+    "seen": 1792411974.0496733,
+    "ast_hash": "2f451ee2e923e916ea716d7fbfba27cf",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddCertificateFingerprint.cs": {
+    "mtime": 1792411811.9309213,
+    "seen": 1792411974.0496733,
+    "ast_hash": "1b2f11b9e00a07bd52def3169915d002",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddServerAssignments.Designer.cs": {
+    "mtime": 1792410990.2143154,
+    "seen": 1792411974.0496733,
+    "ast_hash": "7596a820665c2aac9ad9fe93190efcfe",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddServerAssignments.cs": {
+    "mtime": 1792410990.213812,
+    "seen": 1792411974.0496733,
+    "ast_hash": "1e5f6ae273dd524408921b4b81b5ce21",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddServerDeletion.Designer.cs": {
+    "mtime": 1792410343.3109028,
+    "seen": 1792411974.0496733,
+    "ast_hash": "856d7864e26771f97b9861a2c0cbcc2a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddServerDeletion.cs": {
+    "mtime": 1792410343.3109028,
+    "seen": 1792411974.0496733,
+    "ast_hash": "0a79d22fa17fc9e1ed57d7ce416c5f5f",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Exceptions/CertificateChangedException.cs": {
+    "mtime": 1792411784.3402872,
+    "seen": 1792411974.0496733,
+    "ast_hash": "4cafdcb9848e3ed0341b8126e5913033",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/AssignmentChoice.cs": {
+    "mtime": 1792411282.144006,
+    "seen": 1792411974.0496733,
+    "ast_hash": "9ca2f2843b5c301b02745cac445e1952",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/DeletionSweep.cs": {
+    "mtime": 1792410285.5748236,
+    "seen": 1792411974.0496733,
+    "ast_hash": "eb64ec2fb6df0c021dbddd6a70cb77a3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerAccess.cs": {
+    "mtime": 1792410951.3397198,
+    "seen": 1792411974.0496733,
+    "ast_hash": "9a14f0a543e4eb274500fe8fb43a2675",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerAccessHandler.cs": {
+    "mtime": 1792411282.1450107,
+    "seen": 1792411974.0496733,
+    "ast_hash": "07f00a25f53bb4dbc4f6f6facf8c2465",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerAccessRequirement.cs": {
+    "mtime": 1792411282.1450107,
+    "seen": 1792411974.0496733,
+    "ast_hash": "ffcf01536605301f589c3732e4c6a503",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerAssignment.cs": {
+    "mtime": 1792410951.3397198,
+    "seen": 1792411974.0496733,
+    "ast_hash": "33957b67d27a2d07c021d9afbf33b3a3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerAssignmentList.cs": {
+    "mtime": 1792411282.144006,
+    "seen": 1792411974.0496733,
+    "ast_hash": "b15f3562195ea05d20afe22659c554dd",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerDeletion.cs": {
+    "mtime": 1792447144.3964348,
+    "seen": 1792447767.837063,
+    "ast_hash": "38432b03aa78e62dd4a3e7b014122d97",
+    "semantic_hash": ""
+  },
+  "src/OVS.Shared/Net/ChannelPair.cs": {
+    "mtime": 1792411520.2460334,
+    "seen": 1792411974.0496733,
+    "ast_hash": "266020b89b0c2cfca824d0c8cd1b3786",
+    "semantic_hash": ""
+  },
+  "src/OVS.Shared/Net/StateMirror.cs": {
+    "mtime": 1792411533.346657,
+    "seen": 1792411974.0496733,
+    "ast_hash": "78c633e7e007dea20830833d8d1e2af5",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Control/ServerConnectionsTests.cs": {
+    "mtime": 1792413050.247606,
+    "seen": 1792413559.8019228,
+    "ast_hash": "5a3f5d6ee92490c574e6238bf4699e8e",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/ServerAccessTests.cs": {
+    "mtime": 1792411282.2514112,
+    "seen": 1792411974.0512328,
+    "ast_hash": "d1feb5d0e0ad9f28f30489f6a16bc1b8",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/ServerDeletionTests.cs": {
+    "mtime": 1792447144.4045947,
+    "seen": 1792447767.837063,
+    "ast_hash": "baf89ab58c4610a900f4544ca30f9b17",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Shared/Net/ChannelPairTests.cs": {
+    "mtime": 1792411520.2553072,
+    "seen": 1792411974.0512328,
+    "ast_hash": "ab841119a98026dd8134b1edf75b6ac2",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Shared/Net/StateMirrorTests.cs": {
+    "mtime": 1792411520.2547991,
+    "seen": 1792411974.0512328,
+    "ast_hash": "bc951c7e3605dde8e03714ff28bb13ee",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/ManagerSignIn.cs": {
+    "mtime": 1792491172.429048,
+    "seen": 1792492009.1795573,
+    "ast_hash": "e8682bb271c05a5f9a288a54b4951624",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerSettings.razor": {
+    "mtime": 1792491100.0346763,
+    "seen": 1792492009.1774635,
+    "ast_hash": "337718454a8ec4b8ac566def5538e1a9",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerSettings.razor.cs": {
+    "mtime": 1792412748.5851052,
+    "seen": 1792412896.2249932,
+    "ast_hash": "33f22f2d3659a8ea6924a35149a05a65",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/SettingsCommands.cs": {
+    "mtime": 1792413745.1283717,
+    "seen": 1792413958.8525176,
+    "ast_hash": "7862fda80a952e5aeb2cc2adb4dbc193",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/SettingsInput.cs": {
+    "mtime": 1792412748.584102,
+    "seen": 1792412896.2249932,
+    "ast_hash": "20e4c60f875b6cfcb6b6280bb3ba5bb3",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Control/SettingsCommandsTests.cs": {
+    "mtime": 1792413050.157483,
+    "seen": 1792413559.8019228,
+    "ast_hash": "96abc03302959fd5e8e291dd9ea38af8",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/AddedServer.cs": {
+    "mtime": 1792413050.156945,
+    "seen": 1792413559.8024273,
+    "ast_hash": "014add94f70164b87b3ffc8fd7390adf",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/LinkedServer.cs": {
+    "mtime": 1792413050.156945,
+    "seen": 1792413559.8024273,
+    "ast_hash": "a00caa1a048c3a916eeb13fb348c28ae",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/ServerLinks.cs": {
+    "mtime": 1792416519.1670322,
+    "seen": 1792416742.999462,
+    "ast_hash": "3a88c9fb8cd3178b9734bd735e91a273",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerBans.razor": {
+    "mtime": 1792485774.5895238,
+    "seen": 1792487241.8549573,
+    "ast_hash": "d71cc21ef8dfcbfac96dbfafa6a338fe",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerBans.razor.cs": {
+    "mtime": 1792413771.3005881,
+    "seen": 1792413958.8525176,
+    "ast_hash": "dff74511d9c46b4dfea885549e3b1055",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerGroups.razor": {
+    "mtime": 1792485774.5895238,
+    "seen": 1792487241.8549573,
+    "ast_hash": "c3e29c55561699dac2475e873a548ce5",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerGroups.razor.cs": {
+    "mtime": 1792491346.454953,
+    "seen": 1792492009.1774635,
+    "ast_hash": "9eab4a3eb2eaabeaae75723478ba0616",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerUsers.razor": {
+    "mtime": 1792485774.5895238,
+    "seen": 1792487241.8549573,
+    "ast_hash": "f8afc62113915b108cd8d85a9021b96d",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerUsers.razor.cs": {
+    "mtime": 1792414186.9890118,
+    "seen": 1792414663.2700365,
+    "ast_hash": "c8b4d4fdc0d57cf5121d73b670b57326",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/BanPage.cs": {
+    "mtime": 1792413745.0701904,
+    "seen": 1792413958.8525176,
+    "ast_hash": "5a9024ae029ae3e46ecae2619af0872e",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/GroupCommands.cs": {
+    "mtime": 1792414186.9819863,
+    "seen": 1792414663.2700365,
+    "ast_hash": "4be1329eb3d011133a14e2c02d55a5a1",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/KnownUserPage.cs": {
+    "mtime": 1792413745.0701904,
+    "seen": 1792413958.8525176,
+    "ast_hash": "69f3dd6632e6b6610c336e27e081801f",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/ModerationCommands.cs": {
+    "mtime": 1792414186.9738553,
+    "seen": 1792414663.2700365,
+    "ast_hash": "8059c302358620e787d94bacd66dca3d",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Control/GroupCommandsTests.cs": {
+    "mtime": 1792414186.9890118,
+    "seen": 1792414663.2710361,
+    "ast_hash": "9e5497eb5a2db4f94b5421e6e631a3bd",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Control/ModerationCommandsTests.cs": {
+    "mtime": 1792413860.6521053,
+    "seen": 1792413958.853518,
+    "ast_hash": "fde7ba3f01aad2a5d336a4db6ec6d047",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/InviteBox.razor": {
+    "mtime": 1792414400.9849968,
+    "seen": 1792414663.2700365,
+    "ast_hash": "5dad54decc72c61da8695be33f4da7b3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/InviteBox.razor.cs": {
+    "mtime": 1792414426.7811003,
+    "seen": 1792414663.2700365,
+    "ast_hash": "98cf51dd9efffef2ca9f8019b84129a1",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/InviteLink.cs": {
+    "mtime": 1792414400.9839911,
+    "seen": 1792414663.2710361,
+    "ast_hash": "a62444e109a56f41a65cc9cea63fdc6e",
+    "semantic_hash": ""
+  },
+  "src/OVS.Shared/Net/JoinLink.cs": {
+    "mtime": 1792414400.9768162,
+    "seen": 1792414663.2710361,
+    "ast_hash": "43cc2b1fb2edfec1a3e09aa9e70705a1",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/InviteLinkTests.cs": {
+    "mtime": 1792414400.9849968,
+    "seen": 1792414663.2710361,
+    "ast_hash": "ca7293769f9650e1fc7cc4bc61db9fc4",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Shared/Net/JoinLinkTests.cs": {
+    "mtime": 1792414400.9773207,
+    "seen": 1792414663.2720366,
+    "ast_hash": "9c430739f147c7da2217190434d02b6c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerBackupPage.razor": {
+    "mtime": 1792491503.7824934,
+    "seen": 1792492009.1774635,
+    "ast_hash": "c0765bafd1cfb46214bb3708a2065fd7",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerBackupPage.razor.cs": {
+    "mtime": 1792491503.9384778,
+    "seen": 1792492009.1774635,
+    "ast_hash": "984885ace0e609bcfd4278406c368e18",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/BackupCommands.cs": {
+    "mtime": 1792415408.4822268,
+    "seen": 1792415907.5480964,
+    "ast_hash": "0887d5baaf0920e90581c911fb1ffb64",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/BackupEndpoints.cs": {
+    "mtime": 1792415283.7752151,
+    "seen": 1792415907.5480964,
+    "ast_hash": "54dbe2cc9baf74dcd8f56c11736318a1",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/BackupInterval.cs": {
+    "mtime": 1792415283.7742152,
+    "seen": 1792415907.5480964,
+    "ast_hash": "a2f730b02bcf42ea866f7a66967a55ca",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/BackupKind.cs": {
+    "mtime": 1792415283.7742152,
+    "seen": 1792415907.5480964,
+    "ast_hash": "4894b155888a9b7c32b0c513d9b8569e",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/BackupMark.cs": {
+    "mtime": 1792415283.7742152,
+    "seen": 1792415907.5480964,
+    "ast_hash": "3f41d478ee60445b7370f8af3027a4f9",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/BackupPage.cs": {
+    "mtime": 1792415283.7752151,
+    "seen": 1792415907.5480964,
+    "ast_hash": "cbcd34a9d66a87b6fdc4c56d919a3efe",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/BackupResult.cs": {
+    "mtime": 1792415283.7752151,
+    "seen": 1792415907.5480964,
+    "ast_hash": "63d3ae8dd71f77b7abbd53734c08b320",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/BackupSchedule.cs": {
+    "mtime": 1792415283.7742152,
+    "seen": 1792415907.5480964,
+    "ast_hash": "5028194b938cd3a2e7f17226d350b4a6",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/BackupScheduler.cs": {
+    "mtime": 1792416164.723886,
+    "seen": 1792416345.001007,
+    "ast_hash": "4f7b45e85b87186e4408201d2554a5c2",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddBackupSchedules.Designer.cs": {
+    "mtime": 1792415002.4953554,
+    "seen": 1792415055.1730068,
+    "ast_hash": "18fddb6b36ad5e72cc2760f3dfc62a2a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddBackupSchedules.cs": {
+    "mtime": 1792415002.4943552,
+    "seen": 1792415055.1730068,
+    "ast_hash": "bc5e462715c11600e6fadfebaed0c09c",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Control/BackupCommandsTests.cs": {
+    "mtime": 1792415408.5011244,
+    "seen": 1792415907.549101,
+    "ast_hash": "5f00d75da1d40f560699db80bd593b4a",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Control/BackupScheduleTests.cs": {
+    "mtime": 1792416164.723886,
+    "seen": 1792416345.0020075,
+    "ast_hash": "42d73f0b5bef8e69cf0dc75692dcb85b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerLog.razor": {
+    "mtime": 1792485774.5905297,
+    "seen": 1792487241.8549573,
+    "ast_hash": "9077b7ee6ba364b75bb8740a032c073c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerLog.razor.cs": {
+    "mtime": 1792415814.3436327,
+    "seen": 1792415907.5480964,
+    "ast_hash": "4eecc257d40f93eec39adf53d2955bbd",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/LogCommands.cs": {
+    "mtime": 1792415774.0023358,
+    "seen": 1792415907.5480964,
+    "ast_hash": "38e7d42f88ac18bad86f61dbeb01aea9",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/LogEndpoints.cs": {
+    "mtime": 1792415774.0013316,
+    "seen": 1792415907.5480964,
+    "ast_hash": "830d37faf7e24bfed5d4f9a439782c1c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/LogFilePage.cs": {
+    "mtime": 1792415695.8844478,
+    "seen": 1792415907.5480964,
+    "ast_hash": "e995747c8e26ea5900c7944ce5fb4464",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/LogText.cs": {
+    "mtime": 1792415695.8844478,
+    "seen": 1792415907.5480964,
+    "ast_hash": "b33831df7111e2bad59c7d6cdbbf8763",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/ConsoleLog.cs": {
+    "mtime": 1792415695.8844478,
+    "seen": 1792415907.5480964,
+    "ast_hash": "46967891d2cde1796f8f96e4cf475d2e",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Control/LogCommandsTests.cs": {
+    "mtime": 1792415774.0023358,
+    "seen": 1792415907.549101,
+    "ast_hash": "369c51e15ac05a6909587129291fae36",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Layout/ManagerUpdateBanner.razor": {
+    "mtime": 1792416164.723886,
+    "seen": 1792416345.001007,
+    "ast_hash": "15067c5d6bd6b2f13d1396304bbc90f3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Layout/ManagerUpdateBanner.razor.cs": {
+    "mtime": 1792416164.7248871,
+    "seen": 1792416345.001007,
+    "ast_hash": "b7f280fce85a4e29e89ff363f5260424",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/Release.cs": {
+    "mtime": 1792416047.2014859,
+    "seen": 1792416345.001007,
+    "ast_hash": "523c58b081e490501035dd43d5381175",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ReleaseCatalog.cs": {
+    "mtime": 1792416047.2014859,
+    "seen": 1792416345.001007,
+    "ast_hash": "cda3370987de40bb4ebf7e8f35be7e61",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/ReleaseCatalogTests.cs": {
+    "mtime": 1792416164.7248871,
+    "seen": 1792416345.0020075,
+    "ast_hash": "a97055da31bb67b91725ae5267c10f67",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/UpdateDialog.razor": {
+    "mtime": 1792491346.454953,
+    "seen": 1792492009.1774635,
+    "ast_hash": "a7872131c26abbe31c950c23418b1bc8",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/UpdateDialog.razor.cs": {
+    "mtime": 1792417897.5714765,
+    "seen": 1792418566.7072022,
+    "ast_hash": "5eeea7210ec7436200ed565ab286deae",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerUpdate.cs": {
+    "mtime": 1792481085.7155533,
+    "seen": 1792481835.530165,
+    "ast_hash": "925fef674f14ecfd89e9a1efc85f71f9",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/UpdateAllResult.cs": {
+    "mtime": 1792416519.1637895,
+    "seen": 1792416742.999462,
+    "ast_hash": "99c42b93f0c0b1c6b2483c619bae5632",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/UpdateDue.cs": {
+    "mtime": 1792416519.1637895,
+    "seen": 1792416742.999462,
+    "ast_hash": "4c3bfcc2928a9dbbf8cf48103f373a9d",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/UpdateStep.cs": {
+    "mtime": 1792416519.1637895,
+    "seen": 1792416742.999462,
+    "ast_hash": "5247faf6e6278a17dea91f1f40698e5e",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/UpdateWindow.cs": {
+    "mtime": 1792416519.1637895,
+    "seen": 1792416742.999462,
+    "ast_hash": "3fb8fca0c8087c5c5f4d61db4ec1dde2",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/UpdateWindowRunner.cs": {
+    "mtime": 1792416519.1637895,
+    "seen": 1792416742.999462,
+    "ast_hash": "edd709f14e52a961856a4079bc2e18b4",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/ServerUpdateTests.cs": {
+    "mtime": 1792418091.1031852,
+    "seen": 1792418566.7072022,
+    "ast_hash": "7144b8faaefcbb2dcee570a96b50817e",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/UpdateWindowTests.cs": {
+    "mtime": 1792456860.677433,
+    "seen": 1792457386.2832916,
+    "ast_hash": "6e2ddfb3b1f5a96aac696aa01bddfedc",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/AnnouncementBox.razor": {
+    "mtime": 1792417950.0819921,
+    "seen": 1792418566.7072022,
+    "ast_hash": "d8e54ec77b2be2b1ca19997332344633",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/AnnouncementBox.razor.cs": {
+    "mtime": 1792417897.5699663,
+    "seen": 1792418566.7072022,
+    "ast_hash": "63e9d11c21b4fd0d5d4431d1c9490bb3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/AnnouncedAction.cs": {
+    "mtime": 1792417897.5699663,
+    "seen": 1792418566.7072022,
+    "ast_hash": "8c1aaed85f7af86e5f5e3f88d0a3b358",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/Announcement.cs": {
+    "mtime": 1792417950.0819921,
+    "seen": 1792418566.7072022,
+    "ast_hash": "f5c9d275d323668c037e82c8d62ed9f2",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Control/PendingAnnouncement.cs": {
+    "mtime": 1792417897.5699663,
+    "seen": 1792418566.7072022,
+    "ast_hash": "23d27ebeb53d3a2d8ee03385232ad0d7",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddUpdateWindows.Designer.cs": {
+    "mtime": 1792416896.3250864,
+    "seen": 1792418566.7072022,
+    "ast_hash": "26c22fac0f517efd2f04a1c10fc9f9aa",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddUpdateWindows.cs": {
+    "mtime": 1792418091.076999,
+    "seen": 1792418566.7072022,
+    "ast_hash": "c5a74ccbd7402fc5965adc0e44066649",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Control/AnnouncementTests.cs": {
+    "mtime": 1792418166.1212294,
+    "seen": 1792418566.7072022,
+    "ast_hash": "ddb040d10e9fc0b985723a3bc488c6da",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/LogRecordRow.cs": {
+    "mtime": 1792440321.6770647,
+    "seen": 1792440438.9007945,
+    "ast_hash": "de8f4faca909f8c0b98d28e3fa1c8779",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/MetricKind.cs": {
+    "mtime": 1792440321.6770647,
+    "seen": 1792440438.9007945,
+    "ast_hash": "1aa17dc5ee1602ab5bc12eac084857aa",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/MetricPoint.cs": {
+    "mtime": 1792440321.6770647,
+    "seen": 1792440438.9007945,
+    "ast_hash": "e46637fc38cdc1152b7b1d1296596667",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/OtlpConversion.cs": {
+    "mtime": 1792440321.6790724,
+    "seen": 1792440438.9007945,
+    "ast_hash": "041a872e1ac3613cf621d6304e173887",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/SpanRow.cs": {
+    "mtime": 1792440321.6770647,
+    "seen": 1792440438.9007945,
+    "ast_hash": "2c83f9c3e95bbbaf45134bf8216571be",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/TelemetryReceiver.cs": {
+    "mtime": 1792440438.3412733,
+    "seen": 1792440438.9007945,
+    "ast_hash": "0f507117022f5f4c49fbbc3eddd292a8",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/TelemetryStore.cs": {
+    "mtime": 1792441335.060706,
+    "seen": 1792442211.0559337,
+    "ast_hash": "b83eb0b1b21bea881b8c69346eb27490",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Telemetry/OtlpReceiverTests.cs": {
+    "mtime": 1792440683.41695,
+    "seen": 1792442211.0569327,
+    "ast_hash": "f58dd19f71d5623b392cad5f4c235320",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/CounterState.cs": {
+    "mtime": 1792441335.0586984,
+    "seen": 1792442211.0559337,
+    "ast_hash": "935edc0e93a649dbeacf2c3d6aabeb6c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/DailyStats.cs": {
+    "mtime": 1792441335.0597024,
+    "seen": 1792442211.0559337,
+    "ast_hash": "47067593a4ec2fdb27b2ae09c176b308",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/MetricRollup.cs": {
+    "mtime": 1792441335.0586984,
+    "seen": 1792442211.0559337,
+    "ast_hash": "ab77dee70a68188a47043ba745d621f7",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/Migrations/AddTelemetryRollups.Designer.cs": {
+    "mtime": 1792441442.35761,
+    "seen": 1792442211.0559337,
+    "ast_hash": "e88a072d78385fb355efeaf43c24ac36",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/Migrations/AddTelemetryRollups.cs": {
+    "mtime": 1792441442.6660814,
+    "seen": 1792442211.0559337,
+    "ast_hash": "3c71c54bdcc7c4bed0701179509f32f3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/Migrations/AddTelemetryTables.Designer.cs": {
+    "mtime": 1792440526.4790034,
+    "seen": 1792442211.0559337,
+    "ast_hash": "b1a3aceee00c09eae8b087831eef9006",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/Migrations/AddTelemetryTables.cs": {
+    "mtime": 1792440544.0768192,
+    "seen": 1792442211.0559337,
+    "ast_hash": "c268a87222c9755489d50541bdc86af6",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/Migrations/TelemetryStoreModelSnapshot.cs": {
+    "mtime": 1792441442.3586128,
+    "seen": 1792442211.0559337,
+    "ast_hash": "ec74457efdd096c481085464acb06b2a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/Retention.cs": {
+    "mtime": 1792441377.2455041,
+    "seen": 1792442211.0559337,
+    "ast_hash": "adbecd0869738306f4b8bb8fdb10877a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/Rollup.cs": {
+    "mtime": 1792442239.0489867,
+    "seen": 1792442702.5390506,
+    "ast_hash": "2e139ea4b8658f38376f879ab51341f5",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/RollupLevel.cs": {
+    "mtime": 1792441335.0586984,
+    "seen": 1792442211.0559337,
+    "ast_hash": "6d2d44109322e0e9e5ae6777d92cf5c8",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/TelemetryLimit.cs": {
+    "mtime": 1792441335.0597024,
+    "seen": 1792442211.0559337,
+    "ast_hash": "adc758a23e18d2c762173f2904f5df08",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Telemetry/RetentionTests.cs": {
+    "mtime": 1792441398.6844747,
+    "seen": 1792442211.0569327,
+    "ast_hash": "ad911a492dc07752f989288085c3e8a1",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Telemetry/RollupTests.cs": {
+    "mtime": 1792442239.0489867,
+    "seen": 1792442702.5400507,
+    "ast_hash": "14be0a5937c9ad12cd273906caff32a0",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Telemetry/TelemetryTesting.cs": {
+    "mtime": 1792441398.7601502,
+    "seen": 1792442211.0569327,
+    "ast_hash": "a5c16f4b06c98f1b5a2cd6adb04d90ab",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Charts/LineChart.razor": {
+    "mtime": 1792443199.8549457,
+    "seen": 1792443567.5665824,
+    "ast_hash": "ae6a59934731334324370b9be90f8872",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Charts/LineChart.razor.cs": {
+    "mtime": 1792443199.8549457,
+    "seen": 1792443567.5665824,
+    "ast_hash": "79a3a99267b457eb853423242e4d6223",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Charts/StatTile.razor": {
+    "mtime": 1792442301.1923845,
+    "seen": 1792442702.5390506,
+    "ast_hash": "ddbc091e09bca232a08e5aab6e6081e1",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Charts/StatTile.razor.cs": {
+    "mtime": 1792442301.1933918,
+    "seen": 1792442702.5390506,
+    "ast_hash": "c7f43ed4110623ab46495ee4daf1eff1",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/LiveView.razor": {
+    "mtime": 1792486410.0074227,
+    "seen": 1792487241.8549573,
+    "ast_hash": "837cda7f1182eab65a0f17a471fca05e",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/LiveView.razor.cs": {
+    "mtime": 1792486436.0890675,
+    "seen": 1792487241.8549573,
+    "ast_hash": "879c4e5ff4d457b90a6514a2464a8df7",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/ContainerUsage.cs": {
+    "mtime": 1792442301.1913803,
+    "seen": 1792442702.5390506,
+    "ast_hash": "9985d7b8b2451adfe45679c9722efeab",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/ChartPoint.cs": {
+    "mtime": 1792442404.1467557,
+    "seen": 1792442702.5390506,
+    "ast_hash": "4074ce76d86d05f177aae1d7337f0a6b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/ChartSeries.cs": {
+    "mtime": 1792442404.1477594,
+    "seen": 1792442702.5390506,
+    "ast_hash": "da4147a4f3412aebff46ef66052b22d0",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/LiveFeed.cs": {
+    "mtime": 1792442301.1933918,
+    "seen": 1792442702.5390506,
+    "ast_hash": "03a8e63694ae84b4e833c4009cd41ee1",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/LiveSnapshot.cs": {
+    "mtime": 1792442301.1933918,
+    "seen": 1792442702.5390506,
+    "ast_hash": "5734e403c8a89ceff7e4927423e547ae",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Components/ChartTests.cs": {
+    "mtime": 1792442430.7606966,
+    "seen": 1792442702.5400507,
+    "ast_hash": "7bfe1554c629fb2d9a0063f360f63de9",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Telemetry/LiveFeedTests.cs": {
+    "mtime": 1792486506.3140647,
+    "seen": 1792487241.8559616,
+    "ast_hash": "0ac50d72e03b66dad1d9dc008e1a001a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Charts/BarChart.razor": {
+    "mtime": 1792443199.8529098,
+    "seen": 1792443567.5665824,
+    "ast_hash": "2b92a4a39b9f1f1d41c37f03cddc14ec",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Charts/BarChart.razor.cs": {
+    "mtime": 1792443199.8544192,
+    "seen": 1792443567.5665824,
+    "ast_hash": "8ec62989ffeba0388536fdc8b9d3bd1f",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Charts/ChartCsv.cs": {
+    "mtime": 1792443199.8529098,
+    "seen": 1792443567.5665824,
+    "ast_hash": "862079248af2afb26e843e1ffbb59550",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/History.razor": {
+    "mtime": 1792485774.5905297,
+    "seen": 1792487241.8549573,
+    "ast_hash": "040f073b4827e273fbcc1beeb6e0bbe3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/History.razor.cs": {
+    "mtime": 1792443199.8549457,
+    "seen": 1792443567.5665824,
+    "ast_hash": "567c520546ed149a06aa6c974603a940",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/BarSeries.cs": {
+    "mtime": 1792443199.8529098,
+    "seen": 1792443567.5665824,
+    "ast_hash": "5cd81c35709ab75ccc8593bbc48f6e33",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/DashboardFigures.cs": {
+    "mtime": 1792443199.8549457,
+    "seen": 1792443567.5665824,
+    "ast_hash": "29c0a4f0e302e5cf06b0609ac280b9de",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/DashboardQuery.cs": {
+    "mtime": 1792443199.8549457,
+    "seen": 1792443567.5665824,
+    "ast_hash": "6532c8c8327575981564662bd3966abd",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/HistoryQuery.cs": {
+    "mtime": 1792443199.8549457,
+    "seen": 1792443567.5665824,
+    "ast_hash": "cd67f17a5a2b06f9c58a82183d7dc333",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/HistoryRow.cs": {
+    "mtime": 1792443199.8544192,
+    "seen": 1792443567.5665824,
+    "ast_hash": "1823acf8926bbcb1ca61586a381704dd",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Components/DashboardTests.cs": {
+    "mtime": 1792453505.6263251,
+    "seen": 1792453962.479168,
+    "ast_hash": "a83f3e3b6a840c0dd0bb0d473114c309",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Components/HistoryTests.cs": {
+    "mtime": 1792443403.9801345,
+    "seen": 1792443567.5677855,
+    "ast_hash": "76e2e175ceb5f1e287becd6d9dfa1f27",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/ErrorLookup.razor": {
+    "mtime": 1792443799.536162,
+    "seen": 1792443940.0591848,
+    "ast_hash": "3cfb4fa91eee7d92d596cd362b9970f5",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/ErrorLookup.razor.cs": {
+    "mtime": 1792443768.6065612,
+    "seen": 1792443940.0591848,
+    "ast_hash": "5834e524a68239b9290e267ff56de206",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ErrorView.razor": {
+    "mtime": 1792443768.6055577,
+    "seen": 1792443940.0591848,
+    "ast_hash": "9d4bf8678a2045353a201901915b6281",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ErrorView.razor.cs": {
+    "mtime": 1792443768.6055577,
+    "seen": 1792443940.0591848,
+    "ast_hash": "0950495e55a244df09704aeb1b64b216",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/Errors.razor": {
+    "mtime": 1792485774.5905297,
+    "seen": 1792487241.8549573,
+    "ast_hash": "286f4beeece08ffa0c55482492b7b2a6",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/Errors.razor.cs": {
+    "mtime": 1792443834.6948066,
+    "seen": 1792443940.0591848,
+    "ast_hash": "224b4f24f1f94a49b7534d10e03cc0a7",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/ErrorDetail.cs": {
+    "mtime": 1792443768.6035533,
+    "seen": 1792443940.0591848,
+    "ast_hash": "0df4dadfceabc2de86e0b3b1833fa178",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/ErrorEntry.cs": {
+    "mtime": 1792443768.6035533,
+    "seen": 1792443940.0591848,
+    "ast_hash": "55ffd175c225ba317aac58877a723f3c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/ErrorGroup.cs": {
+    "mtime": 1792443768.6035533,
+    "seen": 1792443940.0591848,
+    "ast_hash": "24b6bc97619e556a1f93dc846c877bb4",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/ErrorQuery.cs": {
+    "mtime": 1792443799.536162,
+    "seen": 1792443940.0591848,
+    "ast_hash": "fe91884b1cd4051f9dd0c72cdc42caf5",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Telemetry/ErrorQueryTests.cs": {
+    "mtime": 1792443872.4903598,
+    "seen": 1792443940.0611749,
+    "ast_hash": "82a2ce42e61ad7adfdb85b75a672d301",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/ResourceLimits.cs": {
+    "mtime": 1792444315.4001143,
+    "seen": 1792444339.0129771,
+    "ast_hash": "0c62701612b91d4bb835b8e28122c35b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/VolumeUsage.cs": {
+    "mtime": 1792444315.4001143,
+    "seen": 1792444339.0129771,
+    "ast_hash": "0a6dd191f85bdb79b28fc35da2ce96f8",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/DataDirDisk.cs": {
+    "mtime": 1792444315.4021182,
+    "seen": 1792444339.0129771,
+    "ast_hash": "2737adeca9138db8a5f80c943325a662",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/DiskSpace.cs": {
+    "mtime": 1792444315.4011188,
+    "seen": 1792444339.0129771,
+    "ast_hash": "dcbf4cd3128ae8e6b1e9cc8de0ff1349",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/IHostDisk.cs": {
+    "mtime": 1792444315.4011188,
+    "seen": 1792444339.0129771,
+    "ast_hash": "712a6a13edd466b5c4656f0aaeeb5476",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerResources.cs": {
+    "mtime": 1792481085.7155533,
+    "seen": 1792481835.530165,
+    "ast_hash": "5d770a0d9f4376083e1a29d0aca1ead4",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/ResourceQuery.cs": {
+    "mtime": 1792447191.916662,
+    "seen": 1792447767.837063,
+    "ast_hash": "547ce02d36cb4b16cbb61fab0a7578be",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/ResourceSnapshot.cs": {
+    "mtime": 1792444315.4011188,
+    "seen": 1792444339.0129771,
+    "ast_hash": "344f246e2d3776687299a4e9daee9125",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Telemetry/UsageSampler.cs": {
+    "mtime": 1792486356.9280522,
+    "seen": 1792487241.8549573,
+    "ast_hash": "2b3bcd88a14436855a1e57c00edede6a",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Docker/ResourceLimitsTests.cs": {
+    "mtime": 1792486506.3140647,
+    "seen": 1792487241.8559616,
+    "ast_hash": "b07afcbddae130616e84e1b1210e5faf",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/FakeHostDisk.cs": {
+    "mtime": 1792444315.4031186,
+    "seen": 1792444339.0129771,
+    "ast_hash": "cd67f7dc0273a9ff6a2be0cd2dc09ea0",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/PasswordReset.cs": {
+    "mtime": 1792444907.6759143,
+    "seen": 1792444931.514563,
+    "ast_hash": "904fb92151758e658c903ae1b4880264",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/ForgotPassword.razor": {
+    "mtime": 1792444907.6769142,
+    "seen": 1792444931.515564,
+    "ast_hash": "e2ea6ed7ce553bcb4c2171744b2cbbc4",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/ForgotPassword.razor.cs": {
+    "mtime": 1792444907.6769142,
+    "seen": 1792444931.515564,
+    "ast_hash": "fbe6ccf623b26b8b0b9454bbc1128a8c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/ResetPassword.razor": {
+    "mtime": 1792491100.048875,
+    "seen": 1792492009.1774635,
+    "ast_hash": "83e0d23baaaa73d5e4e5442049aebb3e",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/ResetPassword.razor.cs": {
+    "mtime": 1792491242.6223948,
+    "seen": 1792492009.1774635,
+    "ast_hash": "670f770575f09ab6f64a446dccf7ed06",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ResourceUse.razor": {
+    "mtime": 1792486410.0059173,
+    "seen": 1792487241.8549573,
+    "ast_hash": "2d3be2284f5493ec39bafb2b970bd1af",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ResourceUse.razor.cs": {
+    "mtime": 1792486410.0059173,
+    "seen": 1792487241.8549573,
+    "ast_hash": "120dcf463db1d6651e03106dfcb9a94f",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Settings/MailSettings.razor": {
+    "mtime": 1792444907.6769142,
+    "seen": 1792444931.515564,
+    "ast_hash": "7443fb72e2abb25c20ef6d13bf679512",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Settings/MailSettings.razor.cs": {
+    "mtime": 1792445095.9141064,
+    "seen": 1792445687.6258638,
+    "ast_hash": "6fe41caebbe7d9cdf9072b7321938371",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddResourceLimits.Designer.cs": {
+    "mtime": 1792444428.4272203,
+    "seen": 1792444931.515564,
+    "ast_hash": "e9de47f021453874fcf9e682d4810395",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddResourceLimits.cs": {
+    "mtime": 1792444428.9230304,
+    "seen": 1792444931.515564,
+    "ast_hash": "090abd83e0bae98aed4059f235d63b08",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Exceptions/MailSendException.cs": {
+    "mtime": 1792444907.6759143,
+    "seen": 1792444931.515564,
+    "ast_hash": "9ca887360b806f32d53647a749341262",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Mail/IMailSender.cs": {
+    "mtime": 1792444907.6749148,
+    "seen": 1792444931.515564,
+    "ast_hash": "a6c3621c6d93306f4b881dcbb4fe2974",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Mail/MailSender.cs": {
+    "mtime": 1792445095.9146116,
+    "seen": 1792445687.6258638,
+    "ast_hash": "d90cbadb8cf5e19e227dda01179c8d0e",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Mail/MailTemplates.cs": {
+    "mtime": 1792445662.37822,
+    "seen": 1792445687.6258638,
+    "ast_hash": "34fa15172934e6fdaa66db597db6f084",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Mail/OutgoingMail.cs": {
+    "mtime": 1792444907.6749148,
+    "seen": 1792444931.515564,
+    "ast_hash": "be157a24792ae645b35e387cbcae2e76",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Mail/SmtpOptions.cs": {
+    "mtime": 1792444907.6749148,
+    "seen": 1792444931.515564,
+    "ast_hash": "736615993e00a4f44a18c591a1484df2",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Mail/SmtpSecurity.cs": {
+    "mtime": 1792444907.673913,
+    "seen": 1792444931.515564,
+    "ast_hash": "d252631ff091fa219b17f0954fc5561f",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Mail/MailSenderTests.cs": {
+    "mtime": 1792445224.4748366,
+    "seen": 1792445687.6258638,
+    "ast_hash": "386ecb4348636a8448810816e59943b8",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Mail/PasswordResetTests.cs": {
+    "mtime": 1792491172.429048,
+    "seen": 1792492009.1795573,
+    "ast_hash": "2f9c47826a7fec478278c0b8f646b09a",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/FakeMailSender.cs": {
+    "mtime": 1792444907.6779144,
+    "seen": 1792444931.5165687,
+    "ast_hash": "7f5cf39d96741059cdedbf82b628442b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Settings/NotificationSettings.razor": {
+    "mtime": 1792491346.4559588,
+    "seen": 1792492009.1774635,
+    "ast_hash": "881a07dfd6782822d117f77a8dc362ad",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Settings/NotificationSettings.razor.cs": {
+    "mtime": 1792445662.3765447,
+    "seen": 1792445687.6258638,
+    "ast_hash": "89ff19f45bfa1496c37e29abd711eca2",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/AlertState.cs": {
+    "mtime": 1792445662.3745406,
+    "seen": 1792445687.6258638,
+    "ast_hash": "ec520d1f181c19bdb570ea72180029ad",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/DiscordWebhookChannel.cs": {
+    "mtime": 1792445662.3765447,
+    "seen": 1792445687.6258638,
+    "ast_hash": "be48591d30fa8e9d371f987a5fdd4ee0",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/EmailChannel.cs": {
+    "mtime": 1792445662.375548,
+    "seen": 1792445687.6258638,
+    "ast_hash": "724ca552096c97b5bf704df1b289742a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/INotificationChannel.cs": {
+    "mtime": 1792445662.375548,
+    "seen": 1792445687.6258638,
+    "ast_hash": "ab08abb8c9c137d9c69ba48c4ca1c425",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/Notification.cs": {
+    "mtime": 1792445662.375548,
+    "seen": 1792445687.6258638,
+    "ast_hash": "6cf998fcfd835cfd5095e9fc01fda442",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/NotificationChannelKind.cs": {
+    "mtime": 1792445662.3740363,
+    "seen": 1792445687.6258638,
+    "ast_hash": "54f4467e45020ae399a507691fbd3ae4",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/NotificationEvent.cs": {
+    "mtime": 1792445662.3740363,
+    "seen": 1792445687.6258638,
+    "ast_hash": "0131e2004dbb798298fa542af61ceaef",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/NotificationRule.cs": {
+    "mtime": 1792445662.3745406,
+    "seen": 1792445687.6258638,
+    "ast_hash": "253da3c7c3da92a0eae41a3e0c915a6e",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/Notifier.cs": {
+    "mtime": 1792445687.6458251,
+    "seen": 1792446321.942822,
+    "ast_hash": "22099c2f733421d8117a2be8abbdfa1d",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/PublicOnly.cs": {
+    "mtime": 1792445662.3765447,
+    "seen": 1792445687.6258638,
+    "ast_hash": "c0d74f4c6dd1295adae8d43cdc1305f7",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/ServerAlertSettings.cs": {
+    "mtime": 1792445662.3745406,
+    "seen": 1792445687.6258638,
+    "ast_hash": "551b590c0504b0a19279b81eee76520a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Notifications/WebhookChannel.cs": {
+    "mtime": 1792445662.375548,
+    "seen": 1792445687.6258638,
+    "ast_hash": "e1c3a496f370a609a749eabc4306b305",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Notifications/NotifierTests.cs": {
+    "mtime": 1792445808.5413966,
+    "seen": 1792446321.94382,
+    "ast_hash": "1464d713d61dee61aa0cbb5423b1e29b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/ManagerSetting.cs": {
+    "mtime": 1792446136.1711614,
+    "seen": 1792446321.942822,
+    "ast_hash": "43846207902e3ea3433deeb02f92bbe9",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/TwoFactorGate.cs": {
+    "mtime": 1792446136.172161,
+    "seen": 1792446321.942822,
+    "ast_hash": "3f518bcf475ee00de28ae1f695155bb9",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Accounts/TwoFactorPolicy.cs": {
+    "mtime": 1792446136.172161,
+    "seen": 1792446321.942822,
+    "ast_hash": "08f46e60c8f9b7e2a7ed2668ce4b4614",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Accounts/TwoFactorSetup.razor": {
+    "mtime": 1792446206.549184,
+    "seen": 1792446321.942822,
+    "ast_hash": "721fc0a851f3461f6c848a9cd20d7c53",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Accounts/TwoFactorSetup.razor.cs": {
+    "mtime": 1792446169.4504724,
+    "seen": 1792446321.942822,
+    "ast_hash": "758f8a0042c2fcbe335042ca4330e7e0",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/LoginTwoFactor.razor": {
+    "mtime": 1792446136.1731634,
+    "seen": 1792446321.942822,
+    "ast_hash": "22f75c288bc4ff2a8949e2b7656f90b7",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/LoginTwoFactor.razor.cs": {
+    "mtime": 1792446136.17416,
+    "seen": 1792446321.942822,
+    "ast_hash": "ec2fd9556e9c0a091bea1b0b6fb9029d",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddNotifications.Designer.cs": {
+    "mtime": 1792445715.1103528,
+    "seen": 1792446321.942822,
+    "ast_hash": "47036b16e594fc6a7a189ee198eaeeb9",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddNotifications.cs": {
+    "mtime": 1792445715.4496899,
+    "seen": 1792446321.942822,
+    "ast_hash": "2e83b41abe14a947ef4bb43fd32a818d",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Accounts/TwoFactorTests.cs": {
+    "mtime": 1792446384.532832,
+    "seen": 1792446865.5608373,
+    "ast_hash": "91dcf9c07f2f70da64c2b2a533672fa8",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/TestSupport/Totp.cs": {
+    "mtime": 1792446136.17416,
+    "seen": 1792446321.94382,
+    "ast_hash": "6f3783368281ff74046a59c007769027",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddManagerSettings.Designer.cs": {
+    "mtime": 1792446300.3008027,
+    "seen": 1792446865.5598326,
+    "ast_hash": "d2217a98a052c537d710ba1ab37dfb3b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddManagerSettings.cs": {
+    "mtime": 1792446300.7099133,
+    "seen": 1792446865.5598326,
+    "ast_hash": "aeb094db0e75560d46e00f5399e46601",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/AdoptServer.razor": {
+    "mtime": 1792486410.0059173,
+    "seen": 1792487241.8549573,
+    "ast_hash": "26a1e86f545c2484766b829b3161c7c8",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/AdoptServer.razor.cs": {
+    "mtime": 1792486410.0074227,
+    "seen": 1792487241.8549573,
+    "ast_hash": "1ea6516f06f04d91a2fce06d549f73f6",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddServerDataSource.Designer.cs": {
+    "mtime": 1792446945.4920745,
+    "seen": 1792447767.837063,
+    "ast_hash": "50be91b90ba8b93f58763690a6902b7f",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddServerDataSource.cs": {
+    "mtime": 1792447011.4627836,
+    "seen": 1792447767.837063,
+    "ast_hash": "958a9ad5b1a945eaadfecb16c189c239",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/ForeignServer.cs": {
+    "mtime": 1792481140.058976,
+    "seen": 1792481835.530165,
+    "ast_hash": "e9a55246eb963ce8dc9dd5a9b32409dd",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerAdoption.cs": {
+    "mtime": 1792481085.7166996,
+    "seen": 1792481835.530165,
+    "ast_hash": "fa11640b776701b06b6fbc0a7aca8539",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerHealth.cs": {
+    "mtime": 1792446898.8743052,
+    "seen": 1792447767.837063,
+    "ast_hash": "f97a5d7e6f2003ab4bb7c13c9ed217fc",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/ServerAdoptionTests.cs": {
+    "mtime": 1792486506.3140647,
+    "seen": 1792487241.8559616,
+    "ast_hash": "472102a19ada62c8037df6f6f9fe57e8",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/CloneArchive.cs": {
+    "mtime": 1792448120.3454988,
+    "seen": 1792448812.8025093,
+    "ast_hash": "8ce7b0e9d7457788927e51f846d5ced5",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerClone.cs": {
+    "mtime": 1792448292.280041,
+    "seen": 1792448812.8025093,
+    "ast_hash": "e359fd1a12876149e8cd3396dc131b68",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/ServerCloneTests.cs": {
+    "mtime": 1792448403.6673713,
+    "seen": 1792448812.8025093,
+    "ast_hash": "9fe23506bde6c4176bf2a1a3ff381c93",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Api/ApiToken.cs": {
+    "mtime": 1792449502.866194,
+    "seen": 1792450057.624186,
+    "ast_hash": "b4bc6c1acf644d9bb87e7678ee450844",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Api/ApiTokenHandler.cs": {
+    "mtime": 1792449529.790792,
+    "seen": 1792450057.624186,
+    "ast_hash": "e9e6e8f9b75391420a64c6860b34fd25",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Api/ApiTokenStore.cs": {
+    "mtime": 1792449502.866194,
+    "seen": 1792450057.624186,
+    "ast_hash": "3a5322011d5455d84427cc676873382c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Api/ServerEndpoints.cs": {
+    "mtime": 1792449529.8694406,
+    "seen": 1792450057.624186,
+    "ast_hash": "483941c703fc15d1b32304a9826c4933",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Api/openapi.json": {
+    "mtime": 1792449502.866194,
+    "seen": 1792450057.624186,
+    "ast_hash": "798f8c7e2074816be34c101315ffdfa6",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Accounts/ApiTokenPage.razor": {
+    "mtime": 1792449502.866194,
+    "seen": 1792450057.624186,
+    "ast_hash": "308abdea921727caf61003fddec9dd0d",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Accounts/ApiTokenPage.razor.cs": {
+    "mtime": 1792449613.0967739,
+    "seen": 1792450057.624186,
+    "ast_hash": "2d7b5e1da89175e4016aa1698bd5b3ba",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddApiTokens.Designer.cs": {
+    "mtime": 1792449561.4530659,
+    "seen": 1792450057.624186,
+    "ast_hash": "92543aca53a9d307afabc4fca5f81287",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddApiTokens.cs": {
+    "mtime": 1792449561.8127067,
+    "seen": 1792450057.624186,
+    "ast_hash": "8e231731b074f96a2468cda8072702db",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Api/ServerEndpointsTests.cs": {
+    "mtime": 1792449502.866194,
+    "seen": 1792450057.625937,
+    "ast_hash": "13061ecb7857962d0e64431c1473b734",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/ManagerProxy.cs": {
+    "mtime": 1792450409.8507714,
+    "seen": 1792450920.4996808,
+    "ast_hash": "b2177c5d3a90528ac94762bc2ad5993c",
+    "semantic_hash": ""
+  },
+  "deploy/manager/caddy/docker-compose.yml": {
+    "mtime": 1792450317.0389223,
+    "seen": 1792450920.4996808,
+    "ast_hash": "fe96097019a89105ea92fc87b2c93e84",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Settings/ManagerBackupPage.razor": {
+    "mtime": 1792491420.5325086,
+    "seen": 1792492009.1774635,
+    "ast_hash": "4ba0b59f4faf97b289494a10309fa53e",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Settings/ManagerBackupPage.razor.cs": {
+    "mtime": 1792451402.4241073,
+    "seen": 1792451970.3094633,
+    "ast_hash": "996fc5ddf1bd913235caa7db1977611b",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/ManagerArchive.cs": {
+    "mtime": 1792451335.925887,
+    "seen": 1792451970.3094633,
+    "ast_hash": "00256e4af0318f9d39f2ab2f1c644772",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/ManagerBackup.cs": {
+    "mtime": 1792451335.925887,
+    "seen": 1792451970.3094633,
+    "ast_hash": "327cfcf3a5bba0c525cedbf5f2679323",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/ManagerBackupEndpoints.cs": {
+    "mtime": 1792451335.9275444,
+    "seen": 1792451970.3094633,
+    "ast_hash": "5483fb79d726b98c1df9fa39170b9e95",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/ManagerBackupManifest.cs": {
+    "mtime": 1792451335.925887,
+    "seen": 1792451970.3094633,
+    "ast_hash": "6128a7df839999755c1d856822b38915",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/ManagerBackupRunner.cs": {
+    "mtime": 1792451335.9275444,
+    "seen": 1792451970.3094633,
+    "ast_hash": "b8676804874158f800bd62e19d867a84",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/ManagerBackupSchedule.cs": {
+    "mtime": 1792451335.9275444,
+    "seen": 1792451970.3094633,
+    "ast_hash": "a32d337817c6a3b177c1957ec6512f3c",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/ManagerRestore.cs": {
+    "mtime": 1792481287.3046856,
+    "seen": 1792481835.530165,
+    "ast_hash": "99a72cdb7f10b3e9280757fcefa6cf52",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Data/ManagerBackupTests.cs": {
+    "mtime": 1792451570.498326,
+    "seen": 1792451970.310463,
+    "ast_hash": "ef5bd47deb892d861e9bc94fb099ba34",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/ManagerDocsTests.cs": {
+    "mtime": 1792452183.746058,
+    "seen": 1792452626.7749407,
+    "ast_hash": "150ae22c05e418cbff39e985b674e0b4",
+    "semantic_hash": ""
+  },
+  "README-MANAGER.md": {
+    "mtime": 1792492560.6100645,
+    "seen": 1792493037.1745508,
+    "ast_hash": "c752ef663c221257b20cbb09da555ef1",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddServerImage.Designer.cs": {
+    "mtime": 1792481126.5671015,
+    "seen": 1792481835.530165,
+    "ast_hash": "394f53dcaf8c0aeae571c5b42a87904d",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Data/Migrations/AddServerImage.cs": {
+    "mtime": 1792481126.9806025,
+    "seen": 1792481835.530165,
+    "ast_hash": "83713817d4701bcada763c6350c789e0",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Docker/ImageReference.cs": {
+    "mtime": 1792481085.7145498,
+    "seen": 1792481835.530165,
+    "ast_hash": "1570c9c71a4ad0da70d256f7241ba97a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerFromBackupPage.razor": {
+    "mtime": 1792482552.5664446,
+    "seen": 1792483082.84864,
+    "ast_hash": "702b39d919c82e6a02839e110227ca4a",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerFromBackupPage.razor.cs": {
+    "mtime": 1792482552.56745,
+    "seen": 1792483082.84864,
+    "ast_hash": "8850237c023d4fc4da660bf5c91e0dda",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/BackupCreation.cs": {
+    "mtime": 1792482552.5664446,
+    "seen": 1792483082.849199,
+    "ast_hash": "b52b0a06df19e85a9f18d6a2cf3dc1ab",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerBackupFile.cs": {
+    "mtime": 1792482552.5664446,
+    "seen": 1792483082.849199,
+    "ast_hash": "4d679dfe4cbb352f6e05ecaacd553f6f",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Servers/ServerFromBackup.cs": {
+    "mtime": 1792482578.8077996,
+    "seen": 1792483082.849199,
+    "ast_hash": "473a926f46de2f02592109b0f1505012",
+    "semantic_hash": ""
+  },
+  "src/OVS.Shared/Protocol/ServerDataFormat.cs": {
+    "mtime": 1792482552.5664446,
+    "seen": 1792483082.8497248,
+    "ast_hash": "51b278ad0ce594d5426d029a50db68c1",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Servers/ServerFromBackupTests.cs": {
+    "mtime": 1792482552.56745,
+    "seen": 1792483082.85036,
+    "ast_hash": "bf7586e058a628b460537c53fa444c08",
+    "semantic_hash": ""
+  },
+  "rebuild-manager.ps1": {
+    "mtime": 1792483579.0709121,
+    "seen": 1792483647.4545093,
+    "ast_hash": "6c9b71d47a8e2295ad87d842d9a70cd4",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerNav.razor": {
+    "mtime": 1792485740.9313645,
+    "seen": 1792487241.8549573,
+    "ast_hash": "0b85de3cff5ef6aff079cd00df9dd0c3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/Pages/Servers/ServerNav.razor.cs": {
+    "mtime": 1792485753.8812573,
+    "seen": 1792487241.8549573,
+    "ast_hash": "b315d0e1b2a299cc9dd309d15de2de4e",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Components/DockerLoadingTests.cs": {
+    "mtime": 1792486506.4289432,
+    "seen": 1792487241.8559616,
+    "ast_hash": "ee57bdfe98f0b236c23357b14e14e6f3",
+    "semantic_hash": ""
+  },
+  "tests/OVS.Tests/Manager/Components/ServerNavTests.cs": {
+    "mtime": 1792485705.0981288,
+    "seen": 1792487241.8559616,
+    "ast_hash": "f74acafdb3c13753c20537ef63935602",
+    "semantic_hash": ""
+  },
+  "DESIGN.md": {
+    "mtime": 1792492560.6187923,
+    "seen": 1792493037.1745508,
+    "ast_hash": "5053dbf1004d131473a9ae96b43b5481",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/PasswordShow.razor": {
+    "mtime": 1792491143.5822732,
+    "seen": 1792492009.1774635,
+    "ast_hash": "36f7fa6c17ce909ec729dd22b7858a47",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/Components/PasswordShow.razor.cs": {
+    "mtime": 1792491143.687221,
+    "seen": 1792492009.1774635,
+    "ast_hash": "d995f978229b8954d00a23879c081cc3",
+    "semantic_hash": ""
+  },
+  "src/OVS.Manager/wwwroot/password-show.js": {
+    "mtime": 1792491143.755273,
+    "seen": 1792492009.1774635,
+    "ast_hash": "5dc70a140a29d0e1f1dec16ef8ae95e9",
     "semantic_hash": ""
   }
 }
