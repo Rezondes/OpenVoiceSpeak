@@ -127,9 +127,23 @@ internal sealed class FakeDockerEngine : IDockerEngine
         return Task.FromResult(Usage.GetValueOrDefault(containerId) ?? new ContainerUsage(0, 0));
     }
 
+    /// <summary>The images ("image:tag") the host lacks and no registry has; every other one is there.</summary>
+    public ConcurrentDictionary<string, bool> MissingImages { get; } = new();
+
+    /// <summary>The images ("image:tag") the host lacks but a pull brings.</summary>
+    public ConcurrentDictionary<string, bool> NotOnHost { get; } = new();
+
+    public Task<bool> ImageExistsAsync(string image, string tag, CancellationToken cancellation = default)
+    {
+        EnsureReachable();
+        return Task.FromResult(!MissingImages.ContainsKey($"{image}:{tag}") && !NotOnHost.ContainsKey($"{image}:{tag}"));
+    }
+
     public Task PullImageAsync(string image, string tag, CancellationToken cancellation = default)
     {
         EnsureReachable();
+        if (MissingImages.ContainsKey($"{image}:{tag}")) throw new DockerCallException($"pull {image}:{tag}: not found");
+        NotOnHost.TryRemove($"{image}:{tag}", out _);
         Pulled.Enqueue($"{image}:{tag}");
         return Task.CompletedTask;
     }

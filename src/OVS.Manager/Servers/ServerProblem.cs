@@ -25,4 +25,6 @@ internal enum ServerProblem
     InvalidLimits,
     /// <summary>Package M29: a foreign container has nothing mounted at /data to keep.</summary>
     NoDataVolume,
+    /// <summary>The server image of the version is neither on the host nor in the registry.</summary>
+    ImageMissing,
 }

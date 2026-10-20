@@ -383,6 +383,7 @@ If you did not ask for it, ignore this mail.</value></data>
   <data name="Servers_DeleteConfirmName" xml:space="preserve"><value>Server name</value></data>
   <data name="Servers_DeleteHint" xml:space="preserve"><value>Type the server's name to delete it. It is stopped and stays in the trash for 7 days.</value></data>
   <data name="Servers_Empty" xml:space="preserve"><value>No servers yet.</value></data>
+  <data name="Servers_ImageMissing" xml:space="preserve"><value>The server image of this version is neither on the host nor in the registry. Check the version and OVS_MANAGER_SERVER_IMAGE.</value></data>
   <data name="Servers_InvalidMaxUsers" xml:space="preserve"><value>The maximum users must be between 1 and {0}.</value></data>
   <data name="Servers_InvalidName" xml:space="preserve"><value>The name is empty, too long or has forbidden characters.</value></data>
   <data name="Servers_InvalidTimeZone" xml:space="preserve"><value>This time zone is unknown (example: Europe/Berlin).</value></data>

@@ -383,6 +383,7 @@ Wenn du das nicht angefordert hast, ignoriere diese Mail.</value></data>
   <data name="Servers_DeleteConfirmName" xml:space="preserve"><value>Name des Servers</value></data>
   <data name="Servers_DeleteHint" xml:space="preserve"><value>Tippe den Namen des Servers, um ihn zu löschen. Er wird gestoppt und bleibt 7 Tage im Papierkorb.</value></data>
   <data name="Servers_Empty" xml:space="preserve"><value>Noch keine Server.</value></data>
+  <data name="Servers_ImageMissing" xml:space="preserve"><value>Das Server-Image in dieser Version gibt es weder auf dem Host noch in der Registry. Prüfe die Version und OVS_MANAGER_SERVER_IMAGE.</value></data>
   <data name="Servers_InvalidMaxUsers" xml:space="preserve"><value>Die maximale Nutzerzahl muss zwischen 1 und {0} liegen.</value></data>
   <data name="Servers_InvalidName" xml:space="preserve"><value>Der Name ist leer, zu lang oder enthält unerlaubte Zeichen.</value></data>
   <data name="Servers_InvalidTimeZone" xml:space="preserve"><value>Diese Zeitzone ist unbekannt (Beispiel: Europe/Berlin).</value></data>

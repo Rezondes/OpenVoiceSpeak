@@ -54,6 +54,6 @@ public sealed class UpdateWindowTests
         var due = Assert.Single(await runner.DueAsync());
         Assert.Equal((on.Id, "201026.zz"), (due.ServerId, due.Version));
         Assert.NotEqual(off.Id, due.ServerId);
-        Assert.Equal(BuildInfo.Current.Version, on.Version);
+        Assert.Equal(ServerFactory.DefaultVersion, on.Version);
     }
 }

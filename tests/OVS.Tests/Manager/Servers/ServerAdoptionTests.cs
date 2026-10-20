@@ -80,7 +80,7 @@ public sealed class ServerAdoptionTests
 
         Assert.Null(await AdoptAsync(manager));
 
-        var version = OVS.Shared.BuildInfo.Current.Version;
+        var version = ServerFactory.DefaultVersion;
         Assert.Equal([$"ghcr.io/rezondes/openvoicespeak-server:{version}"], manager.Docker.Pulled);
         Assert.Equal(version, Assert.Single(manager.Docker.Created).Version);
     }

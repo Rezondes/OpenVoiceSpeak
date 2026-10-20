@@ -66,7 +66,7 @@ internal sealed class ServerAdoption(ManagerDbContext database, IDockerEngine do
             Id = await NewIdAsync(cancellation), Name = variables.GetValueOrDefault("OVS_SERVER_NAME") is { Length: > 0 } name ? name : foreign.Name, Port = port,
             TimeZone = variables.GetValueOrDefault("TZ") is { Length: > 0 } zone && TimeZoneInfo.TryFindSystemTimeZoneById(zone, out _) ? zone : options.TimeZone,
             MaxUsers = int.TryParse(variables.GetValueOrDefault("OVS_MAX_USERS"), CultureInfo.InvariantCulture, out var max) && max is > 0 and <= ServerFactory.MaxUsersLimit ? max : 50,
-            Version = foreign.Repository == options.ServerImage && foreign.Tag != "latest" ? foreign.Tag : BuildInfo.Current.Version, DataSource = foreign.DataSource, CreatedAtUtc = time.GetUtcNow().UtcDateTime,
+            Version = foreign.Repository == options.ServerImage && foreign.Tag != "latest" ? foreign.Tag : ServerFactory.DefaultVersion, DataSource = foreign.DataSource, CreatedAtUtc = time.GetUtcNow().UtcDateTime,
         };
         using (var identity = identities.Create(server.Id)) server.AdminFingerprint = identity.Fingerprint;
         return server;

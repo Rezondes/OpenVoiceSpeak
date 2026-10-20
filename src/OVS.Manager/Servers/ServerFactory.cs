@@ -18,6 +18,12 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
     /// <summary>The highest start value of the user limit.</summary>
     public const int MaxUsersLimit = 1000;
 
+    /// <summary>
+    /// The version a new server gets when none is given: the manager's own for a released manager; a locally built one
+    /// ("dev.…") is never published, so its servers take the image's "latest".
+    /// </summary>
+    public static string DefaultVersion => BuildInfo.Current.IsCi ? BuildInfo.Current.Version : "latest";
+
     /// <summary>The network of the manager and its servers (MA6).</summary>
     public const string Network = "ovs-managed";
 
@@ -39,10 +45,12 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
             case PortProblem.Taken: throw new ServerRequestException(ServerProblem.PortTaken);
         }
 
+        var version = string.IsNullOrWhiteSpace(request.Version) ? DefaultVersion : request.Version.Trim();
+        await EnsureImageAsync(version, cancellation);
         var server = new ManagedServer
         {
             Id = await NewIdAsync(cancellation), Name = name, Port = port, TimeZone = zone, MaxUsers = request.MaxUsers,
-            Version = string.IsNullOrWhiteSpace(request.Version) ? BuildInfo.Current.Version : request.Version.Trim(),
+            Version = version,
             CreatedAtUtc = time.GetUtcNow().UtcDateTime, CpuCores = limits.CpuCores, MemoryMb = limits.MemoryMb,
         };
         using (var identity = identities.Create(server.Id)) server.AdminFingerprint = identity.Fingerprint;
@@ -84,6 +92,21 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
         };
         if (!string.IsNullOrEmpty(password)) variables["OVS_PASSWORD"] = password;
         return variables;
+    }
+
+    /// <summary>Pulls the server image of <paramref name="version"/> unless the host has it.</summary>
+    /// <exception cref="ServerRequestException">Neither the host nor the registry has it.</exception>
+    async Task EnsureImageAsync(string version, CancellationToken cancellation)
+    {
+        if (await docker.ImageExistsAsync(options.ServerImage, version, cancellation)) return;
+        try
+        {
+            await docker.PullImageAsync(options.ServerImage, version, cancellation);
+        }
+        catch (DockerCallException exception)
+        {
+            throw new ServerRequestException(ServerProblem.ImageMissing, exception);
+        }
     }
 
     /// <summary>A short id no other server has.</summary>

@@ -164,6 +164,24 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
     }
 
     /// <inheritdoc/>
+    public async Task<bool> ImageExistsAsync(string image, string tag, CancellationToken cancellation = default)
+    {
+        try
+        {
+            await CallAsync(async () =>
+            {
+                await client.Images.InspectImageAsync($"{image}:{tag}", cancellation);
+                return true;
+            });
+            return true;
+        }
+        catch (DockerCallException exception) when (exception.InnerException is DockerImageNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    /// <inheritdoc/>
     public Task PullImageAsync(string image, string tag, CancellationToken cancellation = default) => CallAsync(async () =>
     {
         await client.Images.CreateImageAsync(new ImagesCreateParameters { FromImage = image, Tag = tag }, null, new Progress<JSONMessage>(), cancellation);

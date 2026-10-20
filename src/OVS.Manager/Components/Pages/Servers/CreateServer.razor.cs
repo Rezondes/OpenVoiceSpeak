@@ -40,7 +40,7 @@ sealed partial class CreateServer
     /// <summary>The lowest free port, shown in the empty field.</summary>
     string DefaultPort { get; set; } = "";
 
-    static string DefaultVersion => BuildInfo.Current.Version;
+    static string DefaultVersion => ServerFactory.DefaultVersion;
 
     string DefaultTimeZone => Options.TimeZone;
 

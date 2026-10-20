@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OVS.Manager.Accounts;
 using OVS.Manager.Audit;
 using OVS.Manager.Data;
+using OVS.Manager.Exceptions;
 using OVS.Manager.Servers;
 using OVS.Shared;
 using OVS.Tests.Manager.Accounts;
@@ -20,6 +21,26 @@ public sealed class ServerFactoryTests
     static Task<ManagedServer> CreateAsync(IServiceProvider services, string password = "") =>
         services.GetRequiredService<ServerFactory>().CreateAsync(new CreateServerRequest("Raid", 20, password, null, null, null), "chef");
 
+    /// <summary>An image the host lacks is pulled first; one no registry has stops the creation with a text, before anything is made.</summary>
+    [Fact]
+    public async Task Create_ImageNotOnHost_PulledOrRefused()
+    {
+        await using var manager = WithAdmin();
+        manager.CreateClient().Dispose();
+        await using var scope = manager.Services.CreateAsyncScope();
+        var image = $"ghcr.io/rezondes/openvoicespeak-server:{ServerFactory.DefaultVersion}";
+        manager.Docker.NotOnHost[image] = true;
+
+        await CreateAsync(scope.ServiceProvider);
+        Assert.Equal([image], manager.Docker.Pulled);
+
+        manager.Docker.MissingImages["ghcr.io/rezondes/openvoicespeak-server:010101.xx"] = true;
+        var refused = await Assert.ThrowsAsync<ServerRequestException>(() => scope.ServiceProvider.GetRequiredService<ServerFactory>()
+            .CreateAsync(new CreateServerRequest("Lobby", 20, null, "010101.xx", null, null), "chef"));
+        Assert.Equal(ServerProblem.ImageMissing, refused.Problem);
+        Assert.Single(manager.Docker.Created);
+    }
+
     /// <summary>AC3: exactly these variables, the image of the manager's version, the port, the network; started.</summary>
     [Fact]
     public async Task Create_ContainerSpec_ExactVariablesAndMappings()
@@ -30,7 +51,7 @@ public sealed class ServerFactoryTests
         var server = await CreateAsync(scope.ServiceProvider);
 
         var spec = Assert.Single(manager.Docker.Created);
-        Assert.Equal((server.Id, "ghcr.io/rezondes/openvoicespeak-server", BuildInfo.Current.Version, 7000, "ovs-managed"),
+        Assert.Equal((server.Id, "ghcr.io/rezondes/openvoicespeak-server", ServerFactory.DefaultVersion, 7000, "ovs-managed"),
             (spec.ServerId, spec.Image, spec.Version, spec.Port, spec.Network));
         Assert.Equal(new Dictionary<string, string>
         {
