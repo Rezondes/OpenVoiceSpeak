@@ -84,12 +84,12 @@ internal sealed class ServerAdoption(ManagerDbContext database, IDockerEngine do
     }
 
     /// <summary>
-    /// A container of another image name (a self-built one) runs on as the manager's image of the manager's version, which is
-    /// pulled first; null when it is there, else why not (nothing was changed then).
+    /// A container of another image name (a self-built one) runs on as the manager's image of the default version, pulled
+    /// first unless the host has it; null when it is there, else why not (nothing was changed then).
     /// </summary>
     async Task<string?> PullFailedAsync(ForeignServer foreign, string version, CancellationToken cancellation)
     {
-        if (foreign.Repository == options.ServerImage) return null;
+        if (foreign.Repository == options.ServerImage || await docker.ImageExistsAsync(options.ServerImage, version, cancellation)) return null;
         try
         {
             await docker.PullImageAsync(options.ServerImage, version, cancellation);

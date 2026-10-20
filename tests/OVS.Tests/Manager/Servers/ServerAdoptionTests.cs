@@ -77,12 +77,26 @@ public sealed class ServerAdoptionTests
         await using var manager = Manager();
         manager.CreateClient().Dispose();
         manager.Docker.Foreign[OldId] = Old() with { Image = "openvoicespeak/server:local" };
+        var version = ServerFactory.DefaultVersion;
+        manager.Docker.NotOnHost[$"ghcr.io/rezondes/openvoicespeak-server:{version}"] = true;
 
         Assert.Null(await AdoptAsync(manager));
 
-        var version = ServerFactory.DefaultVersion;
         Assert.Equal([$"ghcr.io/rezondes/openvoicespeak-server:{version}"], manager.Docker.Pulled);
         Assert.Equal(version, Assert.Single(manager.Docker.Created).Version);
+    }
+
+    /// <summary>AC2: the manager's image already on the host is used as it is, without a pull (a self-built one has no registry).</summary>
+    [Fact]
+    public async Task Adopt_ManagerImageOnHost_NotPulled()
+    {
+        await using var manager = Manager();
+        manager.CreateClient().Dispose();
+        manager.Docker.Foreign[OldId] = Old() with { Image = "openvoicespeak/server:local" };
+
+        Assert.Null(await AdoptAsync(manager));
+
+        Assert.Empty(manager.Docker.Pulled);
     }
 
     /// <summary>AC2: a failed health check removes the new container and starts the old one again.</summary>
