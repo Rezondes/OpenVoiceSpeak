@@ -8,7 +8,11 @@
 {
     <p class="@ResultClass" role="status" data-result>@Result</p>
 }
-@if (Foreign.Count == 0)
+@if (!Loaded)
+{
+    <p class="form-hint" data-loading>@Strings.Docker_Loading</p>
+}
+else if (Foreign.Count == 0)
 {
     <p data-none>@Strings.Adopt_None</p>
 }

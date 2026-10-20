@@ -39,7 +39,7 @@ public sealed class ServerAdoptionTests
 
         var page = context.Render<AdoptServer>();
 
-        Assert.Single(page.FindAll($"tr[data-foreign='{OldId}']"));
+        page.WaitForAssertion(() => Assert.Single(page.FindAll($"tr[data-foreign='{OldId}']")));
         Assert.Equal("7000", page.Find("[data-port]").GetAttribute("value"));
         var problem = await Assert.ThrowsAsync<ServerRequestException>(() => AdoptAsync(manager, 6000));
         Assert.Equal(ServerProblem.PortOutOfRange, problem.Problem);
@@ -131,7 +131,7 @@ public sealed class ServerAdoptionTests
         await using var context = ServerPages.Context(manager);
         var page = context.Render<AdoptServer>();
 
-        await page.Find("[data-adopt]").ClickAsync(new());
+        await page.WaitForElement("[data-adopt]").ClickAsync(new());
         Assert.Contains("Server-Admin", page.Find("[data-confirm]").TextContent, StringComparison.Ordinal);
         await page.Find("[data-confirm-adopt]").ClickAsync(new());
 

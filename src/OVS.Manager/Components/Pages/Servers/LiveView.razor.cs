@@ -42,10 +42,20 @@ sealed partial class LiveView : IAsyncDisposable
 
     IReadOnlyList<ChartSeries> MemoryLines => [new(Strings.Live_Ram, "var(--accent)", memory)];
 
-    /// <summary>Reads once and then every <see cref="Every"/>.</summary>
-    protected override async Task OnInitializedAsync()
+    /// <summary>Reads once the page is drawn, so the page does not wait for Docker's stats, and then every <see cref="Every"/>.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await ReadAsync();
+        if (!firstRender) return;
+        try
+        {
+            await ReadAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            return; // the page left during the first read
+        }
+        if (stop.IsCancellationRequested) return; // the page left as the first read ended
+        StateHasChanged();
         following = FollowAsync();
     }
 

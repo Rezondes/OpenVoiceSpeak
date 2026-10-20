@@ -14,6 +14,10 @@
     <LineChart Title="@Strings.Live_Cpu" Unit="%" Series="@CpuLines" FromUnixMs="@snapshot.FromUnixMs" ToUnixMs="@snapshot.ToUnixMs" />
     <LineChart Title="@Strings.Live_Ram" Unit="MB" Series="@MemoryLines" FromUnixMs="@snapshot.FromUnixMs" ToUnixMs="@snapshot.ToUnixMs" />
 }
+else
+{
+    <p class="form-hint" data-loading>@Strings.Docker_Loading</p>
+}
 <AuthorizeView Roles="@ManagerRoles.Admin">
     <h2>@Strings.Resources_Limits</h2>
     <div class="account-form">

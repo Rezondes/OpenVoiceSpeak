@@ -30,7 +30,11 @@ sealed partial class ResourceUse
     [Parameter]
     public string Id { get; set; } = "";
 
+    /// <summary>The figures, null until Docker answered after the page was drawn.</summary>
     ResourceSnapshot? Snapshot { get; set; }
+
+    /// <summary>The server's volume, null for a host folder.</summary>
+    string? Volume { get; set; }
 
     /// <summary>The CPU limit in the form, null for none.</summary>
     double? CpuCores { get; set; }
@@ -51,12 +55,19 @@ sealed partial class ResourceUse
 
     IReadOnlyList<ChartSeries> MemoryLines => [new(Strings.Live_Ram, "var(--accent)", Snapshot!.Memory)];
 
-    /// <summary>Loads the figures and the current limits.</summary>
+    /// <summary>Loads the current limits.</summary>
     protected override async Task OnParametersSetAsync()
     {
         var server = await Database.Servers.AsNoTracking().SingleOrDefaultAsync(row => row.Id == Id);
-        Snapshot = await Query.ReadAsync(Id, server?.Volume);
-        (CpuCores, MemoryMb) = (server?.CpuCores, server?.MemoryMb);
+        (CpuCores, MemoryMb, Volume) = (server?.CpuCores, server?.MemoryMb, server?.Volume);
+    }
+
+    /// <summary>Asks Docker for the figures once the page is drawn, so the page does not wait for Docker's stats.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        Snapshot = await Query.ReadAsync(Id, Volume);
+        StateHasChanged();
     }
 
     Task AskAsync()

@@ -23,6 +23,9 @@ sealed partial class AdoptServer
 
     List<ForeignRow> Foreign { get; set; } = [];
 
+    /// <summary>Docker has listed the foreign servers.</summary>
+    bool Loaded { get; set; }
+
     ForeignRow? Asked { get; set; }
 
     bool Running { get; set; }
@@ -33,8 +36,14 @@ sealed partial class AdoptServer
 
     string ResultClass => Failed ? "form-error" : "form-ok";
 
-    /// <summary>Lists the foreign servers, each with the lowest free port.</summary>
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    /// <summary>Lists the foreign servers, each with the lowest free port, once the page is drawn, so the page does not wait for Docker.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+        Loaded = true;
+        StateHasChanged();
+    }
 
     async Task LoadAsync()
     {

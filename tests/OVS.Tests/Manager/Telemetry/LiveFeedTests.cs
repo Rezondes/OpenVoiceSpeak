@@ -32,7 +32,7 @@ public sealed class LiveFeedTests
         await using var context = ServerPages.Context(manager);
         context.Services.AddSingleton<TimeProvider>(time);
         var page = context.Render<LiveView>(parameters => parameters.Add(view => view.ServerId, id));
-        Assert.Equal("2", page.Find("[data-tile=users] [data-value]").TextContent);
+        page.WaitForAssertion(() => Assert.Equal("2", page.Find("[data-tile=users] [data-value]").TextContent));
 
         await AddAsync(manager, Gauge(id, "ovs.sessions", Now, 4));
         manager.Docker.Usage["c-" + id] = new ContainerUsage(12.5, 256L * 1024 * 1024);
@@ -76,7 +76,7 @@ public sealed class LiveFeedTests
         await using (var context = ServerPages.Context(manager))
         {
             var page = context.Render<LiveView>(parameters => parameters.Add(view => view.ServerId, id));
-            Assert.NotEmpty(page.FindAll("[data-no-telemetry]"));
+            page.WaitForAssertion(() => Assert.NotEmpty(page.FindAll("[data-no-telemetry]")));
             Assert.Empty(page.FindAll("[data-chart=\"Nutzer online\"]"));
         }
 

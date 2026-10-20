@@ -137,6 +137,7 @@
   <data name="Dashboard_Status" xml:space="preserve"><value>Server</value></data>
   <data name="Dashboard_Updates" xml:space="preserve"><value>Updates verfügbar</value></data>
   <data name="Docker_CallFailed" xml:space="preserve"><value>Docker hat den Auftrag nicht ausgeführt. Läuft der Socket-Proxy?</value></data>
+  <data name="Docker_Loading" xml:space="preserve"><value>Lade die Daten von Docker …</value></data>
   <data name="Docker_Unreachable" xml:space="preserve"><value>Docker nicht erreichbar: Server können gerade nicht gestartet, gestoppt oder angelegt werden.</value></data>
   <data name="ErrorLookup_Duration" xml:space="preserve"><value>Dauer</value></data>
   <data name="ErrorLookup_Failed" xml:space="preserve"><value>Fehler</value></data>
