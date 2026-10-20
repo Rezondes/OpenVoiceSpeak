@@ -385,6 +385,7 @@ Wenn du das nicht angefordert hast, ignoriere diese Mail.</value></data>
   <data name="Resources_Volume" xml:space="preserve"><value>Datenvolume</value></data>
   <data name="Save" xml:space="preserve"><value>Speichern</value></data>
   <data name="Servers_AllPortsTaken" xml:space="preserve"><value>Alle 100 Ports sind belegt.</value></data>
+  <data name="Servers_Back" xml:space="preserve"><value>← Zurück zu {0}</value></data>
   <data name="Servers_ColumnErrors" xml:space="preserve"><value>Fehler (24 h)</value></data>
   <data name="Servers_ColumnLink" xml:space="preserve"><value>Verwaltung</value></data>
   <data name="Servers_ColumnPort" xml:space="preserve"><value>Port</value></data>

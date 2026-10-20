@@ -10,17 +10,7 @@
 else
 {
     <h1>@Server.Name</h1>
-    <nav class="server-nav" aria-label="@Server.Name">
-        <a href="@($"/servers/{Server.Id}/settings")">@Strings.Settings_Title</a>
-        <a href="@($"/servers/{Server.Id}/users")">@Strings.Users_Title</a>
-        <a href="@($"/servers/{Server.Id}/groups")">@Strings.Groups_Title</a>
-        <a href="@($"/servers/{Server.Id}/bans")">@Strings.Bans_Title</a>
-        <a href="@($"/servers/{Server.Id}/backups")">@Strings.Backups_Title</a>
-        <a href="@($"/servers/{Server.Id}/log")">@Strings.Log_Title</a>
-        <a href="@($"/servers/{Server.Id}/history")">@Strings.History_Title</a>
-        <a href="@($"/servers/{Server.Id}/errors")">@Strings.Errors_Title</a>
-        <a href="@($"/servers/{Server.Id}/resources")">@Strings.Resources_Title</a>
-    </nav>
+    <ServerNav ServerId="@Server.Id" WithBack="false" />
     <table class="list">
         <tbody>
             <tr><th>@Strings.Servers_ColumnStatus</th><td data-status="@Server.Status">@ServerTexts.Status(Server)</td></tr>

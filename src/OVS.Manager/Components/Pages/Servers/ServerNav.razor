@@ -1,0 +1,15 @@
+@if (WithBack)
+{
+    <p class="server-back"><a href="@($"/servers/{ServerId}")" data-back>@TextFormat.Of(Strings.Servers_Back, Name)</a></p>
+}
+<nav class="server-nav" aria-label="@Name">
+    <NavLink href="@Tab("settings")">@Strings.Settings_Title</NavLink>
+    <NavLink href="@Tab("users")">@Strings.Users_Title</NavLink>
+    <NavLink href="@Tab("groups")">@Strings.Groups_Title</NavLink>
+    <NavLink href="@Tab("bans")">@Strings.Bans_Title</NavLink>
+    <NavLink href="@Tab("backups")">@Strings.Backups_Title</NavLink>
+    <NavLink href="@Tab("log")">@Strings.Log_Title</NavLink>
+    <NavLink href="@Tab("history")">@Strings.History_Title</NavLink>
+    <NavLink href="@Tab("errors")">@Strings.Errors_Title</NavLink>
+    <NavLink href="@Tab("resources")">@Strings.Resources_Title</NavLink>
+</nav>

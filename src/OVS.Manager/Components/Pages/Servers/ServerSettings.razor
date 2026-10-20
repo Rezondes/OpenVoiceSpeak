@@ -3,6 +3,7 @@
 @attribute [Authorize(Policy = ServerAccessHandler.Policy)]
 @implements IDisposable
 
+<ServerNav ServerId="@Id" />
 <h1>@Strings.Settings_Title</h1>
 @if (Message is not null)
 {

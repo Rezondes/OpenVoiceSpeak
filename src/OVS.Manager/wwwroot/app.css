@@ -705,10 +705,15 @@ table.list td a {
     font-weight: 500;
 }
 
-.server-nav a:hover {
+.server-nav a:hover,
+.server-nav a.active {
     background: var(--surface-2);
     color: var(--text);
     text-decoration: none;
+}
+
+.server-back {
+    margin: 0 0 16px;
 }
 
 .server-actions,

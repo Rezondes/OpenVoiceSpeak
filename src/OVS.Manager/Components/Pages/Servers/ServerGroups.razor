@@ -3,6 +3,7 @@
 @attribute [Authorize(Policy = ServerAccessHandler.Policy)]
 @implements IDisposable
 
+<ServerNav ServerId="@Id" />
 <h1>@Strings.Groups_Title</h1>
 @if (Error is not null)
 {

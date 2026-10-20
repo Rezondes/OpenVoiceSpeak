@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = ServerAccessHandler.Policy)]
 
+<ServerNav ServerId="@Id" />
 <h1>@Strings.Bans_Title</h1>
 @if (Error is not null)
 {

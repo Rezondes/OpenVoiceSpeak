@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = ServerAccessHandler.Policy)]
 
+<ServerNav ServerId="@Id" />
 <h1>@Strings.History_Title</h1>
 <p class="history-ranges">
     <button type="button" data-range="7" @onclick="ShowWeekAsync">@Strings.History_Days7</button>

@@ -3,6 +3,7 @@
 @attribute [Authorize(Policy = ServerAccessHandler.Policy)]
 @implements IAsyncDisposable
 
+<ServerNav ServerId="@Id" />
 <h1>@Strings.Log_Title</h1>
 @if (Error is not null)
 {
