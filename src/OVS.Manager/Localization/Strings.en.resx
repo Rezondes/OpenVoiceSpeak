@@ -167,6 +167,19 @@
   <data name="Forgot_Sent" xml:space="preserve"><value>If the account exists and has an e-mail address, a link is on its way. It is valid for an hour.</value></data>
   <data name="Forgot_Submit" xml:space="preserve"><value>Send link</value></data>
   <data name="Forgot_Title" xml:space="preserve"><value>Forgot password</value></data>
+  <data name="FromBackup_Create" xml:space="preserve"><value>Create server</value></data>
+  <data name="FromBackup_Created" xml:space="preserve"><value>Created</value></data>
+  <data name="FromBackup_Failed" xml:space="preserve"><value>{0} was created, but the backup was not restored: {1}</value></data>
+  <data name="FromBackup_File" xml:space="preserve"><value>Backup file (.ovsbackup)</value></data>
+  <data name="FromBackup_Fingerprint" xml:space="preserve"><value>Certificate fingerprint</value></data>
+  <data name="FromBackup_Intro" xml:space="preserve"><value>Upload a backup of an OpenVoiceSpeak server, also one from before the manager. The new server gets its channels, groups, users, bans and settings and keeps its certificate and fingerprint, so clients know it again.</value></data>
+  <data name="FromBackup_Link" xml:space="preserve"><value>Create from backup</value></data>
+  <data name="FromBackup_SameIdentity" xml:space="preserve"><value>Careful: {0} already runs with this certificate. Two servers with the same identity confuse the clients; delete the old one or do not use this backup.</value></data>
+  <data name="FromBackup_Title" xml:space="preserve"><value>Create a server from a backup</value></data>
+  <data name="FromBackup_TooLarge" xml:space="preserve"><value>The file is larger than {0} MB.</value></data>
+  <data name="FromBackup_Unreadable" xml:space="preserve"><value>This file is no readable OpenVoiceSpeak backup.</value></data>
+  <data name="FromBackup_Version" xml:space="preserve"><value>Server version in the backup</value></data>
+  <data name="FromBackup_VersionUnknown" xml:space="preserve"><value>The manager does not know the version of this backup ({0}). Restore it on a server of a fitting version first, or update the manager. Nothing was created.</value></data>
   <data name="Groups_Create" xml:space="preserve"><value>New group</value></data>
   <data name="Groups_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Groups_Down" xml:space="preserve"><value>down</value></data>

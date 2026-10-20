@@ -1,0 +1,33 @@
+@page "/servers/new/backup"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = ManagerRoles.Admin)]
+
+<h1>@Strings.FromBackup_Title</h1>
+<p>@Strings.FromBackup_Intro</p>
+<section>
+    <label>@Strings.FromBackup_File <InputFile OnChange="ReadAsync" accept=".ovsbackup" data-file /></label>
+    @if (Error is not null)
+    {
+        <p class="form-error" role="alert" data-error>@Error</p>
+    }
+    @if (Backup is { } backup)
+    {
+        <table class="list">
+            <tbody>
+                <tr><th>@Strings.FromBackup_Version</th><td data-version>@backup.ServerVersion</td></tr>
+                <tr><th>@Strings.FromBackup_Created</th><td>@CreatedText</td></tr>
+                <tr><th>@Strings.FromBackup_Fingerprint</th><td><code data-fingerprint>@backup.Fingerprint</code></td></tr>
+            </tbody>
+        </table>
+        @if (SameIdentity is not null)
+        {
+            <p class="banner-error" role="alert" data-same-identity>@SameIdentity</p>
+        }
+        <p class="form-hint">@Strings.Adopt_AdminNote</p>
+        <div class="account-form">
+            <label>@Strings.Servers_Name <input data-name @bind="Name" /></label>
+            <label>@Strings.Servers_Port <input type="number" data-port @bind="Port" /></label>
+            <button type="button" data-create disabled="@Running" @onclick="CreateAsync">@Strings.FromBackup_Create</button>
+        </div>
+    }
+</section>

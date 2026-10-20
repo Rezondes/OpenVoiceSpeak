@@ -167,6 +167,19 @@
   <data name="Forgot_Sent" xml:space="preserve"><value>Wenn es das Konto gibt und es eine E-Mail-Adresse hat, ist ein Link unterwegs. Er gilt eine Stunde.</value></data>
   <data name="Forgot_Submit" xml:space="preserve"><value>Link senden</value></data>
   <data name="Forgot_Title" xml:space="preserve"><value>Passwort vergessen</value></data>
+  <data name="FromBackup_Create" xml:space="preserve"><value>Server anlegen</value></data>
+  <data name="FromBackup_Created" xml:space="preserve"><value>Erstellt</value></data>
+  <data name="FromBackup_Failed" xml:space="preserve"><value>{0} wurde angelegt, aber das Backup nicht eingespielt: {1}</value></data>
+  <data name="FromBackup_File" xml:space="preserve"><value>Backup-Datei (.ovsbackup)</value></data>
+  <data name="FromBackup_Fingerprint" xml:space="preserve"><value>Zertifikat-Fingerprint</value></data>
+  <data name="FromBackup_Intro" xml:space="preserve"><value>Lade ein Backup eines OpenVoiceSpeak-Servers hoch, auch eines von vor dem Verwaltungstool. Der neue Server bekommt Kanäle, Gruppen, Nutzer, Banns und Einstellungen daraus und behält Zertifikat und Fingerprint, damit Clients ihn wiedererkennen.</value></data>
+  <data name="FromBackup_Link" xml:space="preserve"><value>Aus Backup anlegen</value></data>
+  <data name="FromBackup_SameIdentity" xml:space="preserve"><value>Achtung: {0} läuft schon mit diesem Zertifikat. Zwei Server mit derselben Identität verwirren die Clients; lösche den alten oder nutze dieses Backup nicht.</value></data>
+  <data name="FromBackup_Title" xml:space="preserve"><value>Server aus Backup anlegen</value></data>
+  <data name="FromBackup_TooLarge" xml:space="preserve"><value>Die Datei ist größer als {0} MB.</value></data>
+  <data name="FromBackup_Unreadable" xml:space="preserve"><value>Diese Datei ist kein lesbares OpenVoiceSpeak-Backup.</value></data>
+  <data name="FromBackup_Version" xml:space="preserve"><value>Server-Version im Backup</value></data>
+  <data name="FromBackup_VersionUnknown" xml:space="preserve"><value>Die Version dieses Backups ({0}) erkennt das Verwaltungstool nicht. Spiele es zuerst auf einem Server einer passenden Version ein oder aktualisiere das Verwaltungstool. Nichts wurde angelegt.</value></data>
   <data name="Groups_Create" xml:space="preserve"><value>Neue Gruppe</value></data>
   <data name="Groups_Delete" xml:space="preserve"><value>Löschen</value></data>
   <data name="Groups_Down" xml:space="preserve"><value>nach unten</value></data>

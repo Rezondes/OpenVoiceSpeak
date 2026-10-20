@@ -119,6 +119,8 @@ internal static class AuditActions
     public const string ApiTokenRevoked = "ApiTokenRevoked";
     /// <summary>A call of the REST API (M31); the target is the token's name, the detail method, path and status.</summary>
     public const string ApiCalled = "ApiCalled";
+    /// <summary>A new server was made from a server's backup; the detail is the backup's version, time and certificate fingerprint.</summary>
+    public const string ServerCreatedFromBackup = "ServerCreatedFromBackup";
     /// <summary>A new server got the contents of another (M30); the detail is "source -> clone".</summary>
     public const string ServerCloned = "ServerCloned";
     /// <summary>A foreign OVS container was adopted (M29); the detail is "old -> new" container.</summary>

@@ -29,4 +29,6 @@ internal enum ServerProblem
     ImageMissing,
     /// <summary>A foreign server whose image predates the manager (no protocol label) or names no version.</summary>
     TooOldForManager,
+    /// <summary>A backup whose format or data version the manager does not know.</summary>
+    BackupVersionUnknown,
 }

@@ -126,6 +126,7 @@ builder.Services.AddScoped<ServerResources>();
 builder.Services.AddScoped<ServerHealth>(); // Package M18, M29
 builder.Services.AddScoped<ServerAdoption>(); // Package M29
 builder.Services.AddScoped<ServerClone>(); // Package M30
+builder.Services.AddScoped<ServerFromBackup>();
 builder.Services.AddScoped<ResourceQuery>();
 builder.Services.AddHostedService<UsageSampler>();
 builder.Services.AddSingleton<IHostDisk, DataDirDisk>();

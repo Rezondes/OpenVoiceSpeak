@@ -16,7 +16,7 @@ internal sealed class ServerData
     /// Admin (94), 7 = the Server-Admin group (181), 8 = channels at the old default of 64 kbps lifted to 128 (183). New
     /// servers start at the current version.
     /// </summary>
-    public const int CurrentVersion = 8;
+    public const int CurrentVersion = ServerDataFormat.Version;
     /// <summary>The version the file was written with; older files are migrated on load.</summary>
     public int DataVersion { get; set; } = 1;
 

@@ -31,6 +31,7 @@ internal static class ServerPages
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ServerResources>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ServerAdoption>()); // Package M29
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ServerClone>()); // Package M30
+        context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ServerFromBackup>());
         context.Services.AddSingleton<IHostDisk>(manager.Disk);
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<SettingsCommands>());
         context.Services.AddScoped(_ => manager.Services.CreateScope().ServiceProvider.GetRequiredService<ModerationCommands>());

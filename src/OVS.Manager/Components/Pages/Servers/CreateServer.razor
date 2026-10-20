@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = ManagerRoles.Admin)]
 
 <h1>@Strings.Servers_CreateTitle</h1>
+<p><a href="/servers/new/backup" data-from-backup>@Strings.FromBackup_Link</a></p>
 @if (NoFreePort)
 {
     <p class="form-error" role="alert">@Strings.Servers_AllPortsTaken</p>
