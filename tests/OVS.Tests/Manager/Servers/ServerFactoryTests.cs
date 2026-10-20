@@ -21,18 +21,22 @@ public sealed class ServerFactoryTests
     static Task<ManagedServer> CreateAsync(IServiceProvider services, string password = "") =>
         services.GetRequiredService<ServerFactory>().CreateAsync(new CreateServerRequest("Raid", 20, password, null, null, null), "chef");
 
-    /// <summary>A locally built manager gives a new server the newest server image built on the host; a released one its own version.</summary>
+    /// <summary>A locally built manager gives a new server the newest server image built on the host, whatever its name; a released one its own release.</summary>
     [Fact]
     public async Task Create_NoVersion_NewestLocalImageForLocalBuild()
     {
         await using var manager = WithAdmin();
         manager.CreateClient().Dispose();
-        manager.Docker.NewestTags["ghcr.io/rezondes/openvoicespeak-server"] = "local";
+        manager.Docker.NewestServerImage = "openvoicespeak/server:local";
         await using var scope = manager.Services.CreateAsyncScope();
 
         var server = await CreateAsync(scope.ServiceProvider);
 
-        Assert.Equal(BuildInfo.Current.IsCi ? BuildInfo.Current.Version : "local", server.Version);
+        var spec = Assert.Single(manager.Docker.Created);
+        if (BuildInfo.Current.IsCi)
+            Assert.Equal((null, "ghcr.io/rezondes/openvoicespeak-server", BuildInfo.Current.Version), (server.Image, spec.Image, spec.Version));
+        else
+            Assert.Equal(("openvoicespeak/server", "openvoicespeak/server", "local"), (server.Image, spec.Image, spec.Version));
     }
 
     /// <summary>An image the host lacks is pulled first; one no registry has stops the creation with a text, before anything is made.</summary>

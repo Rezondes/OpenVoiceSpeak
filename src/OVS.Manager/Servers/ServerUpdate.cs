@@ -59,6 +59,7 @@ internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine dock
         if (server is null || old is null) return Strings.Servers_NotFound;
         if ((await docker.InspectAsync(old.Id, cancellation)).Environment is not { } environment) return Strings.Update_NoEnvironment;
         var oldVersion = server.Version;
+        var oldImage = options.ImageOf(server);
         async Task StepAsync(UpdateStep step)
         {
             progress?.Report(step);
@@ -82,6 +83,7 @@ internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine dock
         if (await health.WaitAsync(serverId, version, server.Port, cancellation))
         {
             server.Version = version;
+            server.Image = null; // a release of OVS_MANAGER_SERVER_IMAGE from now on
             await database.SaveChangesAsync(cancellation);
             await StepAsync(UpdateStep.Done);
             await audit.WriteAsync(actor, AuditActions.ServerUpdated, server.Name, serverId, $"{oldVersion} -> {version}", cancellation);
@@ -92,7 +94,7 @@ internal sealed class ServerUpdate(ManagerDbContext database, IDockerEngine dock
         await StepAsync(UpdateStep.RollBack);
         await docker.StopAsync(created, cancellation);
         await docker.RemoveAsync(created, cancellation);
-        var back = await docker.CreateAsync(new ContainerSpec(serverId, options.ServerImage, oldVersion, server.Port, environment, ServerFactory.Network, server.Limits, server.DataSource), cancellation);
+        var back = await docker.CreateAsync(new ContainerSpec(serverId, oldImage, oldVersion, server.Port, environment, ServerFactory.Network, server.Limits, server.DataSource), cancellation);
         await SaveContainerAsync(server, back, cancellation);
         await docker.StartAsync(back, cancellation);
         var reason = Strings.Update_HealthFailed;

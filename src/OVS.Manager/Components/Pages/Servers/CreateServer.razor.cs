@@ -43,7 +43,7 @@ sealed partial class CreateServer
     [Inject]
     OVS.Manager.Docker.IDockerEngine Docker { get; set; } = null!;
 
-    /// <summary>The version a server gets with the field left empty, shown in it.</summary>
+    /// <summary>The image a server gets with the version left empty, shown in the field.</summary>
     string DefaultVersion { get; set; } = ServerFactory.DefaultVersion;
 
     string DefaultTimeZone => Options.TimeZone;
@@ -61,7 +61,7 @@ sealed partial class CreateServer
         var free = PortPool.FindFree(await Database.Servers.Select(server => server.Port).ToListAsync());
         NoFreePort = free is null;
         DefaultPort = free?.ToString(CultureInfo.InvariantCulture) ?? "";
-        DefaultVersion = await ServerFactory.DefaultVersionAsync(Docker, Options.ServerImage);
+        DefaultVersion = (await ServerFactory.DefaultImageAsync(Docker, Options.ServerImage)).ToString();
         Sources = await Database.Servers.AsNoTracking().Where(server => server.DeletedAtUtc == null).OrderBy(server => server.Name).ToListAsync();
     }
 
@@ -74,7 +74,7 @@ sealed partial class CreateServer
         {
             // Package M30: a clone runs the source's version unless another is given, so the source's data fits it
             created = await Factory.CreateAsync(new CreateServerRequest(Model!.Name, Model.MaxUsers, Model.Password, Model.Version ?? source?.Version, Model.TimeZone, Model.Port,
-                new OVS.Manager.Docker.ResourceLimits(Model.CpuCores, Model.MemoryMb)), actor);
+                new OVS.Manager.Docker.ResourceLimits(Model.CpuCores, Model.MemoryMb), source is null ? null : Options.ImageOf(source)), actor);
         }
         catch (ServerRequestException exception)
         {

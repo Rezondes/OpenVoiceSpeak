@@ -7,11 +7,10 @@ namespace OVS.Manager.Docker;
 /// <param name="State">Docker's state, such as "running".</param>
 /// <param name="DataSource">The volume name or host folder mounted at /data, null when there is none.</param>
 /// <param name="Environment">Its variables.</param>
-internal sealed record ForeignServer(string Id, string Name, string Image, string State, string? DataSource, IReadOnlyDictionary<string, string> Environment)
+/// <param name="KnowsManager">Its image carries the protocol label, so its server knows the manager (PLAN 190 to 194 came with it).</param>
+internal sealed record ForeignServer(string Id, string Name, string Image, string State, string? DataSource, IReadOnlyDictionary<string, string> Environment,
+    bool KnowsManager = true)
 {
-    /// <summary>The image without its tag, such as ghcr.io/rezondes/openvoicespeak-server.</summary>
-    public string Repository => Image.LastIndexOf(':') is var colon and > 0 && colon > Image.LastIndexOf('/') ? Image[..colon] : Image;
-
-    /// <summary>The image's tag, the server's version; "latest" without one.</summary>
-    public string Tag => Image.LastIndexOf(':') is var colon and > 0 && colon > Image.LastIndexOf('/') ? Image[(colon + 1)..] : "latest";
+    /// <summary>The image the container was created from, as repository and tag.</summary>
+    public ImageReference Reference => ImageReference.Parse(Image);
 }

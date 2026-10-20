@@ -22,23 +22,25 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
     public static string DefaultVersion => BuildInfo.Current.IsCi ? BuildInfo.Current.Version : "latest";
 
     /// <summary>
-    /// The version a new or adopted server gets when none is given. A released manager gives its own, the release's. A locally
-    /// built one ("dev.…") is never published, so it takes the newest server image built on the host (such as ":local" of
-    /// docker-compose.build.yml), else <see cref="DefaultVersion"/>.
+    /// The image a new server gets when no version is given. A released manager gives its own release of
+    /// <paramref name="image"/>. A locally built one ("dev.…") is never published, so it takes the newest OVS server image
+    /// built on the host, whatever its name (such as openvoicespeak/server:local of docker-compose.build.yml), else
+    /// <paramref name="image"/>:<see cref="DefaultVersion"/>.
     /// </summary>
-    public static async Task<string> DefaultVersionAsync(IDockerEngine docker, string image, CancellationToken cancellation = default)
+    public static async Task<ImageReference> DefaultImageAsync(IDockerEngine docker, string image, CancellationToken cancellation = default)
     {
         ArgumentNullException.ThrowIfNull(docker);
-        if (BuildInfo.Current.IsCi) return BuildInfo.Current.Version;
+        if (BuildInfo.Current.IsCi) return new ImageReference(image, BuildInfo.Current.Version);
         try
         {
-            // ponytail: the newest local build stands for the current protocol; local builds carry no protocol label to check
-            return await docker.NewestTagAsync(image, cancellation) ?? DefaultVersion;
+            // ponytail: the newest local build stands for the current protocol; local builds carry an empty protocol label
+            if (await docker.NewestServerImageAsync(cancellation) is { } newest && ImageReference.Parse(newest) is { Tag: not null } found) return found;
         }
         catch (DockerCallException)
         {
-            return DefaultVersion; // a proxy without images/json (compose file older than this manager)
+            // a proxy without images/json (a compose file older than this manager)
         }
+        return new ImageReference(image, DefaultVersion);
     }
 
     /// <summary>The network of the manager and its servers (MA6).</summary>
@@ -54,24 +56,16 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
         if (!TimeZoneInfo.TryFindSystemTimeZoneById(zone, out _)) throw new ServerRequestException(ServerProblem.InvalidTimeZone);
         var limits = request.Limits ?? ResourceLimits.None;
         if (!limits.IsValid) throw new ServerRequestException(ServerProblem.InvalidLimits);
-        var taken = await database.Servers.Select(server => server.Port).ToListAsync(cancellation);
-        int port = request.Port ?? PortPool.FindFree(taken) ?? throw new ServerRequestException(ServerProblem.NoFreePort);
-        switch (PortPool.Check(port, taken))
-        {
-            case PortProblem.OutOfRange: throw new ServerRequestException(ServerProblem.PortOutOfRange);
-            case PortProblem.Taken: throw new ServerRequestException(ServerProblem.PortTaken);
-        }
-
-        var version = string.IsNullOrWhiteSpace(request.Version) ? await DefaultVersionAsync(docker, options.ServerImage, cancellation) : request.Version.Trim();
-        await EnsureImageAsync(version, cancellation);
+        int port = await PortForAsync(request.Port, cancellation);
+        var reference = await ImageForAsync(request, cancellation);
         var server = new ManagedServer
         {
             Id = await NewIdAsync(cancellation), Name = name, Port = port, TimeZone = zone, MaxUsers = request.MaxUsers,
-            Version = version,
+            Version = reference.Tag!, Image = reference.Repository == options.ServerImage ? null : reference.Repository,
             CreatedAtUtc = time.GetUtcNow().UtcDateTime, CpuCores = limits.CpuCores, MemoryMb = limits.MemoryMb,
         };
         using (var identity = identities.Create(server.Id)) server.AdminFingerprint = identity.Fingerprint;
-        server.ContainerId = await docker.CreateAsync(new ContainerSpec(server.Id, options.ServerImage, server.Version, port, Environment(server, request.Password), Network, limits), cancellation);
+        server.ContainerId = await docker.CreateAsync(new ContainerSpec(server.Id, reference.Repository, server.Version, port, Environment(server, request.Password), Network, limits), cancellation);
         database.Servers.Add(server);
         await database.SaveChangesAsync(cancellation);
         try
@@ -111,14 +105,39 @@ internal sealed class ServerFactory(ManagerDbContext database, IDockerEngine doc
         return variables;
     }
 
-    /// <summary>Pulls the server image of <paramref name="version"/> unless the host has it.</summary>
-    /// <exception cref="ServerRequestException">Neither the host nor the registry has it.</exception>
-    async Task EnsureImageAsync(string version, CancellationToken cancellation)
+    /// <summary><paramref name="wanted"/>, or the lowest free port without one.</summary>
+    /// <exception cref="ServerRequestException">No port is free, or the wanted one is out of range or taken.</exception>
+    async Task<int> PortForAsync(int? wanted, CancellationToken cancellation)
     {
-        if (await docker.ImageExistsAsync(options.ServerImage, version, cancellation)) return;
+        var taken = await database.Servers.Select(server => server.Port).ToListAsync(cancellation);
+        int port = wanted ?? PortPool.FindFree(taken) ?? throw new ServerRequestException(ServerProblem.NoFreePort);
+        return PortPool.Check(port, taken) switch
+        {
+            PortProblem.OutOfRange => throw new ServerRequestException(ServerProblem.PortOutOfRange),
+            PortProblem.Taken => throw new ServerRequestException(ServerProblem.PortTaken),
+            _ => port,
+        };
+    }
+
+    /// <summary>The image of <paramref name="request"/> (its own or the default), on the host once this returns.</summary>
+    /// <exception cref="ServerRequestException">Neither the host nor the registry has it.</exception>
+    async Task<ImageReference> ImageForAsync(CreateServerRequest request, CancellationToken cancellation)
+    {
+        var reference = string.IsNullOrWhiteSpace(request.Version)
+            ? request.Image is { } own ? new ImageReference(own, DefaultVersion) : await DefaultImageAsync(docker, options.ServerImage, cancellation)
+            : new ImageReference(request.Image ?? options.ServerImage, request.Version.Trim());
+        await EnsureImageAsync(reference.Repository, reference.Tag!, cancellation);
+        return reference;
+    }
+
+    /// <summary>Pulls <paramref name="image"/>:<paramref name="version"/> unless the host has it.</summary>
+    /// <exception cref="ServerRequestException">Neither the host nor the registry has it.</exception>
+    async Task EnsureImageAsync(string image, string version, CancellationToken cancellation)
+    {
+        if (await docker.ImageExistsAsync(image, version, cancellation)) return;
         try
         {
-            await docker.PullImageAsync(options.ServerImage, version, cancellation);
+            await docker.PullImageAsync(image, version, cancellation);
         }
         catch (DockerCallException exception)
         {

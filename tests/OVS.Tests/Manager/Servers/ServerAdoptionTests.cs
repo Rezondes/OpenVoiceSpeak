@@ -70,33 +70,38 @@ public sealed class ServerAdoptionTests
         Assert.Contains(lines, line => line.Action == AuditActions.ServerAdopted && line.Detail!.StartsWith("0123456789ab -> ", StringComparison.Ordinal));
     }
 
-    /// <summary>AC1, AC2: a self-built image of another name is found by its protocol label and runs on as the manager's image of the manager's version.</summary>
+    /// <summary>AC2: a self-built server of another image name runs on with exactly its image and version, without a pull, and keeps them for a restart.</summary>
     [Fact]
-    public async Task Adopt_OtherImageName_ManagerImagePulled()
+    public async Task Adopt_SelfBuiltImage_ImageAndVersionKept()
     {
         await using var manager = Manager();
         manager.CreateClient().Dispose();
         manager.Docker.Foreign[OldId] = Old() with { Image = "openvoicespeak/server:local" };
-        var version = ServerFactory.DefaultVersion;
-        manager.Docker.NotOnHost[$"ghcr.io/rezondes/openvoicespeak-server:{version}"] = true;
 
         Assert.Null(await AdoptAsync(manager));
 
-        Assert.Equal([$"ghcr.io/rezondes/openvoicespeak-server:{version}"], manager.Docker.Pulled);
-        Assert.Equal(version, Assert.Single(manager.Docker.Created).Version);
+        var spec = Assert.Single(manager.Docker.Created);
+        Assert.Equal(("openvoicespeak/server", "local"), (spec.Image, spec.Version));
+        Assert.Empty(manager.Docker.Pulled);
+        await using var scope = manager.Services.CreateAsyncScope();
+        var row = await scope.ServiceProvider.GetRequiredService<ManagerDbContext>().Servers.SingleAsync();
+        Assert.Equal(("openvoicespeak/server", "local"), (row.Image, row.Version));
     }
 
-    /// <summary>AC2: the manager's image already on the host is used as it is, without a pull (a self-built one has no registry).</summary>
+    /// <summary>AC2: a server whose image predates the manager (no protocol label) or names no version is refused before anything changes.</summary>
     [Fact]
-    public async Task Adopt_ManagerImageOnHost_NotPulled()
+    public async Task Adopt_UnknownVersion_RefusedAsTooOld()
     {
         await using var manager = Manager();
         manager.CreateClient().Dispose();
-        manager.Docker.Foreign[OldId] = Old() with { Image = "openvoicespeak/server:local" };
 
-        Assert.Null(await AdoptAsync(manager));
-
-        Assert.Empty(manager.Docker.Pulled);
+        foreach (var old in new[] { Old() with { KnowsManager = false }, Old() with { Image = "sha256:0123456789abcdef" } })
+        {
+            manager.Docker.Foreign[OldId] = old;
+            Assert.Equal(ServerProblem.TooOldForManager, (await Assert.ThrowsAsync<ServerRequestException>(() => AdoptAsync(manager))).Problem);
+        }
+        Assert.Empty(manager.Docker.Created);
+        Assert.Equal("running", manager.Docker.Foreign[OldId].State);
     }
 
     /// <summary>AC2: a failed health check removes the new container and starts the old one again.</summary>

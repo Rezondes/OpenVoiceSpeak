@@ -23,6 +23,9 @@ internal sealed class ManagedServer
     /// <summary>The start value of the user limit.</summary>
     public int MaxUsers { get; set; }
 
+    /// <summary>The image of its container without the tag, null for the manager's <c>OVS_MANAGER_SERVER_IMAGE</c>: an adopted or locally built server keeps its own.</summary>
+    public string? Image { get; set; }
+
     /// <summary>Package M29: the volume or host folder of an adopted server's data, null for the manager's own volume.</summary>
     public string? DataSource { get; set; }
 

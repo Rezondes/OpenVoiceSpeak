@@ -40,6 +40,7 @@
   <data name="Adopt_NoData" xml:space="preserve"><value>Der Container hat unter /data nichts eingebunden, was übernommen werden könnte.</value></data>
   <data name="Adopt_None" xml:space="preserve"><value>Kein fremder OpenVoiceSpeak-Container gefunden.</value></data>
   <data name="Adopt_Title" xml:space="preserve"><value>Server übernehmen</value></data>
+  <data name="Adopt_TooOld" xml:space="preserve"><value>Dieser Server kennt das Verwaltungstool noch nicht: Sein Image hat keine erkennbare Version. Aktualisiere ihn einmal von Hand auf eine aktuelle Version und übernimm ihn dann. Nichts wurde geändert.</value></data>
   <data name="Announce_ActionRestart" xml:space="preserve"><value>Neustart</value></data>
   <data name="Announce_ActionStop" xml:space="preserve"><value>Stoppen</value></data>
   <data name="Announce_ActionUpdate" xml:space="preserve"><value>Update</value></data>

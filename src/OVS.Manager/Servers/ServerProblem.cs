@@ -27,4 +27,6 @@ internal enum ServerProblem
     NoDataVolume,
     /// <summary>The server image of the version is neither on the host nor in the registry.</summary>
     ImageMissing,
+    /// <summary>A foreign server whose image predates the manager (no protocol label) or names no version.</summary>
+    TooOldForManager,
 }

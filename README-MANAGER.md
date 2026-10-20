@@ -91,7 +91,7 @@ Jede Änderung schreibt eine Zeile ins Audit-Log ("Protokoll"): wer, wann, was, 
 
 ## Server anlegen, starten, stoppen, löschen
 
-**Anlegen** (Admin, "Neuer Server"): Name, Nutzerlimit (1 bis 1000), Passwort, Version (Standard: die des Verwaltungstools), Zeitzone, Port und CPU- und RAM-Limits. Der Port kommt aus dem Bereich 7000 bis 7099, also höchstens 100 Server; das Formular schlägt den kleinsten freien vor. Ist der Port auf dem Host schon belegt, wird nichts angelegt. Optional kopiert der neue Server einen bestehenden (siehe "Server übernehmen und klonen").
+**Anlegen** (Admin, "Neuer Server"): Name, Nutzerlimit (1 bis 1000), Passwort, Version (Standard: die des Verwaltungstools; ein selbst gebautes Verwaltungstool nimmt das neueste selbst gebaute Server-Image auf dem Host, z. B. `openvoicespeak/server:local`), Zeitzone, Port und CPU- und RAM-Limits. Der Port kommt aus dem Bereich 7000 bis 7099, also höchstens 100 Server; das Formular schlägt den kleinsten freien vor. Ist der Port auf dem Host schon belegt, wird nichts angelegt. Optional kopiert der neue Server einen bestehenden (siehe "Server übernehmen und klonen").
 
 **Übersicht**: jeder sichtbare Server mit Status, Version, Port, Nutzern online, Fehlern der letzten 24 Stunden und ob ein Update bereitsteht. Der Status kommt alle 5 Sekunden von Docker und einem TLS-Handshake: läuft, startet, gestoppt, abgestürzt (mit Exit-Code), Neustart-Schleife (mehr als 3 Neustarts in 10 Minuten) oder nicht erreichbar.
 
@@ -160,7 +160,7 @@ Der Admin schaltet unter "Konten" die "2FA-Pflicht" ein: Wer noch keine Zwei-Fak
 
 ## Server übernehmen und klonen
 
-**Übernehmen** (Admin, "Server übernehmen"): Die Seite listet Container eines OpenVoiceSpeak-Server-Images, die das Verwaltungstool nicht angelegt hat. Nach Wahl eines Ports und einer Rückfrage stoppt der alte Container, ein neuer startet mit den Daten aus dem alten Volume oder Host-Ordner, so wie sie sind (keine Kopie), mit Name, Limit, Zeitzone und Passwort aus den alten Variablen. Erst nach erfolgreicher Prüfung wird der alte Container entfernt; sonst läuft er wieder. Der bisherige Server-Admin verliert diese Rolle beim ersten Start und behält seine anderen Gruppen.
+**Übernehmen** (Admin, "Server übernehmen"): Die Seite listet Container eines OpenVoiceSpeak-Server-Images, die das Verwaltungstool nicht angelegt hat. Nach Wahl eines Ports und einer Rückfrage stoppt der alte Container, ein neuer startet mit den Daten aus dem alten Volume oder Host-Ordner, so wie sie sind (keine Kopie), mit genau demselben Image und derselben Version (auch einem selbst gebauten) und mit Name, Limit, Zeitzone und Passwort aus den alten Variablen. Hat das Image keine erkennbare Version (ein Server von vor dem Verwaltungstool), lehnt die Übernahme ab: Aktualisiere ihn dann einmal von Hand und übernimm ihn danach. Erst nach erfolgreicher Prüfung wird der alte Container entfernt; sonst läuft er wieder. Der bisherige Server-Admin verliert diese Rolle beim ersten Start und behält seine anderen Gruppen.
 
 **Klonen** ("Neuer Server", "Aus Server kopieren"): Der neue Server bekommt Kanäle, Links, Gruppen, Einstellungen und Logo eines bestehenden, Nutzer und Banns nur mit Häkchen. Er behält seinen eigenen Port, Namen, sein Zertifikat und seine Identität; Server-Admin ist nur das Verwaltungstool. Das Formular wartet, bis der neue Server erreichbar ist, und kopiert dann über die Backups beider Server.
 

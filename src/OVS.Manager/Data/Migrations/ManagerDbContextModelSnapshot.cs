@@ -465,6 +465,9 @@ namespace OVS.Manager.Data.Migrations
                     b.Property<DateTime?>("DeletedAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Image")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("MaxUsers")
                         .HasColumnType("INTEGER");
 

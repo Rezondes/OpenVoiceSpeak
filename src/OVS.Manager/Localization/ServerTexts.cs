@@ -21,6 +21,7 @@ internal static class ServerTexts
         ServerProblem.NameMismatch => Strings.Servers_NameMismatch,
         ServerProblem.NoDataVolume => Strings.Adopt_NoData,
         ServerProblem.ImageMissing => Strings.Servers_ImageMissing,
+        ServerProblem.TooOldForManager => Strings.Adopt_TooOld,
         ServerProblem.InvalidLimits => TextFormat.Of(Strings.Resources_InvalidLimits, OVS.Manager.Docker.ResourceLimits.MinCpuCores, OVS.Manager.Docker.ResourceLimits.MaxCpuCores, OVS.Manager.Docker.ResourceLimits.MinMemoryMb, OVS.Manager.Docker.ResourceLimits.MaxMemoryMb),
         _ => Strings.Servers_NotFound,
     };

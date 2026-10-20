@@ -44,9 +44,7 @@ internal sealed class ManagerRestore(IServiceScopeFactory scopes, FirstAdmin fir
         }
 
         // ponytail: other background work holds no connection for long; a write racing the swap is lost, fine on a fresh manager
-        SqliteConnection.ClearAllPools();
-        foreach (var suffix in new[] { "-wal", "-shm" }) File.Delete(options.DatabasePath + suffix);
-        File.Move(staged, options.DatabasePath, overwrite: true);
+        await SwapDatabaseAsync(staged, cancellation);
         WriteKeys(entries);
         keys.CreateNewKey(time.GetUtcNow(), time.GetUtcNow().AddDays(90)); // the key ring reads the folder again and finds the restored keys
         await using (var scope = scopes.CreateAsyncScope())
@@ -57,6 +55,25 @@ internal sealed class ManagerRestore(IServiceScopeFactory scopes, FirstAdmin fir
         }
         await scopes.CreateAsyncScope().ServiceProvider.GetRequiredService<Servers.StatusWatcher>().RefreshAsync(cancellation);
         return null;
+    }
+
+    /// <summary>Puts the staged database in place; a background service that holds the file a moment longer gets 10 tries 100 ms apart.</summary>
+    async Task SwapDatabaseAsync(string staged, CancellationToken cancellation)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                SqliteConnection.ClearAllPools();
+                foreach (var suffix in new[] { "-wal", "-shm" }) File.Delete(options.DatabasePath + suffix);
+                File.Move(staged, options.DatabasePath, overwrite: true);
+                return;
+            }
+            catch (IOException) when (attempt < 10)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(100), time, cancellation);
+            }
+        }
     }
 
     static ManagerBackupManifest? Manifest(Dictionary<string, byte[]> entries)

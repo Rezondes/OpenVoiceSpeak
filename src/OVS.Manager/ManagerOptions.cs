@@ -69,6 +69,9 @@ internal sealed record ManagerOptions(string DataDir)
     /// <summary>Package M33 (AC4): the password of the scheduled manager backups, <c>OVS_MANAGER_BACKUP_PASSWORD</c>; null keeps the schedule off.</summary>
     public string? BackupPassword { get; init; }
 
+    /// <summary>The image of <paramref name="server"/>'s container without the tag: its own, else <see cref="ServerImage"/>.</summary>
+    public string ImageOf(Servers.ManagedServer server) => server?.Image ?? ServerImage;
+
     /// <summary>Package M11: where the manager reaches the server <paramref name="serverId"/>.</summary>
     public string HostOf(string serverId) => ServerHost ?? Docker.ManagedLabels.ContainerName(serverId);
 

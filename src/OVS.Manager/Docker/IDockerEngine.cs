@@ -52,8 +52,8 @@ internal interface IDockerEngine
     /// <summary>Package M22: the CPU and memory a managed container uses now (the proxy allows <c>containers/{id}/stats</c>).</summary>
     Task<ContainerUsage> StatsAsync(string containerId, CancellationToken cancellation = default);
 
-    /// <summary>The tag of the newest image of <paramref name="image"/> on the host (by creation), null for none (the proxy allows <c>images/json</c>).</summary>
-    Task<string?> NewestTagAsync(string image, CancellationToken cancellation = default);
+    /// <summary>The newest OVS server image on the host (by creation, any name) as "image:tag", null for none (the proxy allows <c>images/json</c>).</summary>
+    Task<string?> NewestServerImageAsync(CancellationToken cancellation = default);
 
     /// <summary>Whether <paramref name="image"/>:<paramref name="tag"/> is on the host (the proxy allows <c>images/.../json</c>).</summary>
     Task<bool> ImageExistsAsync(string image, string tag, CancellationToken cancellation = default);

@@ -40,6 +40,7 @@
   <data name="Adopt_NoData" xml:space="preserve"><value>The container mounts nothing at /data that could be kept.</value></data>
   <data name="Adopt_None" xml:space="preserve"><value>No foreign OpenVoiceSpeak container found.</value></data>
   <data name="Adopt_Title" xml:space="preserve"><value>Adopt a server</value></data>
+  <data name="Adopt_TooOld" xml:space="preserve"><value>This server does not know the manager yet: its image has no version the manager can read. Update it once by hand to a current version, then adopt it. Nothing was changed.</value></data>
   <data name="Announce_ActionRestart" xml:space="preserve"><value>Restart</value></data>
   <data name="Announce_ActionStop" xml:space="preserve"><value>Stop</value></data>
   <data name="Announce_ActionUpdate" xml:space="preserve"><value>Update</value></data>
