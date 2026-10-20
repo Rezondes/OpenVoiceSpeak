@@ -23,6 +23,9 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:10.0
 # The release workflow passes the server's --protocol-version; a local build leaves it empty.
 ARG OVS_PROTOCOL=""
 LABEL org.openvoicespeak.protocol=$OVS_PROTOCOL
+# The web manager adopts only a server image with this mark: it knows the manager (server admin by variable, service session).
+# Unlike the protocol it is set in every build, a local one too.
+LABEL org.openvoicespeak.manager="1"
 LABEL org.opencontainers.image.source="https://github.com/Rezondes/OpenVoiceSpeak"
 LABEL org.opencontainers.image.description="OpenVoiceSpeak server: self-hosted voice chat"
 # Named volumes inherit this ownership on first mount, so the non-root user can write /data.

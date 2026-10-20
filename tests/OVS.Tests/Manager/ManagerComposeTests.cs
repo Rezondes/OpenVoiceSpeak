@@ -7,6 +7,16 @@ public sealed class ManagerComposeTests
 {
     static readonly string ComposePath = Path.Combine(RepoPaths.Root, "deploy", "manager", "docker-compose.yml");
 
+    /// <summary>Every server image, a local build too, marks that it knows the manager; the adoption takes only such a server.</summary>
+    [Fact]
+    public void ServerImage_Dockerfile_MarksManagerSupport()
+    {
+        var lines = File.ReadAllLines(Path.Combine(RepoPaths.Root, "Dockerfile")).Select(line => line.Trim()).ToList();
+        var runtime = lines.Skip(lines.FindLastIndex(line => line.StartsWith("FROM ", StringComparison.Ordinal))).ToList();
+        Assert.Contains("LABEL org.openvoicespeak.manager=\"1\"", runtime);
+        Assert.Contains("LABEL org.opencontainers.image.description=\"OpenVoiceSpeak server: self-hosted voice chat\"", runtime);
+    }
+
     /// <summary>AC2: the runtime stage runs as the image's non-root user, listens on 6999 and keeps its data in /data.</summary>
     [Fact]
     public void Image_RuntimeStage_NonRootPort6999DataVolume()

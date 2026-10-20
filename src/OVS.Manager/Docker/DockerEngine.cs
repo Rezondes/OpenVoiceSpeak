@@ -163,14 +163,26 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
         }
     }
 
-    /// <summary>The label every OVS server image carries (PLAN 193); empty in a local build, but there.</summary>
+    /// <summary>The protocol of a released server image (PLAN 193); a local build has none.</summary>
     const string ProtocolLabel = "org.openvoicespeak.protocol";
+
+    /// <summary>The mark of a server image that knows the manager, in every build since the manager came, a local one too.</summary>
+    const string ManagerLabel = "org.openvoicespeak.manager";
+
+    /// <summary>The image description every OVS server image has carried since Package 44.</summary>
+    const string ServerDescription = "OpenVoiceSpeak server";
+
+    static bool KnowsManager(IDictionary<string, string>? labels) =>
+        labels is not null && (labels.ContainsKey(ManagerLabel) || labels.TryGetValue(ProtocolLabel, out var protocol) && protocol.Length > 0);
+
+    static bool IsServerDescription(IDictionary<string, string>? labels) =>
+        labels?.TryGetValue("org.opencontainers.image.description", out var description) == true && description.StartsWith(ServerDescription, StringComparison.Ordinal);
 
     /// <inheritdoc/>
     public Task<string?> NewestServerImageAsync(CancellationToken cancellation = default) => CallAsync(async () =>
     {
         var listed = await client.Images.ListImagesAsync(new ImagesListParameters(), cancellation);
-        return listed.Where(found => found.Labels?.ContainsKey(ProtocolLabel) == true).OrderByDescending(found => found.Created)
+        return listed.Where(found => KnowsManager(found.Labels)).OrderByDescending(found => found.Created)
             .SelectMany(found => found.RepoTags ?? []).FirstOrDefault(tag => !tag.StartsWith("<none>", StringComparison.Ordinal));
     });
 
@@ -239,7 +251,7 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
             var environment = inspected.Config?.Env?.Select(variable => variable.Split('=', 2)).Where(pair => pair.Length == 2).ToDictionary(pair => pair[0], pair => pair[1]) ?? [];
             // the reference it was created from: Docker lists an image id instead once the tag moved to a newer build
             found.Add(new ForeignServer(container.ID, inspected.Name.TrimStart('/'), inspected.Config?.Image ?? container.Image, container.State,
-                data is null ? null : data.Type == "volume" ? data.Name : data.Source, environment, container.Labels?.ContainsKey(ProtocolLabel) == true));
+                data is null ? null : data.Type == "volume" ? data.Name : data.Source, environment, KnowsManager(container.Labels)));
         }
         return (IReadOnlyList<ForeignServer>)found;
     });
@@ -276,9 +288,9 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
             throw new ForeignContainerException($"Container {containerId} is no foreign OVS server.");
     }
 
-    /// <summary>The server image carries the label of its protocol (PLAN 193), whatever it is named, such as a self-built <c>openvoicespeak/server:local</c>.</summary>
+    /// <summary>An OVS server image by its labels, whatever it is named (a self-built <c>openvoicespeak/server:local</c> too), or by its name.</summary>
     bool IsServerImage(string image, IDictionary<string, string>? labels) =>
-        labels?.ContainsKey(ProtocolLabel) == true
+        KnowsManager(labels) || IsServerDescription(labels)
         || image.StartsWith(options.ServerImage, StringComparison.Ordinal) || image.Contains("openvoicespeak-server", StringComparison.Ordinal);
 
     /// <summary>Ends the client.</summary>
