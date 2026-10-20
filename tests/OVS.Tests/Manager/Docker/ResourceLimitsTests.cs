@@ -37,10 +37,22 @@ public sealed class ResourceLimitsTests
         await using var context = ServerPages.Context(manager);
         var page = context.Render<ResourceUse>(parameters => parameters.Add(resources => resources.Id, id));
 
+        page.WaitForElement("[data-tile=cpu]");
         Assert.Equal(37.5.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture), page.Find("[data-tile=cpu] [data-value]").TextContent);
         Assert.Equal("300", page.Find("[data-tile=ram] [data-value]").TextContent);
         Assert.Equal(1.5.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture), page.Find("[data-tile=volume] [data-value]").TextContent);
         Assert.Single(page.FindAll("[data-chart=CPU] circle")); // the hour of the sample
+    }
+
+    /// <summary>AC1: the sampler reads the volume sizes ahead of the page; Docker out of reach costs a log line, not the sampler.</summary>
+    [Fact]
+    public async Task VolumeSizes_DockerUnreachable_SamplerGoesOn()
+    {
+        await using var manager = TelemetryManager(new ManualTimeProvider());
+        manager.CreateClient().Dispose();
+        manager.Docker.Reachable = false;
+
+        Assert.Null(await Record.ExceptionAsync(() => Hosted<UsageSampler>(manager).ReadVolumeSizesAsync()));
     }
 
     /// <summary>AC1: the volume sizes come from Docker's system/df answer; a volume without usage data is left out.</summary>

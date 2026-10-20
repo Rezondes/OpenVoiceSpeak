@@ -46,7 +46,7 @@ internal interface IDockerEngine
     /// <summary>Package M29 (AC2): removes a foreign OVS server's container after its adoption; its data stays.</summary>
     Task RemoveForeignAsync(string containerId, CancellationToken cancellation = default);
 
-    /// <summary>Package M25: each volume's size in bytes by its name (the proxy allows <c>system/df</c>); empty when Docker cannot tell.</summary>
+    /// <summary>Package M25: each volume's size in bytes by its name (the proxy allows <c>system/df</c>), up to 10 minutes old; empty when Docker cannot tell.</summary>
     Task<IReadOnlyDictionary<string, long>> VolumeSizesAsync(CancellationToken cancellation = default);
 
     /// <summary>Package M22: the CPU and memory a managed container uses now (the proxy allows <c>containers/{id}/stats</c>).</summary>

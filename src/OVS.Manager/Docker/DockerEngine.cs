@@ -10,14 +10,18 @@ namespace OVS.Manager.Docker;
 /// Docker lists by the label <c>ovs.managed=true</c> and the adapter checks it again; a call for any other container
 /// is refused before it is sent. Package M7: a failed call becomes a <see cref="DockerCallException"/>.
 /// </summary>
-internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDisposable
+internal sealed class DockerEngine(ManagerOptions options, TimeProvider time) : IDockerEngine, IDisposable
 {
     static readonly TimeSpan PingTimeout = TimeSpan.FromSeconds(2);
+    static readonly TimeSpan SizesKept = TimeSpan.FromMinutes(10);
     const int StopSeconds = 30;
 
     readonly DockerClient client = new DockerClientConfiguration(new Uri(options.DockerHost)).CreateClient();
     readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(60) };
+    readonly CancellationTokenSource closing = new();
+    readonly Lock sizesLock = new();
     KeptSizes? volumeSizes;
+    Task<IReadOnlyDictionary<string, long>>? readingSizes;
 
     /// <inheritdoc/>
     public async Task<bool> IsReachableAsync(CancellationToken cancellation = default)
@@ -225,17 +229,37 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
     }
 
     /// <summary>
-    /// Package M25: <c>system/df</c> sizes every volume and takes its time, so its answer is kept for 10 minutes. Docker.DotNet
-    /// has no call for it; the request goes to the same host. ponytail: only a tcp or http host, a unix socket gives no sizes.
+    /// Package M25: <c>system/df</c> sizes every volume and takes its time (half a minute on Docker Desktop), so its answer is
+    /// kept. Once it is 10 minutes old it is read again in the background and the old answer is given out meanwhile; only
+    /// a call before the first answer waits. Docker.DotNet has no call for it; the request goes to the same host.
+    /// ponytail: only a tcp or http host, a unix socket gives no sizes.
     /// </summary>
     public async Task<IReadOnlyDictionary<string, long>> VolumeSizesAsync(CancellationToken cancellation = default)
     {
-        if (volumeSizes is { } kept && DateTimeOffset.UtcNow - kept.At < TimeSpan.FromMinutes(10)) return kept.Sizes; // clock: the age of a cache
         var host = new Uri(options.DockerHost);
         if (host.Scheme is not ("tcp" or "http")) return new Dictionary<string, long>();
+        var kept = volumeSizes;
+        if (kept is not null && time.GetUtcNow() - kept.At < SizesKept) return kept.Sizes;
+        var reading = ReadSizesOnceAsync(host);
+        return kept?.Sizes ?? await reading.WaitAsync(cancellation);
+    }
+
+    /// <summary>
+    /// The read of the sizes under way, or a new one. The lock only guards <see cref="readingSizes"/>, so callers at the same
+    /// time share one <c>system/df</c>; it is never held across an await.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, long>> ReadSizesOnceAsync(Uri host)
+    {
+        lock (sizesLock)
+            return readingSizes is { IsCompleted: false } running ? running : readingSizes = ReadSizesAsync(host, closing.Token);
+    }
+
+    /// <summary>One <c>system/df</c>, shared by its callers and so ended only by <see cref="Dispose"/>; the answer is kept with its time.</summary>
+    async Task<IReadOnlyDictionary<string, long>> ReadSizesAsync(Uri host, CancellationToken cancellation)
+    {
         var json = await CallAsync(() => http.GetStringAsync(new UriBuilder("http", host.Host, host.Port, "/system/df", "?type=volume").Uri, cancellation));
         var sizes = VolumeUsage.Parse(json);
-        volumeSizes = new KeptSizes(DateTimeOffset.UtcNow, sizes); // clock: the age of a cache
+        volumeSizes = new KeptSizes(time.GetUtcNow(), sizes);
         return sizes;
     }
 
@@ -296,6 +320,8 @@ internal sealed class DockerEngine(ManagerOptions options) : IDockerEngine, IDis
     /// <summary>Ends the client.</summary>
     public void Dispose()
     {
+        closing.Cancel();
+        closing.Dispose();
         client.Dispose();
         http.Dispose();
     }

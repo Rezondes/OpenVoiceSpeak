@@ -31,6 +31,12 @@ internal sealed class FakeDockerApi : IAsyncDisposable
     /// <summary>Package M8: the answer to <c>GET /containers/{id}/json</c>, an inspect object.</summary>
     public string InspectJson { get; set; } = "{}";
 
+    /// <summary>The answer to <c>GET /system/df</c>, the volumes with their sizes.</summary>
+    public string SystemDfJson { get; set; } = """{"Volumes":[]}""";
+
+    /// <summary>Holds the answer to <c>GET /system/df</c> until it completes, as Docker takes its time to size the volumes.</summary>
+    public Task SystemDfHeld { get; set; } = Task.CompletedTask;
+
     /// <summary>Every request received, in order.</summary>
     public ConcurrentQueue<DockerApiRequest> Requests { get; } = new();
 
@@ -54,6 +60,7 @@ internal sealed class FakeDockerApi : IAsyncDisposable
             while (await ReadAsync(stream) is { } request)
             {
                 Requests.Enqueue(request);
+                if (request.Path.StartsWith("/system/df", StringComparison.Ordinal)) await SystemDfHeld.WaitAsync(stop.Token);
                 var (status, body) = Answer(request.Method, request.Path);
                 var bytes = Encoding.UTF8.GetBytes(body);
                 var head = $"HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {bytes.Length}\r\n\r\n";
@@ -74,6 +81,7 @@ internal sealed class FakeDockerApi : IAsyncDisposable
         {
             ("GET", "/_ping") => new("200 OK", "OK"),
             ("GET", "/containers/json") => new("200 OK", ContainersJson),
+            ("GET", "/system/df") => new("200 OK", SystemDfJson),
             ("GET", var inspect) when inspect.StartsWith("/containers/", StringComparison.Ordinal) && inspect.EndsWith("/json", StringComparison.Ordinal) => new("200 OK", InspectJson),
             ("POST", "/containers/create") => new("201 Created", """{"Id":"created-1","Warnings":[]}"""),
             ("POST", "/volumes/create") => new("201 Created", """{"Name":"volume"}"""),

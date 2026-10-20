@@ -19,7 +19,11 @@ public sealed class DockerEngineTests
         ]
         """;
 
-    static DockerEngine Engine(FakeDockerApi api) => new(new ManagerOptions("unused") { DockerHost = api.Host });
+    static DockerEngine Engine(FakeDockerApi api, TimeProvider? time = null) => new(new ManagerOptions("unused") { DockerHost = api.Host }, time ?? TimeProvider.System);
+
+    static string Sizes(long bytes) => $$$"""{"Volumes":[{"Name":"ovs-s1-data","UsageData":{"Size":{{{bytes}}},"RefCount":1}}]}""";
+
+    static int SizeReads(FakeDockerApi api) => api.Requests.Count(request => request.Path.StartsWith("/system/df", StringComparison.Ordinal));
 
     /// <summary>AC2: Docker filters by the label, and the adapter checks it again.</summary>
     [Fact]
@@ -86,6 +90,42 @@ public sealed class DockerEngineTests
 
         api.InspectJson = """{ "Id": "x", "State": { "Status": "running", "StartedAt": "0001-01-01T00:00:00Z" }, "Config": { "Labels": {} } }""";
         await Assert.ThrowsAsync<ForeignContainerException>(() => engine.InspectAsync("x"));
+    }
+
+    /// <summary>Package M25: once the sizes are 10 minutes old, the old ones are given out at once while Docker sizes the volumes again.</summary>
+    [Fact]
+    public async Task VolumeSizes_Old_GivenWhileReadAgain()
+    {
+        var time = new ManualTimeProvider();
+        await using var api = new FakeDockerApi { SystemDfJson = Sizes(1) };
+        using var engine = Engine(api, time);
+        Assert.Equal(1, (await engine.VolumeSizesAsync())["ovs-s1-data"]);
+
+        var docker = new TaskCompletionSource();
+        (api.SystemDfHeld, api.SystemDfJson) = (docker.Task, Sizes(2));
+        time.Advance(TimeSpan.FromMinutes(10));
+        Assert.Equal(1, (await HangGuard.BoundAsync(engine.VolumeSizesAsync()))["ovs-s1-data"]);
+
+        docker.SetResult();
+        await AsyncWait.UntilAsync(async () => (await engine.VolumeSizesAsync())["ovs-s1-data"] == 2, HangGuard.Limit);
+        Assert.Equal(2, SizeReads(api));
+    }
+
+    /// <summary>Package M25: callers while Docker still sizes the volumes share one read.</summary>
+    [Fact]
+    public async Task VolumeSizes_CalledTogether_OneRead()
+    {
+        await using var api = new FakeDockerApi { SystemDfJson = Sizes(5) };
+        var docker = new TaskCompletionSource();
+        api.SystemDfHeld = docker.Task;
+        using var engine = Engine(api);
+
+        var first = engine.VolumeSizesAsync();
+        var second = engine.VolumeSizesAsync();
+        docker.SetResult();
+
+        Assert.Equal([5L, 5L], (await HangGuard.BoundAsync(Task.WhenAll(first, second))).Select(sizes => sizes["ovs-s1-data"]));
+        Assert.Equal(1, SizeReads(api));
     }
 
     /// <summary>AC4: without the proxy the health check says so with 503, the overview shows it, and the rest works.</summary>

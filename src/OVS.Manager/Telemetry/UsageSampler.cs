@@ -6,7 +6,8 @@ namespace OVS.Manager.Telemetry;
 
 /// <summary>
 /// Package M25 (AC1): once a minute, Docker's CPU and memory of every running managed container go into the telemetry store
-/// as the gauges <see cref="CpuMetric"/> and <see cref="MemoryMetric"/>, so the rollup of M21 keeps them for days.
+/// as the gauges <see cref="CpuMetric"/> and <see cref="MemoryMetric"/>, so the rollup of M21 keeps them for days. It also reads
+/// Docker's volume sizes at the start and then every minute, so the resources page never waits for <c>system/df</c>.
 /// </summary>
 internal sealed partial class UsageSampler(IServiceScopeFactory scopes, IDockerEngine docker, TimeProvider time, ILogger<UsageSampler> logger) : BackgroundService
 {
@@ -41,14 +42,38 @@ internal sealed partial class UsageSampler(IServiceScopeFactory scopes, IDockerE
         await store.SaveChangesAsync(cancellation);
     }
 
+    /// <summary>
+    /// Package M25: reads the volume sizes; Docker takes its time for them, the adapter keeps them and, once they are old, gives
+    /// them out while it reads them again, so only this first call waits.
+    /// </summary>
+    public async Task ReadVolumeSizesAsync(CancellationToken cancellation = default)
+    {
+        try
+        {
+            await docker.VolumeSizesAsync(cancellation);
+        }
+        catch (Exception exception) when (exception is DockerCallException or HttpRequestException)
+        {
+            LogSizesFailed(logger, exception); // the next minute tries again
+        }
+    }
+
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await Task.Yield(); // the first sample must not hold up the host's start
+        await ReadVolumeSizesAsync(stoppingToken);
         using var minutely = new PeriodicTimer(TimeSpan.FromMinutes(1), time);
-        while (await minutely.WaitForNextTickAsync(stoppingToken)) await SampleAsync(stoppingToken);
+        while (await minutely.WaitForNextTickAsync(stoppingToken))
+        {
+            await SampleAsync(stoppingToken);
+            await ReadVolumeSizesAsync(stoppingToken);
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Sampling the containers' CPU and memory failed")]
     static partial void LogFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Reading the volume sizes from Docker failed")]
+    static partial void LogSizesFailed(ILogger logger, Exception exception);
 }

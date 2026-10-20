@@ -142,7 +142,7 @@ Jeder Server schickt per OTLP an `ovs-manager:4318` (nur aus den Docker-Netzen, 
 
 ## Ressourcen und Limits
 
-Unter "Ressourcen" eines Servers stehen CPU und RAM jetzt, die Spitzen der letzten 24 Stunden und die Grösse des Volumes. Der Admin setzt CPU-Kerne (0,1 bis 64) und RAM (64 MB bis 256 GB) beim Anlegen oder später; nach einer Rückfrage wird der Container mit den neuen Limits neu angelegt, Updates behalten sie. Die Übersicht zeigt den freien Platz des Datenträgers von `/data` und warnt unter 10 %.
+Unter "Ressourcen" eines Servers stehen CPU und RAM jetzt, die Spitzen der letzten 24 Stunden und die Grösse des Volumes. Docker braucht für die Grössen eine Weile; das Verwaltungstool liest sie deshalb beim Start und danach im Hintergrund, sie sind bis zu 10 Minuten alt. Der Admin setzt CPU-Kerne (0,1 bis 64) und RAM (64 MB bis 256 GB) beim Anlegen oder später; nach einer Rückfrage wird der Container mit den neuen Limits neu angelegt, Updates behalten sie. Die Übersicht zeigt den freien Platz des Datenträgers von `/data` und warnt unter 10 %.
 
 ## E-Mail, Passwort vergessen und Benachrichtigungen
 
