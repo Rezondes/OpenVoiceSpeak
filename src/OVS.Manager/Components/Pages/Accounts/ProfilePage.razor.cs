@@ -68,12 +68,7 @@ sealed partial class ProfilePage
 
     async Task ChangePasswordAsync()
     {
-        if (PasswordModel!.NewPassword != PasswordModel.ConfirmPassword)
-        {
-            Error = Strings.Account_PasswordMismatch;
-            return;
-        }
-        var result = await Accounts.ChangeOwnPasswordAsync(user, PasswordModel.OldPassword, PasswordModel.NewPassword);
+        var result = await Accounts.ChangeOwnPasswordAsync(user, PasswordModel!.OldPassword, PasswordModel.NewPassword);
         if (!result.Succeeded)
         {
             Error = AccountErrors.Describe(result);
@@ -120,7 +115,6 @@ sealed partial class ProfilePage
     {
         public string OldPassword { get; set; } = "";
         public string NewPassword { get; set; } = "";
-        public string ConfirmPassword { get; set; } = "";
     }
 
     /// <summary>The field of the e-mail form; null until the stored address is shown.</summary>

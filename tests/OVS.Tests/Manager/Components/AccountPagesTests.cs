@@ -24,7 +24,20 @@ public sealed class AccountPagesTests
 
     static Task<HttpResponseMessage> ChangePasswordAsync(HttpClient client, string old, string password) =>
         ManagerForm.SubmitAsync(client, "/profile", "password",
-            ("PasswordModel.OldPassword", old), ("PasswordModel.NewPassword", password), ("PasswordModel.ConfirmPassword", password));
+            ("PasswordModel.OldPassword", old), ("PasswordModel.NewPassword", password));
+
+    /// <summary>Every password field has its show button; a new password is typed once, with no second field to repeat it.</summary>
+    [Fact]
+    public async Task PasswordFields_Rendered_ShowButtonNoRepeat()
+    {
+        await using var manager = await WithManagerAsync();
+        using var client = manager.CreateClient();
+        using var login = await LoginTests.LoginAsync(client, "anna", Start);
+
+        var profile = await login.Content.ReadAsStringAsync();
+        Assert.Equal(2, profile.Split("class=\"password-show\"").Length - 1); // the old and the new password
+        Assert.DoesNotContain("ConfirmPassword", profile, StringComparison.Ordinal);
+    }
 
     /// <summary>AC1 and AC4: the first login leads to the profile until the start password is changed, which needs the old one.</summary>
     [Fact]

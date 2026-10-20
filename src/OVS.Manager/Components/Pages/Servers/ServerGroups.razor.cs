@@ -46,7 +46,7 @@ sealed partial class ServerGroups
 
     string FormTitle => Editing?.Name ?? Strings.Groups_Create;
 
-    string SaveText => Editing is null ? Strings.Groups_Create : Strings.Settings_Save;
+    string SaveText => Editing is null ? Strings.Groups_Create : Strings.Groups_Save;
 
     /// <summary>Follows the server.</summary>
     protected override void OnInitialized() => Connections.Changed += Redraw;

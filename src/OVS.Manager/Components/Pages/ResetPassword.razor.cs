@@ -30,12 +30,7 @@ sealed partial class ResetPassword
 
     async Task ResetAsync()
     {
-        if (Model!.NewPassword != Model.ConfirmPassword)
-        {
-            Error = Strings.Account_PasswordMismatch;
-            return;
-        }
-        var result = await Reset.ResetAsync(Model.UserId, Model.Token, Model.NewPassword);
+        var result = await Reset.ResetAsync(Model!.UserId, Model.Token, Model.NewPassword);
         Done = result.Succeeded;
         Error = result.Succeeded ? null : result.Errors.Any(error => error.Code == "InvalidToken") ? Strings.Reset_InvalidLink : AccountErrors.Describe(result);
     }
@@ -46,6 +41,5 @@ sealed partial class ResetPassword
         public string UserId { get; set; } = "";
         public string Token { get; set; } = "";
         public string NewPassword { get; set; } = "";
-        public string ConfirmPassword { get; set; } = "";
     }
 }

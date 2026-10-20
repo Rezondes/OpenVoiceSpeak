@@ -81,6 +81,9 @@ sealed partial class ServerBackupPage
 
     Func<Task> Delete(BackupInfo backup) => async () => await AfterAsync(await Commands.DeleteAsync(Id, backup.FileName, await ActorAsync()));
 
+    /// <summary>The radio button of <paramref name="interval"/> sets it in the schedule.</summary>
+    Action<ChangeEventArgs> Pick(BackupInterval interval) => _ => Schedule.Interval = interval;
+
     async Task SaveScheduleAsync()
     {
         Schedule.ServerId = Id;

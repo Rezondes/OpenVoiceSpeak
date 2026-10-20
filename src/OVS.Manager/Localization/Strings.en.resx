@@ -109,6 +109,7 @@
   <data name="Backups_Restore" xml:space="preserve"><value>Restore</value></data>
   <data name="Backups_RestoreConfirm" xml:space="preserve"><value>Yes, restore</value></data>
   <data name="Backups_RestoreWarning" xml:space="preserve"><value>Everyone is disconnected, and the server takes the backup's state.</value></data>
+  <data name="Backups_SaveSchedule" xml:space="preserve"><value>Save schedule</value></data>
   <data name="Backups_Schedule" xml:space="preserve"><value>Schedule</value></data>
   <data name="Backups_Scheduled" xml:space="preserve"><value>scheduled</value></data>
   <data name="Backups_Size" xml:space="preserve"><value>Size</value></data>
@@ -131,6 +132,7 @@
   <data name="Clone_Failed" xml:space="preserve"><value>{0} was created but not filled: {1}</value></data>
   <data name="Clone_From" xml:space="preserve"><value>Copy from server</value></data>
   <data name="Clone_None" xml:space="preserve"><value>none</value></data>
+  <data name="Clone_Title" xml:space="preserve"><value>Copy from a server (optional)</value></data>
   <data name="Clone_Users" xml:space="preserve"><value>Copy the users</value></data>
   <data name="Dashboard_Bandwidth" xml:space="preserve"><value>Bandwidth in / out</value></data>
   <data name="Dashboard_Ports" xml:space="preserve"><value>Ports in use</value></data>
@@ -188,6 +190,7 @@
   <data name="Groups_Fixed" xml:space="preserve"><value>fixed</value></data>
   <data name="Groups_Name" xml:space="preserve"><value>Name</value></data>
   <data name="Groups_RightsCount" xml:space="preserve"><value>{0} rights</value></data>
+  <data name="Groups_Save" xml:space="preserve"><value>Save group</value></data>
   <data name="Groups_Title" xml:space="preserve"><value>Groups</value></data>
   <data name="Groups_Up" xml:space="preserve"><value>up</value></data>
   <data name="History_Bandwidth" xml:space="preserve"><value>Bandwidth</value></data>
@@ -311,6 +314,7 @@ If you did not ask for it, ignore this mail.</value></data>
   <data name="NotifySettings_InvalidThreshold" xml:space="preserve"><value>Percent above 0 up to 100, minutes 1 to 60.</value></data>
   <data name="NotifySettings_InvalidUrl" xml:space="preserve"><value>A webhook URL starts with http:// or https://.</value></data>
   <data name="NotifySettings_LastError" xml:space="preserve"><value>Last error</value></data>
+  <data name="NotifySettings_SaveThresholds" xml:space="preserve"><value>Save thresholds</value></data>
   <data name="NotifySettings_Thresholds" xml:space="preserve"><value>Thresholds per server</value></data>
   <data name="NotifySettings_Title" xml:space="preserve"><value>Notifications</value></data>
   <data name="NotifySettings_Webhook" xml:space="preserve"><value>Webhook</value></data>
@@ -326,6 +330,8 @@ If you did not ask for it, ignore this mail.</value></data>
   <data name="Notify_RestartLoop" xml:space="preserve"><value>{0} restarts again and again.</value></data>
   <data name="Notify_UpdateAvailable" xml:space="preserve"><value>An update is available for {0}.</value></data>
   <data name="Notify_UpdateFailed" xml:space="preserve"><value>The update of {0} failed.</value></data>
+  <data name="Password_Hide" xml:space="preserve"><value>Hide</value></data>
+  <data name="Password_Show" xml:space="preserve"><value>Show</value></data>
   <data name="Perm_BackupsManage" xml:space="preserve"><value>Manage backups</value></data>
   <data name="Perm_BansView" xml:space="preserve"><value>View bans</value></data>
   <data name="Perm_ChannelCreate" xml:space="preserve"><value>Create channels</value></data>
@@ -353,6 +359,7 @@ If you did not ask for it, ignore this mail.</value></data>
   <data name="Perm_UserMove" xml:space="preserve"><value>Move users</value></data>
   <data name="Perm_UserMute" xml:space="preserve"><value>Mute users</value></data>
   <data name="Perm_UsersView" xml:space="preserve"><value>View user overview</value></data>
+  <data name="Profile_ChangePassword" xml:space="preserve"><value>Change password</value></data>
   <data name="Profile_EmailSaved" xml:space="preserve"><value>The e-mail address was saved.</value></data>
   <data name="Profile_EmailTitle" xml:space="preserve"><value>E-mail</value></data>
   <data name="Profile_EndOthers" xml:space="preserve"><value>Log out everywhere else</value></data>
@@ -362,6 +369,8 @@ If you did not ask for it, ignore this mail.</value></data>
   <data name="Profile_OthersEnded" xml:space="preserve"><value>All other sessions were ended.</value></data>
   <data name="Profile_PasswordChanged" xml:space="preserve"><value>The password was changed.</value></data>
   <data name="Profile_PasswordTitle" xml:space="preserve"><value>Change password</value></data>
+  <data name="Profile_SaveEmail" xml:space="preserve"><value>Save email address</value></data>
+  <data name="Profile_SaveLanguage" xml:space="preserve"><value>Save language</value></data>
   <data name="Profile_SessionCurrent" xml:space="preserve"><value>this session</value></data>
   <data name="Profile_SessionSince" xml:space="preserve"><value>since {0}</value></data>
   <data name="Profile_SessionsTitle" xml:space="preserve"><value>Signed-in sessions</value></data>
@@ -384,7 +393,6 @@ If you did not ask for it, ignore this mail.</value></data>
   <data name="Resources_Recreate" xml:space="preserve"><value>The container is made again with the new limits; the server is away for a moment.</value></data>
   <data name="Resources_Title" xml:space="preserve"><value>Resources</value></data>
   <data name="Resources_Volume" xml:space="preserve"><value>Data volume</value></data>
-  <data name="Save" xml:space="preserve"><value>Save</value></data>
   <data name="Servers_AllPortsTaken" xml:space="preserve"><value>All 100 ports are taken.</value></data>
   <data name="Servers_Back" xml:space="preserve"><value>← Back to {0}</value></data>
   <data name="Servers_ColumnErrors" xml:space="preserve"><value>Errors (24 h)</value></data>
@@ -404,6 +412,7 @@ If you did not ask for it, ignore this mail.</value></data>
   <data name="Servers_InvalidName" xml:space="preserve"><value>The name is empty, too long or has forbidden characters.</value></data>
   <data name="Servers_InvalidTimeZone" xml:space="preserve"><value>This time zone is unknown (example: Europe/Berlin).</value></data>
   <data name="Servers_MaxUsers" xml:space="preserve"><value>Maximum users</value></data>
+  <data name="Servers_MoreSettings" xml:space="preserve"><value>Version, time zone, port and limits (optional)</value></data>
   <data name="Servers_Name" xml:space="preserve"><value>Name</value></data>
   <data name="Servers_NameMismatch" xml:space="preserve"><value>The name does not match.</value></data>
   <data name="Servers_NotFound" xml:space="preserve"><value>This server no longer exists.</value></data>
@@ -426,7 +435,7 @@ If you did not ask for it, ignore this mail.</value></data>
   <data name="Settings_NewPassword" xml:space="preserve"><value>New server password (empty keeps it)</value></data>
   <data name="Settings_RemoveIcon" xml:space="preserve"><value>Remove the icon</value></data>
   <data name="Settings_RemovePassword" xml:space="preserve"><value>Remove the server password</value></data>
-  <data name="Settings_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Settings_Save" xml:space="preserve"><value>Save settings</value></data>
   <data name="Settings_Saved" xml:space="preserve"><value>Saved.</value></data>
   <data name="Settings_Title" xml:space="preserve"><value>Settings</value></data>
   <data name="Settings_WelcomeText" xml:space="preserve"><value>Welcome text</value></data>
@@ -490,6 +499,7 @@ If you did not ask for it, ignore this mail.</value></data>
   <data name="Update_None" xml:space="preserve"><value>No update available.</value></data>
   <data name="Update_RolledBack" xml:space="preserve"><value>Update failed, old version restored: {0}</value></data>
   <data name="Update_RolledBackWithoutBackup" xml:space="preserve"><value>Update failed, old version restored but not the backup: {0}</value></data>
+  <data name="Update_SaveWindow" xml:space="preserve"><value>Save time window</value></data>
   <data name="Update_Title" xml:space="preserve"><value>Update</value></data>
   <data name="Update_To" xml:space="preserve"><value>Update to {0}</value></data>
   <data name="Users_Act" xml:space="preserve"><value>Act …</value></data>

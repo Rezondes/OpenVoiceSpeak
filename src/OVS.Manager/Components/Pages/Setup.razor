@@ -4,8 +4,7 @@
 <h1>@Strings.Setup_Title</h1>
 <EditForm Model="Model" FormName="setup" OnValidSubmit="CreateAsync" class="account-form">
     <label>@Strings.Field_UserName <InputText @bind-Value="Model!.UserName" autocomplete="username" /></label>
-    <label>@Strings.Field_Password <InputText type="password" @bind-Value="Model!.Password" autocomplete="new-password" /></label>
-    <label>@Strings.Field_ConfirmPassword <InputText type="password" @bind-Value="Model!.ConfirmPassword" autocomplete="new-password" /></label>
+    <label>@Strings.Field_Password <span class="password-field"><InputText type="password" @bind-Value="Model!.Password" autocomplete="new-password" /><PasswordShow /></span></label>
     @if (Error is not null)
     {
         <p class="form-error" role="alert">@Error</p>
@@ -22,7 +21,7 @@
     <form method="post" action="/setup/restore" enctype="multipart/form-data" class="account-form">
         <AntiforgeryToken />
         <label>@Strings.ManagerRestore_File <input type="file" name="file" accept=".ovsmb" /></label>
-        <label>@Strings.Field_Password <input type="password" name="password" autocomplete="off" /></label>
+        <label>@Strings.Field_Password <span class="password-field"><input type="password" name="password" autocomplete="off" /><PasswordShow /></span></label>
         <button type="submit">@Strings.ManagerRestore_Submit</button>
     </form>
 </section>

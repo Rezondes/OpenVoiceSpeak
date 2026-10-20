@@ -54,13 +54,12 @@
 </table>
 <section class="account-form">
     <h2>@Strings.Backups_Schedule</h2>
-    <label>@Strings.Backups_Interval
-        <select @bind="Schedule.Interval">
-            <option value="@BackupInterval.Off">@Strings.Backups_Off</option>
-            <option value="@BackupInterval.Daily">@Strings.Backups_Daily</option>
-            <option value="@BackupInterval.Weekly">@Strings.Backups_Weekly</option>
-        </select>
-    </label>
+    <fieldset class="choice-group">
+        <legend>@Strings.Backups_Interval</legend>
+        <label><input type="radio" name="interval" checked="@(Schedule.Interval == BackupInterval.Off)" @onchange="Pick(BackupInterval.Off)" /> @Strings.Backups_Off</label>
+        <label><input type="radio" name="interval" checked="@(Schedule.Interval == BackupInterval.Daily)" @onchange="Pick(BackupInterval.Daily)" /> @Strings.Backups_Daily</label>
+        <label><input type="radio" name="interval" checked="@(Schedule.Interval == BackupInterval.Weekly)" @onchange="Pick(BackupInterval.Weekly)" /> @Strings.Backups_Weekly</label>
+    </fieldset>
     <label>@Strings.Backups_Day
         <select @bind="Schedule.Day">
             @foreach (var day in Days)
@@ -71,5 +70,5 @@
     </label>
     <label>@Strings.Settings_AutoRestartTime <input type="time" @bind="Schedule.Time" @bind:format="HH:mm" /></label>
     <label>@Strings.Backups_Keep <input type="number" @bind="Schedule.Keep" /></label>
-    <button type="button" data-save-schedule @onclick="SaveScheduleAsync">@Strings.Settings_Save</button>
+    <button type="button" data-save-schedule @onclick="SaveScheduleAsync">@Strings.Backups_SaveSchedule</button>
 </section>

@@ -54,6 +54,12 @@ sealed partial class CreateServer
     /// <summary>Why the server was not made, null before a try.</summary>
     string? Error { get; set; }
 
+    /// <summary>Version, time zone, port and limits are shown unfolded once one is filled in or a creation failed, so its message is not hidden.</summary>
+    bool ShowsSettings => Error is not null || Model is { Version: not null } or { TimeZone: not null } or { Port: not null } or { CpuCores: not null } or { MemoryMb: not null };
+
+    /// <summary>The copy is shown unfolded once a source is picked.</summary>
+    bool ShowsCopy => !string.IsNullOrEmpty(Model?.SourceId);
+
     /// <summary>Finds the free port.</summary>
     protected override async Task OnInitializedAsync()
     {

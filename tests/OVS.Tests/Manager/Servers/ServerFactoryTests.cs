@@ -119,6 +119,22 @@ public sealed class ServerFactoryTests
         Assert.Equal(HttpStatusCode.Forbidden, page.StatusCode);
     }
 
+    /// <summary>The form asks for name, user limit and password; version, time zone, port, limits and the copy wait folded until wanted or a creation failed.</summary>
+    [Fact]
+    public async Task CreateForm_Opened_OptionalPartsFoldedUntilFailed()
+    {
+        await using var manager = WithAdmin();
+        using var client = manager.CreateClient();
+        (await LoginTests.LoginAsync(client, "chef", FirstAdminTests.Password)).Dispose();
+
+        var form = await client.GetStringAsync(new Uri("/servers/new", UriKind.Relative));
+        Assert.Contains("<details class=\"form-more\" data-settings>", form, StringComparison.Ordinal);
+        Assert.Contains("<details class=\"form-more\" data-copy>", form, StringComparison.Ordinal);
+
+        using var failed = await ManagerForm.SubmitAsync(client, "/servers/new", "create-server", ("Model.Name", "Raid"), ("Model.MaxUsers", "20"), ("Model.Port", "6000"));
+        Assert.Contains("data-settings open", await failed.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
     /// <summary>AC4: the creation writes its audit line with the server.</summary>
     [Fact]
     public async Task Create_Admin_AuditLine()

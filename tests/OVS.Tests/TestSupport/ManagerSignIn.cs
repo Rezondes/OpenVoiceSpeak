@@ -28,7 +28,7 @@ internal static class ManagerSignIn
         var client = manager.CreateClient();
         (await LoginTests.LoginAsync(client, userName, StartPassword)).Dispose();
         (await ManagerForm.SubmitAsync(client, "/profile", "password", ("PasswordModel.OldPassword", StartPassword),
-            ("PasswordModel.NewPassword", Password), ("PasswordModel.ConfirmPassword", Password))).Dispose();
+            ("PasswordModel.NewPassword", Password))).Dispose();
         return client;
     }
 }

@@ -17,10 +17,9 @@
 <section>
     <h2>@Strings.Profile_PasswordTitle</h2>
     <EditForm Model="PasswordModel" FormName="password" OnValidSubmit="ChangePasswordAsync" class="account-form">
-        <label>@Strings.Field_OldPassword <InputText type="password" @bind-Value="PasswordModel!.OldPassword" autocomplete="current-password" /></label>
-        <label>@Strings.Field_NewPassword <InputText type="password" @bind-Value="PasswordModel!.NewPassword" autocomplete="new-password" /></label>
-        <label>@Strings.Field_ConfirmPassword <InputText type="password" @bind-Value="PasswordModel!.ConfirmPassword" autocomplete="new-password" /></label>
-        <button type="submit">@Strings.Save</button>
+        <label>@Strings.Field_OldPassword <span class="password-field"><InputText type="password" @bind-Value="PasswordModel!.OldPassword" autocomplete="current-password" /><PasswordShow /></span></label>
+        <label>@Strings.Field_NewPassword <span class="password-field"><InputText type="password" @bind-Value="PasswordModel!.NewPassword" autocomplete="new-password" /><PasswordShow /></span></label>
+        <button type="submit">@Strings.Profile_ChangePassword</button>
     </EditForm>
 </section>
 
@@ -30,18 +29,20 @@
     <h2>@Strings.Profile_EmailTitle</h2>
     <EditForm Model="EmailModel" FormName="email" OnValidSubmit="SaveEmailAsync" class="account-form">
         <label>@Strings.Field_Email <InputText type="email" @bind-Value="EmailModel!.Email" autocomplete="email" /></label>
-        <button type="submit">@Strings.Save</button>
+        <button type="submit">@Strings.Profile_SaveEmail</button>
     </EditForm>
 </section>
 
 <section>
     <h2>@Strings.Language_Label</h2>
     <EditForm Model="LanguageModel" FormName="language" OnValidSubmit="SaveLanguageAsync" class="account-form">
-        <InputSelect @bind-Value="LanguageModel!.Language">
-            <option value="de">@Strings.Language_German</option>
-            <option value="en">@Strings.Language_English</option>
-        </InputSelect>
-        <button type="submit">@Strings.Save</button>
+        <InputRadioGroup @bind-Value="LanguageModel!.Language">
+            <div class="choice-group" role="radiogroup" aria-label="@Strings.Language_Label">
+                <label><InputRadio Value="@("de")" /> @Strings.Language_German</label>
+                <label><InputRadio Value="@("en")" /> @Strings.Language_English</label>
+            </div>
+        </InputRadioGroup>
+        <button type="submit">@Strings.Profile_SaveLanguage</button>
     </EditForm>
 </section>
 

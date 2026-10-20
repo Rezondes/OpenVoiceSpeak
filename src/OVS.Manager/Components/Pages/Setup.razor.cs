@@ -39,11 +39,6 @@ sealed partial class Setup
 
     async Task CreateAsync()
     {
-        if (Model!.Password != Model!.ConfirmPassword)
-        {
-            Error = Strings.Account_PasswordMismatch;
-            return;
-        }
         var result = await FirstAdmin.CreateAsync(Model!.UserName.Trim(), Model!.Password);
         if (!result.Succeeded)
         {
@@ -60,6 +55,5 @@ sealed partial class Setup
     {
         public string UserName { get; set; } = "";
         public string Password { get; set; } = "";
-        public string ConfirmPassword { get; set; } = "";
     }
 }

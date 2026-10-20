@@ -40,6 +40,7 @@ Tokens in `:root`, again for dark under `prefers-color-scheme` and `[data-theme=
 ## Components
 
 - Button: primary (submit) = `--accent` fill, white label; secondary = surface with `--border-strong`; destructive (`.danger`) = `--danger` text and border, `--danger-soft` on hover. Pressed: 1px down. Disabled: 50 % opacity.
+- Form: labels above fields, at most 7 fields open at once; the optional rest folds into a `details.form-more` whose summary names it and ends in "(freiwillig)", unfolded once it holds a value or the form failed. A password field sits in `.password-field` with the `PasswordShow` button ("Anzeigen") beside it; a new password is typed once, with no field to repeat it (except the backup password, which nobody types again until a restore). Two or three choices are radio buttons in a `.choice-group`, not a dropdown. Every submit button names its action ("Passwort ändern", "Zeitplan speichern"), never a bare "Speichern".
 - Card: every page section; surface, 1px border, `--radius`, padding 20px, 24px apart.
 - Table (`table.list`): surface, 1px border, uppercase 12px muted head on `--surface-2`, row hover on `--surface-2`.
 - Tabs (`.server-nav`) and side nav: muted text; hover and current on a `--surface-2` plane (tabs) or `--accent-soft` with `--accent-text` (side nav).

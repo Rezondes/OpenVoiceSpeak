@@ -12,24 +12,30 @@
     <p class="form-error" role="alert">@Error</p>
 }
 <EditForm Model="Model" FormName="create-server" OnValidSubmit="CreateAsync" class="account-form">
-    <label>@Strings.Servers_Name <InputText @bind-Value="Model!.Name" /></label>
+    <label>@Strings.Servers_Name <InputText @bind-Value="Model!.Name" autocomplete="off" /></label>
     <label>@Strings.Servers_MaxUsers <InputNumber @bind-Value="Model!.MaxUsers" /></label>
-    <label>@Strings.Servers_Password <InputText type="password" @bind-Value="Model!.Password" autocomplete="new-password" /></label>
-    <label>@Strings.Servers_Version <InputText @bind-Value="Model!.Version" placeholder="@DefaultVersion" /></label>
-    <label>@Strings.Servers_TimeZone <InputText @bind-Value="Model!.TimeZone" placeholder="@DefaultTimeZone" /></label>
-    <label>@Strings.Servers_Port <InputNumber @bind-Value="Model!.Port" placeholder="@DefaultPort" /></label>
-    <label>@Strings.Resources_CpuCores <InputNumber @bind-Value="Model!.CpuCores" data-cpu /></label>
-    <label>@Strings.Resources_MemoryMb <InputNumber @bind-Value="Model!.MemoryMb" data-memory /></label>
-    <label>@Strings.Clone_From
-        <InputSelect @bind-Value="Model!.SourceId" data-source>
-            <option value="">@Strings.Clone_None</option>
-            @foreach (var source in Sources)
-            {
-                <option value="@source.Id">@source.Name</option>
-            }
-        </InputSelect>
-    </label>
-    <label><InputCheckbox @bind-Value="Model!.CopyUsers" data-copy-users /> @Strings.Clone_Users</label>
-    <label><InputCheckbox @bind-Value="Model!.CopyBans" data-copy-bans /> @Strings.Clone_Bans</label>
+    <label>@Strings.Servers_Password <span class="password-field"><InputText type="password" @bind-Value="Model!.Password" autocomplete="new-password" /><PasswordShow /></span></label>
+    <details class="form-more" data-settings open="@ShowsSettings">
+        <summary>@Strings.Servers_MoreSettings</summary>
+        <label>@Strings.Servers_Version <InputText @bind-Value="Model!.Version" placeholder="@DefaultVersion" /></label>
+        <label>@Strings.Servers_TimeZone <InputText @bind-Value="Model!.TimeZone" placeholder="@DefaultTimeZone" /></label>
+        <label>@Strings.Servers_Port <InputNumber @bind-Value="Model!.Port" placeholder="@DefaultPort" /></label>
+        <label>@Strings.Resources_CpuCores <InputNumber @bind-Value="Model!.CpuCores" data-cpu /></label>
+        <label>@Strings.Resources_MemoryMb <InputNumber @bind-Value="Model!.MemoryMb" data-memory /></label>
+    </details>
+    <details class="form-more" data-copy open="@ShowsCopy">
+        <summary>@Strings.Clone_Title</summary>
+        <label>@Strings.Clone_From
+            <InputSelect @bind-Value="Model!.SourceId" data-source>
+                <option value="">@Strings.Clone_None</option>
+                @foreach (var source in Sources)
+                {
+                    <option value="@source.Id">@source.Name</option>
+                }
+            </InputSelect>
+        </label>
+        <label><InputCheckbox @bind-Value="Model!.CopyUsers" data-copy-users /> @Strings.Clone_Users</label>
+        <label><InputCheckbox @bind-Value="Model!.CopyBans" data-copy-bans /> @Strings.Clone_Bans</label>
+    </details>
     <button type="submit" disabled="@NoFreePort">@Strings.Servers_Create</button>
 </EditForm>

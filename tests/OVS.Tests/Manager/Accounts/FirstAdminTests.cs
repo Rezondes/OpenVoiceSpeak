@@ -13,7 +13,7 @@ public sealed class FirstAdminTests
 
     /// <summary>Creates the admin "chef" through /setup; the client is logged in afterwards.</summary>
     internal static Task<HttpResponseMessage> SetupAsync(HttpClient client, string password = Password) =>
-        ManagerForm.SubmitAsync(client, "/setup", "setup", ("Model.UserName", "chef"), ("Model.Password", password), ("Model.ConfirmPassword", password));
+        ManagerForm.SubmitAsync(client, "/setup", "setup", ("Model.UserName", "chef"), ("Model.Password", password));
 
     [Fact]
     public async Task Setup_NoAccount_RedirectedAndAdminCreated()

@@ -22,7 +22,7 @@ else
     <EditForm Model="Input" OnValidSubmit="SaveAsync" class="account-form" @oninput="MarkDirty">
         <label>@Strings.Servers_Name <InputText @bind-Value="Input.Name" /></label>
         <label>@Strings.Settings_WelcomeText <InputTextArea @bind-Value="Input.WelcomeText" /></label>
-        <label>@Strings.Settings_NewPassword <InputText type="password" @bind-Value="Input.NewPassword" autocomplete="new-password" /></label>
+        <label>@Strings.Settings_NewPassword <span class="password-field"><InputText type="password" @bind-Value="Input.NewPassword" autocomplete="new-password" /><PasswordShow /></span></label>
         <label><InputCheckbox @bind-Value="Input.RemovePassword" /> @Strings.Settings_RemovePassword</label>
         <label>@Strings.Servers_MaxUsers <InputNumber @bind-Value="Input.MaxUsers" /></label>
         <label>@Strings.Settings_LogDays <InputNumber @bind-Value="Input.LogDays" /></label>

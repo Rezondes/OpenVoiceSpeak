@@ -17,7 +17,7 @@
         <button type="submit">@Strings.Account_Rename</button>
     </EditForm>
     <EditForm Model="ResetModel" FormName="reset" OnValidSubmit="ResetAsync" class="account-form">
-        <label>@Strings.Accounts_StartPassword <InputText type="password" @bind-Value="ResetModel!.Password" autocomplete="new-password" /></label>
+        <label>@Strings.Accounts_StartPassword <span class="password-field"><InputText type="password" @bind-Value="ResetModel!.Password" autocomplete="new-password" /><PasswordShow /></span></label>
         <button type="submit">@Strings.Account_ResetPassword</button>
     </EditForm>
     <form method="post" @onsubmit="ToggleLockAsync" @formname="lock">

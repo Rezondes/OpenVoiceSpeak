@@ -34,7 +34,7 @@
 <h2>@Strings.Accounts_Create</h2>
 <EditForm Model="NewModel" FormName="create" OnValidSubmit="CreateAsync" class="account-form">
     <label>@Strings.Field_UserName <InputText @bind-Value="NewModel!.UserName" /></label>
-    <label>@Strings.Accounts_StartPassword <InputText type="password" @bind-Value="NewModel!.Password" autocomplete="new-password" /></label>
+    <label>@Strings.Accounts_StartPassword <span class="password-field"><InputText type="password" @bind-Value="NewModel!.Password" autocomplete="new-password" /><PasswordShow /></span></label>
     <label>@Strings.Field_Email <InputText type="email" @bind-Value="NewModel!.Email" /></label>
     <button type="submit">@Strings.Accounts_Create</button>
 </EditForm>

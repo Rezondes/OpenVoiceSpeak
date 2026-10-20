@@ -35,7 +35,7 @@ public sealed partial class PasswordResetTests
     static async Task<string> ResetAsync(HttpClient client, string link, string password)
     {
         var path = new Uri(link).PathAndQuery;
-        using var response = await ManagerForm.SubmitAsync(client, path, "reset", ("Model.NewPassword", password), ("Model.ConfirmPassword", password));
+        using var response = await ManagerForm.SubmitAsync(client, path, "reset", ("Model.NewPassword", password));
         return await response.Content.ReadAsStringAsync();
     }
 
