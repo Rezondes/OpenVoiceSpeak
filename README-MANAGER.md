@@ -226,6 +226,8 @@ Mit dem fertigen Image aus der Registry (statt `build` ein `image: ghcr.io/rezon
 docker compose pull ovs-manager && docker compose up -d ovs-manager
 ```
 
+Für die Entwicklung unter Windows baut `rebuild-manager.ps1` alles aus dem Checkout neu: das Server-Image `openvoicespeak/server:local` (nur bauen, die verwalteten Server laufen davon), das Verwaltungstool samt Socket-Proxy (fehlt `deploy/manager/.env`, legt es sie für Docker Desktop an) und den Client. Mit `-SkipServerImage`, `-SkipManager`, `-SkipClient` und `-NoStart` lässt sich ein Teil auslassen.
+
 Die Datenbank wird beim Start selbst migriert; Daten und Schlüssel bleiben im Volume. Die Server laufen während des Updates weiter. Mach vorher ein Backup des Verwaltungstools.
 
 ## Fehlersuche
