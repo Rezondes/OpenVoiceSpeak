@@ -1,83 +1,95 @@
 /*
- * The manager's look (Package M2 tokens, redesigned 20 October 2026): a sidebar app shell, cards for every section,
- * one accent, status dots read from data-status. Light and dark follow the system until the user picks one (data-theme).
+ * The manager's look: DESIGN.md at the repository root is the contract (the OpenVoiceSpeak blue and the client's grey
+ * ramp, 1px borders as the one separation, a dense 4px rhythm). Light and dark follow the system until the user picks
+ * one (data-theme). Status dots are read from data-status.
  */
 :root {
-    --background: #f5f6f8;
+    --background: #f4f5f7;
     --surface: #ffffff;
-    --surface-2: #f0f2f5;
-    --sidebar: #ffffff;
-    --text: #14171c;
-    --muted: #5f6774;
-    --border: #e3e6eb;
-    --border-strong: #cdd2da;
-    --accent: #4f46e5;
-    --accent-hover: #4338ca;
-    --accent-soft: #eef0ff;
-    --accent-text: #ffffff;
-    --danger: #d92d20;
-    --danger-soft: #fef1f0;
-    --success: #12855b;
-    --success-soft: #e9f7f0;
-    --warning: #b45309;
-    --warning-soft: #fff6e6;
+    --surface-2: #ebedf1;
+    --sidebar: #ebedf1;
+    --text: #151922;
+    --muted: #556070;
+    --border: #d5d9e0;
+    --border-strong: #bec4ce;
+    --accent: #2f6feb;
+    --accent-hover: #2a62d1;
+    --accent-text: #1d4fc4;
+    --accent-soft: #e3ecfe;
+    --on-accent: #ffffff;
+    --danger: #b91c1c;
+    --danger-soft: #fde8e8;
+    --success: #15803d;
+    --success-soft: #e3f4ea;
+    --warning: #92400e;
+    --warning-soft: #fef3c7;
     --neutral-dot: #98a1ad;
-    --shadow: 0 1px 2px rgb(16 24 40 / 0.05), 0 1px 3px rgb(16 24 40 / 0.06);
-    --radius: 12px;
-    --radius-small: 8px;
-    --focus: 0 0 0 3px rgb(79 70 229 / 0.35);
+    --focus: 0 0 0 3px rgb(47 111 235 / 0.4);
     color-scheme: light;
+    --console-bg: #0b0d11;
+    --console-text: #d6dbe2;
+    --qr-bg: #ffffff;
+    --font-body: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-mono: "Cascadia Mono", "JetBrains Mono", ui-monospace, Consolas, monospace;
+    --radius: 8px;
+    --radius-small: 6px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
 }
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-        --background: #0e1014;
-        --surface: #161a20;
-        --surface-2: #1d222a;
-        --sidebar: #12151a;
-        --text: #e8ebef;
-        --muted: #9aa3af;
-        --border: #262c35;
-        --border-strong: #353d48;
-        --accent: #8b85ff;
-        --accent-hover: #a29dff;
-        --accent-soft: #23234a;
-        --accent-text: #0e1014;
-        --danger: #f97066;
-        --danger-soft: #3a1a18;
-        --success: #47cd89;
+        --background: #111318;
+        --surface: #1e2128;
+        --surface-2: #272b34;
+        --sidebar: #17191f;
+        --text: #e8eaee;
+        --muted: #9ca3af;
+        --border: #2b2f38;
+        --border-strong: #3a3f4a;
+        --accent: #2f6feb;
+        --accent-hover: #2a62d1;
+        --accent-text: #7aa7ff;
+        --accent-soft: #1b2a45;
+        --on-accent: #ffffff;
+        --danger: #f87171;
+        --danger-soft: #3a1a1d;
+        --success: #22c55e;
         --success-soft: #12301f;
-        --warning: #fdb022;
-        --warning-soft: #3a2a0c;
+        --warning: #fbbf24;
+        --warning-soft: #33290f;
         --neutral-dot: #6b7480;
-        --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
-        --focus: 0 0 0 3px rgb(139 133 255 / 0.4);
+        --focus: 0 0 0 3px rgb(122 167 255 / 0.45);
         color-scheme: dark;
     }
 }
 
 :root[data-theme="dark"] {
-    --background: #0e1014;
-    --surface: #161a20;
-    --surface-2: #1d222a;
-    --sidebar: #12151a;
-    --text: #e8ebef;
-    --muted: #9aa3af;
-    --border: #262c35;
-    --border-strong: #353d48;
-    --accent: #8b85ff;
-    --accent-hover: #a29dff;
-    --accent-soft: #23234a;
-    --accent-text: #0e1014;
-    --danger: #f97066;
-    --danger-soft: #3a1a18;
-    --success: #47cd89;
+    --background: #111318;
+    --surface: #1e2128;
+    --surface-2: #272b34;
+    --sidebar: #17191f;
+    --text: #e8eaee;
+    --muted: #9ca3af;
+    --border: #2b2f38;
+    --border-strong: #3a3f4a;
+    --accent: #2f6feb;
+    --accent-hover: #2a62d1;
+    --accent-text: #7aa7ff;
+    --accent-soft: #1b2a45;
+    --on-accent: #ffffff;
+    --danger: #f87171;
+    --danger-soft: #3a1a1d;
+    --success: #22c55e;
     --success-soft: #12301f;
-    --warning: #fdb022;
-    --warning-soft: #3a2a0c;
+    --warning: #fbbf24;
+    --warning-soft: #33290f;
     --neutral-dot: #6b7480;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
-    --focus: 0 0 0 3px rgb(139 133 255 / 0.4);
+    --focus: 0 0 0 3px rgb(122 167 255 / 0.45);
     color-scheme: dark;
 }
 
@@ -95,8 +107,8 @@ html {
 
 body {
     margin: 0;
-    font-family: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
-    font-size: 14.5px;
+    font-family: var(--font-body);
+    font-size: 14px;
     line-height: 1.5;
     background: var(--background);
     color: var(--text);
@@ -109,31 +121,31 @@ h2,
 h3 {
     line-height: 1.25;
     text-wrap: balance;
-    margin: 0 0 12px;
+    margin: 0 0 var(--space-3);
 }
 
 h1 {
-    font-size: 1.6rem;
-    font-weight: 650;
-    letter-spacing: -0.015em;
-    margin-bottom: 20px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: var(--space-4);
 }
 
 h2 {
-    font-size: 1.05rem;
+    font-size: 15px;
     font-weight: 600;
 }
 
 p {
-    margin: 0 0 12px;
+    margin: 0 0 var(--space-3);
 }
 
 main > h2 {
-    margin-top: 28px;
+    margin-top: var(--space-6);
 }
 
 a {
-    color: var(--accent);
+    color: var(--accent-text);
     text-decoration: none;
 }
 
@@ -145,13 +157,13 @@ a:hover {
 code,
 kbd,
 pre {
-    font-family: "Cascadia Code", "JetBrains Mono", ui-monospace, Consolas, monospace;
+    font-family: var(--font-mono);
     font-size: 0.9em;
 }
 
 code {
     padding: 1px 6px;
-    border-radius: 6px;
+    border-radius: var(--radius-small);
     background: var(--surface-2);
     border: 1px solid var(--border);
     overflow-wrap: anywhere;
@@ -159,7 +171,7 @@ code {
 
 kbd {
     padding: 2px 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-small);
     background: var(--surface-2);
     border: 1px solid var(--border-strong);
     overflow-wrap: anywhere;
@@ -179,7 +191,7 @@ kbd {
     padding: 8px 14px;
     border-radius: var(--radius-small);
     background: var(--accent);
-    color: var(--accent-text);
+    color: var(--on-accent);
 }
 
 .skip-link:focus {
@@ -225,9 +237,8 @@ a.brand:hover {
     flex: none;
     width: 28px;
     height: 28px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, var(--accent), #22d3ee);
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+    border-radius: var(--radius);
+    background: var(--accent);
 }
 
 .app-title {
@@ -243,7 +254,7 @@ a.brand:hover {
 
 .nav-group {
     padding: 14px 10px 6px;
-    font-size: 0.72rem;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -265,7 +276,7 @@ a.brand:hover {
 
 .main-nav a.active {
     background: var(--accent-soft);
-    color: var(--accent);
+    color: var(--accent-text);
     font-weight: 600;
 }
 
@@ -284,7 +295,7 @@ a.brand:hover {
     gap: 8px 20px;
     align-items: center;
     justify-content: flex-end;
-    padding: 10px 28px;
+    padding: var(--space-3) var(--space-6);
     background: color-mix(in srgb, var(--background) 85%, transparent);
     backdrop-filter: saturate(1.4) blur(8px);
     border-bottom: 1px solid var(--border);
@@ -298,7 +309,7 @@ a.brand:hover {
 main {
     width: 100%;
     max-width: 1280px;
-    padding: 28px;
+    padding: var(--space-6);
 }
 
 .auth-shell main {
@@ -309,11 +320,10 @@ main {
 .auth-shell main > .account-form,
 .auth-shell main > form,
 .auth-shell main > section {
-    padding: 24px;
+    padding: var(--space-5);
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
 }
 
 /* the language and theme switches: a small segmented control */
@@ -325,7 +335,7 @@ main {
     border: 1px solid var(--border);
     border-radius: 999px;
     background: var(--surface);
-    font-size: 0.82rem;
+    font-size: 12px;
 }
 
 .switch-label {
@@ -341,7 +351,7 @@ main {
 
 .switch a[aria-current="true"] {
     background: var(--accent-soft);
-    color: var(--accent);
+    color: var(--accent-text);
     font-weight: 600;
 }
 
@@ -364,18 +374,16 @@ main section,
 .invite,
 .assignments,
 .error-view {
-    margin: 0 0 20px;
-    padding: 20px 22px;
+    margin: 0 0 var(--space-5);
+    padding: 20px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
 }
 
 main section section {
     padding: 0;
     border: 0;
-    box-shadow: none;
     background: none;
 }
 
@@ -392,16 +400,16 @@ main section section {
 .account-form,
 .group-form {
     display: grid;
-    gap: 14px;
+    gap: var(--space-3);
     max-width: 440px;
-    margin: 0 0 16px;
+    margin: 0 0 var(--space-4);
 }
 
 label {
     display: grid;
-    gap: 6px;
-    font-weight: 500;
-    font-size: 0.9rem;
+    gap: var(--space-1);
+    font-weight: 600;
+    font-size: 13px;
 }
 
 label:has(> input[type="checkbox"]),
@@ -466,7 +474,7 @@ select {
 button,
 .link-button {
     font: inherit;
-    font-weight: 550;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -491,7 +499,7 @@ button:hover,
 button[type="submit"]:not(.secondary):not(.danger) {
     background: var(--accent);
     border-color: var(--accent);
-    color: var(--accent-text);
+    color: var(--on-accent);
 }
 
 button[type="submit"]:not(.secondary):not(.danger):hover {
@@ -506,6 +514,11 @@ button.danger {
 
 button.danger:hover {
     background: var(--danger-soft);
+}
+
+button:active:not(:disabled),
+.link-button:active {
+    transform: translateY(1px);
 }
 
 button:disabled,
@@ -578,31 +591,26 @@ table.list {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    margin: 0 0 20px;
+    margin: 0 0 var(--space-5);
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
     overflow: hidden;
     font-variant-numeric: tabular-nums;
-}
-
-main section table.list {
-    box-shadow: none;
 }
 
 table.list th,
 table.list td {
     text-align: left;
     vertical-align: middle;
-    padding: 10px 14px;
+    padding: 10px var(--space-4);
     border-bottom: 1px solid var(--border);
 }
 
 table.list thead th {
     background: var(--surface-2);
     color: var(--muted);
-    font-size: 0.74rem;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -625,7 +633,7 @@ table.list tbody tr:hover > td {
 }
 
 table.list td a {
-    font-weight: 550;
+    font-weight: 600;
 }
 
 /* a server's status as a coloured dot before its text */
@@ -664,7 +672,7 @@ table.list td a {
 .link-state {
     display: block;
     color: var(--muted);
-    font-size: 0.8rem;
+    font-size: 12px;
     font-weight: 400;
 }
 
@@ -674,8 +682,8 @@ table.list td a {
     padding: 0 8px;
     border-radius: 999px;
     background: var(--accent-soft);
-    color: var(--accent);
-    font-size: 0.75rem;
+    color: var(--accent-text);
+    font-size: 12px;
     font-weight: 600;
 }
 
@@ -689,7 +697,7 @@ table.list td a {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
-    margin: -8px 0 22px;
+    margin: calc(-1 * var(--space-2)) 0 var(--space-5);
     padding: 4px;
     width: fit-content;
     max-width: 100%;
@@ -713,7 +721,8 @@ table.list td a {
 }
 
 .server-back {
-    margin: 0 0 16px;
+    margin: 0 0 var(--space-3);
+    font-weight: 600;
 }
 
 .server-actions,
@@ -726,7 +735,7 @@ table.list td a {
 
 .server-actions label,
 .user-actions label {
-    font-size: 0.8rem;
+    font-size: 12px;
 }
 
 td .server-actions {
@@ -746,7 +755,7 @@ td .server-actions {
     border: 1px solid var(--border);
     border-radius: 999px;
     background: var(--surface-2);
-    font-size: 0.85rem;
+    font-size: 13px;
 }
 
 .chip button {
@@ -771,7 +780,7 @@ td .server-actions {
     gap: 8px;
     padding: 0;
     list-style: none;
-    font-family: "Cascadia Code", ui-monospace, Consolas, monospace;
+    font-family: var(--font-mono);
 }
 
 .recovery-codes li {
@@ -786,7 +795,7 @@ td .server-actions {
     height: 200px;
     padding: 8px;
     border-radius: var(--radius-small);
-    background: #ffffff;
+    background: var(--qr-bg);
 }
 
 /* ---- filters, logs, console */
@@ -795,21 +804,21 @@ td .server-actions {
 .history-ranges {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: var(--space-3);
     align-items: end;
-    margin-bottom: 20px;
+    margin-bottom: var(--space-5);
 }
 
 .console {
     max-height: 60vh;
     overflow: auto;
-    margin: 0 0 16px;
-    padding: 14px 16px;
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--radius);
-    background: #0b0d11;
-    color: #d6dbe2;
-    font-family: "Cascadia Code", "JetBrains Mono", ui-monospace, Consolas, monospace;
-    font-size: 0.82rem;
+    background: var(--console-bg);
+    color: var(--console-text);
+    font-family: var(--font-mono);
+    font-size: 12px;
     line-height: 1.55;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -823,49 +832,47 @@ td .server-actions {
 
 .stat-tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 12px;
-    margin: 0 0 20px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-3);
+    margin: 0 0 var(--space-5);
 }
 
 main section.stat-tiles {
     padding: 0;
     background: none;
     border: 0;
-    box-shadow: none;
 }
 
 .stat-tile {
     display: grid;
-    gap: 6px;
-    padding: 16px 18px;
+    gap: var(--space-1);
+    padding: var(--space-4);
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
 }
 
 .live-view .stat-tile {
-    box-shadow: none;
     background: var(--surface-2);
 }
 
 .stat-label {
     color: var(--muted);
-    font-size: 0.78rem;
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: 600;
 }
 
 .stat-value {
-    font-size: 1.55rem;
-    font-weight: 650;
+    font-family: var(--font-mono);
+    font-size: 24px;
+    font-weight: 600;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
 }
 
 .stat-value small {
-    font-size: 0.8rem;
+    font-size: 12px;
     font-weight: 500;
     color: var(--muted);
 }
@@ -884,12 +891,12 @@ main section.stat-tiles {
     display: flex;
     flex-wrap: wrap;
     gap: 14px;
-    font-size: 0.82rem;
+    font-size: 12px;
     color: var(--muted);
 }
 
 .chart-csv {
-    font-size: 0.82rem;
+    font-size: 12px;
 }
 
 /* ---- small screens: the sidebar becomes a bar on top */
@@ -928,7 +935,7 @@ main section.stat-tiles {
     }
 
     main {
-        padding: 18px 16px;
+        padding: var(--space-5) var(--space-4);
     }
 
     table.list {
